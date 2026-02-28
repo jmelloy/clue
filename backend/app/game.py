@@ -144,12 +144,11 @@ class ClueGame:
 
         if not dice_rolled:
             actions.append("move")
-        else:
-            if current_room:
-                if not suggestions_made:
-                    actions.append("suggest")
-                actions.append("accuse")
-            actions.append("end_turn")
+        elif current_room and not suggestions_made:
+            actions.append("suggest")
+
+        actions.append("accuse")
+        actions.append("end_turn")
 
         return actions
 
@@ -251,6 +250,10 @@ class ClueGame:
         if action_type != "show_card" and state["whose_turn"] != player_id:
             raise ValueError("It is not your turn")
 
+        available = self.get_available_actions(player_id, state)
+        if action_type not in available:
+            raise ValueError(f"Action '{action_type}' is not available at this time")
+
         result: dict = {"type": action_type, "player_id": player_id}
 
         if action_type == "move":
@@ -349,6 +352,7 @@ class ClueGame:
                 "suspect": suspect,
                 "weapon": weapon,
                 "room": room,
+                "matching_cards": matching_cards,
             }
 
         await self._save_state(state)

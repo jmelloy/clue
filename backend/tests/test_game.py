@@ -302,7 +302,8 @@ async def test_available_actions_before_move(game: ClueGame):
     assert "move" in actions
     assert "chat" in actions
     assert "suggest" not in actions
-    assert "end_turn" not in actions
+    assert "accuse" in actions
+    assert "end_turn" in actions
 
     # Other player can only chat
     other_actions = game.get_available_actions(not_turn, state)
@@ -429,7 +430,7 @@ async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
     result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
     assert result["pending_show_by"] == other_id
 
-    with pytest.raises(ValueError, match="Cannot end turn"):
+    with pytest.raises(ValueError, match="not available at this time"):
         await game.process_action(whose_turn, {"type": "end_turn"})
 
 
