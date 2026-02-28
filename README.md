@@ -20,7 +20,21 @@ backend/    FastAPI + Redis + WebSockets
 
 ## Quick Start
 
-### Backend
+### Docker Compose (recommended for development)
+
+```bash
+docker compose up
+```
+
+- Frontend (Vite dev server with HMR): http://localhost:5173
+- Backend API: http://localhost:8000
+- Redis: localhost:6379
+
+Code changes in `backend/` and `frontend/src/` are reflected immediately without rebuilding images.
+
+### Manual Setup
+
+#### Backend
 
 ```bash
 cd backend
@@ -31,7 +45,7 @@ uvicorn app.main:app --reload
 Requires a local Redis instance (`redis://localhost:6379` by default).
 Set `CORS_ORIGINS=https://yourdomain.com` to restrict CORS in production.
 
-### Frontend
+#### Frontend
 
 ```bash
 cd frontend
@@ -46,6 +60,36 @@ npm run build      # builds into backend/static/ for production
 cd backend
 pytest tests/ -v
 ```
+
+## Kubernetes Deployment
+
+Build and push the container images, then apply the manifests:
+
+```bash
+# Build images
+docker build -t clue-backend:latest ./backend
+docker build -t clue-frontend:latest ./frontend
+
+# Push to your registry (replace with your registry URL)
+docker tag clue-backend:latest <registry>/clue-backend:latest
+docker tag clue-frontend:latest <registry>/clue-frontend:latest
+docker push <registry>/clue-backend:latest
+docker push <registry>/clue-frontend:latest
+
+# Deploy
+kubectl apply -f k8s/
+```
+
+The `k8s/` directory contains:
+
+| File | Description |
+|------|-------------|
+| `redis.yaml` | Redis deployment and ClusterIP service |
+| `backend.yaml` | FastAPI backend deployment and ClusterIP service |
+| `frontend.yaml` | nginx-based frontend deployment and ClusterIP service |
+| `ingress.yaml` | Ingress routing `/games` and `/ws` to backend, `/` to frontend |
+
+Update the `image:` fields in `k8s/backend.yaml` and `k8s/frontend.yaml` to point to your registry before deploying.
 
 ## API
 
