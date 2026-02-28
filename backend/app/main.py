@@ -88,6 +88,11 @@ async def create_game():
     return {"game_id": game_id, "status": state["status"]}
 
 
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
+
 @app.get("/games/{game_id}")
 async def get_game(game_id: str):
     game = ClueGame(game_id, redis_client)
