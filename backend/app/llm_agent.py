@@ -6,6 +6,18 @@ class LLMAgent:
     """Simple rule-based agent that mimics an LLM player.
 
     The ``decide_action`` method can be replaced with a real LLM API call.
+
+    Expected ``game_state`` keys: status, players, whose_turn, turn_number,
+    current_room (dict of player_id→room), dice_rolled (bool), winner.
+
+    Expected ``player_state`` keys: your_player_id, your_cards (list of card
+    names), game_id, status, players, whose_turn, current_room.
+
+    Returns an action dict with a ``type`` key and relevant fields:
+      - ``{"type": "move", "room": <str>}``
+      - ``{"type": "suggest", "suspect": <str>, "weapon": <str>, "room": <str>}``
+      - ``{"type": "accuse", "suspect": <str>, "weapon": <str>, "room": <str>}``
+      - ``{"type": "end_turn"}``
     """
 
     def decide_action(self, game_state: dict, player_state: dict) -> dict:

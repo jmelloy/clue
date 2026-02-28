@@ -1,4 +1,6 @@
 import json
+import logging
+import os
 import random
 import string
 from contextlib import asynccontextmanager
@@ -12,6 +14,8 @@ from pydantic import BaseModel
 
 from .game import ClueGame
 from .ws_manager import ConnectionManager
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Redis
@@ -34,9 +38,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Clue Game Server", lifespan=lifespan)
 
+_cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -214,7 +220,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
                 if msg.get("type") == "ping":
                     await manager.send_to_player(game_id, player_id, {"type": "pong"})
             except Exception:
-                pass
+                logger.debug("Ignoring non-JSON WebSocket message from %s/%s", game_id, player_id)
     except WebSocketDisconnect:
         manager.disconnect(game_id, player_id)
 

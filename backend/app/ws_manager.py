@@ -1,6 +1,9 @@
 import json
+import logging
 from collections import defaultdict
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -24,7 +27,8 @@ class ConnectionManager:
         for player_id, ws in list(self._connections.get(game_id, {}).items()):
             try:
                 await ws.send_text(payload)
-            except Exception:
+            except Exception as exc:
+                logger.warning("Failed to send to %s in game %s: %s", player_id, game_id, exc)
                 dead.append(player_id)
         for pid in dead:
             self.disconnect(game_id, pid)
@@ -34,5 +38,6 @@ class ConnectionManager:
         if ws:
             try:
                 await ws.send_text(json.dumps(message))
-            except Exception:
+            except Exception as exc:
+                logger.warning("Failed to send to player %s in game %s: %s", player_id, game_id, exc)
                 self.disconnect(game_id, player_id)
