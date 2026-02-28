@@ -163,6 +163,7 @@ async def start_game(game_id: str):
             "type": "game_started",
             "your_cards": cards,
             "whose_turn": state["whose_turn"],
+            "available_actions": game.get_available_actions(pid, state),
         })
 
     await manager.broadcast(game_id, {"type": "game_started", "state": state})
@@ -198,39 +199,74 @@ async def submit_action(game_id: str, req: ActionRequest):
             f"{actor_name} rolled {dice} and moved{room_text}.",
             req.player_id,
         )
+        # Notify the current player of their updated available actions
+        await manager.send_to_player(game_id, req.player_id, {
+            "type": "your_turn",
+            "available_actions": game.get_available_actions(req.player_id, state),
+        })
 
     elif action_type == "suggest":
-        shown_card = result.get("shown_card")
-        shown_by = result.get("shown_by")
+        pending_show_by = result.get("pending_show_by")
         actor_name = _player_name(state, req.player_id)
-        # Broadcast without the shown card
+        # Broadcast without the card info
         await manager.broadcast(game_id, {
             "type": "suggestion_made",
             "player_id": req.player_id,
             "suspect": result["suspect"],
             "weapon": result["weapon"],
             "room": result["room"],
-            "shown_by": shown_by,
+            "pending_show_by": pending_show_by,
         })
-        # Send shown card only to the suggesting player
-        if shown_card:
-            await manager.send_to_player(game_id, req.player_id, {
-                "type": "card_shown",
-                "shown_by": shown_by,
-                "card": shown_card,
+        if pending_show_by:
+            pending_by_name = _player_name(state, pending_show_by)
+            # Ask the player who needs to show a card
+            await manager.send_to_player(game_id, pending_show_by, {
+                "type": "show_card_request",
+                "suggesting_player_id": req.player_id,
+                "suspect": result["suspect"],
+                "weapon": result["weapon"],
+                "room": result["room"],
+                "available_actions": game.get_available_actions(pending_show_by, state),
             })
-        if shown_by:
-            shown_by_name = _player_name(state, shown_by)
             chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
-                f" in the {result['room']}. {shown_by_name} showed a card."
+                f" in the {result['room']}. {pending_by_name} must show a card."
             )
         else:
             chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. No one could show a card."
             )
+            # No card to show -- update suggesting player's available actions
+            await manager.send_to_player(game_id, req.player_id, {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(req.player_id, state),
+            })
         await _broadcast_chat(game_id, chat_text, req.player_id)
+
+    elif action_type == "show_card":
+        card = result.get("card")
+        suggesting_player_id = result.get("suggesting_player_id")
+        shown_by_name = _player_name(state, req.player_id)
+        shown_to_name = _player_name(state, suggesting_player_id)
+        # Only the suggesting player sees the card
+        await manager.send_to_player(game_id, suggesting_player_id, {
+            "type": "card_shown",
+            "shown_by": req.player_id,
+            "card": card,
+            "available_actions": game.get_available_actions(suggesting_player_id, state),
+        })
+        # Broadcast that a card was shown (without revealing which card)
+        await manager.broadcast(game_id, {
+            "type": "card_shown_public",
+            "shown_by": req.player_id,
+            "shown_to": suggesting_player_id,
+        })
+        await _broadcast_chat(
+            game_id,
+            f"{shown_by_name} showed a card to {shown_to_name}.",
+            req.player_id,
+        )
 
     elif action_type == "accuse":
         actor_name = _player_name(state, req.player_id)
@@ -267,7 +303,10 @@ async def submit_action(game_id: str, req: ActionRequest):
             "turn_number": state["turn_number"],
         })
         if next_pid:
-            await manager.send_to_player(game_id, next_pid, {"type": "your_turn"})
+            await manager.send_to_player(game_id, next_pid, {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(next_pid, state),
+            })
         await _broadcast_chat(
             game_id,
             f"{actor_name} ended their turn. It is now {next_name}'s turn.",

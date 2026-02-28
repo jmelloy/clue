@@ -140,9 +140,10 @@ async def test_make_suggestion(game: ClueGame):
             suspect = SUSPECTS[0]
             weapon = card
         else:
-            # card is a room
+            # card is a room -- use it as the room in the suggestion
             suspect = SUSPECTS[0]
             weapon = WEAPONS[0]
+            room = card
 
         result = await game.process_action(whose_turn, {
             "type": "suggest",
@@ -151,7 +152,8 @@ async def test_make_suggestion(game: ClueGame):
             "room": room,
         })
         assert result["type"] == "suggest"
-        assert result["shown_by"] == other_id or result["shown_card"] is not None
+        # The other player has a matching card, so they should be asked to show it
+        assert result["pending_show_by"] == other_id
 
 
 @pytest.mark.asyncio
@@ -273,3 +275,204 @@ async def test_chat_message_stored_and_retrieved(game: ClueGame):
 async def test_chat_messages_empty_initially(game: ClueGame):
     messages = await game.get_chat_messages()
     assert messages == []
+
+
+# ---------------------------------------------------------------------------
+# available_actions tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_available_actions_waiting_state(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.get_state()
+    actions = game.get_available_actions("P1", state)
+    assert actions == ["chat"]
+
+
+@pytest.mark.asyncio
+async def test_available_actions_before_move(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    not_turn = "P2" if whose_turn == "P1" else "P1"
+
+    actions = game.get_available_actions(whose_turn, state)
+    assert "move" in actions
+    assert "chat" in actions
+    assert "suggest" not in actions
+    assert "end_turn" not in actions
+
+    # Other player can only chat
+    other_actions = game.get_available_actions(not_turn, state)
+    assert other_actions == ["chat"]
+
+
+@pytest.mark.asyncio
+async def test_available_actions_after_move_in_room(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    room = ROOMS[0]
+    await game.process_action(whose_turn, {"type": "move", "room": room})
+
+    state = await game.get_state()
+    actions = game.get_available_actions(whose_turn, state)
+    assert "suggest" in actions
+    assert "accuse" in actions
+    assert "end_turn" in actions
+    assert "move" not in actions
+    assert "chat" in actions
+
+
+@pytest.mark.asyncio
+async def test_available_actions_after_suggest_pending_show(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    room = ROOMS[0]
+    await game.process_action(whose_turn, {"type": "move", "room": room})
+
+    other_cards = await game._load_player_cards(other_id)
+    assert other_cards, "Other player must have cards"
+
+    card = other_cards[0]
+    if card in SUSPECTS:
+        suggest_kwargs = {"suspect": card, "weapon": WEAPONS[0], "room": room}
+    elif card in WEAPONS:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
+    else:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+
+    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    assert result["pending_show_by"] == other_id
+
+    state = await game.get_state()
+
+    # Suggesting player can only chat while waiting
+    turn_actions = game.get_available_actions(whose_turn, state)
+    assert turn_actions == ["chat"]
+
+    # The player who must show a card gets show_card action
+    other_actions = game.get_available_actions(other_id, state)
+    assert "show_card" in other_actions
+    assert "chat" in other_actions
+
+
+@pytest.mark.asyncio
+async def test_show_card_action(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    room = ROOMS[0]
+    await game.process_action(whose_turn, {"type": "move", "room": room})
+
+    other_cards = await game._load_player_cards(other_id)
+    assert other_cards
+
+    card = other_cards[0]
+    if card in SUSPECTS:
+        suggest_kwargs = {"suspect": card, "weapon": WEAPONS[0], "room": room}
+    elif card in WEAPONS:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
+    else:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+
+    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    assert result["pending_show_by"] == other_id
+
+    # Other player shows the card
+    show_result = await game.process_action(other_id, {"type": "show_card", "card": card})
+    assert show_result["card"] == card
+    assert show_result["suggesting_player_id"] == whose_turn
+
+    # pending_show_card should be cleared
+    state = await game.get_state()
+    assert state["pending_show_card"] is None
+
+    # Suggesting player can now act again
+    actions = game.get_available_actions(whose_turn, state)
+    assert "end_turn" in actions
+    assert "accuse" in actions
+
+
+@pytest.mark.asyncio
+async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    room = ROOMS[0]
+    await game.process_action(whose_turn, {"type": "move", "room": room})
+
+    other_cards = await game._load_player_cards(other_id)
+    assert other_cards
+
+    card = other_cards[0]
+    if card in SUSPECTS:
+        suggest_kwargs = {"suspect": card, "weapon": WEAPONS[0], "room": room}
+    elif card in WEAPONS:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
+    else:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+
+    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    assert result["pending_show_by"] == other_id
+
+    with pytest.raises(ValueError, match="Cannot end turn"):
+        await game.process_action(whose_turn, {"type": "end_turn"})
+
+
+@pytest.mark.asyncio
+async def test_show_card_invalid_card_rejected(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    room = ROOMS[0]
+    await game.process_action(whose_turn, {"type": "move", "room": room})
+
+    other_cards = await game._load_player_cards(other_id)
+    assert other_cards
+
+    card = other_cards[0]
+    if card in SUSPECTS:
+        suggest_kwargs = {"suspect": card, "weapon": WEAPONS[0], "room": room}
+    elif card in WEAPONS:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
+    else:
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+
+    await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+
+    # Find a card the other player does NOT have as a matching card
+    state = await game.get_state()
+    matching = state["pending_show_card"]["matching_cards"]
+    non_matching = next(c for c in other_cards if c not in matching)
+
+    with pytest.raises(ValueError, match="not valid to show"):
+        await game.process_action(other_id, {"type": "show_card", "card": non_matching})
+
+
+@pytest.mark.asyncio
+async def test_player_state_includes_available_actions(game: ClueGame):
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state["whose_turn"]
+    p_state = await game.get_player_state(whose_turn)
+    assert "available_actions" in p_state
+    assert "move" in p_state["available_actions"]
+    assert "chat" in p_state["available_actions"]
