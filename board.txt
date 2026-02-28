@@ -1,0 +1,27 @@
+=== Clue Board Grid ===
+   012345678901234567890123
+ 0 ssssss .        S oooooo
+ 1 sssssss..hhhhhh..ooooooo
+ 2 sssssss..hhhhhh..ooooooo
+ 3 ssssssD..hhhhhh..ooooooo
+ 4  ........Dhhhhh..ooooooo
+ 5 S........hhhhhh..Doooooo
+ 6  lllll...hhDDhh........ 
+ 7 lllllll................S
+ 8 llllllD..     .........
+ 9 lllllll..     ..nDnnnnnn
+10  llDll...     ..nnnnnnnn
+11  ........     ..nnnnnnnn
+12 bDbbbb...     ..Dnnnnnnn
+13 bbbbbb...     ..nnnnnnnn
+14 bbbbbb...     ..nnnnnnnn
+15 bbbbbD.............nnnnn
+16 bbbbbb.................
+17  .......aDaaaaDa........
+18 S.......aaaaaaaa..kDkkk
+19  cccD...DaaaaaaD..kkkkkk
+20 cccccc..aaaaaaaa..kkkkkk
+21 cccccc..aaaaaaaa..kkkkkk
+22 cccccc..aaaaaaaa..kkkkkk
+23 cccccc ...aaaa... kkkkkk
+24          S    S
