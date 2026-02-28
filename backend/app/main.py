@@ -27,7 +27,8 @@ redis_client: aioredis.Redis | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global redis_client
-    redis_client = aioredis.from_url("redis://localhost:6379", decode_responses=True)
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis_client = aioredis.from_url(redis_url, decode_responses=True)
     yield
     await redis_client.aclose()
 

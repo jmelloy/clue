@@ -34,7 +34,7 @@ ROOMS = [
 ]
 
 ALL_CARDS = SUSPECTS + WEAPONS + ROOMS
-EXPIRY = 86400  # 24 hours
+EXPIRY = 24 * 60 * 60  # 24 hours in seconds
 
 
 class ClueGame:

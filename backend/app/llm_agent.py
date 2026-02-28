@@ -20,6 +20,8 @@ class LLMAgent:
       - ``{"type": "end_turn"}``
     """
 
+    ACCUSATION_PROBABILITY = 0.10  # 10% chance to accuse instead of suggest
+
     def decide_action(self, game_state: dict, player_state: dict) -> dict:
         """Return an action dict for the current turn phase."""
         player_id = player_state.get("your_player_id")
@@ -42,8 +44,8 @@ class LLMAgent:
             suspect = random.choice(unknown_suspects) if unknown_suspects else random.choice(SUSPECTS)
             weapon = random.choice(unknown_weapons) if unknown_weapons else random.choice(WEAPONS)
 
-            # Occasionally make an accusation (10% chance)
-            if random.random() < 0.10:
+            # Occasionally make an accusation
+            if random.random() < self.ACCUSATION_PROBABILITY:
                 unknown_rooms = [r for r in ROOMS if r not in known_cards]
                 acc_room = random.choice(unknown_rooms) if unknown_rooms else random.choice(ROOMS)
                 return {

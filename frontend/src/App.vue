@@ -49,8 +49,14 @@ function connectWS() {
 
 function handleMessage(msg) {
   if (msg.type === 'game_state') {
-    gameState.value = msg.state ?? { ...gameState.value, ...msg }
-    if (msg.state?.your_cards) yourCards.value = msg.state.your_cards
+    if (msg.state) {
+      gameState.value = msg.state
+      if (msg.state.your_cards) yourCards.value = msg.state.your_cards
+    } else {
+      // Partial update: merge individual fields into existing state
+      const { type: _type, ...fields } = msg
+      gameState.value = { ...gameState.value, ...fields }
+    }
   } else if (msg.type === 'player_joined') {
     if (gameState.value) {
       gameState.value = { ...gameState.value, players: msg.players }

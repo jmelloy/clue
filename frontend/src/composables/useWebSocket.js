@@ -31,7 +31,7 @@ export function useWebSocket(gameId, playerId) {
         const msg = JSON.parse(event.data)
         messages.value.push(msg)
       } catch (e) {
-        console.warn('[useWebSocket] Failed to parse WebSocket message as JSON. Check message format.', event.data, e)
+        console.warn('[useWebSocket] Failed to parse WebSocket message as JSON. Check message format.')
       }
     }
   }
