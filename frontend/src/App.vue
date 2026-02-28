@@ -15,7 +15,9 @@
       :game-state="gameState"
       :your-cards="yourCards"
       :card-shown="cardShown"
+      :chat-messages="chatMessages"
       @action="sendAction"
+      @send-chat="sendChat"
     />
   </div>
 </template>
@@ -31,6 +33,7 @@ const playerId = ref(null)
 const gameState = ref(null)
 const yourCards = ref([])
 const cardShown = ref(null)
+const chatMessages = ref([])
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -77,6 +80,8 @@ function handleMessage(msg) {
     if (gameState.value) {
       gameState.value = { ...gameState.value, status: 'finished', winner: msg.winner, solution: msg.solution }
     }
+  } else if (msg.type === 'chat_message') {
+    chatMessages.value = [...chatMessages.value, msg]
   }
 }
 
@@ -85,6 +90,11 @@ function onGameJoined({ gameId: gid, playerId: pid, state }) {
   playerId.value = pid
   gameState.value = state
   connectWS()
+  // Load existing chat history
+  fetch(`/games/${gid}/chat`)
+    .then(r => r.json())
+    .then(data => { chatMessages.value = data.messages ?? [] })
+    .catch(() => {})
 }
 
 function onGameStarted(state) {
@@ -96,6 +106,14 @@ async function sendAction(action) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, action })
+  })
+}
+
+async function sendChat(text) {
+  await fetch(`/games/${gameId.value}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId.value, text })
   })
 }
 </script>

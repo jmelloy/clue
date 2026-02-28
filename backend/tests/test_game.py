@@ -252,3 +252,24 @@ async def test_cannot_act_out_of_turn(game: ClueGame):
     not_their_turn = "P2" if state["whose_turn"] == "P1" else "P1"
     with pytest.raises(ValueError, match="not your turn"):
         await game.process_action(not_their_turn, {"type": "end_turn"})
+
+
+@pytest.mark.asyncio
+async def test_chat_message_stored_and_retrieved(game: ClueGame):
+    await _add_two_players(game)
+
+    await game.add_chat_message({"player_id": "P1", "text": "Hello!", "timestamp": "2024-01-01T00:00:00+00:00"})
+    await game.add_chat_message({"player_id": None, "text": "Game started!", "timestamp": "2024-01-01T00:00:01+00:00"})
+
+    messages = await game.get_chat_messages()
+    assert len(messages) == 2
+    assert messages[0]["text"] == "Hello!"
+    assert messages[0]["player_id"] == "P1"
+    assert messages[1]["text"] == "Game started!"
+    assert messages[1]["player_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_chat_messages_empty_initially(game: ClueGame):
+    messages = await game.get_chat_messages()
+    assert messages == []

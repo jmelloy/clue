@@ -97,24 +97,16 @@
       </section>
     </div>
 
-    <!-- Move Log -->
-    <section class="panel log-panel">
-      <h2>Move Log</h2>
-      <ul class="log">
-        <li v-for="(entry, i) in log" :key="i" class="log-entry">
-          <span class="log-type">[{{ entry.type }}]</span>
-          <span v-if="entry.player_id"> {{ playerName(entry.player_id) }}</span>
-          <span v-if="entry.room"> → {{ entry.room }}</span>
-          <span v-if="entry.suspect"> suggested {{ entry.suspect }} / {{ entry.weapon }} / {{ entry.room }}</span>
-          <span v-if="entry.dice"> rolled {{ entry.dice[0] }}+{{ entry.dice[1] }}</span>
-        </li>
-      </ul>
+    <!-- Chat -->
+    <section class="panel chat-section">
+      <ChatPanel :messages="chatMessages" @send-message="$emit('send-chat', $event)" />
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
+import ChatPanel from './ChatPanel.vue'
 
 const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
 const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
@@ -126,10 +118,10 @@ const props = defineProps({
   gameState: Object,
   yourCards: Array,
   cardShown: Object,
+  chatMessages: { type: Array, default: () => [] },
 })
-const emit = defineEmits(['action'])
+const emit = defineEmits(['action', 'send-chat'])
 
-const log = ref([])
 const targetRoom = ref('')
 const suggestSuspect = ref('')
 const suggestWeapon = ref('')
@@ -199,8 +191,5 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .accuse-btn { background: #e74c3c; color: #fff; }
 .end-turn-btn { background: #27ae60; color: #fff; width: 100%; margin-top: 0.5rem; }
 .shown-card { margin-top: 0.4rem; color: #2ecc71; font-style: italic; }
-.log-panel { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
-.log { list-style: none; }
-.log-entry { padding: 0.2rem 0; font-size: 0.85rem; border-bottom: 1px solid #1a1a2e; }
-.log-type { color: #c9a84c; font-weight: bold; }
+.chat-section { margin-top: 1rem; }
 </style>

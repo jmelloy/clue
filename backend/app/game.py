@@ -44,6 +44,7 @@ class ClueGame:
         self._state_key = f"game:{game_id}"
         self._solution_key = f"game:{game_id}:solution"
         self._log_key = f"game:{game_id}:log"
+        self._chat_key = f"game:{game_id}:chat"
 
     def _cards_key(self, player_id: str) -> str:
         return f"game:{self.game_id}:cards:{player_id}"
@@ -80,6 +81,14 @@ class ClueGame:
     async def _append_log(self, entry: dict):
         await self.redis.rpush(self._log_key, json.dumps(entry))
         await self.redis.expire(self._log_key, EXPIRY)
+
+    async def add_chat_message(self, message: dict):
+        await self.redis.rpush(self._chat_key, json.dumps(message))
+        await self.redis.expire(self._chat_key, EXPIRY)
+
+    async def get_chat_messages(self) -> list[dict]:
+        entries = await self.redis.lrange(self._chat_key, 0, -1)
+        return [json.loads(e) for e in entries]
 
     # ------------------------------------------------------------------
     # Public API
