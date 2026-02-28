@@ -64,10 +64,8 @@ class ClueGame:
     async def _save_solution(self, solution: dict):
         await self.redis.set(self._solution_key, json.dumps(solution), ex=EXPIRY)
 
-    async def _load_solution(self) -> dict | None:
+    async def _load_solution(self) -> dict:
         raw = await self.redis.get(self._solution_key)
-        if raw is None:
-            return None
         return json.loads(raw)
 
     async def _save_player_cards(self, player_id: str, cards: list[str]):
@@ -124,7 +122,9 @@ class ClueGame:
         player_state["your_player_id"] = player_id
         return player_state
 
-    async def add_player(self, player_id: str, player_name: str, player_type: str) -> dict:
+    async def add_player(
+        self, player_id: str, player_name: str, player_type: str
+    ) -> dict:
         state = await self._load_state()
         if state is None:
             raise ValueError("Game not found")
@@ -161,9 +161,11 @@ class ClueGame:
         solution = await self._load_solution()
 
         # Build deck of remaining cards (exclude solution cards)
-        deck = [c for c in ALL_CARDS if c not in (
-            solution["suspect"], solution["weapon"], solution["room"]
-        )]
+        deck = [
+            c
+            for c in ALL_CARDS
+            if c not in (solution["suspect"], solution["weapon"], solution["room"])
+        ]
         random.shuffle(deck)
 
         # Deal cards round-robin
@@ -183,15 +185,17 @@ class ClueGame:
         state["dice_rolled"] = False
         await self._save_state(state)
 
-        await self._append_log({
-            "type": "game_started",
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        await self._append_log(
+            {
+                "type": "game_started",
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
 
         return state
 
-    def roll_dice(self) -> tuple[int, int]:
-        return random.randint(1, 6), random.randint(1, 6)
+    def roll_dice(self) -> int:
+        return random.randint(1, 6)
 
     async def process_action(self, player_id: str, action: dict) -> dict:
         state = await self._load_state()
@@ -218,13 +222,14 @@ class ClueGame:
 
         return result
 
-    async def _handle_move(self, state: dict, player_id: str, action: dict, result: dict) -> dict:
+    async def _handle_move(
+        self, state: dict, player_id: str, action: dict, result: dict
+    ) -> dict:
         if state.get("dice_rolled"):
             raise ValueError("You already rolled this turn")
 
-        d1, d2 = self.roll_dice()
-        total = d1 + d2
-        state["last_roll"] = [d1, d2]
+        total = self.roll_dice()
+        state["last_roll"] = [total]
         state["dice_rolled"] = True
 
         room = action.get("room")
@@ -237,20 +242,24 @@ class ClueGame:
             state["current_room"][player_id] = room
             result["room"] = room
 
-        result["dice"] = [d1, d2]
+        result["dice"] = total
         result["total"] = total
 
         await self._save_state(state)
-        await self._append_log({
-            "type": "move",
-            "player_id": player_id,
-            "dice": [d1, d2],
-            "room": room,
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        await self._append_log(
+            {
+                "type": "move",
+                "player_id": player_id,
+                "dice": total,
+                "room": room,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
         return result
 
-    async def _handle_suggest(self, state: dict, player_id: str, action: dict, result: dict) -> dict:
+    async def _handle_suggest(
+        self, state: dict, player_id: str, action: dict, result: dict
+    ) -> dict:
         suspect = action.get("suspect")
         weapon = action.get("weapon")
         room = action.get("room")
@@ -265,7 +274,7 @@ class ClueGame:
         players = state["players"]
         # Find who shows a card (ask players in turn, starting after suggesting player)
         idx = next(i for i, p in enumerate(players) if p["id"] == player_id)
-        order = players[idx + 1:] + players[:idx]
+        order = players[idx + 1 :] + players[:idx]
 
         shown_card = None
         shown_by = None
@@ -288,26 +297,32 @@ class ClueGame:
         state.setdefault("suggestions_this_turn", []).append(suggestion_entry)
         await self._save_state(state)
 
-        await self._append_log({
-            "type": "suggestion",
-            "player_id": player_id,
-            "suspect": suspect,
-            "weapon": weapon,
-            "room": room,
-            "shown_by": shown_by,
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        await self._append_log(
+            {
+                "type": "suggestion",
+                "player_id": player_id,
+                "suspect": suspect,
+                "weapon": weapon,
+                "room": room,
+                "shown_by": shown_by,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
 
-        result.update({
-            "suspect": suspect,
-            "weapon": weapon,
-            "room": room,
-            "shown_by": shown_by,
-            "shown_card": shown_card,  # Only the suggesting player should see this
-        })
+        result.update(
+            {
+                "suspect": suspect,
+                "weapon": weapon,
+                "room": room,
+                "shown_by": shown_by,
+                "shown_card": shown_card,  # Only the suggesting player should see this
+            }
+        )
         return result
 
-    async def _handle_accuse(self, state: dict, player_id: str, action: dict, result: dict) -> dict:
+    async def _handle_accuse(
+        self, state: dict, player_id: str, action: dict, result: dict
+    ) -> dict:
         suspect = action.get("suspect")
         weapon = action.get("weapon")
         room = action.get("room")
@@ -319,25 +334,29 @@ class ClueGame:
             and room == solution["room"]
         )
 
-        await self._append_log({
-            "type": "accusation",
-            "player_id": player_id,
-            "suspect": suspect,
-            "weapon": weapon,
-            "room": room,
-            "correct": correct,
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        await self._append_log(
+            {
+                "type": "accusation",
+                "player_id": player_id,
+                "suspect": suspect,
+                "weapon": weapon,
+                "room": room,
+                "correct": correct,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
 
         if correct:
             state["status"] = "finished"
             state["winner"] = player_id
             await self._save_state(state)
-            result.update({
-                "correct": True,
-                "winner": player_id,
-                "solution": solution,
-            })
+            result.update(
+                {
+                    "correct": True,
+                    "winner": player_id,
+                    "solution": solution,
+                }
+            )
         else:
             # Player is eliminated but game continues
             for p in state["players"]:
@@ -352,10 +371,12 @@ class ClueGame:
                 state["winner"] = active[0]["id"]
 
             await self._save_state(state)
-            result.update({
-                "correct": False,
-                "solution": solution if state["status"] == "finished" else None,
-            })
+            result.update(
+                {
+                    "correct": False,
+                    "solution": solution if state["status"] == "finished" else None,
+                }
+            )
 
         return result
 
@@ -374,12 +395,14 @@ class ClueGame:
         state["suggestions_this_turn"] = []
         await self._save_state(state)
 
-        await self._append_log({
-            "type": "end_turn",
-            "player_id": player_id,
-            "next_player_id": next_player["id"],
-            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-        })
+        await self._append_log(
+            {
+                "type": "end_turn",
+                "player_id": player_id,
+                "next_player_id": next_player["id"],
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
 
         result["next_player_id"] = next_player["id"]
         return result
