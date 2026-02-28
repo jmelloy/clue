@@ -349,7 +349,6 @@ class ClueGame:
                 "suspect": suspect,
                 "weapon": weapon,
                 "room": room,
-                "matching_cards": matching_cards,
             }
 
         await self._save_state(state)
