@@ -448,6 +448,55 @@ def find_square(row, col, room_name, squares, room_nodes):
     return squares.get((row, col))
 
 
+def move_towards(
+    start: Square,
+    target_room: Room,
+    dice: int,
+    squares: dict,
+    room_nodes: dict[Room, Square],
+) -> tuple[Square, bool]:
+    """
+    Given a current location, a target room, and a dice roll, attempt to move
+    the piece toward (or into) that room.
+
+    Returns (destination, reached) where:
+      - destination is the Square to move to
+      - reached is True if the target room was entered with this dice roll
+    """
+    reachable_squares = reachable(start, dice, squares, room_nodes)
+    target_node = room_nodes[target_room]
+
+    # If the target room is directly reachable, move there
+    if target_node in reachable_squares:
+        return (target_node, True)
+
+    # Otherwise do an unconstrained BFS from the target room to get distances
+    # from every square back to the target, then pick the reachable square with
+    # the smallest distance.
+    dist_from_target: dict[Square, int] = {target_node: 0}
+    bfs_queue: deque[tuple[Square, int]] = deque([(target_node, 0)])
+    while bfs_queue:
+        sq, dist = bfs_queue.popleft()
+        for nb in sq.neighbors:
+            if nb not in dist_from_target:
+                dist_from_target[nb] = dist + 1
+                if nb.type != SquareType.ROOM:
+                    bfs_queue.append((nb, dist + 1))
+
+    # Pick the reachable square (excluding start) that is closest to the target
+    best_sq = start
+    best_dist = dist_from_target.get(start, float("inf"))
+    for sq in reachable_squares:
+        if sq == start:
+            continue
+        d = dist_from_target.get(sq, float("inf"))
+        if d < best_dist:
+            best_dist = d
+            best_sq = sq
+
+    return (best_sq, False)
+
+
 # ── Main ────────────────────────────────────────────────────
 
 if __name__ == "__main__":
