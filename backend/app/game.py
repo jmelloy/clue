@@ -383,7 +383,7 @@ class ClueGame:
         if not pending:
             raise ValueError("No pending show card request")
         if pending["player_id"] != player_id:
-            raise ValueError("It is not your turn to show a card")
+            raise ValueError("You are not the player who must show a card")
 
         card = action.get("card")
         if card not in pending["matching_cards"]:
