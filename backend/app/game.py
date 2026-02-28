@@ -114,12 +114,43 @@ class ClueGame:
             "winner": None,
             "dice_rolled": False,
             "last_roll": None,
+            "pending_show_card": None,
         }
         await self._save_state(state)
         return state
 
     async def get_state(self) -> dict | None:
         return await self._load_state()
+
+    def get_available_actions(self, player_id: str, state: dict) -> list[str]:
+        """Return the list of actions available to a player given the current game state."""
+        actions = ["chat"]
+
+        if state.get("status") != "playing":
+            return actions
+
+        pending = state.get("pending_show_card")
+        if pending:
+            if pending["player_id"] == player_id:
+                actions.append("show_card")
+            return actions
+
+        if state.get("whose_turn") != player_id:
+            return actions
+
+        dice_rolled = state.get("dice_rolled", False)
+        current_room = (state.get("current_room") or {}).get(player_id)
+        suggestions_made = bool(state.get("suggestions_this_turn"))
+
+        if not dice_rolled:
+            actions.append("move")
+        elif current_room and not suggestions_made:
+            actions.append("suggest")
+
+        actions.append("accuse")
+        actions.append("end_turn")
+
+        return actions
 
     async def get_player_state(self, player_id: str) -> dict | None:
         state = await self._load_state()
@@ -129,6 +160,7 @@ class ClueGame:
         player_state = dict(state)
         player_state["your_cards"] = cards
         player_state["your_player_id"] = player_id
+        player_state["available_actions"] = self.get_available_actions(player_id, state)
         return player_state
 
     async def add_player(
@@ -212,10 +244,16 @@ class ClueGame:
             raise ValueError("Game not found")
         if state["status"] != "playing":
             raise ValueError("Game is not in progress")
-        if state["whose_turn"] != player_id:
-            raise ValueError("It is not your turn")
 
         action_type = action.get("type")
+
+        if action_type != "show_card" and state["whose_turn"] != player_id:
+            raise ValueError("It is not your turn")
+
+        available = self.get_available_actions(player_id, state)
+        if action_type not in available:
+            raise ValueError(f"Action '{action_type}' is not available at this time")
+
         result: dict = {"type": action_type, "player_id": player_id}
 
         if action_type == "move":
@@ -226,6 +264,8 @@ class ClueGame:
             result = await self._handle_accuse(state, player_id, action, result)
         elif action_type == "end_turn":
             result = await self._handle_end_turn(state, player_id, result)
+        elif action_type == "show_card":
+            result = await self._handle_show_card(state, player_id, action, result)
         else:
             raise ValueError(f"Unknown action type: {action_type}")
 
@@ -285,25 +325,36 @@ class ClueGame:
         idx = next(i for i, p in enumerate(players) if p["id"] == player_id)
         order = players[idx + 1 :] + players[:idx]
 
-        shown_card = None
-        shown_by = None
+        pending_player_id = None
+        matching_cards: list[str] = []
         for other_player in order:
             other_id = other_player["id"]
             cards = await self._load_player_cards(other_id)
             matching = [c for c in cards if c in (suspect, weapon, room)]
             if matching:
-                shown_card = random.choice(matching)
-                shown_by = other_id
+                pending_player_id = other_id
+                matching_cards = matching
                 break
 
         suggestion_entry = {
             "suspect": suspect,
             "weapon": weapon,
             "room": room,
-            "shown_by": shown_by,
-            "shown_card": shown_card,
+            "suggested_by": player_id,
+            "pending_show_by": pending_player_id,
         }
         state.setdefault("suggestions_this_turn", []).append(suggestion_entry)
+
+        if pending_player_id:
+            state["pending_show_card"] = {
+                "player_id": pending_player_id,
+                "suggesting_player_id": player_id,
+                "suspect": suspect,
+                "weapon": weapon,
+                "room": room,
+                "matching_cards": matching_cards,
+            }
+
         await self._save_state(state)
 
         await self._append_log(
@@ -313,7 +364,7 @@ class ClueGame:
                 "suspect": suspect,
                 "weapon": weapon,
                 "room": room,
-                "shown_by": shown_by,
+                "pending_show_by": pending_player_id,
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         )
@@ -323,8 +374,41 @@ class ClueGame:
                 "suspect": suspect,
                 "weapon": weapon,
                 "room": room,
-                "shown_by": shown_by,
-                "shown_card": shown_card,  # Only the suggesting player should see this
+                "pending_show_by": pending_player_id,
+            }
+        )
+        return result
+
+    async def _handle_show_card(
+        self, state: dict, player_id: str, action: dict, result: dict
+    ) -> dict:
+        pending = state.get("pending_show_card")
+        if not pending:
+            raise ValueError("No pending show card request")
+        if pending["player_id"] != player_id:
+            raise ValueError("You are not the player who must show a card")
+
+        card = action.get("card")
+        if card not in pending["matching_cards"]:
+            raise ValueError(f"Card '{card}' is not valid to show for this suggestion")
+
+        suggesting_player_id = pending["suggesting_player_id"]
+        state["pending_show_card"] = None
+        await self._save_state(state)
+
+        await self._append_log(
+            {
+                "type": "card_shown",
+                "player_id": player_id,
+                "to_player_id": suggesting_player_id,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
+
+        result.update(
+            {
+                "card": card,
+                "suggesting_player_id": suggesting_player_id,
             }
         )
         return result
@@ -390,6 +474,8 @@ class ClueGame:
         return result
 
     async def _handle_end_turn(self, state: dict, player_id: str, result: dict) -> dict:
+        if state.get("pending_show_card"):
+            raise ValueError("Cannot end turn while waiting for a player to show a card")
         players = state["players"]
         active = [p for p in players if p.get("active", True)]
         idx = next((i for i, p in enumerate(active) if p["id"] == player_id), None)
