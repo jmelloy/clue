@@ -1,251 +1,114 @@
 <template>
   <div class="board-map">
-    <div class="board-grid">
-      <!-- Row 1: Study, Hall, Lounge -->
-      <div
-        class="room"
-        :class="roomClasses('Study')"
-        @click="selectRoom('Study')"
-        style="grid-row:1;grid-column:1"
-      >
-        <div class="room-name">Study</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Study')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-        <div class="secret-passage" title="Secret passage to Kitchen">&#x2922; Kitchen</div>
+    <div class="board-container">
+      <!-- Background grid of 25x24 cells -->
+      <div class="board-grid">
+        <div
+          v-for="(cell, i) in cells"
+          :key="i"
+          :class="cellClasses(cell)"
+          :style="cellStyle(cell)"
+          @click="handleCellClick(cell)"
+        ></div>
       </div>
-
-      <div class="corridor-h" style="grid-row:1;grid-column:2">
-        <div class="corridor-line-h"></div>
+      <!-- Overlay: labels, passages, player tokens -->
+      <div class="board-overlay">
+        <!-- Room name labels -->
+        <div
+          v-for="room in roomLabels"
+          :key="'lbl-' + room.name"
+          class="room-label"
+          :style="overlayPos(room.centerRow, room.centerCol)"
+        >{{ room.name }}</div>
+        <!-- Center CLUE label -->
+        <div class="center-label" :style="overlayPos(12, 11)">CLUE</div>
+        <!-- Secret passage indicators -->
+        <div
+          v-for="sp in secretPassages"
+          :key="'sp-' + sp.from"
+          class="secret-passage"
+          :style="overlayPos(sp.row, sp.col)"
+          :title="'Secret passage to ' + sp.to"
+        >&#x2194; {{ sp.to }}</div>
+        <!-- Player tokens -->
+        <div
+          v-for="token in playerTokens"
+          :key="'tk-' + token.id"
+          class="player-token"
+          :class="{ 'my-token': token.id === playerId }"
+          :style="tokenStyle(token)"
+          :title="`${token.name} (${token.character})`"
+        >{{ abbr(token.character) }}</div>
       </div>
-
-      <div
-        class="room"
-        :class="roomClasses('Hall')"
-        @click="selectRoom('Hall')"
-        style="grid-row:1;grid-column:3"
-      >
-        <div class="room-name">Hall</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Hall')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:1;grid-column:4">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <div
-        class="room"
-        :class="roomClasses('Lounge')"
-        @click="selectRoom('Lounge')"
-        style="grid-row:1;grid-column:5"
-      >
-        <div class="room-name">Lounge</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Lounge')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-        <div class="secret-passage" title="Secret passage to Conservatory">&#x2923; Conserv.</div>
-      </div>
-
-      <!-- Row 2: Vertical corridors -->
-      <div class="corridor-v" style="grid-row:2;grid-column:1"><div class="corridor-line-v"></div></div>
-      <div style="grid-row:2;grid-column:2"></div>
-      <div class="corridor-v" style="grid-row:2;grid-column:3"><div class="corridor-line-v"></div></div>
-      <div style="grid-row:2;grid-column:4"></div>
-      <div class="corridor-v" style="grid-row:2;grid-column:5"><div class="corridor-line-v"></div></div>
-
-      <!-- Row 3: Library, Center, Dining Room -->
-      <div
-        class="room"
-        :class="roomClasses('Library')"
-        @click="selectRoom('Library')"
-        style="grid-row:3;grid-column:1"
-      >
-        <div class="room-name">Library</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Library')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:3;grid-column:2">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <div class="center-area" style="grid-row:3/6;grid-column:3">
-        <div class="center-label">CLUE</div>
-        <div class="center-icon">&#128270;</div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:3;grid-column:4">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <div
-        class="room"
-        :class="roomClasses('Dining Room')"
-        @click="selectRoom('Dining Room')"
-        style="grid-row:3;grid-column:5"
-      >
-        <div class="room-name">Dining Room</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Dining Room')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-      </div>
-
-      <!-- Row 4: Vertical corridors -->
-      <div class="corridor-v" style="grid-row:4;grid-column:1"><div class="corridor-line-v"></div></div>
-      <div style="grid-row:4;grid-column:2"></div>
-      <!-- center spans row 3-5 col 3 -->
-      <div style="grid-row:4;grid-column:4"></div>
-      <div class="corridor-v" style="grid-row:4;grid-column:5"><div class="corridor-line-v"></div></div>
-
-      <!-- Row 5: Billiard Room, center continues, empty -->
-      <div
-        class="room"
-        :class="roomClasses('Billiard Room')"
-        @click="selectRoom('Billiard Room')"
-        style="grid-row:5;grid-column:1"
-      >
-        <div class="room-name">Billiard Room</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Billiard Room')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:5;grid-column:2">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <!-- center area already spans here (row 3-5, col 3) -->
-      <div style="grid-row:5;grid-column:4"></div>
-      <div style="grid-row:5;grid-column:5"></div>
-
-      <!-- Row 6: Vertical corridors -->
-      <div class="corridor-v" style="grid-row:6;grid-column:1"><div class="corridor-line-v"></div></div>
-      <div style="grid-row:6;grid-column:2"></div>
-      <div class="corridor-v" style="grid-row:6;grid-column:3"><div class="corridor-line-v"></div></div>
-      <div style="grid-row:6;grid-column:4"></div>
-      <div class="corridor-v" style="grid-row:6;grid-column:5"><div class="corridor-line-v"></div></div>
-
-      <!-- Row 7: Conservatory, Ballroom, Kitchen -->
-      <div
-        class="room"
-        :class="roomClasses('Conservatory')"
-        @click="selectRoom('Conservatory')"
-        style="grid-row:7;grid-column:1"
-      >
-        <div class="room-name">Conservatory</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Conservatory')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-        <div class="secret-passage" title="Secret passage to Lounge">&#x2921; Lounge</div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:7;grid-column:2">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <div
-        class="room"
-        :class="roomClasses('Ballroom')"
-        @click="selectRoom('Ballroom')"
-        style="grid-row:7;grid-column:3"
-      >
-        <div class="room-name">Ballroom</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Ballroom')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-      </div>
-
-      <div class="corridor-h" style="grid-row:7;grid-column:4">
-        <div class="corridor-line-h"></div>
-      </div>
-
-      <div
-        class="room"
-        :class="roomClasses('Kitchen')"
-        @click="selectRoom('Kitchen')"
-        style="grid-row:7;grid-column:5"
-      >
-        <div class="room-name">Kitchen</div>
-        <div class="room-players">
-          <span
-            v-for="p in playersInRoom('Kitchen')"
-            :key="p.id"
-            class="player-token"
-            :style="tokenStyle(p)"
-            :title="p.name + ' (' + p.character + ')'"
-          >{{ abbr(p.character) }}</span>
-        </div>
-        <div class="secret-passage" title="Secret passage to Study">&#x2920; Study</div>
-      </div>
-    </div>
-
-    <!-- Players in hallway -->
-    <div v-if="hallwayPlayers.length" class="hallway-section">
-      <span class="hallway-label">In hallway:</span>
-      <span
-        v-for="p in hallwayPlayers"
-        :key="p.id"
-        class="player-token hallway-token"
-        :style="tokenStyle(p)"
-        :title="p.name + ' (' + p.character + ')'"
-      >{{ abbr(p.character) }} {{ p.name }}</span>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+
+// ── Board layout data (matches backend board.py) ──
+
+const BOARD_ROWS = [
+  'ssssss .        . oooooo',
+  'sssssss..hhhhhh..ooooooo',
+  'sssssss..hhhhhh..ooooooo',
+  'sssssss..hhhhhh..ooooooo',
+  ' ........hhhhhh..ooooooo',
+  '.........hhhhhh..ooooooo',
+  ' lllll...hhhhhh........ ',
+  'lllllll.................',
+  'lllllll..     .........',
+  'lllllll..     ..nnnnnnnn',
+  ' lllll...     ..nnnnnnnn',
+  ' ........     ..nnnnnnnn',
+  'bbbbbb...     ..nnnnnnnn',
+  'bbbbbb...     ..nnnnnnnn',
+  'bbbbbb...     ..nnnnnnnn',
+  'bbbbbb.............nnnnn',
+  'bbbbbb.................',
+  ' .......aaaaaaaa........',
+  '........aaaaaaaa..kkkkk',
+  ' cccc...aaaaaaaa..kkkkkk',
+  'cccccc..aaaaaaaa..kkkkkk',
+  'cccccc..aaaaaaaa..kkkkkk',
+  'cccccc..aaaaaaaa..kkkkkk',
+  'cccccc ...aaaa... kkkkkk',
+  '         .    .         ',
+]
+
+const ROOM_KEY_MAP = {
+  's': 'Study', 'h': 'Hall', 'o': 'Lounge',
+  'l': 'Library', 'b': 'Billiard Room', 'n': 'Dining Room',
+  'c': 'Conservatory', 'a': 'Ballroom', 'k': 'Kitchen',
+}
+
+const DOORS = {
+  '3,6': 'Study', '6,11': 'Hall', '6,12': 'Hall', '4,9': 'Hall',
+  '5,17': 'Lounge', '8,6': 'Library', '10,3': 'Library',
+  '12,1': 'Billiard Room', '15,5': 'Billiard Room',
+  '12,16': 'Dining Room', '9,17': 'Dining Room',
+  '19,4': 'Conservatory',
+  '17,9': 'Ballroom', '17,14': 'Ballroom', '19,8': 'Ballroom', '19,15': 'Ballroom',
+  '18,19': 'Kitchen',
+}
+
+const STARTS = {
+  '24,9': 'Scarlet', '7,23': 'Mustard', '24,14': 'White',
+  '0,16': 'Green', '5,0': 'Plum', '18,0': 'Peacock',
+}
+
+const ROOM_COLORS = {
+  'Study':           '#1e3d5c',
+  'Hall':            '#2d4a5a',
+  'Lounge':          '#5c1e2e',
+  'Library':         '#1e4d4d',
+  'Billiard Room':   '#1e4d2d',
+  'Dining Room':     '#5a4a1e',
+  'Conservatory':    '#3d4d1e',
+  'Ballroom':        '#3d1e4d',
+  'Kitchen':         '#5a3a1e',
+}
 
 const CHARACTER_COLORS = {
   'Miss Scarlett':    { bg: '#e74c3c', text: '#fff' },
@@ -257,13 +120,58 @@ const CHARACTER_COLORS = {
 }
 
 const CHARACTER_ABBR = {
-  'Miss Scarlett': 'Sc',
-  'Colonel Mustard': 'Mu',
-  'Mrs. White': 'Wh',
-  'Reverend Green': 'Gr',
-  'Mrs. Peacock': 'Pe',
-  'Professor Plum': 'Pl',
+  'Miss Scarlett': 'Sc', 'Colonel Mustard': 'Mu', 'Mrs. White': 'Wh',
+  'Reverend Green': 'Gr', 'Mrs. Peacock': 'Pe', 'Professor Plum': 'Pl',
 }
+
+// ── Pre-compute room info from board layout ──
+
+const ROOM_INFO = {}
+for (let r = 0; r < 25; r++) {
+  const line = (BOARD_ROWS[r] || '').padEnd(24)
+  for (let c = 0; c < 24; c++) {
+    const room = ROOM_KEY_MAP[line[c]]
+    if (room) {
+      if (!ROOM_INFO[room]) {
+        ROOM_INFO[room] = { name: room, minRow: r, maxRow: r, minCol: c, maxCol: c }
+      } else {
+        ROOM_INFO[room].minRow = Math.min(ROOM_INFO[room].minRow, r)
+        ROOM_INFO[room].maxRow = Math.max(ROOM_INFO[room].maxRow, r)
+        ROOM_INFO[room].minCol = Math.min(ROOM_INFO[room].minCol, c)
+        ROOM_INFO[room].maxCol = Math.max(ROOM_INFO[room].maxCol, c)
+      }
+    }
+  }
+}
+for (const room of Object.values(ROOM_INFO)) {
+  room.centerRow = (room.minRow + room.maxRow) / 2
+  room.centerCol = (room.minCol + room.maxCol) / 2
+}
+
+// ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
+
+const CELL_DATA = []
+for (let r = 0; r < 25; r++) {
+  const line = (BOARD_ROWS[r] || '').padEnd(24)
+  for (let c = 0; c < 24; c++) {
+    const key = `${r},${c}`
+    const ch = line[c]
+    const doorRoom = DOORS[key]
+    const startChar = STARTS[key]
+
+    if (doorRoom) {
+      CELL_DATA.push({ row: r, col: c, type: 'door', room: doorRoom })
+    } else if (ROOM_KEY_MAP[ch]) {
+      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
+    } else if (ch === '.') {
+      CELL_DATA.push({ row: r, col: c, type: startChar ? 'start' : 'hallway', room: null, startChar })
+    } else {
+      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null })
+    }
+  }
+}
+
+// ── Component ──
 
 const props = defineProps({
   gameState: Object,
@@ -274,41 +182,104 @@ const props = defineProps({
 
 const emit = defineEmits(['select-room'])
 
-const players = computed(() => props.gameState?.players ?? [])
-const currentRoom = computed(() => props.gameState?.current_room ?? {})
+const cells = CELL_DATA
 
-function playersInRoom(roomName) {
-  return players.value.filter(p => currentRoom.value[p.id] === roomName)
-}
+const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
-const hallwayPlayers = computed(() => {
-  return players.value.filter(p => !currentRoom.value[p.id])
+const roomLabels = computed(() => Object.values(ROOM_INFO))
+
+const secretPassages = [
+  { from: 'Study', to: 'Kitchen', row: ROOM_INFO['Study'].maxRow - 0.5, col: ROOM_INFO['Study'].maxCol - 1 },
+  { from: 'Kitchen', to: 'Study', row: ROOM_INFO['Kitchen'].minRow + 0.5, col: ROOM_INFO['Kitchen'].minCol + 1 },
+  { from: 'Lounge', to: 'Conservatory', row: ROOM_INFO['Lounge'].maxRow - 0.5, col: ROOM_INFO['Lounge'].minCol + 1 },
+  { from: 'Conservatory', to: 'Lounge', row: ROOM_INFO['Conservatory'].minRow + 0.5, col: ROOM_INFO['Conservatory'].maxCol - 1 },
+]
+
+const playerTokens = computed(() => {
+  const players = props.gameState?.players ?? []
+  const roomMap = props.gameState?.current_room ?? {}
+  const posMap = props.gameState?.player_positions ?? {}
+  const tokens = []
+
+  // Group players by room
+  const byRoom = {}
+  const hallway = []
+  for (const p of players) {
+    const room = roomMap[p.id]
+    if (room && ROOM_INFO[room]) {
+      if (!byRoom[room]) byRoom[room] = []
+      byRoom[room].push(p)
+    } else if (posMap[p.id]) {
+      hallway.push(p)
+    }
+  }
+
+  // Distribute players within each room
+  for (const [roomName, rPlayers] of Object.entries(byRoom)) {
+    const info = ROOM_INFO[roomName]
+    const cR = info.centerRow + 0.8
+    const cC = info.centerCol + 0.5
+    const n = rPlayers.length
+    const roomW = info.maxCol - info.minCol + 1
+    const spacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, n - 1)))
+    const startC = cC - (spacing * (n - 1)) / 2
+    for (let i = 0; i < n; i++) {
+      tokens.push({ ...rPlayers[i], row: cR, col: startC + i * spacing })
+    }
+  }
+
+  // Hallway players at exact position
+  for (const p of hallway) {
+    const pos = posMap[p.id]
+    tokens.push({ ...p, row: pos[0] + 0.5, col: pos[1] + 0.5 })
+  }
+
+  return tokens
 })
 
 function abbr(character) {
   return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? '?'
 }
 
-function tokenStyle(player) {
-  const colors = CHARACTER_COLORS[player.character] ?? { bg: '#666', text: '#fff' }
-  return {
-    backgroundColor: colors.bg,
-    color: colors.text,
+function cellClasses(cell) {
+  const cls = ['cell', `cell-${cell.type}`]
+  if (cell.room) {
+    if (props.selectable) cls.push('clickable')
+    if (props.selectedRoom === cell.room) cls.push('selected')
+    if (currentRoom.value === cell.room) cls.push('my-room')
+  }
+  return cls
+}
+
+function cellStyle(cell) {
+  if (cell.room && ROOM_COLORS[cell.room]) {
+    return { backgroundColor: ROOM_COLORS[cell.room] }
+  }
+  return {}
+}
+
+function handleCellClick(cell) {
+  if (props.selectable && cell.room) {
+    emit('select-room', cell.room)
   }
 }
 
-function roomClasses(roomName) {
-  const classes = {}
-  const myRoom = currentRoom.value[props.playerId]
-  if (myRoom === roomName) classes['my-room'] = true
-  if (props.selectedRoom === roomName) classes['selected'] = true
-  if (props.selectable) classes['selectable'] = true
-  return classes
+function overlayPos(row, col) {
+  return {
+    left: `${((col + 0.5) / 24) * 100}%`,
+    top: `${((row + 0.5) / 25) * 100}%`,
+    transform: 'translate(-50%, -50%)',
+  }
 }
 
-function selectRoom(roomName) {
-  if (props.selectable) {
-    emit('select-room', roomName)
+function tokenStyle(token) {
+  const colors = CHARACTER_COLORS[token.character] ?? { bg: '#666', text: '#fff' }
+  return {
+    left: `${((token.col) / 24) * 100}%`,
+    top: `${((token.row) / 25) * 100}%`,
+    transform: 'translate(-50%, -50%)',
+    backgroundColor: colors.bg,
+    color: colors.text,
   }
 }
 </script>
@@ -318,167 +289,149 @@ function selectRoom(roomName) {
   user-select: none;
 }
 
-.board-grid {
-  display: grid;
-  grid-template-columns: 1fr 20px 1fr 20px 1fr;
-  grid-template-rows: auto 16px auto 16px auto 16px auto;
-  gap: 0;
-  max-width: 560px;
+.board-container {
+  position: relative;
+  width: 100%;
+  max-width: 576px;
   margin: 0 auto;
+  aspect-ratio: 24 / 25;
+  background: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #2c3e50;
 }
 
-.room {
-  background: #1e3a5f;
-  border: 2px solid #2c5282;
-  border-radius: 8px;
-  padding: 0.6rem;
-  min-height: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  transition: all 0.2s ease;
+/* ── Grid ── */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  grid-template-rows: repeat(25, 1fr);
+  width: 100%;
+  height: 100%;
+  gap: 1px;
+  background: #0d1117;
+}
+
+/* ── Cell types ── */
+.cell {
+  min-width: 0;
+  min-height: 0;
+}
+
+.cell-room {
+  border: 0.5px solid rgba(255, 255, 255, 0.04);
+}
+
+.cell-door {
+  filter: brightness(1.4);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.cell-hallway {
+  background: #2a2a3e;
+  border: 0.5px solid rgba(255, 255, 255, 0.03);
+}
+
+.cell-start {
+  background: #2a2a3e;
+  border: 0.5px solid rgba(255, 255, 255, 0.03);
   position: relative;
 }
 
-.room.selectable {
+.cell-start::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.cell-wall {
+  background: transparent;
+}
+
+/* ── Interactive states ── */
+.cell.clickable {
   cursor: pointer;
 }
 
-.room.selectable:hover {
-  border-color: #c9a84c;
-  background: #1e3a6f;
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.3);
+.cell.clickable:hover {
+  filter: brightness(1.3);
+  outline: 1px solid rgba(201, 168, 76, 0.5);
+  z-index: 1;
 }
 
-.room.selected {
-  border-color: #c9a84c;
-  background: #2a4a3f;
-  box-shadow: 0 0 16px rgba(201, 168, 76, 0.5);
+.cell.selected {
+  filter: brightness(1.4);
+  outline: 1px solid rgba(201, 168, 76, 0.8);
+  z-index: 1;
 }
 
-.room.my-room {
-  border-color: #f1c40f;
-  box-shadow: 0 0 8px rgba(241, 196, 15, 0.3);
+.cell.my-room {
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.3);
 }
 
-.room-name {
-  font-weight: bold;
-  font-size: 0.8rem;
-  color: #c9a84c;
-  text-align: center;
-  line-height: 1.1;
-}
-
-.room-players {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  justify-content: center;
-  min-height: 22px;
-}
-
-.player-token {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  font-size: 0.6rem;
-  font-weight: bold;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-  flex-shrink: 0;
-}
-
-.hallway-token {
-  width: auto;
-  border-radius: 12px;
-  padding: 0.15rem 0.5rem;
-  font-size: 0.7rem;
-  gap: 0.25rem;
-}
-
-.secret-passage {
-  font-size: 0.6rem;
-  color: #e67e22;
-  font-style: italic;
+/* ── Overlay ── */
+.board-overlay {
   position: absolute;
-  bottom: 2px;
-  right: 4px;
-  opacity: 0.8;
-}
-
-/* Corridors */
-.corridor-h {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.corridor-line-h {
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, #4a6fa5, transparent);
-  border-radius: 2px;
-}
-
-.corridor-v {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.corridor-line-v {
-  width: 3px;
   height: 100%;
-  min-height: 12px;
-  background: linear-gradient(180deg, transparent, #4a6fa5, transparent);
-  border-radius: 2px;
+  pointer-events: none;
 }
 
-/* Center area */
-.center-area {
-  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d1117 100%);
-  border: 2px solid #333;
-  border-radius: 12px;
+/* ── Room labels ── */
+.room-label {
+  position: absolute;
+  color: #c9a84c;
+  font-size: clamp(7px, 1.2vw, 11px);
+  font-weight: bold;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.03em;
+}
+
+/* ── Center label ── */
+.center-label {
+  position: absolute;
+  color: #c9a84c;
+  font-size: clamp(12px, 2.5vw, 22px);
+  font-weight: bold;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+}
+
+/* ── Secret passage ── */
+.secret-passage {
+  position: absolute;
+  color: #e67e22;
+  font-size: clamp(5px, 0.9vw, 8px);
+  font-style: italic;
+  white-space: nowrap;
+  opacity: 0.85;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ── Player tokens ── */
+.player-token {
+  position: absolute;
+  width: clamp(14px, 2.5vw, 22px);
+  height: clamp(14px, 2.5vw, 22px);
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
-  min-height: 80px;
-}
-
-.center-label {
-  font-size: 1.4rem;
+  font-size: clamp(6px, 1vw, 9px);
   font-weight: bold;
-  color: #c9a84c;
-  letter-spacing: 0.3em;
-  text-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: left 0.4s ease, top 0.4s ease;
 }
 
-.center-icon {
-  font-size: 1.8rem;
-  opacity: 0.7;
-}
-
-/* Hallway section */
-.hallway-section {
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  background: #0f1a2e;
-  border-radius: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-}
-
-.hallway-label {
-  color: #888;
-  font-style: italic;
+.player-token.my-token {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(241, 196, 15, 0.7);
+  z-index: 11;
 }
 </style>

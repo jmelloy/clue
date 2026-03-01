@@ -3,6 +3,17 @@ import random
 import string
 import datetime as dt
 
+from .board import START_POSITIONS, ROOM_CENTERS
+
+CHARACTER_START_KEY = {
+    "Miss Scarlett": "Scarlet",
+    "Colonel Mustard": "Mustard",
+    "Mrs. White": "White",
+    "Reverend Green": "Green",
+    "Mrs. Peacock": "Peacock",
+    "Professor Plum": "Plum",
+}
+
 SUSPECTS = [
     "Miss Scarlett",
     "Colonel Mustard",
@@ -110,6 +121,7 @@ class ClueGame:
             "whose_turn": None,
             "turn_number": 0,
             "current_room": {},
+            "player_positions": {},
             "suggestions_this_turn": [],
             "winner": None,
             "dice_rolled": False,
@@ -224,6 +236,15 @@ class ClueGame:
         state["whose_turn"] = players[0]["id"]
         state["turn_number"] = 1
         state["dice_rolled"] = False
+
+        # Initialize player positions at starting squares
+        state["player_positions"] = {}
+        for player in players:
+            start_key = CHARACTER_START_KEY.get(player["character"])
+            if start_key and start_key in START_POSITIONS:
+                row, col = START_POSITIONS[start_key]
+                state["player_positions"][player["id"]] = [row, col]
+
         await self._save_state(state)
 
         await self._append_log(
@@ -290,6 +311,13 @@ class ClueGame:
                 state["current_room"] = {}
             state["current_room"][player_id] = room
             result["room"] = room
+            # Update board position to room center
+            center = ROOM_CENTERS.get(room)
+            if center:
+                if "player_positions" not in state:
+                    state["player_positions"] = {}
+                state["player_positions"][player_id] = list(center)
+                result["position"] = list(center)
 
         result["dice"] = total
         result["total"] = total

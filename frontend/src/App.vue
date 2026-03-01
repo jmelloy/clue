@@ -185,7 +185,9 @@ function handleMessage(msg) {
     case 'player_moved':
       if (gameState.value) {
         const rooms = { ...gameState.value.current_room, [msg.player_id]: msg.room }
-        gameState.value = { ...gameState.value, current_room: rooms, last_roll: [msg.dice, 0], dice_rolled: true }
+        const positions = { ...(gameState.value.player_positions || {}) }
+        if (msg.position) positions[msg.player_id] = msg.position
+        gameState.value = { ...gameState.value, current_room: rooms, player_positions: positions, last_roll: [msg.dice, 0], dice_rolled: true }
       }
       break
 

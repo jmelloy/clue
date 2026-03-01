@@ -208,6 +208,15 @@ def build_grid() -> list[list[str]]:
     return grid
 
 
+# Pre-compute room centers (build_grid updates ROOM_BOUNDS from the BOARD string)
+_init_grid = build_grid()
+ROOM_CENTERS = {
+    room.value: [(_r1 + _r2) // 2, (_c1 + _c2) // 2]
+    for room in Room
+    for _c1, _r1, _c2, _r2 in [ROOM_BOUNDS[room]]
+}
+
+
 def validate_grid(grid: list[list[str]]):
     errors = []
 
