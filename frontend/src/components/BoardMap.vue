@@ -35,7 +35,7 @@
           v-for="token in playerTokens"
           :key="'tk-' + token.id"
           class="player-token"
-          :class="{ 'my-token': token.id === playerId, 'wanderer-token': token.type === 'wanderer' }"
+          :class="{ 'my-token': token.id === playerId, 'wanderer-token': token.type === 'wanderer', 'is-turn': token.id === gameState?.whose_turn }"
           :style="tokenStyle(token)"
           :title="token.type === 'wanderer' ? `${token.character} (wandering)` : `${token.name} (${token.character})`"
         >{{ abbr(token.character) }}</div>
@@ -180,7 +180,7 @@ const props = defineProps({
   selectable: Boolean,
 })
 
-const emit = defineEmits(['select-room'])
+const emit = defineEmits(['select-room', 'select-position'])
 
 const cells = CELL_DATA
 
@@ -247,6 +247,8 @@ function cellClasses(cell) {
     if (props.selectable) cls.push('clickable')
     if (props.selectedRoom === cell.room) cls.push('selected')
     if (currentRoom.value === cell.room) cls.push('my-room')
+  } else if ((cell.type === 'hallway' || cell.type === 'start') && props.selectable) {
+    cls.push('clickable')
   }
   return cls
 }
@@ -259,8 +261,11 @@ function cellStyle(cell) {
 }
 
 function handleCellClick(cell) {
-  if (props.selectable && cell.room) {
+  if (!props.selectable) return
+  if (cell.room) {
     emit('select-room', cell.room)
+  } else if (cell.type === 'hallway' || cell.type === 'start') {
+    emit('select-position', [cell.row, cell.col])
   }
 }
 
@@ -449,5 +454,18 @@ function tokenStyle(token) {
 .player-token.wanderer-token {
   border: 1.5px dashed rgba(255, 255, 255, 0.4);
   z-index: 9;
+}
+
+.player-token.is-turn {
+  animation: token-pulse 2s ease-in-out infinite;
+}
+
+@keyframes token-pulse {
+  0%, 100% {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(241, 196, 15, 0.7);
+  }
+  50% {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 8px 3px rgba(241, 196, 15, 0.6);
+  }
 }
 </style>
