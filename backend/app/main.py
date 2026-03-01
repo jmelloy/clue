@@ -167,6 +167,10 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         if moved_suspect_player:
             suggestion_msg["moved_suspect_player"] = moved_suspect_player
             suggestion_msg["player_positions"] = dict(state.player_positions)
+        # Include updated NPC positions if an NPC was moved by the suggestion
+        if state.npc_positions:
+            suggestion_msg["npc_positions"] = dict(state.npc_positions)
+            suggestion_msg["npc_rooms"] = dict(state.npc_rooms)
         await manager.broadcast(game_id, suggestion_msg)
         if pending_show_by:
             pending_by_name = _player_name(state, pending_show_by)
@@ -272,6 +276,12 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         next_pid = result.get("next_player_id")
         actor_name = _player_name(state, player_id)
         next_name = _player_name(state, next_pid) if next_pid else "?"
+
+        # Wander NPCs (non-player suspects) on each turn change
+        npc_results = await game.wander_npcs()
+        # Re-fetch state after NPC movement
+        state = await game.get_state()
+
         await manager.broadcast(
             game_id,
             {
@@ -289,8 +299,18 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     else None
                 ),
                 "player_positions": state.player_positions,
+                "npc_positions": state.npc_positions,
+                "npc_rooms": state.npc_rooms,
             },
         )
+        if npc_results:
+            await manager.broadcast(
+                game_id,
+                {
+                    "type": "npc_moved",
+                    "npcs": npc_results,
+                },
+            )
         if next_pid:
             await manager.send_to_player(
                 game_id,

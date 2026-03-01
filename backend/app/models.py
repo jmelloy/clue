@@ -51,6 +51,9 @@ class GameState(BaseModel):
     dice_rolled: bool = False
     last_roll: Optional[list[int]] = None
     pending_show_card: Optional[PendingShowCard] = None
+    # Non-player characters: suspects not controlled by any player
+    npc_positions: dict[str, list[int]] = Field(default_factory=dict)
+    npc_rooms: dict[str, str] = Field(default_factory=dict)
 
 
 class PlayerState(GameState):

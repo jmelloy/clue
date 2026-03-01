@@ -39,6 +39,14 @@
           :style="tokenStyle(token)"
           :title="`${token.name} (${token.character})`"
         >{{ abbr(token.character) }}</div>
+        <!-- NPC tokens (non-player suspects wandering the board) -->
+        <div
+          v-for="npc in npcTokens"
+          :key="'npc-' + npc.character"
+          class="player-token npc-token"
+          :style="npcStyle(npc)"
+          :title="`${npc.character} (wandering)`"
+        >{{ abbr(npc.character) }}</div>
       </div>
     </div>
   </div>
@@ -237,8 +245,60 @@ const playerTokens = computed(() => {
   return tokens
 })
 
+const npcTokens = computed(() => {
+  const npcPos = props.gameState?.npc_positions ?? {}
+  const npcRooms = props.gameState?.npc_rooms ?? {}
+  const tokens = []
+
+  // Group NPCs by room
+  const byRoom = {}
+  const hallway = []
+  for (const [character, pos] of Object.entries(npcPos)) {
+    const room = npcRooms[character]
+    if (room && ROOM_INFO[room]) {
+      if (!byRoom[room]) byRoom[room] = []
+      byRoom[room].push({ character, pos })
+    } else {
+      hallway.push({ character, pos })
+    }
+  }
+
+  // Distribute NPCs within each room (offset from player tokens)
+  for (const [roomName, rNpcs] of Object.entries(byRoom)) {
+    const info = ROOM_INFO[roomName]
+    const cR = info.centerRow + 1.8
+    const cC = info.centerCol + 0.5
+    const n = rNpcs.length
+    const roomW = info.maxCol - info.minCol + 1
+    const spacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, n - 1)))
+    const startC = cC - (spacing * (n - 1)) / 2
+    for (let i = 0; i < n; i++) {
+      tokens.push({ character: rNpcs[i].character, row: cR, col: startC + i * spacing })
+    }
+  }
+
+  // Hallway NPCs at exact position
+  for (const npc of hallway) {
+    tokens.push({ character: npc.character, row: npc.pos[0] + 0.5, col: npc.pos[1] + 0.5 })
+  }
+
+  return tokens
+})
+
 function abbr(character) {
   return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? '?'
+}
+
+function npcStyle(npc) {
+  const colors = CHARACTER_COLORS[npc.character] ?? { bg: '#666', text: '#fff' }
+  return {
+    left: `${((npc.col) / 24) * 100}%`,
+    top: `${((npc.row) / 25) * 100}%`,
+    transform: 'translate(-50%, -50%)',
+    backgroundColor: colors.bg,
+    color: colors.text,
+    opacity: 0.5,
+  }
 }
 
 function cellClasses(cell) {
@@ -440,5 +500,10 @@ function tokenStyle(token) {
 .player-token.my-token {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(241, 196, 15, 0.7);
   z-index: 11;
+}
+
+.player-token.npc-token {
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  z-index: 9;
 }
 </style>

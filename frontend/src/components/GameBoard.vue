@@ -59,6 +59,17 @@
             <span v-if="!p.active" class="legend-status">eliminated</span>
             <span v-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
           </div>
+          <!-- Non-player character legends -->
+          <div
+            v-for="npc in npcCharacters"
+            :key="'npc-' + npc"
+            class="legend-item npc-legend"
+          >
+            <span class="legend-token npc-token-legend" :style="npcTokenStyle(npc)">{{ abbr(npc) }}</span>
+            <span class="legend-character">{{ npc }}</span>
+            <span v-if="gameState?.npc_rooms?.[npc]" class="legend-room">{{ gameState.npc_rooms[npc] }}</span>
+            <span class="legend-npc-label">wandering</span>
+          </div>
         </div>
       </div>
 
@@ -269,6 +280,10 @@ const canSuggest = computed(() => props.availableActions.includes('suggest'))
 const canAccuse = computed(() => props.availableActions.includes('accuse'))
 const canEndTurn = computed(() => props.availableActions.includes('end_turn'))
 
+const npcCharacters = computed(() => {
+  return Object.keys(props.gameState?.npc_positions ?? {})
+})
+
 const currentPlayerName = computed(() => {
   return playerName(props.gameState?.whose_turn)
 })
@@ -296,6 +311,11 @@ function abbr(character) {
 function tokenStyle(player) {
   const colors = CHARACTER_COLORS[player.character] ?? { bg: '#666', text: '#fff' }
   return { backgroundColor: colors.bg, color: colors.text }
+}
+
+function npcTokenStyle(character) {
+  const colors = CHARACTER_COLORS[character] ?? { bg: '#666', text: '#fff' }
+  return { backgroundColor: colors.bg, color: colors.text, opacity: 0.5 }
 }
 
 function cardCategory(card) {
@@ -574,6 +594,20 @@ watch(
   border-radius: 6px;
   font-weight: bold;
   text-transform: uppercase;
+}
+
+.npc-legend {
+  opacity: 0.6;
+}
+
+.npc-token-legend {
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+}
+
+.legend-npc-label {
+  color: #667;
+  font-size: 0.6rem;
+  font-style: italic;
 }
 
 /* Sidebar */

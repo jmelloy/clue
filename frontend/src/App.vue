@@ -193,14 +193,23 @@ function handleMessage(msg) {
 
     case 'suggestion_made':
       if (gameState.value) {
-        gameState.value = {
-          ...gameState.value,
+        const suggUpdate = {
           suggestions_this_turn: [
             ...(gameState.value.suggestions_this_turn ?? []),
             { suspect: msg.suspect, weapon: msg.weapon, room: msg.room, suggested_by: msg.player_id },
           ],
         }
+        // Update player positions if a suspect player was moved
+        if (msg.player_positions) suggUpdate.player_positions = msg.player_positions
+        // Update NPC positions if an NPC was moved by the suggestion
+        if (msg.npc_positions) suggUpdate.npc_positions = msg.npc_positions
+        if (msg.npc_rooms) suggUpdate.npc_rooms = msg.npc_rooms
+        gameState.value = { ...gameState.value, ...suggUpdate }
       }
+      break
+
+    case 'npc_moved':
+      // NPCs wandered — refresh NPC positions from next game_state update
       break
 
     case 'card_shown':
