@@ -340,6 +340,10 @@ async def _run_agent_loop(game_id: str):
                 logger.info("Agent %s showing card in game %s", pid, game_id)
                 await _execute_action(game_id, pid, {"type": "show_card", "card": card})
 
+            elif pending:
+                # A non-agent (human) player must show a card — wait for them
+                await asyncio.sleep(0.5)
+
             elif state["whose_turn"] in agents:
                 # It's an agent's turn — pace actions for human observers
                 await asyncio.sleep(1.5)
