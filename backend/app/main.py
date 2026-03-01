@@ -48,6 +48,10 @@ async def lifespan(app: FastAPI):
         task.cancel()
     _agent_tasks.clear()
     _game_agents.clear()
+    # Cancel any auto-end timers
+    for task in _auto_end_timers.values():
+        task.cancel()
+    _auto_end_timers.clear()
     await redis_client.aclose()
 
 
@@ -72,6 +76,10 @@ manager = ConnectionManager()
 # Track agent instances and background tasks per game
 _game_agents: dict[str, dict[str, BaseAgent]] = {}
 _agent_tasks: dict[str, asyncio.Task] = {}
+
+# Auto-end-turn timers: game_id -> asyncio.Task
+_auto_end_timers: dict[str, asyncio.Task] = {}
+AUTO_END_TURN_SECONDS = 15
 
 # Player types that trigger the automated agent loop
 _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
@@ -110,6 +118,79 @@ async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None)
 
 
 # ---------------------------------------------------------------------------
+# Auto-end-turn timer helpers
+# ---------------------------------------------------------------------------
+
+
+def _cancel_auto_end_timer(game_id: str):
+    """Cancel any pending auto-end-turn timer for a game."""
+    task = _auto_end_timers.pop(game_id, None)
+    if task and not task.done():
+        task.cancel()
+
+
+async def _auto_end_turn_task(game_id: str, player_id: str, turn_number: int):
+    """Wait AUTO_END_TURN_SECONDS then auto-end the player's turn if still valid."""
+    try:
+        await asyncio.sleep(AUTO_END_TURN_SECONDS)
+        game = ClueGame(game_id, redis_client)
+        state = await game.get_state()
+        if (
+            state
+            and state.status == "playing"
+            and state.whose_turn == player_id
+            and state.turn_number == turn_number
+        ):
+            logger.info(
+                "Auto-ending turn for player %s in game %s (turn %d)",
+                player_id,
+                game_id,
+                turn_number,
+            )
+            await _execute_action(game_id, player_id, {"type": "end_turn"})
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        logger.exception("Auto-end-turn error in game %s", game_id)
+    finally:
+        _auto_end_timers.pop(game_id, None)
+
+
+async def _maybe_start_auto_end_timer(game_id: str):
+    """Check if the current player should get an auto-end-turn timer.
+
+    Starts a timer if the player is human and their only actions are accuse + end_turn.
+    """
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if not state or state.status != "playing":
+        return
+
+    pid = state.whose_turn
+    # Only apply to human players
+    player = next((p for p in state.players if p.id == pid), None)
+    if not player or player.type in _AGENT_PLAYER_TYPES:
+        return
+
+    actions = set(game.get_available_actions(pid, state))
+    if actions == {"accuse", "end_turn"}:
+        _cancel_auto_end_timer(game_id)
+        task = asyncio.create_task(
+            _auto_end_turn_task(game_id, pid, state.turn_number)
+        )
+        _auto_end_timers[game_id] = task
+        # Notify all players about the timer
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "auto_end_timer",
+                "player_id": pid,
+                "seconds": AUTO_END_TURN_SECONDS,
+            },
+        )
+
+
+# ---------------------------------------------------------------------------
 # Action execution (shared by HTTP endpoint and agent loop)
 # ---------------------------------------------------------------------------
 
@@ -119,6 +200,9 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
 
     Returns the action result dict. Raises ValueError on invalid actions.
     """
+    # Cancel any pending auto-end timer when a player takes an action
+    _cancel_auto_end_timer(game_id)
+
     game = ClueGame(game_id, redis_client)
     result = await game.process_action(player_id, action)
     state = await game.get_state()
@@ -365,6 +449,9 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
 
     # Update agent observations for any active agents in this game
     _update_agent_observations(game_id, player_id, action, result)
+
+    # Check if the current player should get an auto-end-turn timer
+    await _maybe_start_auto_end_timer(game_id)
 
     return result
 

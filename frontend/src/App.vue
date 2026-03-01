@@ -26,6 +26,7 @@
       :card-shown="cardShown"
       :chat-messages="chatMessages"
       :is-observer="isObserver"
+      :auto-end-timer="autoEndTimer"
       @action="sendAction"
       @send-chat="sendChat"
       @dismiss-card-shown="cardShown = null"
@@ -49,6 +50,7 @@ const cardShown = ref(null)
 const chatMessages = ref([])
 const isObserver = ref(false)
 const urlGameId = ref(null)
+const autoEndTimer = ref(null)
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -147,6 +149,7 @@ function handleMessage(msg) {
         const { type: _type, ...fields } = msg
         gameState.value = { ...gameState.value, ...fields }
       }
+      autoEndTimer.value = null
       break
 
     case 'player_joined':
@@ -170,6 +173,11 @@ function handleMessage(msg) {
     case 'your_turn':
       if (msg.available_actions) availableActions.value = msg.available_actions
       showCardRequest.value = null
+      autoEndTimer.value = null
+      break
+
+    case 'auto_end_timer':
+      autoEndTimer.value = { playerId: msg.player_id, seconds: msg.seconds, startedAt: Date.now() }
       break
 
     case 'show_card_request':
@@ -240,6 +248,7 @@ function handleMessage(msg) {
         gameState.value = { ...gameState.value, status: 'finished', winner: msg.winner, solution: msg.solution }
       }
       availableActions.value = []
+      autoEndTimer.value = null
       break
 
     case 'chat_message':
@@ -273,6 +282,7 @@ function resetState() {
   cardShown.value = null
   chatMessages.value = []
   isObserver.value = false
+  autoEndTimer.value = null
 }
 
 function leaveGame() {

@@ -18,6 +18,7 @@
         </div>
         <div v-else class="status-banner waiting">
           {{ currentPlayerName }}'s turn (Turn {{ gameState?.turn_number }})
+          <span v-if="countdown !== null && !timerForMe" class="header-timer">- auto-end in {{ countdown }}s</span>
         </div>
       </div>
       <div class="header-right">
@@ -195,6 +196,12 @@
 
           <!-- End Turn -->
           <div v-if="canEndTurn" class="action-group">
+            <div v-if="timerForMe" class="auto-end-timer">
+              <div class="timer-bar">
+                <div class="timer-bar-fill" :style="{ width: (countdown / (props.autoEndTimer?.seconds || 15)) * 100 + '%' }"></div>
+              </div>
+              <span class="timer-text">Auto-ending turn in {{ countdown }}s</span>
+            </div>
             <button class="action-btn end-turn-btn" @click="doEndTurn">End Turn</button>
           </div>
         </section>
@@ -227,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
@@ -264,6 +271,7 @@ const props = defineProps({
   cardShown: Object,
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
+  autoEndTimer: { type: Object, default: null },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
@@ -278,6 +286,40 @@ const accuseSuspect = ref('')
 const accuseWeapon = ref('')
 const accuseRoom = ref('')
 const showAccuseForm = ref(false)
+
+// Auto-end timer countdown
+const countdown = ref(null)
+let countdownInterval = null
+
+function clearCountdown() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval)
+    countdownInterval = null
+  }
+  countdown.value = null
+}
+
+watch(
+  () => props.autoEndTimer,
+  (timer) => {
+    clearCountdown()
+    if (timer && timer.seconds > 0) {
+      const updateCountdown = () => {
+        const elapsed = (Date.now() - timer.startedAt) / 1000
+        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed))
+        countdown.value = remaining
+        if (remaining <= 0) clearCountdown()
+      }
+      updateCountdown()
+      countdownInterval = setInterval(updateCountdown, 1000)
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => clearCountdown())
+
+const timerForMe = computed(() => countdown.value !== null && props.autoEndTimer?.playerId === props.playerId)
 
 // Computed
 const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
@@ -921,6 +963,36 @@ watch(
 
 .end-turn-btn:hover {
   background: #229954;
+}
+
+.auto-end-timer {
+  margin-bottom: 0.4rem;
+}
+
+.timer-bar {
+  height: 4px;
+  background: #334;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  background: #e67e22;
+  border-radius: 2px;
+  transition: width 1s linear;
+}
+
+.timer-text {
+  font-size: 0.75rem;
+  color: #e67e22;
+  font-weight: bold;
+}
+
+.header-timer {
+  font-size: 0.85rem;
+  color: #e67e22;
 }
 
 /* Waiting message */
