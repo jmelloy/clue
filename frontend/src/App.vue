@@ -193,13 +193,15 @@ function handleMessage(msg) {
 
     case 'suggestion_made':
       if (gameState.value) {
-        gameState.value = {
-          ...gameState.value,
+        const suggUpdate = {
           suggestions_this_turn: [
             ...(gameState.value.suggestions_this_turn ?? []),
             { suspect: msg.suspect, weapon: msg.weapon, room: msg.room, suggested_by: msg.player_id },
           ],
         }
+        // Update player positions if a suspect player was moved
+        if (msg.player_positions) suggUpdate.player_positions = msg.player_positions
+        gameState.value = { ...gameState.value, ...suggUpdate }
       }
       break
 

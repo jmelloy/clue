@@ -16,7 +16,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ROOM_CENTERS
-from app.agents import RandomAgent
+from app.agents import RandomAgent, WandererAgent
 from app.main import app, manager, _agent_tasks, _game_agents
 from app.models import GameState
 
@@ -131,6 +131,20 @@ async def _get_state(http: AsyncClient, game_id: str) -> dict:
     resp = await http.get(f"/games/{game_id}")
     assert resp.status_code == 200
     return resp.json()
+
+
+async def _add_wanderer_agents(
+    agents: dict, state: dict, game: ClueGame
+) -> None:
+    """Add WandererAgent instances for any auto-added wanderer players."""
+    for p in state.get("players", []):
+        pid = p["id"] if isinstance(p, dict) else p.id
+        ptype = p["type"] if isinstance(p, dict) else p.type
+        if pid not in agents and ptype == "wanderer":
+            agent = WandererAgent()
+            cards = await game._load_player_cards(pid)
+            agent.observe_own_cards(cards)
+            agents[pid] = agent
 
 
 async def _connect_mock_ws(game_id: str, player_id: str) -> MockWebSocket:
@@ -766,6 +780,7 @@ class TestAgentFullGameE2E:
         ws2.drain()
 
         game = ClueGame(game_id, redis)
+        await _add_wanderer_agents(agents, state, game)
         actions_taken = 0
         ws_total = {pid1: 0, pid2: 0}
         ws_map = {pid1: ws1, pid2: ws2}
@@ -855,6 +870,7 @@ class TestAgentFullGameE2E:
             ws.drain()
 
         game = ClueGame(game_id, redis)
+        await _add_wanderer_agents(agents, state, game)
         actions_taken = 0
         ws_total = {pid: 0 for pid in pids}
 
@@ -1019,6 +1035,7 @@ class TestAgentFullGameE2E:
             ws.drain()
 
         game = ClueGame(game_id, redis)
+        await _add_wanderer_agents(agents, state, game)
         ws_map = {pid1: ws1, pid2: ws2}
         actions_taken = 0
 

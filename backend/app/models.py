@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class Player(BaseModel):
     id: str
     name: str
-    type: str  # "human" | "agent" | "llm_agent"
+    type: str  # "human" | "agent" | "llm_agent" | "wanderer"
     character: str
     active: bool = True
 

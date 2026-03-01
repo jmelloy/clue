@@ -35,9 +35,9 @@
           v-for="token in playerTokens"
           :key="'tk-' + token.id"
           class="player-token"
-          :class="{ 'my-token': token.id === playerId }"
+          :class="{ 'my-token': token.id === playerId, 'wanderer-token': token.type === 'wanderer' }"
           :style="tokenStyle(token)"
-          :title="`${token.name} (${token.character})`"
+          :title="token.type === 'wanderer' ? `${token.character} (wandering)` : `${token.name} (${token.character})`"
         >{{ abbr(token.character) }}</div>
       </div>
     </div>
@@ -274,13 +274,17 @@ function overlayPos(row, col) {
 
 function tokenStyle(token) {
   const colors = CHARACTER_COLORS[token.character] ?? { bg: '#666', text: '#fff' }
-  return {
+  const style = {
     left: `${((token.col) / 24) * 100}%`,
     top: `${((token.row) / 25) * 100}%`,
     transform: 'translate(-50%, -50%)',
     backgroundColor: colors.bg,
     color: colors.text,
   }
+  if (token.type === 'wanderer') {
+    style.opacity = 0.5
+  }
+  return style
 }
 </script>
 
@@ -440,5 +444,10 @@ function tokenStyle(token) {
 .player-token.my-token {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(241, 196, 15, 0.7);
   z-index: 11;
+}
+
+.player-token.wanderer-token {
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  z-index: 9;
 }
 </style>

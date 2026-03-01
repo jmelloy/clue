@@ -102,10 +102,13 @@ async def test_start_game_deals_cards(game: ClueGame):
     solution = await game._load_solution()
     solution_cards = {solution.suspect, solution.weapon, solution.room}
 
-    p1_cards = await game._load_player_cards("P1")
-    p2_cards = await game._load_player_cards("P2")
-
-    all_dealt = set(p1_cards) | set(p2_cards)
+    # Collect cards from real players only (wanderers get none)
+    all_dealt = set()
+    for p in state.players:
+        cards = await game._load_player_cards(p.id)
+        if p.type == "wanderer":
+            assert len(cards) == 0, f"Wanderer {p.id} should have no cards"
+        all_dealt.update(cards)
 
     # No solution card should be dealt
     assert all_dealt.isdisjoint(solution_cards)
@@ -114,7 +117,9 @@ async def test_start_game_deals_cards(game: ClueGame):
     expected = set(ALL_CARDS) - solution_cards
     assert all_dealt == expected
 
-    # Each player has some cards
+    # Human players have some cards
+    p1_cards = await game._load_player_cards("P1")
+    p2_cards = await game._load_player_cards("P2")
     assert len(p1_cards) > 0
     assert len(p2_cards) > 0
 

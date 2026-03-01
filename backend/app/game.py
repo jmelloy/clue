@@ -224,6 +224,21 @@ class ClueGame:
         if len(state.players) < 2:
             raise ValueError("Need at least 2 players to start")
 
+        # Auto-add wanderer players for unplayed suspects
+        taken_characters = {p.character for p in state.players}
+        for suspect in SUSPECTS:
+            if suspect not in taken_characters:
+                wanderer_id = "W_" + "".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=6)
+                )
+                wanderer = Player(
+                    id=wanderer_id,
+                    name=suspect,
+                    type="wanderer",
+                    character=suspect,
+                )
+                state.players.append(wanderer)
+
         solution = await self._load_solution()
 
         # Build deck of remaining cards (exclude solution cards)
@@ -234,12 +249,13 @@ class ClueGame:
         ]
         random.shuffle(deck)
 
-        # Deal cards round-robin
+        # Deal cards round-robin to real players only (wanderers get none)
         players = state.players
-        num_players = len(players)
-        dealt: dict[str, list[str]] = {p.id: [] for p in players}
+        real_players = [p for p in players if p.type != "wanderer"]
+        num_real = len(real_players)
+        dealt: dict[str, list[str]] = {p.id: [] for p in real_players}
         for i, card in enumerate(deck):
-            pid = players[i % num_players].id
+            pid = real_players[i % num_real].id
             dealt[pid].append(card)
 
         for pid, cards in dealt.items():
@@ -538,11 +554,13 @@ class ClueGame:
                     p.active = False
                     break
 
-            # Check if only one player left
-            active = [p for p in state.players if p.active]
-            if len(active) == 1:
+            # Check if only one non-wanderer player left
+            active_real = [
+                p for p in state.players if p.active and p.type != "wanderer"
+            ]
+            if len(active_real) == 1:
                 state.status = "finished"
-                state.winner = active[0].id
+                state.winner = active_real[0].id
 
             await self._save_state(state)
             result.update(

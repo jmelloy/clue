@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .agents import BaseAgent, LLMAgent, RandomAgent
+from .agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
 from .game import ClueGame
 from .models import (
     ActionRequest,
@@ -74,7 +74,7 @@ _game_agents: dict[str, dict[str, BaseAgent]] = {}
 _agent_tasks: dict[str, asyncio.Task] = {}
 
 # Player types that trigger the automated agent loop
-_AGENT_PLAYER_TYPES = {"agent", "llm_agent"}
+_AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
 
 
 def _new_id(length: int = 6) -> str:
@@ -546,7 +546,7 @@ async def start_game(game_id: str):
     first_player_name = _player_name(state, state.whose_turn)
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
-    # Start background agent loop for any agent players
+    # Start background agent loop for any agent players (including wanderers)
     agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
         agents: dict[str, BaseAgent] = {}
@@ -555,6 +555,8 @@ async def start_game(game_id: str):
             ptype = player.type
             if ptype == "llm_agent":
                 agent: BaseAgent = LLMAgent()
+            elif ptype == "wanderer":
+                agent = WandererAgent()
             else:
                 agent = RandomAgent()
             cards = await game._load_player_cards(pid)

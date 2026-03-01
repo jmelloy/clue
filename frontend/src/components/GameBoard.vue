@@ -50,14 +50,20 @@
             v-for="p in gameState?.players"
             :key="p.id"
             class="legend-item"
-            :class="{ active: gameState?.whose_turn === p.id, eliminated: !p.active, 'is-me': p.id === playerId }"
+            :class="{
+              active: gameState?.whose_turn === p.id,
+              eliminated: !p.active,
+              'is-me': p.id === playerId,
+              'wanderer-legend': p.type === 'wanderer',
+            }"
           >
-            <span class="legend-token" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
+            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
-            <span class="legend-character">{{ p.character }}</span>
+            <span v-if="p.type !== 'wanderer'" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{ gameState.current_room[p.id] }}</span>
             <span v-if="!p.active" class="legend-status">eliminated</span>
-            <span v-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
+            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
+            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
           </div>
         </div>
       </div>
@@ -295,7 +301,9 @@ function abbr(character) {
 
 function tokenStyle(player) {
   const colors = CHARACTER_COLORS[player.character] ?? { bg: '#666', text: '#fff' }
-  return { backgroundColor: colors.bg, color: colors.text }
+  const style = { backgroundColor: colors.bg, color: colors.text }
+  if (player.type === 'wanderer') style.opacity = 0.5
+  return style
 }
 
 function cardCategory(card) {
@@ -574,6 +582,20 @@ watch(
   border-radius: 6px;
   font-weight: bold;
   text-transform: uppercase;
+}
+
+.wanderer-legend {
+  opacity: 0.6;
+}
+
+.wanderer-token-legend {
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+}
+
+.legend-wanderer-label {
+  color: #667;
+  font-size: 0.6rem;
+  font-style: italic;
 }
 
 /* Sidebar */
