@@ -182,12 +182,20 @@ function handleMessage(msg) {
       if (msg.available_actions) availableActions.value = msg.available_actions
       break
 
+    case 'dice_rolled':
+      if (gameState.value) {
+        gameState.value = { ...gameState.value, last_roll: msg.last_roll, dice_rolled: true }
+      }
+      break
+
     case 'player_moved':
       if (gameState.value) {
         const rooms = { ...gameState.value.current_room, [msg.player_id]: msg.room }
         const positions = { ...(gameState.value.player_positions || {}) }
         if (msg.position) positions[msg.player_id] = msg.position
-        gameState.value = { ...gameState.value, current_room: rooms, player_positions: positions, last_roll: [msg.dice, 0], dice_rolled: true }
+        const updates = { current_room: rooms, player_positions: positions, moved: true }
+        if (msg.dice) updates.last_roll = [msg.dice]
+        gameState.value = { ...gameState.value, ...updates }
       }
       break
 

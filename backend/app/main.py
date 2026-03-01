@@ -123,7 +123,62 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     state = await game.get_state()
     action_type = action.get("type")
 
-    if action_type == "move":
+    if action_type == "roll":
+        actor_name = _player_name(state, player_id)
+        dice = result.get("dice")
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "dice_rolled",
+                "player_id": player_id,
+                "dice": dice,
+                "last_roll": state.last_roll,
+            },
+        )
+        await _broadcast_chat(
+            game_id,
+            f"{actor_name} rolled {dice}.",
+            player_id,
+        )
+        await manager.send_to_player(
+            game_id,
+            player_id,
+            {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(player_id, state),
+            },
+        )
+
+    elif action_type == "secret_passage":
+        actor_name = _player_name(state, player_id)
+        from_room = result.get("from_room")
+        to_room = result.get("room")
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "player_moved",
+                "player_id": player_id,
+                "room": to_room,
+                "from_room": from_room,
+                "position": result.get("position"),
+                "secret_passage": True,
+            },
+        )
+        await _broadcast_chat(
+            game_id,
+            f"{actor_name} used the secret passage from {from_room} to {to_room}.",
+            player_id,
+        )
+        await manager.send_to_player(
+            game_id,
+            player_id,
+            {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(player_id, state),
+            },
+        )
+
+    elif action_type == "move":
         actor_name = _player_name(state, player_id)
         room = result.get("room")
         dice = result.get("dice")
@@ -140,7 +195,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         room_text = f" to {room}" if room else ""
         await _broadcast_chat(
             game_id,
-            f"{actor_name} rolled {dice} and moved{room_text}.",
+            f"{actor_name} moved{room_text}.",
             player_id,
         )
         await manager.send_to_player(
@@ -279,6 +334,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "whose_turn": state.whose_turn,
                 "turn_number": state.turn_number,
                 "dice_rolled": state.dice_rolled,
+                "moved": state.moved,
                 "last_roll": state.last_roll,
                 "suggestions_this_turn": [
                     s.model_dump() for s in state.suggestions_this_turn

@@ -49,6 +49,7 @@ class GameState(BaseModel):
     suggestions_this_turn: list[Suggestion] = Field(default_factory=list)
     winner: Optional[str] = None
     dice_rolled: bool = False
+    moved: bool = False
     last_roll: Optional[list[int]] = None
     pending_show_card: Optional[PendingShowCard] = None
 

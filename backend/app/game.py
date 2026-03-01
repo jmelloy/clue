@@ -6,6 +6,7 @@ import datetime as dt
 from .board import (
     START_POSITIONS,
     ROOM_CENTERS,
+    SECRET_PASSAGES,
     Room,
     build_grid,
     build_graph,
@@ -70,6 +71,9 @@ ROOMS = [
 
 ALL_CARDS = SUSPECTS + WEAPONS + ROOMS
 EXPIRY = 24 * 60 * 60  # 24 hours in seconds
+
+# Rooms with secret passages, keyed by room name string
+SECRET_PASSAGE_MAP = {src.value: dst.value for src, dst in SECRET_PASSAGES.items()}
 
 
 class ClueGame:
@@ -149,7 +153,13 @@ class ClueGame:
         return await self._load_state()
 
     def get_available_actions(self, player_id: str, state: GameState) -> list[str]:
-        """Return the list of actions available to a player given the current game state."""
+        """Return the list of actions available to a player given the current game state.
+
+        Turn phases:
+        1. Pre-roll: offer secret_passage (if in corner room) and roll
+        2. Post-roll: offer move (choose room)
+        3. Post-move: offer suggest (if in a room), accuse, end_turn
+        """
         actions = ["chat"]
 
         if state.status != "playing":
@@ -167,9 +177,16 @@ class ClueGame:
         current_room = state.current_room.get(player_id)
         suggestions_made = bool(state.suggestions_this_turn)
 
-        if not state.dice_rolled:
+        if not state.dice_rolled and not state.moved:
+            # Phase 1: before rolling — offer passage (if applicable) and roll
+            if current_room and current_room in SECRET_PASSAGE_MAP:
+                actions.append("secret_passage")
+            actions.append("roll")
+        elif state.dice_rolled and not state.moved:
+            # Phase 2: dice rolled, choose room to move toward
             actions.append("move")
         elif current_room and not suggestions_made:
+            # Phase 3: moved, in a room, can suggest
             actions.append("suggest")
 
         actions.append("accuse")
@@ -290,7 +307,11 @@ class ClueGame:
 
         result: dict = {"type": action_type, "player_id": player_id}
 
-        if action_type == "move":
+        if action_type == "roll":
+            result = await self._handle_roll(state, player_id, result)
+        elif action_type == "secret_passage":
+            result = await self._handle_secret_passage(state, player_id, result)
+        elif action_type == "move":
             result = await self._handle_move(state, player_id, action, result)
         elif action_type == "suggest":
             result = await self._handle_suggest(state, player_id, action, result)
@@ -305,15 +326,72 @@ class ClueGame:
 
         return result
 
-    async def _handle_move(
-        self, state: GameState, player_id: str, action: dict, result: dict
+    async def _handle_roll(
+        self, state: GameState, player_id: str, result: dict
     ) -> dict:
+        """Roll the dice without moving. The player then chooses a room."""
         if state.dice_rolled:
             raise ValueError("You already rolled this turn")
 
         total = self.roll_dice()
         state.last_roll = [total]
         state.dice_rolled = True
+
+        await self._save_state(state)
+        await self._append_log(
+            {
+                "type": "roll",
+                "player_id": player_id,
+                "dice": total,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
+
+        result["dice"] = total
+        result["total"] = total
+        return result
+
+    async def _handle_secret_passage(
+        self, state: GameState, player_id: str, result: dict
+    ) -> dict:
+        """Use a secret passage to move to the linked corner room."""
+        current_room = state.current_room.get(player_id)
+        if not current_room or current_room not in SECRET_PASSAGE_MAP:
+            raise ValueError("You are not in a room with a secret passage")
+
+        dest_room = SECRET_PASSAGE_MAP[current_room]
+        state.current_room[player_id] = dest_room
+        state.moved = True
+        center = ROOM_CENTERS.get(dest_room)
+        if center:
+            state.player_positions[player_id] = list(center)
+            result["position"] = list(center)
+
+        result["from_room"] = current_room
+        result["room"] = dest_room
+
+        await self._save_state(state)
+        await self._append_log(
+            {
+                "type": "secret_passage",
+                "player_id": player_id,
+                "from_room": current_room,
+                "room": dest_room,
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            }
+        )
+        return result
+
+    async def _handle_move(
+        self, state: GameState, player_id: str, action: dict, result: dict
+    ) -> dict:
+        """Choose a room to move toward using the already-rolled dice."""
+        if not state.dice_rolled:
+            raise ValueError("You must roll the dice first")
+        if state.moved:
+            raise ValueError("You already moved this turn")
+
+        total = state.last_roll[0] if state.last_roll else 0
 
         room = action.get("room")
         if room and room not in ROOMS:
@@ -360,6 +438,7 @@ class ClueGame:
                     state.player_positions[player_id] = list(center)
                     result["position"] = list(center)
 
+        state.moved = True
         result["dice"] = total
         result["total"] = total
 
@@ -573,6 +652,7 @@ class ClueGame:
         state.whose_turn = next_player.id
         state.turn_number += 1
         state.dice_rolled = False
+        state.moved = False
         state.last_roll = None
         state.suggestions_this_turn = []
         await self._save_state(state)
