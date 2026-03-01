@@ -24,10 +24,6 @@
         <div v-if="isObserver" class="observer-badge">Observer</div>
         <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
           <span class="dice">{{ gameState.last_roll[0] }}</span>
-          <span class="dice-plus">+</span>
-          <span class="dice">{{ gameState.last_roll[1] }}</span>
-          <span class="dice-eq">=</span>
-          <span class="dice-total">{{ gameState.last_roll[0] + gameState.last_roll[1] }}</span>
         </div>
       </div>
     </header>
@@ -118,16 +114,33 @@
         <section v-if="isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver" class="sidebar-panel actions-panel">
           <h2>Actions</h2>
 
-          <!-- Move -->
+          <!-- Secret Passage -->
+          <div v-if="canSecretPassage" class="action-group">
+            <h3>Secret Passage</h3>
+            <p class="action-hint">You're in {{ myCurrentRoom }} — take the secret passage?</p>
+            <button class="action-btn passage-btn" @click="doSecretPassage">
+              Use Passage to {{ passageDestination }}
+            </button>
+          </div>
+
+          <!-- Roll Dice -->
+          <div v-if="canRoll" class="action-group">
+            <h3>Roll Dice</h3>
+            <button class="action-btn roll-btn" @click="doRoll">
+              Roll Dice
+            </button>
+          </div>
+
+          <!-- Move (choose room after rolling) -->
           <div v-if="canMove" class="action-group">
-            <h3>Move</h3>
+            <h3>Move (rolled {{ gameState?.last_roll?.[0] }})</h3>
             <p class="action-hint">Click a room on the board or select below:</p>
             <select v-model="targetRoom" class="action-select">
               <option value="">-- Choose a room --</option>
               <option v-for="room in ROOMS" :key="room" :value="room">{{ room }}</option>
             </select>
             <button class="action-btn move-btn" :disabled="!targetRoom" @click="doMove">
-              Roll &amp; Move{{ targetRoom ? ' to ' + targetRoom : '' }}
+              Move{{ targetRoom ? ' to ' + targetRoom : '' }}
             </button>
           </div>
 
@@ -270,10 +283,20 @@ const showAccuseForm = ref(false)
 const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
 const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
+const canSecretPassage = computed(() => props.availableActions.includes('secret_passage'))
+const canRoll = computed(() => props.availableActions.includes('roll'))
 const canMove = computed(() => props.availableActions.includes('move'))
 const canSuggest = computed(() => props.availableActions.includes('suggest'))
 const canAccuse = computed(() => props.availableActions.includes('accuse'))
 const canEndTurn = computed(() => props.availableActions.includes('end_turn'))
+
+const SECRET_PASSAGES = {
+  'Study': 'Kitchen',
+  'Kitchen': 'Study',
+  'Lounge': 'Conservatory',
+  'Conservatory': 'Lounge',
+}
+const passageDestination = computed(() => SECRET_PASSAGES[myCurrentRoom.value] ?? '?')
 
 const currentPlayerName = computed(() => {
   return playerName(props.gameState?.whose_turn)
@@ -325,6 +348,14 @@ function onRoomSelected(room) {
   if (canMove.value) {
     targetRoom.value = room
   }
+}
+
+function doSecretPassage() {
+  emit('action', { type: 'secret_passage' })
+}
+
+function doRoll() {
+  emit('action', { type: 'roll' })
 }
 
 function doMove() {
@@ -800,6 +831,24 @@ watch(
 .action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.passage-btn {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.passage-btn:hover {
+  background: #7d3c98;
+}
+
+.roll-btn {
+  background: #c9a84c;
+  color: #1a1a2e;
+}
+
+.roll-btn:hover {
+  background: #d4b85c;
 }
 
 .move-btn {

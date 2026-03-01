@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 
 import httpx
 
-from .game import SUSPECTS, WEAPONS, ROOMS
+from .game import SUSPECTS, WEAPONS, ROOMS, SECRET_PASSAGE_MAP
 from .board import (
     Room,
     build_grid,
@@ -204,8 +204,27 @@ class RandomAgent(BaseAgent):
             )
             return action
 
-        # Phase 1: move (dice not rolled yet)
-        if not dice_rolled and "move" in available:
+        # Phase 1a: use secret passage if available and destination is useful
+        if "secret_passage" in available:
+            my_room = current_room.get(player_id)
+            dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
+            if dest_room and dest_room in unknown_rooms:
+                logger.info(
+                    "[%s:%s] Using secret passage from %s to %s",
+                    self.agent_type,
+                    player_id,
+                    my_room,
+                    dest_room,
+                )
+                return {"type": "secret_passage"}
+
+        # Phase 1b: roll dice
+        if "roll" in available:
+            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            return {"type": "roll"}
+
+        # Phase 2: choose room to move toward (dice already rolled)
+        if "move" in available:
             player_pos = game_state.player_positions.get(player_id)
             target_room = self._pick_target_room(
                 unknown_rooms, current_room.get(player_id), player_pos
@@ -220,7 +239,7 @@ class RandomAgent(BaseAgent):
             )
             return {"type": "move", "room": target_room}
 
-        # Phase 2: suggest if in a room
+        # Phase 3: suggest if in a room
         room = current_room.get(player_id)
         if room and "suggest" in available:
             suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
@@ -241,7 +260,7 @@ class RandomAgent(BaseAgent):
                 "room": room,
             }
 
-        # Phase 3: end turn
+        # Phase 4: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
         return {"type": "end_turn"}
 
@@ -472,11 +491,12 @@ GAME ELEMENTS:
 - Suspects: Miss Scarlett, Colonel Mustard, Mrs. White, Reverend Green, Mrs. Peacock, Professor Plum
 - Weapons: Candlestick, Knife, Lead Pipe, Revolver, Rope, Wrench
 - Rooms: Kitchen, Ballroom, Conservatory, Billiard Room, Library, Study, Hall, Lounge, Dining Room
+- Secret passages: Study<->Kitchen, Lounge<->Conservatory
 
 RULES:
 - One suspect, one weapon, and one room form the secret solution.
 - Cards you hold or have been shown are NOT the solution.
-- On your turn: roll dice and move to a room, then optionally suggest or accuse.
+- On your turn: if in a corner room, you may use a secret passage; otherwise roll dice, then choose a room to move toward. After moving, optionally suggest or accuse.
 - Suggestions must use the room you are currently in.
 - Accuse ONLY when you are certain of all three solution cards.
 - A wrong accusation eliminates you from the game.
@@ -658,6 +678,13 @@ class LLMAgent(BaseAgent):
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
 
+        if "secret_passage" in available:
+            passage_dest = SECRET_PASSAGE_MAP.get(current_room.get(player_id, ""), "?")
+            lines.append(
+                f'  Secret passage (to {passage_dest}): {{"type": "secret_passage"}}'
+            )
+        if "roll" in available:
+            lines.append('  Roll dice: {"type": "roll"}')
         if "move" in available:
             lines.append('  Move: {"type": "move", "room": "<room name>"}')
         if "suggest" in available:
@@ -712,6 +739,10 @@ class LLMAgent(BaseAgent):
                 available,
             )
             return False
+
+        if action_type in ("roll", "secret_passage", "end_turn"):
+            # No additional validation needed for these action types
+            return True
 
         if action_type == "move":
             room = action.get("room")

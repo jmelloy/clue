@@ -155,11 +155,12 @@ async def _connect_mock_ws(game_id: str, player_id: str) -> MockWebSocket:
 
 
 async def _place_in_room(redis, game_id: str, player_id: str, room: str):
-    """Directly place a player in a room and mark dice as rolled."""
+    """Directly place a player in a room and mark dice as rolled and moved."""
     game = ClueGame(game_id, redis)
     state = await game.get_state()
     state.current_room[player_id] = room
     state.dice_rolled = True
+    state.moved = True
     state.last_roll = [6]
     center = ROOM_CENTERS.get(room)
     if center:
@@ -347,10 +348,13 @@ class TestActionBroadcasts:
 
     @pytest.mark.asyncio
     async def test_move_broadcasts_player_moved(self, http, redis):
-        """A move action broadcasts player_moved to all connected players."""
+        """A roll+move action broadcasts player_moved to all connected players."""
         game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
         whose_turn = state["whose_turn"]
 
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
+        ws1.drain()
+        ws2.drain()
         await _submit_action(
             http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
         )
@@ -415,6 +419,7 @@ class TestActionBroadcasts:
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
 
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
         await _submit_action(
             http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
         )
@@ -437,6 +442,7 @@ class TestActionBroadcasts:
         other_ws = ws2 if whose_turn == pid1 else ws1
         current_ws = ws1 if whose_turn == pid1 else ws2
 
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
         await _submit_action(
             http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
         )
@@ -449,7 +455,7 @@ class TestActionBroadcasts:
         your_turn = [m for m in other_ws.sent if m["type"] == "your_turn"]
         assert len(your_turn) >= 1
         assert "available_actions" in your_turn[0]
-        assert "move" in your_turn[0]["available_actions"]
+        assert "roll" in your_turn[0]["available_actions"]
 
         # Current player should NOT receive your_turn
         cur_your_turn = [m for m in current_ws.sent if m["type"] == "your_turn"]
@@ -721,7 +727,7 @@ class TestChatIntegration:
 
     @pytest.mark.asyncio
     async def test_game_actions_generate_chat_messages(self, http, redis):
-        """Game actions (move, suggest, etc.) generate chat messages."""
+        """Game actions (roll, move, etc.) generate chat messages."""
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
@@ -731,13 +737,11 @@ class TestChatIntegration:
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws1.drain()
 
-        await _submit_action(
-            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
-        )
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
 
         chat = [m for m in ws1.sent if m["type"] == "chat_message"]
         assert len(chat) >= 1
-        # Chat message should mention the roll; room only if reached
+        # Chat message should mention the roll
         assert "rolled" in chat[0]["text"]
 
 
@@ -1107,7 +1111,7 @@ class TestReconnection:
 
     @pytest.mark.asyncio
     async def test_reconnect_after_action_gets_updated_state(self, http, redis):
-        """A player connecting after a move sees the updated game state."""
+        """A player connecting after a roll sees the updated game state."""
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
@@ -1116,13 +1120,10 @@ class TestReconnection:
         state = await _get_state(http, game_id)
         whose_turn = state["whose_turn"]
 
-        # Make a move without any WS connections
-        await _submit_action(
-            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
-        )
+        # Roll dice without any WS connections
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
 
         # Now "connect" and verify state
-        # Simulate what the WS endpoint does on connect: send game_state
         game = ClueGame(game_id, redis)
         player_state = await game.get_player_state(pid1)
         assert player_state is not None
@@ -1147,14 +1148,11 @@ class TestReconnection:
         ws1_new = await _connect_mock_ws(game_id, pid1)
 
         whose_turn = state["whose_turn"]
-        await _submit_action(
-            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
-        )
+        await _submit_action(http, game_id, whose_turn, {"type": "roll"})
 
         # New WS should have received the broadcast
-        moved = [m for m in ws1_new.sent if m["type"] == "player_moved"]
-        assert len(moved) >= 1
+        rolled = [m for m in ws1_new.sent if m["type"] == "dice_rolled"]
+        assert len(rolled) >= 1
 
         # Old WS should NOT have received it (disconnected)
-        # Since we drained nothing, just check the new one works
         assert len(ws1_new.sent) > 0

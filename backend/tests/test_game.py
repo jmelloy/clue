@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ALL_CARDS, ROOM_CENTERS
+from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ALL_CARDS, ROOM_CENTERS, SECRET_PASSAGE_MAP
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -37,10 +37,11 @@ async def _add_two_players(game: ClueGame):
 
 
 async def _place_player_in_room(game: ClueGame, player_id: str, room: str):
-    """Directly place a player in a room and mark dice as rolled."""
+    """Directly place a player in a room and mark dice as rolled and moved."""
     state = await game._load_state()
     state.current_room[player_id] = room
     state.dice_rolled = True
+    state.moved = True
     state.last_roll = [6]
     center = ROOM_CENTERS.get(room)
     if center:
@@ -236,10 +237,12 @@ async def test_move_logging(game: ClueGame):
 
     whose_turn = state.whose_turn
     room = ROOMS[2]
+    # Roll first, then move
+    await game.process_action(whose_turn, {"type": "roll"})
     await game.process_action(whose_turn, {"type": "move", "room": room})
 
     log = await game.get_log()
-    # log[0] = game_started, log[1] = move
+    assert any(entry["type"] == "roll" for entry in log)
     assert any(entry["type"] == "move" for entry in log)
     move_entry = next(e for e in log if e["type"] == "move")
     assert move_entry["player_id"] == whose_turn
@@ -327,7 +330,7 @@ async def test_available_actions_waiting_state(game: ClueGame):
 
 
 @pytest.mark.asyncio
-async def test_available_actions_before_move(game: ClueGame):
+async def test_available_actions_before_roll(game: ClueGame):
     await _add_two_players(game)
     state = await game.start()
 
@@ -335,8 +338,9 @@ async def test_available_actions_before_move(game: ClueGame):
     not_turn = "P2" if whose_turn == "P1" else "P1"
 
     actions = game.get_available_actions(whose_turn, state)
-    assert "move" in actions
+    assert "roll" in actions
     assert "chat" in actions
+    assert "move" not in actions
     assert "suggest" not in actions
     assert "accuse" in actions
     assert "end_turn" in actions
@@ -520,5 +524,177 @@ async def test_player_state_includes_available_actions(game: ClueGame):
     whose_turn = state.whose_turn
     p_state = await game.get_player_state(whose_turn)
     assert p_state.available_actions is not None
-    assert "move" in p_state.available_actions
+    assert "roll" in p_state.available_actions
     assert "chat" in p_state.available_actions
+
+
+# ---------------------------------------------------------------------------
+# Turn flow: roll -> move tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_roll_then_move(game: ClueGame):
+    """Roll dice first, then choose a room to move toward."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Before rolling: roll is available, move is not
+    actions = game.get_available_actions(whose_turn, state)
+    assert "roll" in actions
+    assert "move" not in actions
+
+    # Roll dice
+    result = await game.process_action(whose_turn, {"type": "roll"})
+    assert result["type"] == "roll"
+    assert "dice" in result
+    assert result["dice"] >= 1
+
+    # After rolling: move is available, roll is not
+    state = await game.get_state()
+    assert state.dice_rolled is True
+    assert state.moved is False
+    actions = game.get_available_actions(whose_turn, state)
+    assert "move" in actions
+    assert "roll" not in actions
+
+    # Choose a room
+    room = ROOMS[0]
+    move_result = await game.process_action(whose_turn, {"type": "move", "room": room})
+    assert move_result["type"] == "move"
+
+    # After moving: neither roll nor move available
+    state = await game.get_state()
+    assert state.moved is True
+    actions = game.get_available_actions(whose_turn, state)
+    assert "roll" not in actions
+    assert "move" not in actions
+
+
+@pytest.mark.asyncio
+async def test_cannot_move_without_rolling(game: ClueGame):
+    """Move should fail if dice haven't been rolled yet."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    with pytest.raises(ValueError, match="not available at this time"):
+        await game.process_action(whose_turn, {"type": "move", "room": ROOMS[0]})
+
+
+@pytest.mark.asyncio
+async def test_cannot_roll_twice(game: ClueGame):
+    """Rolling dice twice in a turn should fail."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    await game.process_action(whose_turn, {"type": "roll"})
+    with pytest.raises(ValueError, match="not available at this time"):
+        await game.process_action(whose_turn, {"type": "roll"})
+
+
+# ---------------------------------------------------------------------------
+# Secret passage tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_secret_passage_available_in_corner_room(game: ClueGame):
+    """Secret passage should be offered when player is in a corner room."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Study (corner room with passage to Kitchen)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Study"
+    center = ROOM_CENTERS.get("Study")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game.get_state()
+    actions = game.get_available_actions(whose_turn, state)
+    assert "secret_passage" in actions
+    assert "roll" in actions
+
+
+@pytest.mark.asyncio
+async def test_secret_passage_not_available_in_non_corner_room(game: ClueGame):
+    """Secret passage should NOT be offered in non-corner rooms."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Hall (no secret passage)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Hall"
+    center = ROOM_CENTERS.get("Hall")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game.get_state()
+    actions = game.get_available_actions(whose_turn, state)
+    assert "secret_passage" not in actions
+    assert "roll" in actions
+
+
+@pytest.mark.asyncio
+async def test_use_secret_passage(game: ClueGame):
+    """Using a secret passage should move the player and skip rolling."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Study
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Study"
+    center = ROOM_CENTERS.get("Study")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    result = await game.process_action(whose_turn, {"type": "secret_passage"})
+    assert result["type"] == "secret_passage"
+    assert result["from_room"] == "Study"
+    assert result["room"] == "Kitchen"
+
+    # Player is now in Kitchen, moved=True, can suggest
+    state = await game.get_state()
+    assert state.current_room[whose_turn] == "Kitchen"
+    assert state.moved is True
+    actions = game.get_available_actions(whose_turn, state)
+    assert "suggest" in actions
+    assert "roll" not in actions
+    assert "move" not in actions
+
+
+@pytest.mark.asyncio
+async def test_secret_passage_all_pairs(game: ClueGame):
+    """Verify all four secret passage routes work."""
+    for from_room, to_room in SECRET_PASSAGE_MAP.items():
+        redis = fakeredis.FakeRedis(decode_responses=True)
+        g = ClueGame(f"TEST_{from_room.replace(' ', '')}", redis)
+        await g.create()
+        await g.add_player("P1", "Alice", "human")
+        await g.add_player("P2", "Bob", "human")
+        state = await g.start()
+        whose_turn = state.whose_turn
+
+        st = await g._load_state()
+        st.current_room[whose_turn] = from_room
+        center = ROOM_CENTERS.get(from_room)
+        if center:
+            st.player_positions[whose_turn] = list(center)
+        await g._save_state(st)
+
+        result = await g.process_action(whose_turn, {"type": "secret_passage"})
+        assert result["room"] == to_room
+        assert result["from_room"] == from_room
+
+        state = await g.get_state()
+        assert state.current_room[whose_turn] == to_room
+        await redis.aclose()
