@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 import httpx
 
 from .game import SUSPECTS, WEAPONS, ROOMS
+from .models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ class BaseAgent(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    async def decide_action(self, game_state: dict, player_state: dict) -> dict:
+    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
         """Return an action dict for the current turn phase."""
         ...
 
@@ -131,12 +132,12 @@ class RandomAgent(BaseAgent):
     # Decisions
     # ------------------------------------------------------------------
 
-    async def decide_action(self, game_state: dict, player_state: dict) -> dict:
-        player_id = player_state.get("your_player_id")
-        known_cards: list[str] = player_state.get("your_cards", [])
-        current_room: dict = game_state.get("current_room", {})
-        dice_rolled: bool = game_state.get("dice_rolled", False)
-        available: list[str] = player_state.get("available_actions", [])
+    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
+        player_id = player_state.your_player_id
+        known_cards = player_state.your_cards
+        current_room = game_state.current_room
+        dice_rolled = game_state.dice_rolled
+        available = player_state.available_actions
 
         self.seen_cards.update(known_cards)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
@@ -439,14 +440,14 @@ class LLMAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _build_action_prompt(
-        self, game_state: dict, player_state: dict
+        self, game_state: GameState, player_state: PlayerState
     ) -> str:
         """Build a user prompt describing the current situation."""
-        player_id = player_state.get("your_player_id")
-        known_cards = player_state.get("your_cards", [])
-        current_room = game_state.get("current_room", {})
-        dice_rolled = game_state.get("dice_rolled", False)
-        available = player_state.get("available_actions", [])
+        player_id = player_state.your_player_id
+        known_cards = player_state.your_cards
+        current_room = game_state.current_room
+        dice_rolled = game_state.dice_rolled
+        available = player_state.available_actions
 
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
 
@@ -510,7 +511,7 @@ class LLMAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _validate_action(self, action: dict, available: list[str],
-                         game_state: dict, player_state: dict) -> bool:
+                         game_state: GameState, player_state: PlayerState) -> bool:
         """Check that a parsed LLM action is structurally valid."""
         action_type = action.get("type")
         if action_type not in available:
@@ -562,11 +563,11 @@ class LLMAgent(BaseAgent):
     # Decisions
     # ------------------------------------------------------------------
 
-    async def decide_action(self, game_state: dict, player_state: dict) -> dict:
-        player_id = player_state.get("your_player_id")
-        available = player_state.get("available_actions", [])
+    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
+        player_id = player_state.your_player_id
+        available = player_state.available_actions
 
-        self.seen_cards.update(player_state.get("your_cards", []))
+        self.seen_cards.update(player_state.your_cards)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
 
         logger.info(

@@ -345,7 +345,7 @@ async def _run_agent_loop(game_id: str):
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
-                action = await agent.decide_action(state.model_dump(), player_state.model_dump())
+                action = await agent.decide_action(state, player_state)
 
                 logger.info("Agent %s taking action %s in game %s", pid, action.get("type"), game_id)
                 await _execute_action(game_id, pid, action)
