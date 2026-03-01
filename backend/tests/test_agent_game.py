@@ -12,12 +12,13 @@ import fakeredis.aioredis as fakeredis
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
 from app.agents import RandomAgent
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-MAX_TURNS = 2000  # safety limit — agents may need many turns to reach rooms via pathfinding
+MAX_TURNS = (
+    2000  # safety limit — agents may need many turns to reach rooms via pathfinding
+)
 
 
 @pytest_asyncio.fixture
@@ -55,8 +56,12 @@ async def _setup_game(redis, num_agents=2):
     return game, agents, state
 
 
-async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
-                    initial_state, max_turns: int = MAX_TURNS):
+async def _run_game(
+    game: ClueGame,
+    agents: dict[str, RandomAgent],
+    initial_state,
+    max_turns: int = MAX_TURNS,
+):
     """Drive the game loop until it finishes or hits the turn limit.
 
     Returns (final_state, turn_count, log) where log is a list of
@@ -97,7 +102,9 @@ async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
                 if result.get("pending_show_by") is None:
                     # No one could show a card — valuable info
                     agent.observe_suggestion_no_show(
-                        action["suspect"], action["weapon"], action["room"],
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
                     )
 
         state = await game.get_state()
@@ -117,9 +124,9 @@ async def test_two_agents_complete_game(redis):
     game, agents, state = await _setup_game(redis, num_agents=2)
     final_state, turns, log = await _run_game(game, agents, state)
 
-    assert final_state.status == "finished", (
-        f"Game did not finish within {MAX_TURNS} actions (stuck at turn {final_state.turn_number})"
-    )
+    assert (
+        final_state.status == "finished"
+    ), f"Game did not finish within {MAX_TURNS} actions (stuck at turn {final_state.turn_number})"
     assert final_state.winner is not None
     assert final_state.winner in agents
 
@@ -164,14 +171,13 @@ async def test_agent_tracks_seen_cards(redis):
 
     # After the game, agents should have learned more cards
     for pid, agent in agents.items():
-        assert len(agent.seen_cards) >= initial_counts[pid], (
-            f"Agent {pid} should not lose track of seen cards"
-        )
+        assert (
+            len(agent.seen_cards) >= initial_counts[pid]
+        ), f"Agent {pid} should not lose track of seen cards"
 
     # At least one agent should have learned cards beyond their hand
     any_learned = any(
-        len(a.seen_cards) > initial_counts[pid]
-        for pid, a in agents.items()
+        len(a.seen_cards) > initial_counts[pid] for pid, a in agents.items()
     )
     # This is very likely but not guaranteed (could win before any suggestion)
     # so we don't assert — just log
@@ -198,15 +204,15 @@ async def test_agent_accuses_only_when_certain(redis):
             unknown_w = [w for w in WEAPONS if w not in agent.seen_cards]
             unknown_r = [r for r in ROOMS if r not in agent.seen_cards]
             # The agent should accuse only with exactly 1 unknown per category
-            assert len(unknown_s) == 1, (
-                f"Agent {pid} accused with {len(unknown_s)} unknown suspects"
-            )
-            assert len(unknown_w) == 1, (
-                f"Agent {pid} accused with {len(unknown_w)} unknown weapons"
-            )
-            assert len(unknown_r) == 1, (
-                f"Agent {pid} accused with {len(unknown_r)} unknown rooms"
-            )
+            assert (
+                len(unknown_s) == 1
+            ), f"Agent {pid} accused with {len(unknown_s)} unknown suspects"
+            assert (
+                len(unknown_w) == 1
+            ), f"Agent {pid} accused with {len(unknown_w)} unknown weapons"
+            assert (
+                len(unknown_r) == 1
+            ), f"Agent {pid} accused with {len(unknown_r)} unknown rooms"
             # And the accusation should match the unknowns
             assert action["suspect"] == unknown_s[0]
             assert action["weapon"] == unknown_w[0]

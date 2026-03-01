@@ -6,7 +6,6 @@ import fakeredis.aioredis as fakeredis
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ALL_CARDS, ROOM_CENTERS
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -157,12 +156,15 @@ async def test_make_suggestion(game: ClueGame):
             weapon = WEAPONS[0]
             room = card
 
-        result = await game.process_action(whose_turn, {
-            "type": "suggest",
-            "suspect": suspect,
-            "weapon": weapon,
-            "room": room,
-        })
+        result = await game.process_action(
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": suspect,
+                "weapon": weapon,
+                "room": room,
+            },
+        )
         assert result["type"] == "suggest"
         # The other player has a matching card, so they should be asked to show it
         assert result["pending_show_by"] == other_id
@@ -176,12 +178,15 @@ async def test_correct_accusation_wins(game: ClueGame):
     whose_turn = state.whose_turn
     solution = await game._load_solution()
 
-    result = await game.process_action(whose_turn, {
-        "type": "accuse",
-        "suspect": solution.suspect,
-        "weapon": solution.weapon,
-        "room": solution.room,
-    })
+    result = await game.process_action(
+        whose_turn,
+        {
+            "type": "accuse",
+            "suspect": solution.suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
 
     assert result["correct"] is True
     assert result["winner"] == whose_turn
@@ -202,12 +207,15 @@ async def test_incorrect_accusation_eliminates_player(game: ClueGame):
     # Find a wrong suspect
     wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
 
-    result = await game.process_action(whose_turn, {
-        "type": "accuse",
-        "suspect": wrong_suspect,
-        "weapon": solution.weapon,
-        "room": solution.room,
-    })
+    result = await game.process_action(
+        whose_turn,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
 
     assert result["correct"] is False
 
@@ -275,8 +283,16 @@ async def test_chat_message_stored_and_retrieved(game: ClueGame):
 
     from app.models import ChatMessage
 
-    await game.add_chat_message(ChatMessage(player_id="P1", text="Hello!", timestamp="2024-01-01T00:00:00+00:00"))
-    await game.add_chat_message(ChatMessage(player_id=None, text="Game started!", timestamp="2024-01-01T00:00:01+00:00"))
+    await game.add_chat_message(
+        ChatMessage(
+            player_id="P1", text="Hello!", timestamp="2024-01-01T00:00:00+00:00"
+        )
+    )
+    await game.add_chat_message(
+        ChatMessage(
+            player_id=None, text="Game started!", timestamp="2024-01-01T00:00:01+00:00"
+        )
+    )
 
     messages = await game.get_chat_messages()
     assert len(messages) == 2
@@ -366,7 +382,9 @@ async def test_available_actions_after_suggest_pending_show(game: ClueGame):
     else:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
 
-    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    result = await game.process_action(
+        whose_turn, {"type": "suggest", **suggest_kwargs}
+    )
     assert result["pending_show_by"] == other_id
 
     state = await game.get_state()
@@ -403,11 +421,15 @@ async def test_show_card_action(game: ClueGame):
     else:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
 
-    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    result = await game.process_action(
+        whose_turn, {"type": "suggest", **suggest_kwargs}
+    )
     assert result["pending_show_by"] == other_id
 
     # Other player shows the card
-    show_result = await game.process_action(other_id, {"type": "show_card", "card": card})
+    show_result = await game.process_action(
+        other_id, {"type": "show_card", "card": card}
+    )
     assert show_result["card"] == card
     assert show_result["suggesting_player_id"] == whose_turn
 
@@ -443,7 +465,9 @@ async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
     else:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
 
-    result = await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
+    result = await game.process_action(
+        whose_turn, {"type": "suggest", **suggest_kwargs}
+    )
     assert result["pending_show_by"] == other_id
 
     with pytest.raises(ValueError, match="not available at this time"):

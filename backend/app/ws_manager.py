@@ -28,7 +28,9 @@ class ConnectionManager:
             try:
                 await ws.send_text(payload)
             except Exception as exc:
-                logger.warning("Failed to send to %s in game %s: %s", player_id, game_id, exc)
+                logger.warning(
+                    "Failed to send to %s in game %s: %s", player_id, game_id, exc
+                )
                 dead.append(player_id)
         for pid in dead:
             self.disconnect(game_id, pid)
@@ -39,5 +41,10 @@ class ConnectionManager:
             try:
                 await ws.send_text(json.dumps(message))
             except Exception as exc:
-                logger.warning("Failed to send to player %s in game %s: %s", player_id, game_id, exc)
+                logger.warning(
+                    "Failed to send to player %s in game %s: %s",
+                    player_id,
+                    game_id,
+                    exc,
+                )
                 self.disconnect(game_id, player_id)
