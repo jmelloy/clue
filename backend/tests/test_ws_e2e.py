@@ -7,6 +7,7 @@ ConnectionManager — verifying that agents receive correct broadcasts, private
 messages, and can play a complete game through the server layer.
 """
 
+import asyncio
 import json
 
 import fakeredis.aioredis as fakeredis
@@ -16,7 +17,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
 from app.llm_agent import LLMAgent
-from app.main import app, manager
+from app.main import app, manager, _agent_tasks, _game_agents
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +64,15 @@ async def redis():
     original = main_module.redis_client
     main_module.redis_client = client
     yield client
+    # Cancel any auto-started agent background tasks
+    for task in list(_agent_tasks.values()):
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+    _agent_tasks.clear()
+    _game_agents.clear()
     main_module.redis_client = original
     manager._connections.clear()
     await client.aclose()
