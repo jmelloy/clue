@@ -16,7 +16,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
-from app.llm_agent import LLMAgent
+from app.agents import RandomAgent
 from app.main import app, manager, _agent_tasks, _game_agents
 
 
@@ -710,7 +710,7 @@ class TestAgentFullGameE2E:
         assert len(cards1_msg) >= 1
         assert len(cards2_msg) >= 1
 
-        agents = {pid1: LLMAgent(), pid2: LLMAgent()}
+        agents = {pid1: RandomAgent(), pid2: RandomAgent()}
         agents[pid1].observe_own_cards(cards1_msg[0]["your_cards"])
         agents[pid2].observe_own_cards(cards2_msg[0]["your_cards"])
 
@@ -726,7 +726,7 @@ class TestAgentFullGameE2E:
             pending = state.get("pending_show_card")
             if pending:
                 pid = pending["player_id"]
-                card = agents[pid].decide_show_card(
+                card = await agents[pid].decide_show_card(
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
@@ -739,7 +739,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -786,7 +786,7 @@ class TestAgentFullGameE2E:
             ws = ws_map[pid]
             cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
             assert len(cards_msg) >= 1
-            agents[pid] = LLMAgent()
+            agents[pid] = RandomAgent()
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
             ws.drain()
 
@@ -798,7 +798,7 @@ class TestAgentFullGameE2E:
             pending = state.get("pending_show_card")
             if pending:
                 pid = pending["player_id"]
-                card = agents[pid].decide_show_card(
+                card = await agents[pid].decide_show_card(
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
@@ -811,7 +811,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -853,7 +853,7 @@ class TestAgentFullGameE2E:
             ws = ws_map[pid]
             cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
             assert len(cards_msg) >= 1
-            agents[pid] = LLMAgent()
+            agents[pid] = RandomAgent()
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
             ws.drain()
 
@@ -864,7 +864,7 @@ class TestAgentFullGameE2E:
             pending = state.get("pending_show_card")
             if pending:
                 pid = pending["player_id"]
-                card = agents[pid].decide_show_card(
+                card = await agents[pid].decide_show_card(
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
@@ -877,7 +877,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -911,7 +911,7 @@ class TestAgentFullGameE2E:
 
         state = await _start_game(http, game_id)
 
-        agents = {pid1: LLMAgent(), pid2: LLMAgent()}
+        agents = {pid1: RandomAgent(), pid2: RandomAgent()}
         for pid, ws in [(pid1, ws1), (pid2, ws2)]:
             cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
@@ -930,7 +930,7 @@ class TestAgentFullGameE2E:
             pending = state.get("pending_show_card")
             if pending:
                 pid = pending["player_id"]
-                card = agents[pid].decide_show_card(
+                card = await agents[pid].decide_show_card(
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
@@ -943,7 +943,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:

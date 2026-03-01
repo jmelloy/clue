@@ -29,7 +29,8 @@
           <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
           <select v-model="playerType">
             <option value="human">Human</option>
-            <option value="llm">LLM Agent</option>
+            <option value="agent">Random Agent</option>
+            <option value="llm_agent">LLM Agent</option>
           </select>
           <div class="join-buttons">
             <button :disabled="!playerName" @click="joinUrlGame">Join Game</button>
@@ -53,7 +54,8 @@
         <input v-model="playerName" placeholder="Your name" />
         <select v-model="playerType">
           <option value="human">Human</option>
-          <option value="llm">LLM Agent</option>
+          <option value="agent">Random Agent</option>
+          <option value="llm_agent">LLM Agent</option>
         </select>
         <button :disabled="!playerName" @click="createGame">Create Game</button>
       </section>
@@ -64,7 +66,8 @@
         <input v-model="playerName" placeholder="Your name" />
         <select v-model="playerType">
           <option value="human">Human</option>
-          <option value="llm">LLM Agent</option>
+          <option value="agent">Random Agent</option>
+          <option value="llm_agent">LLM Agent</option>
         </select>
         <div class="join-buttons">
           <button :disabled="!joinGameId || !playerName" @click="joinGame">Join Game</button>
