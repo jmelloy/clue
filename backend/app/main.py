@@ -174,6 +174,11 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "room": result["room"],
                 "available_actions": game.get_available_actions(pending_show_by, state),
             })
+            # Update suggesting player's actions (they must wait for card to be shown)
+            await manager.send_to_player(game_id, player_id, {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(player_id, state),
+            })
             chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. {pending_by_name} must show a card."
@@ -244,6 +249,10 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             "type": "game_state",
             "whose_turn": state["whose_turn"],
             "turn_number": state["turn_number"],
+            "dice_rolled": state["dice_rolled"],
+            "last_roll": state["last_roll"],
+            "suggestions_this_turn": state["suggestions_this_turn"],
+            "pending_show_card": state["pending_show_card"],
         })
         if next_pid:
             await manager.send_to_player(game_id, next_pid, {
@@ -445,6 +454,11 @@ async def submit_action(game_id: str, req: ActionRequest):
         result = await _execute_action(game_id, req.player_id, req.action)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    # Include current available actions so the frontend can stay in sync
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if state:
+        result["available_actions"] = game.get_available_actions(req.player_id, state)
     return result
 
 
