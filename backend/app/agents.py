@@ -70,7 +70,11 @@ class BaseAgent(ABC):
         self.seen_cards.add(card)
         logger.info(
             "[%s] Card shown by %s: '%s' (new_info=%s, total_seen=%d)",
-            self.agent_type, shown_by, card, is_new, len(self.seen_cards),
+            self.agent_type,
+            shown_by,
+            card,
+            is_new,
+            len(self.seen_cards),
         )
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
@@ -80,7 +84,10 @@ class BaseAgent(ABC):
         )
         logger.info(
             "[%s] Unrefuted suggestion: %s / %s / %s (total_unrefuted=%d)",
-            self.agent_type, suspect, weapon, room,
+            self.agent_type,
+            suspect,
+            weapon,
+            room,
             len(self.unrefuted_suggestions),
         )
 
@@ -88,7 +95,9 @@ class BaseAgent(ABC):
         """Called when we see that player A showed a card to player B."""
         logger.debug(
             "[%s] Observed: %s showed a card to %s",
-            self.agent_type, shown_by, shown_to,
+            self.agent_type,
+            shown_by,
+            shown_to,
         )
 
     # ------------------------------------------------------------------
@@ -107,7 +116,9 @@ class BaseAgent(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
+    async def decide_action(
+        self, game_state: GameState, player_state: PlayerState
+    ) -> dict:
         """Return an action dict for the current turn phase."""
         ...
 
@@ -144,7 +155,9 @@ class RandomAgent(BaseAgent):
     # Decisions
     # ------------------------------------------------------------------
 
-    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
+    async def decide_action(
+        self, game_state: GameState, player_state: PlayerState
+    ) -> dict:
         player_id = player_state.your_player_id
         known_cards = player_state.your_cards
         current_room = game_state.current_room
@@ -157,8 +170,13 @@ class RandomAgent(BaseAgent):
         logger.info(
             "[%s:%s] Deciding action | available=%s | dice_rolled=%s | "
             "unknown: suspects=%d weapons=%d rooms=%d | seen_total=%d",
-            self.agent_type, player_id, available, dice_rolled,
-            len(unknown_suspects), len(unknown_weapons), len(unknown_rooms),
+            self.agent_type,
+            player_id,
+            available,
+            dice_rolled,
+            len(unknown_suspects),
+            len(unknown_weapons),
+            len(unknown_rooms),
             len(self.seen_cards),
         )
 
@@ -177,21 +195,27 @@ class RandomAgent(BaseAgent):
             }
             logger.info(
                 "[%s:%s] ACCUSING — narrowed to: %s / %s / %s",
-                self.agent_type, player_id,
-                unknown_suspects[0], unknown_weapons[0], unknown_rooms[0],
+                self.agent_type,
+                player_id,
+                unknown_suspects[0],
+                unknown_weapons[0],
+                unknown_rooms[0],
             )
             return action
 
         # Phase 1: move (dice not rolled yet)
         if not dice_rolled and "move" in available:
-            player_pos = game_state.get("player_positions", {}).get(player_id)
+            player_pos = game_state.player_positions.get(player_id)
             target_room = self._pick_target_room(
                 unknown_rooms, current_room.get(player_id), player_pos
             )
             logger.info(
                 "[%s:%s] Moving to '%s' (current=%s, unknown_rooms=%s)",
-                self.agent_type, player_id, target_room,
-                current_room.get(player_id), unknown_rooms,
+                self.agent_type,
+                player_id,
+                target_room,
+                current_room.get(player_id),
+                unknown_rooms,
             )
             return {"type": "move", "room": target_room}
 
@@ -203,7 +227,11 @@ class RandomAgent(BaseAgent):
             self.rooms_suggested_in.add(room)
             logger.info(
                 "[%s:%s] Suggesting %s / %s / %s",
-                self.agent_type, player_id, suspect, weapon, room,
+                self.agent_type,
+                player_id,
+                suspect,
+                weapon,
+                room,
             )
             return {
                 "type": "suggest",
@@ -221,7 +249,9 @@ class RandomAgent(BaseAgent):
     ) -> str:
         logger.info(
             "[%s] Deciding which card to show to %s from %s",
-            self.agent_type, suggesting_player_id, matching_cards,
+            self.agent_type,
+            suggesting_player_id,
+            matching_cards,
         )
 
         # Prefer a card the suggesting player already knows about
@@ -230,7 +260,9 @@ class RandomAgent(BaseAgent):
             if card in already_known:
                 logger.info(
                     "[%s] Showing '%s' (already known to %s)",
-                    self.agent_type, card, suggesting_player_id,
+                    self.agent_type,
+                    card,
+                    suggesting_player_id,
                 )
                 return card
 
@@ -239,7 +271,9 @@ class RandomAgent(BaseAgent):
         self.shown_to.setdefault(suggesting_player_id, set()).add(card)
         logger.info(
             "[%s] Showing '%s' (random choice, new info for %s)",
-            self.agent_type, card, suggesting_player_id,
+            self.agent_type,
+            card,
+            suggesting_player_id,
         )
         return card
 
@@ -248,7 +282,9 @@ class RandomAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _pick_target_room(
-        self, unknown_rooms: list[str], current_room: str | None,
+        self,
+        unknown_rooms: list[str],
+        current_room: str | None,
         player_position: list | None = None,
     ) -> str:
         """Pick the best room to move toward, preferring closer rooms.
@@ -260,34 +296,54 @@ class RandomAgent(BaseAgent):
         4. Random room (weighted by proximity)
         """
         fresh_unknown = [
-            r for r in unknown_rooms
+            r
+            for r in unknown_rooms
             if r not in self.rooms_suggested_in and r != current_room
         ]
         if fresh_unknown:
-            choice = self._pick_nearest_room(fresh_unknown, current_room, player_position)
-            logger.debug("[%s] Target room '%s' (fresh unknown, proximity-weighted)", self.agent_type, choice)
+            choice = self._pick_nearest_room(
+                fresh_unknown, current_room, player_position
+            )
+            logger.debug(
+                "[%s] Target room '%s' (fresh unknown, proximity-weighted)",
+                self.agent_type,
+                choice,
+            )
             return choice
 
         other_unknown = [r for r in unknown_rooms if r != current_room]
         if other_unknown:
-            choice = self._pick_nearest_room(other_unknown, current_room, player_position)
-            logger.debug("[%s] Target room '%s' (other unknown, proximity-weighted)", self.agent_type, choice)
+            choice = self._pick_nearest_room(
+                other_unknown, current_room, player_position
+            )
+            logger.debug(
+                "[%s] Target room '%s' (other unknown, proximity-weighted)",
+                self.agent_type,
+                choice,
+            )
             return choice
 
         unseen = [
-            r for r in ROOMS
-            if r not in self.rooms_suggested_in and r != current_room
+            r for r in ROOMS if r not in self.rooms_suggested_in and r != current_room
         ]
         if unseen:
             choice = self._pick_nearest_room(unseen, current_room, player_position)
-            logger.debug("[%s] Target room '%s' (unvisited, proximity-weighted)", self.agent_type, choice)
+            logger.debug(
+                "[%s] Target room '%s' (unvisited, proximity-weighted)",
+                self.agent_type,
+                choice,
+            )
             return choice
 
         choices = [r for r in ROOMS if r != current_room]
         if not choices:
             choices = list(ROOMS)
         choice = self._pick_nearest_room(choices, current_room, player_position)
-        logger.debug("[%s] Target room '%s' (fallback, proximity-weighted)", self.agent_type, choice)
+        logger.debug(
+            "[%s] Target room '%s' (fallback, proximity-weighted)",
+            self.agent_type,
+            choice,
+        )
         return choice
 
     @staticmethod
@@ -425,7 +481,10 @@ class LLMAgent(BaseAgent):
 
         logger.info(
             "[%s] Configured | api_url=%s | model=%s | api_key_set=%s",
-            self.agent_type, self.api_url, self.model, bool(self.api_key),
+            self.agent_type,
+            self.api_url,
+            self.model,
+            bool(self.api_key),
         )
 
     # ------------------------------------------------------------------
@@ -457,21 +516,22 @@ class LLMAgent(BaseAgent):
 
         logger.info(
             "[%s] Sending LLM request | model=%s | prompt_length=%d",
-            self.agent_type, self.model, len(user_prompt),
+            self.agent_type,
+            self.model,
+            len(user_prompt),
         )
         logger.debug("[%s] LLM user prompt:\n%s", self.agent_type, user_prompt)
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    self.api_url, json=payload, headers=headers
-                )
+                resp = await client.post(self.api_url, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
                 logger.info(
                     "[%s] LLM response received | length=%d",
-                    self.agent_type, len(content),
+                    self.agent_type,
+                    len(content),
                 )
                 logger.debug("[%s] LLM raw response: %s", self.agent_type, content)
                 return content
@@ -481,7 +541,9 @@ class LLMAgent(BaseAgent):
         except httpx.HTTPStatusError as exc:
             logger.error(
                 "[%s] LLM API HTTP error: %s %s",
-                self.agent_type, exc.response.status_code, exc.response.text[:200],
+                self.agent_type,
+                exc.response.status_code,
+                exc.response.text[:200],
             )
             return None
         except Exception as exc:
@@ -585,14 +647,21 @@ class LLMAgent(BaseAgent):
     # Action validation
     # ------------------------------------------------------------------
 
-    def _validate_action(self, action: dict, available: list[str],
-                         game_state: GameState, player_state: PlayerState) -> bool:
+    def _validate_action(
+        self,
+        action: dict,
+        available: list[str],
+        game_state: GameState,
+        player_state: PlayerState,
+    ) -> bool:
         """Check that a parsed LLM action is structurally valid."""
         action_type = action.get("type")
         if action_type not in available:
             logger.warning(
                 "[%s] LLM chose unavailable action '%s' (available: %s)",
-                self.agent_type, action_type, available,
+                self.agent_type,
+                action_type,
+                available,
             )
             return False
 
@@ -608,19 +677,22 @@ class LLMAgent(BaseAgent):
             if action.get("suspect") not in SUSPECTS:
                 logger.warning(
                     "[%s] LLM chose invalid suspect '%s'",
-                    self.agent_type, action.get("suspect"),
+                    self.agent_type,
+                    action.get("suspect"),
                 )
                 return False
             if action.get("weapon") not in WEAPONS:
                 logger.warning(
                     "[%s] LLM chose invalid weapon '%s'",
-                    self.agent_type, action.get("weapon"),
+                    self.agent_type,
+                    action.get("weapon"),
                 )
                 return False
             if action.get("room") not in ROOMS:
                 logger.warning(
                     "[%s] LLM chose invalid room '%s'",
-                    self.agent_type, action.get("room"),
+                    self.agent_type,
+                    action.get("room"),
                 )
                 return False
 
@@ -638,7 +710,9 @@ class LLMAgent(BaseAgent):
     # Decisions
     # ------------------------------------------------------------------
 
-    async def decide_action(self, game_state: GameState, player_state: PlayerState) -> dict:
+    async def decide_action(
+        self, game_state: GameState, player_state: PlayerState
+    ) -> dict:
         player_id = player_state.your_player_id
         available = player_state.available_actions
 
@@ -648,8 +722,12 @@ class LLMAgent(BaseAgent):
         logger.info(
             "[%s:%s] Deciding action | available=%s | "
             "unknown: suspects=%d weapons=%d rooms=%d | seen_total=%d",
-            self.agent_type, player_id, available,
-            len(unknown_suspects), len(unknown_weapons), len(unknown_rooms),
+            self.agent_type,
+            player_id,
+            available,
+            len(unknown_suspects),
+            len(unknown_weapons),
+            len(unknown_rooms),
             len(self.seen_cards),
         )
 
@@ -662,12 +740,16 @@ class LLMAgent(BaseAgent):
             if parsed is not None:
                 logger.info(
                     "[%s:%s] LLM proposed action: %s",
-                    self.agent_type, player_id, parsed,
+                    self.agent_type,
+                    player_id,
+                    parsed,
                 )
                 if self._validate_action(parsed, available, game_state, player_state):
                     logger.info(
                         "[%s:%s] Using LLM action: %s",
-                        self.agent_type, player_id, parsed.get("type"),
+                        self.agent_type,
+                        player_id,
+                        parsed.get("type"),
                     )
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
@@ -678,24 +760,29 @@ class LLMAgent(BaseAgent):
                 else:
                     logger.warning(
                         "[%s:%s] LLM action failed validation — falling back",
-                        self.agent_type, player_id,
+                        self.agent_type,
+                        player_id,
                     )
             else:
                 logger.warning(
                     "[%s:%s] Failed to parse LLM response as JSON — falling back",
-                    self.agent_type, player_id,
+                    self.agent_type,
+                    player_id,
                 )
         else:
             logger.info(
                 "[%s:%s] No LLM response — falling back to random agent",
-                self.agent_type, player_id,
+                self.agent_type,
+                player_id,
             )
 
         # Fallback to rule-based logic
         fallback_action = await self._fallback.decide_action(game_state, player_state)
         logger.info(
             "[%s:%s] Fallback action: %s",
-            self.agent_type, player_id, fallback_action,
+            self.agent_type,
+            player_id,
+            fallback_action,
         )
         return fallback_action
 
@@ -704,7 +791,9 @@ class LLMAgent(BaseAgent):
     ) -> str:
         logger.info(
             "[%s] Deciding which card to show to %s from %s",
-            self.agent_type, suggesting_player_id, matching_cards,
+            self.agent_type,
+            suggesting_player_id,
+            matching_cards,
         )
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
@@ -718,13 +807,17 @@ class LLMAgent(BaseAgent):
                     self.shown_to.setdefault(suggesting_player_id, set()).add(card)
                     logger.info(
                         "[%s] LLM chose to show '%s' to %s",
-                        self.agent_type, card, suggesting_player_id,
+                        self.agent_type,
+                        card,
+                        suggesting_player_id,
                     )
                     return card
                 else:
                     logger.warning(
                         "[%s] LLM chose invalid card '%s' (valid: %s) — falling back",
-                        self.agent_type, card, matching_cards,
+                        self.agent_type,
+                        card,
+                        matching_cards,
                     )
             else:
                 logger.warning(
@@ -738,6 +831,8 @@ class LLMAgent(BaseAgent):
         )
         logger.info(
             "[%s] Fallback: showing '%s' to %s",
-            self.agent_type, card, suggesting_player_id,
+            self.agent_type,
+            card,
+            suggesting_player_id,
         )
         return card
