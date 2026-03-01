@@ -911,8 +911,7 @@ class LLMAgent(BaseAgent):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "temperature": 0.3,
-            "max_tokens": 500,
+            "max_completion_tokens": 500,
         }
 
         logger.info(
@@ -1180,6 +1179,12 @@ class LLMAgent(BaseAgent):
                             self.rooms_suggested_in.add(room)
                     return parsed
                 else:
+                    logger.debug(
+                        "[%s:%s] LLM response failed validation: %s",
+                        self.agent_type,
+                        player_id,
+                        parsed,
+                    )
                     logger.warning(
                         "[%s:%s] LLM action failed validation — falling back",
                         self.agent_type,

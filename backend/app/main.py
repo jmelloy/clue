@@ -175,9 +175,7 @@ async def _maybe_start_auto_end_timer(game_id: str):
     actions = set(game.get_available_actions(pid, state))
     if actions == {"accuse", "end_turn"}:
         _cancel_auto_end_timer(game_id)
-        task = asyncio.create_task(
-            _auto_end_turn_task(game_id, pid, state.turn_number)
-        )
+        task = asyncio.create_task(_auto_end_turn_task(game_id, pid, state.turn_number))
         _auto_end_timers[game_id] = task
         # Notify all players about the timer
         await manager.broadcast(
@@ -633,7 +631,12 @@ async def join_game(game_id: str, req: JoinRequest):
 
 
 _AGENT_NAMES = [
-    "Bot Alice", "Bot Bob", "Bot Carol", "Bot Dave", "Bot Eve", "Bot Frank",
+    "Bot Alice",
+    "Bot Bob",
+    "Bot Carol",
+    "Bot Dave",
+    "Bot Eve",
+    "Bot Frank",
 ]
 
 
