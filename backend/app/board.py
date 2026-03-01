@@ -334,27 +334,41 @@ def reachable(
     """
     BFS from `start` up to `steps` moves.
     Entering a room ends your turn (don't expand further from room node).
-    Leaving a room costs 1 step (room->door).
+    Door <-> Room transitions are free (the door sits on the room perimeter).
+    Uses 0-1 BFS: 0-cost edges go to the front of the deque.
     """
     visited: dict[Square, int] = {start: 0}
     queue: deque[tuple[Square, int]] = deque([(start, 0)])
 
     while queue:
         sq, dist = queue.popleft()
-        if dist >= steps:
-            continue
 
         for nb in sq.neighbors:
-            if nb in visited:
+            # Door <-> Room transitions are free: the door square sits on
+            # the room perimeter and shouldn't count as an extra step.
+            if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (
+                sq.type == SquareType.DOOR and nb.type == SquareType.ROOM
+            ):
+                new_dist = dist
+            else:
+                new_dist = dist + 1
+
+            if new_dist > steps:
                 continue
-            new_dist = dist + 1
+
+            if nb in visited and visited[nb] <= new_dist:
+                continue
             visited[nb] = new_dist
 
             # Entering a room ends your move
             if nb.type == SquareType.ROOM:
                 continue
 
-            queue.append((nb, new_dist))
+            # 0-1 BFS: prepend 0-cost edges, append 1-cost edges
+            if new_dist == dist:
+                queue.appendleft((nb, new_dist))
+            else:
+                queue.append((nb, new_dist))
 
     return visited
 
@@ -481,16 +495,25 @@ def move_towards(
 
     # Otherwise do an unconstrained BFS from the target room to get distances
     # from every square back to the target, then pick the reachable square with
-    # the smallest distance.
+    # the smallest distance.  Uses 0-1 BFS for free Door <-> Room edges.
     dist_from_target: dict[Square, int] = {target_node: 0}
     bfs_queue: deque[tuple[Square, int]] = deque([(target_node, 0)])
     while bfs_queue:
         sq, dist = bfs_queue.popleft()
         for nb in sq.neighbors:
-            if nb not in dist_from_target:
-                dist_from_target[nb] = dist + 1
+            if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (
+                sq.type == SquareType.DOOR and nb.type == SquareType.ROOM
+            ):
+                new_dist = dist
+            else:
+                new_dist = dist + 1
+            if nb not in dist_from_target or new_dist < dist_from_target[nb]:
+                dist_from_target[nb] = new_dist
                 if nb.type != SquareType.ROOM:
-                    bfs_queue.append((nb, dist + 1))
+                    if new_dist == dist:
+                        bfs_queue.appendleft((nb, new_dist))
+                    else:
+                        bfs_queue.append((nb, new_dist))
 
     # Pick the reachable square (excluding start) that is closest to the target
     best_sq = start
