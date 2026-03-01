@@ -347,6 +347,8 @@ function cardIcon(card) {
 function onRoomSelected(room) {
   if (canMove.value) {
     targetRoom.value = room
+    emit('action', { type: 'move', room })
+    targetRoom.value = ''
   }
 }
 
