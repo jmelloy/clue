@@ -200,10 +200,10 @@ class ClueGame:
         if len(state.players) >= 6:
             raise ValueError("Game is full")
 
-        # Assign a character not yet taken
+        # Assign a random character not yet taken
         taken = {p.character for p in state.players}
         available = [s for s in SUSPECTS if s not in taken]
-        character = available[0]
+        character = random.choice(available)
 
         player = Player(
             id=player_id,
