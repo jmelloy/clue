@@ -515,9 +515,9 @@ class TestShowCardFlow:
 
         # Get matching cards and show one
         gs = await game.get_state()
-        pending = gs.get("pending_show_card")
+        pending = gs.pending_show_card
         assert pending is not None
-        card_to_show = pending["matching_cards"][0]
+        card_to_show = pending.matching_cards[0]
 
         for ws in ws_map.values():
             ws.drain()
@@ -576,9 +576,9 @@ class TestGameOverBroadcast:
 
         await _submit_action(http, game_id, whose_turn, {
             "type": "accuse",
-            "suspect": solution["suspect"],
-            "weapon": solution["weapon"],
-            "room": solution["room"],
+            "suspect": solution.suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
         })
 
         # Both should receive game_over
@@ -586,7 +586,7 @@ class TestGameOverBroadcast:
             go = [m for m in ws.sent if m["type"] == "game_over"]
             assert len(go) >= 1, f"Missing game_over. Got: {[m['type'] for m in ws.sent]}"
             assert go[0]["winner"] == whose_turn
-            assert go[0]["solution"] == solution
+            assert go[0]["solution"] == solution.model_dump()
 
     @pytest.mark.asyncio
     async def test_wrong_accusation_ends_two_player_game(self, http, redis):
@@ -601,7 +601,7 @@ class TestGameOverBroadcast:
 
         game = ClueGame(game_id, redis)
         solution = await game._load_solution()
-        wrong_suspect = next(s for s in SUSPECTS if s != solution["suspect"])
+        wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
 
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
@@ -615,8 +615,8 @@ class TestGameOverBroadcast:
         await _submit_action(http, game_id, whose_turn, {
             "type": "accuse",
             "suspect": wrong_suspect,
-            "weapon": solution["weapon"],
-            "room": solution["room"],
+            "weapon": solution.weapon,
+            "room": solution.room,
         })
 
         # Both players should see the accusation broadcast
@@ -739,7 +739,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state.model_dump())
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -811,7 +811,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state.model_dump())
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -877,7 +877,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state.model_dump())
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -943,7 +943,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state)
+                action = await agents[pid].decide_action(state, player_state.model_dump())
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -999,8 +999,8 @@ class TestReconnection:
         game = ClueGame(game_id, redis)
         player_state = await game.get_player_state(pid1)
         assert player_state is not None
-        assert player_state["dice_rolled"] is True
-        assert player_state["status"] == "playing"
+        assert player_state.dice_rolled is True
+        assert player_state.status == "playing"
 
     @pytest.mark.asyncio
     async def test_new_ws_receives_messages_after_reconnect(self, http, redis):

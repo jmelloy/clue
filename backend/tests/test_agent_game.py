@@ -56,7 +56,7 @@ async def _setup_game(redis, num_agents=2):
 
 
 async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
-                    initial_state: dict, max_turns: int = MAX_TURNS):
+                    initial_state, max_turns: int = MAX_TURNS):
     """Drive the game loop until it finishes or hits the turn limit.
 
     Returns (final_state, turn_count, log) where log is a list of
@@ -66,15 +66,15 @@ async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
     state = initial_state
     actions_taken = 0
 
-    while state["status"] == "playing" and actions_taken < max_turns:
+    while state.status == "playing" and actions_taken < max_turns:
         # Determine who needs to act
-        pending = state.get("pending_show_card")
+        pending = state.pending_show_card
         if pending:
             # A player must show a card
-            pid = pending["player_id"]
+            pid = pending.player_id
             agent = agents[pid]
-            suggesting_pid = pending["suggesting_player_id"]
-            matching = pending["matching_cards"]
+            suggesting_pid = pending.suggesting_player_id
+            matching = pending.matching_cards
 
             card = await agent.decide_show_card(matching, suggesting_pid)
             action = {"type": "show_card", "card": card}
@@ -85,10 +85,12 @@ async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
             agents[suggesting_pid].observe_shown_card(card, shown_by=pid)
         else:
             # Current player's turn
-            pid = state["whose_turn"]
+            pid = state.whose_turn
             agent = agents[pid]
             player_state = await game.get_player_state(pid)
-            action = await agent.decide_action(state, player_state)
+            action = await agent.decide_action(
+                state.model_dump(), player_state.model_dump()
+            )
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
 
@@ -117,14 +119,14 @@ async def test_two_agents_complete_game(redis):
     game, agents, state = await _setup_game(redis, num_agents=2)
     final_state, turns, log = await _run_game(game, agents, state)
 
-    assert final_state["status"] == "finished", (
-        f"Game did not finish within {MAX_TURNS} actions (stuck at turn {final_state.get('turn_number')})"
+    assert final_state.status == "finished", (
+        f"Game did not finish within {MAX_TURNS} actions (stuck at turn {final_state.turn_number})"
     )
-    assert final_state["winner"] is not None
-    assert final_state["winner"] in agents
+    assert final_state.winner is not None
+    assert final_state.winner in agents
 
     # Verify the winner made a correct accusation (or the other was eliminated)
-    winner = final_state["winner"]
+    winner = final_state.winner
     solution = await game._load_solution()
 
     # Check: either the winner accused correctly, or the other player was
@@ -132,7 +134,7 @@ async def test_two_agents_complete_game(redis):
     accusations = [(pid, a, r) for pid, a, r in log if a["type"] == "accuse"]
     assert len(accusations) > 0, "Game finished but no accusations were made"
 
-    print(f"\nGame finished in {turns} actions, {final_state['turn_number']} turns")
+    print(f"\nGame finished in {turns} actions, {final_state.turn_number} turns")
     print(f"Winner: {winner}")
     print(f"Solution: {solution}")
     print(f"Total accusations: {len(accusations)}")
@@ -144,12 +146,12 @@ async def test_three_agents_complete_game(redis):
     game, agents, state = await _setup_game(redis, num_agents=3)
     final_state, turns, log = await _run_game(game, agents, state)
 
-    assert final_state["status"] == "finished"
-    assert final_state["winner"] is not None
-    assert final_state["winner"] in agents
+    assert final_state.status == "finished"
+    assert final_state.winner is not None
+    assert final_state.winner in agents
 
     print(f"\n3-player game finished in {turns} actions")
-    print(f"Winner: {final_state['winner']}")
+    print(f"Winner: {final_state.winner}")
 
 
 @pytest.mark.asyncio
@@ -246,11 +248,11 @@ async def test_game_with_six_agents(redis):
     game, agents, state = await _setup_game(redis, num_agents=6)
     final_state, turns, log = await _run_game(game, agents, state)
 
-    assert final_state["status"] == "finished"
-    assert final_state["winner"] in agents
+    assert final_state.status == "finished"
+    assert final_state.winner in agents
 
-    active_at_end = [p for p in final_state["players"] if p.get("active", True)]
-    print(f"\n6-player game: {turns} actions, winner={final_state['winner']}")
+    active_at_end = [p for p in final_state.players if p.active]
+    print(f"\n6-player game: {turns} actions, winner={final_state.winner}")
     print(f"Active players at end: {len(active_at_end)}")
 
 
@@ -275,9 +277,9 @@ async def test_multiple_games_all_finish(redis):
             agent.observe_own_cards(cards)
 
         final_state, turns, log = await _run_game(game, agents, state)
-        assert final_state["status"] == "finished", f"Game {i} did not finish"
+        assert final_state.status == "finished", f"Game {i} did not finish"
 
-        winner = final_state["winner"]
+        winner = final_state.winner
         wins[winner] = wins.get(winner, 0) + 1
         await r.aclose()
 
