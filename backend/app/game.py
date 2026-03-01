@@ -249,12 +249,13 @@ class ClueGame:
         ]
         random.shuffle(deck)
 
-        # Deal cards round-robin to all players (including wanderers)
+        # Deal cards round-robin to real players only (wanderers get none)
         players = state.players
-        num_players = len(players)
-        dealt: dict[str, list[str]] = {p.id: [] for p in players}
+        real_players = [p for p in players if p.type != "wanderer"]
+        num_real = len(real_players)
+        dealt: dict[str, list[str]] = {p.id: [] for p in real_players}
         for i, card in enumerate(deck):
-            pid = players[i % num_players].id
+            pid = real_players[i % num_real].id
             dealt[pid].append(card)
 
         for pid, cards in dealt.items():

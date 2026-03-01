@@ -102,10 +102,12 @@ async def test_start_game_deals_cards(game: ClueGame):
     solution = await game._load_solution()
     solution_cards = {solution.suspect, solution.weapon, solution.room}
 
-    # Collect cards from all players (including wanderers)
+    # Collect cards from real players only (wanderers get none)
     all_dealt = set()
     for p in state.players:
         cards = await game._load_player_cards(p.id)
+        if p.type == "wanderer":
+            assert len(cards) == 0, f"Wanderer {p.id} should have no cards"
         all_dealt.update(cards)
 
     # No solution card should be dealt
