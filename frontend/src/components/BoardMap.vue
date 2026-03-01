@@ -308,8 +308,15 @@ function tokenStyle(token) {
   grid-template-rows: repeat(25, 1fr);
   width: 100%;
   height: 100%;
-  gap: 1px;
+  gap: 0;
   background: #0d1117;
+  /* Draw 1px grid lines without affecting layout, so overlay % math stays aligned */
+  background-image:
+    linear-gradient(to right, #020409 1px, transparent 1px),
+    linear-gradient(to bottom, #020409 1px, transparent 1px);
+  background-size:
+    calc(100% / 24) 100%,
+    100% calc(100% / 25);
 }
 
 /* ── Cell types ── */
