@@ -234,5 +234,4 @@ if __name__ == "__main__":
         port=8000,
         reload=debug,
         log_config=logging_config,
-        log_level=log_level.lower(),
     )
