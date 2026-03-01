@@ -88,9 +88,7 @@ async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
             pid = state.whose_turn
             agent = agents[pid]
             player_state = await game.get_player_state(pid)
-            action = await agent.decide_action(
-                state.model_dump(), player_state.model_dump()
-            )
+            action = await agent.decide_action(state, player_state)
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
 
