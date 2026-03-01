@@ -12,6 +12,15 @@ from .board import (
     reachable,
     move_towards,
 )
+from .models import (
+    ChatMessage,
+    GameState,
+    PendingShowCard,
+    Player,
+    PlayerState,
+    Solution,
+    Suggestion,
+)
 
 # Pre-build the board graph for pathfinding
 _GRID = build_grid()
@@ -79,21 +88,21 @@ class ClueGame:
     # Internal Redis helpers
     # ------------------------------------------------------------------
 
-    async def _save_state(self, state: dict):
-        await self.redis.set(self._state_key, json.dumps(state), ex=EXPIRY)
+    async def _save_state(self, state: GameState):
+        await self.redis.set(self._state_key, state.model_dump_json(), ex=EXPIRY)
 
-    async def _load_state(self) -> dict | None:
+    async def _load_state(self) -> GameState | None:
         raw = await self.redis.get(self._state_key)
         if raw is None:
             return None
-        return json.loads(raw)
+        return GameState.model_validate_json(raw)
 
-    async def _save_solution(self, solution: dict):
-        await self.redis.set(self._solution_key, json.dumps(solution), ex=EXPIRY)
+    async def _save_solution(self, solution: Solution):
+        await self.redis.set(self._solution_key, solution.model_dump_json(), ex=EXPIRY)
 
-    async def _load_solution(self) -> dict:
+    async def _load_solution(self) -> Solution:
         raw = await self.redis.get(self._solution_key)
-        return json.loads(raw)
+        return Solution.model_validate_json(raw)
 
     async def _save_player_cards(self, player_id: str, cards: list[str]):
         await self.redis.set(self._cards_key(player_id), json.dumps(cards), ex=EXPIRY)
@@ -108,68 +117,57 @@ class ClueGame:
         await self.redis.rpush(self._log_key, json.dumps(entry))
         await self.redis.expire(self._log_key, EXPIRY)
 
-    async def add_chat_message(self, message: dict):
-        await self.redis.rpush(self._chat_key, json.dumps(message))
+    async def add_chat_message(self, message: ChatMessage):
+        await self.redis.rpush(self._chat_key, message.model_dump_json())
         await self.redis.expire(self._chat_key, EXPIRY)
 
-    async def get_chat_messages(self) -> list[dict]:
+    async def get_chat_messages(self) -> list[ChatMessage]:
         entries = await self.redis.lrange(self._chat_key, 0, -1)
-        return [json.loads(e) for e in entries]
+        return [ChatMessage.model_validate_json(e) for e in entries]
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    async def create(self) -> dict:
+    async def create(self) -> GameState:
         """Initialize a new game in Redis and create the solution."""
-        solution = {
-            "suspect": random.choice(SUSPECTS),
-            "weapon": random.choice(WEAPONS),
-            "room": random.choice(ROOMS),
-        }
+        solution = Solution(
+            suspect=random.choice(SUSPECTS),
+            weapon=random.choice(WEAPONS),
+            room=random.choice(ROOMS),
+        )
         await self._save_solution(solution)
 
-        state = {
-            "game_id": self.game_id,
-            "status": "waiting",
-            "players": [],
-            "whose_turn": None,
-            "turn_number": 0,
-            "current_room": {},
-            "player_positions": {},
-            "suggestions_this_turn": [],
-            "winner": None,
-            "dice_rolled": False,
-            "last_roll": None,
-            "pending_show_card": None,
-        }
+        state = GameState(
+            game_id=self.game_id,
+            status="waiting",
+        )
         await self._save_state(state)
         return state
 
-    async def get_state(self) -> dict | None:
+    async def get_state(self) -> GameState | None:
         return await self._load_state()
 
-    def get_available_actions(self, player_id: str, state: dict) -> list[str]:
+    def get_available_actions(self, player_id: str, state: GameState) -> list[str]:
         """Return the list of actions available to a player given the current game state."""
         actions = ["chat"]
 
-        if state.get("status") != "playing":
+        if state.status != "playing":
             return actions
 
-        pending = state.get("pending_show_card")
+        pending = state.pending_show_card
         if pending:
-            if pending["player_id"] == player_id:
+            if pending.player_id == player_id:
                 actions.append("show_card")
             return actions
 
-        if state.get("whose_turn") != player_id:
+        if state.whose_turn != player_id:
             return actions
 
-        dice_rolled = state.get("dice_rolled", False)
-        current_room = (state.get("current_room") or {}).get(player_id)
-        suggestions_made = bool(state.get("suggestions_this_turn"))
+        current_room = state.current_room.get(player_id)
+        suggestions_made = bool(state.suggestions_this_turn)
 
-        if not dice_rolled:
+        if not state.dice_rolled:
             actions.append("move")
         elif current_room and not suggestions_made:
             actions.append("suggest")
@@ -179,51 +177,51 @@ class ClueGame:
 
         return actions
 
-    async def get_player_state(self, player_id: str) -> dict | None:
+    async def get_player_state(self, player_id: str) -> PlayerState | None:
         state = await self._load_state()
         if state is None:
             return None
         cards = await self._load_player_cards(player_id)
-        player_state = dict(state)
-        player_state["your_cards"] = cards
-        player_state["your_player_id"] = player_id
-        player_state["available_actions"] = self.get_available_actions(player_id, state)
-        return player_state
+        return PlayerState(
+            **state.model_dump(),
+            your_cards=cards,
+            your_player_id=player_id,
+            available_actions=self.get_available_actions(player_id, state),
+        )
 
     async def add_player(
         self, player_id: str, player_name: str, player_type: str
-    ) -> dict:
+    ) -> Player:
         state = await self._load_state()
         if state is None:
             raise ValueError("Game not found")
-        if state["status"] != "waiting":
+        if state.status != "waiting":
             raise ValueError("Game already started")
-        if len(state["players"]) >= 6:
+        if len(state.players) >= 6:
             raise ValueError("Game is full")
 
         # Assign a character not yet taken
-        taken = {p["character"] for p in state["players"]}
+        taken = {p.character for p in state.players}
         available = [s for s in SUSPECTS if s not in taken]
         character = available[0]
 
-        player = {
-            "id": player_id,
-            "name": player_name,
-            "type": player_type,
-            "character": character,
-            "active": True,
-        }
-        state["players"].append(player)
+        player = Player(
+            id=player_id,
+            name=player_name,
+            type=player_type,
+            character=character,
+        )
+        state.players.append(player)
         await self._save_state(state)
         return player
 
-    async def start(self) -> dict:
+    async def start(self) -> GameState:
         state = await self._load_state()
         if state is None:
             raise ValueError("Game not found")
-        if state["status"] != "waiting":
+        if state.status != "waiting":
             raise ValueError("Game already started")
-        if len(state["players"]) < 2:
+        if len(state.players) < 2:
             raise ValueError("Need at least 2 players to start")
 
         solution = await self._load_solution()
@@ -232,33 +230,33 @@ class ClueGame:
         deck = [
             c
             for c in ALL_CARDS
-            if c not in (solution["suspect"], solution["weapon"], solution["room"])
+            if c not in (solution.suspect, solution.weapon, solution.room)
         ]
         random.shuffle(deck)
 
         # Deal cards round-robin
-        players = state["players"]
+        players = state.players
         num_players = len(players)
-        dealt: dict[str, list[str]] = {p["id"]: [] for p in players}
+        dealt: dict[str, list[str]] = {p.id: [] for p in players}
         for i, card in enumerate(deck):
-            pid = players[i % num_players]["id"]
+            pid = players[i % num_players].id
             dealt[pid].append(card)
 
         for pid, cards in dealt.items():
             await self._save_player_cards(pid, cards)
 
-        state["status"] = "playing"
-        state["whose_turn"] = players[0]["id"]
-        state["turn_number"] = 1
-        state["dice_rolled"] = False
+        state.status = "playing"
+        state.whose_turn = players[0].id
+        state.turn_number = 1
+        state.dice_rolled = False
 
         # Initialize player positions at starting squares
-        state["player_positions"] = {}
+        state.player_positions = {}
         for player in players:
-            start_key = CHARACTER_START_KEY.get(player["character"])
+            start_key = CHARACTER_START_KEY.get(player.character)
             if start_key and start_key in START_POSITIONS:
                 row, col = START_POSITIONS[start_key]
-                state["player_positions"][player["id"]] = [row, col]
+                state.player_positions[player.id] = [row, col]
 
         await self._save_state(state)
 
@@ -278,12 +276,12 @@ class ClueGame:
         state = await self._load_state()
         if state is None:
             raise ValueError("Game not found")
-        if state["status"] != "playing":
+        if state.status != "playing":
             raise ValueError("Game is not in progress")
 
         action_type = action.get("type")
 
-        if action_type != "show_card" and state["whose_turn"] != player_id:
+        if action_type != "show_card" and state.whose_turn != player_id:
             raise ValueError("It is not your turn")
 
         available = self.get_available_actions(player_id, state)
@@ -308,14 +306,14 @@ class ClueGame:
         return result
 
     async def _handle_move(
-        self, state: dict, player_id: str, action: dict, result: dict
+        self, state: GameState, player_id: str, action: dict, result: dict
     ) -> dict:
-        if state.get("dice_rolled"):
+        if state.dice_rolled:
             raise ValueError("You already rolled this turn")
 
         total = self.roll_dice()
-        state["last_roll"] = [total]
-        state["dice_rolled"] = True
+        state.last_roll = [total]
+        state.dice_rolled = True
 
         room = action.get("room")
         if room and room not in ROOMS:
@@ -323,8 +321,8 @@ class ClueGame:
 
         if room:
             # Determine the player's current position on the board graph
-            current_room_name = (state.get("current_room") or {}).get(player_id)
-            pos = (state.get("player_positions") or {}).get(player_id)
+            current_room_name = state.current_room.get(player_id)
+            pos = state.player_positions.get(player_id)
 
             if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
                 start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
@@ -341,37 +339,25 @@ class ClueGame:
                 )
                 if reached:
                     # Player reaches the room
-                    if "current_room" not in state:
-                        state["current_room"] = {}
-                    state["current_room"][player_id] = room
+                    state.current_room[player_id] = room
                     result["room"] = room
                     center = ROOM_CENTERS.get(room)
                     if center:
-                        if "player_positions" not in state:
-                            state["player_positions"] = {}
-                        state["player_positions"][player_id] = list(center)
+                        state.player_positions[player_id] = list(center)
                         result["position"] = list(center)
                 else:
                     # Player ends up in the hallway partway there
                     result["room"] = None
-                    if "current_room" not in state:
-                        state["current_room"] = {}
-                    state["current_room"].pop(player_id, None)
-                    if "player_positions" not in state:
-                        state["player_positions"] = {}
-                    state["player_positions"][player_id] = [dest.row, dest.col]
+                    state.current_room.pop(player_id, None)
+                    state.player_positions[player_id] = [dest.row, dest.col]
                     result["position"] = [dest.row, dest.col]
             else:
                 # Fallback: no position info yet — place directly in room
-                if "current_room" not in state:
-                    state["current_room"] = {}
-                state["current_room"][player_id] = room
+                state.current_room[player_id] = room
                 result["room"] = room
                 center = ROOM_CENTERS.get(room)
                 if center:
-                    if "player_positions" not in state:
-                        state["player_positions"] = {}
-                    state["player_positions"][player_id] = list(center)
+                    state.player_positions[player_id] = list(center)
                     result["position"] = list(center)
 
         result["dice"] = total
@@ -390,7 +376,7 @@ class ClueGame:
         return result
 
     async def _handle_suggest(
-        self, state: dict, player_id: str, action: dict, result: dict
+        self, state: GameState, player_id: str, action: dict, result: dict
     ) -> dict:
         suspect = action.get("suspect")
         weapon = action.get("weapon")
@@ -403,15 +389,15 @@ class ClueGame:
         if room not in ROOMS:
             raise ValueError(f"Invalid room: {room}")
 
-        players = state["players"]
+        players = state.players
         # Find who shows a card (ask players in turn, starting after suggesting player)
-        idx = next(i for i, p in enumerate(players) if p["id"] == player_id)
+        idx = next(i for i, p in enumerate(players) if p.id == player_id)
         order = players[idx + 1 :] + players[:idx]
 
         pending_player_id = None
         matching_cards: list[str] = []
         for other_player in order:
-            other_id = other_player["id"]
+            other_id = other_player.id
             cards = await self._load_player_cards(other_id)
             matching = [c for c in cards if c in (suspect, weapon, room)]
             if matching:
@@ -422,36 +408,32 @@ class ClueGame:
         # Move the suggested suspect's player to the suggestion room
         moved_suspect_player = None
         for p in players:
-            if p["character"] == suspect and p["id"] != player_id:
-                moved_suspect_player = p["id"]
-                if "current_room" not in state:
-                    state["current_room"] = {}
-                state["current_room"][moved_suspect_player] = room
+            if p.character == suspect and p.id != player_id:
+                moved_suspect_player = p.id
+                state.current_room[moved_suspect_player] = room
                 center = ROOM_CENTERS.get(room)
                 if center:
-                    if "player_positions" not in state:
-                        state["player_positions"] = {}
-                    state["player_positions"][moved_suspect_player] = list(center)
+                    state.player_positions[moved_suspect_player] = list(center)
                 break
 
-        suggestion_entry = {
-            "suspect": suspect,
-            "weapon": weapon,
-            "room": room,
-            "suggested_by": player_id,
-            "pending_show_by": pending_player_id,
-        }
-        state.setdefault("suggestions_this_turn", []).append(suggestion_entry)
+        suggestion_entry = Suggestion(
+            suspect=suspect,
+            weapon=weapon,
+            room=room,
+            suggested_by=player_id,
+            pending_show_by=pending_player_id,
+        )
+        state.suggestions_this_turn.append(suggestion_entry)
 
         if pending_player_id:
-            state["pending_show_card"] = {
-                "player_id": pending_player_id,
-                "suggesting_player_id": player_id,
-                "suspect": suspect,
-                "weapon": weapon,
-                "room": room,
-                "matching_cards": matching_cards,
-            }
+            state.pending_show_card = PendingShowCard(
+                player_id=pending_player_id,
+                suggesting_player_id=player_id,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+                matching_cards=matching_cards,
+            )
 
         await self._save_state(state)
 
@@ -479,20 +461,20 @@ class ClueGame:
         return result
 
     async def _handle_show_card(
-        self, state: dict, player_id: str, action: dict, result: dict
+        self, state: GameState, player_id: str, action: dict, result: dict
     ) -> dict:
-        pending = state.get("pending_show_card")
+        pending = state.pending_show_card
         if not pending:
             raise ValueError("No pending show card request")
-        if pending["player_id"] != player_id:
+        if pending.player_id != player_id:
             raise ValueError("You are not the player who must show a card")
 
         card = action.get("card")
-        if card not in pending["matching_cards"]:
+        if card not in pending.matching_cards:
             raise ValueError(f"Card '{card}' is not valid to show for this suggestion")
 
-        suggesting_player_id = pending["suggesting_player_id"]
-        state["pending_show_card"] = None
+        suggesting_player_id = pending.suggesting_player_id
+        state.pending_show_card = None
         await self._save_state(state)
 
         await self._append_log(
@@ -513,7 +495,7 @@ class ClueGame:
         return result
 
     async def _handle_accuse(
-        self, state: dict, player_id: str, action: dict, result: dict
+        self, state: GameState, player_id: str, action: dict, result: dict
     ) -> dict:
         suspect = action.get("suspect")
         weapon = action.get("weapon")
@@ -521,9 +503,9 @@ class ClueGame:
 
         solution = await self._load_solution()
         correct = (
-            suspect == solution["suspect"]
-            and weapon == solution["weapon"]
-            and room == solution["room"]
+            suspect == solution.suspect
+            and weapon == solution.weapon
+            and room == solution.room
         )
 
         await self._append_log(
@@ -539,66 +521,66 @@ class ClueGame:
         )
 
         if correct:
-            state["status"] = "finished"
-            state["winner"] = player_id
+            state.status = "finished"
+            state.winner = player_id
             await self._save_state(state)
             result.update(
                 {
                     "correct": True,
                     "winner": player_id,
-                    "solution": solution,
+                    "solution": solution.model_dump(),
                 }
             )
         else:
             # Player is eliminated but game continues
-            for p in state["players"]:
-                if p["id"] == player_id:
-                    p["active"] = False
+            for p in state.players:
+                if p.id == player_id:
+                    p.active = False
                     break
 
             # Check if only one player left
-            active = [p for p in state["players"] if p.get("active", True)]
+            active = [p for p in state.players if p.active]
             if len(active) == 1:
-                state["status"] = "finished"
-                state["winner"] = active[0]["id"]
+                state.status = "finished"
+                state.winner = active[0].id
 
             await self._save_state(state)
             result.update(
                 {
                     "correct": False,
-                    "solution": solution if state["status"] == "finished" else None,
+                    "solution": solution.model_dump() if state.status == "finished" else None,
                 }
             )
 
         return result
 
-    async def _handle_end_turn(self, state: dict, player_id: str, result: dict) -> dict:
-        if state.get("pending_show_card"):
+    async def _handle_end_turn(self, state: GameState, player_id: str, result: dict) -> dict:
+        if state.pending_show_card:
             raise ValueError("Cannot end turn while waiting for a player to show a card")
-        players = state["players"]
-        active = [p for p in players if p.get("active", True)]
-        idx = next((i for i, p in enumerate(active) if p["id"] == player_id), None)
+        players = state.players
+        active = [p for p in players if p.active]
+        idx = next((i for i, p in enumerate(active) if p.id == player_id), None)
         if idx is None:
             raise ValueError("Player not found")
 
         next_player = active[(idx + 1) % len(active)]
-        state["whose_turn"] = next_player["id"]
-        state["turn_number"] = state.get("turn_number", 0) + 1
-        state["dice_rolled"] = False
-        state["last_roll"] = None
-        state["suggestions_this_turn"] = []
+        state.whose_turn = next_player.id
+        state.turn_number += 1
+        state.dice_rolled = False
+        state.last_roll = None
+        state.suggestions_this_turn = []
         await self._save_state(state)
 
         await self._append_log(
             {
                 "type": "end_turn",
                 "player_id": player_id,
-                "next_player_id": next_player["id"],
+                "next_player_id": next_player.id,
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         )
 
-        result["next_player_id"] = next_player["id"]
+        result["next_player_id"] = next_player.id
         return result
 
     async def get_log(self) -> list[dict]:
