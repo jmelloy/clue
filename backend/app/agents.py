@@ -754,9 +754,7 @@ class WandererAgent(BaseAgent):
             if not candidates:
                 candidates = list(ROOMS)
             target = random.choice(candidates)
-            logger.info(
-                "[%s:%s] Wandering to '%s'", self.agent_type, player_id, target
-            )
+            logger.info("[%s:%s] Wandering to '%s'", self.agent_type, player_id, target)
             return {"type": "move", "room": target}
 
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
@@ -769,7 +767,9 @@ class WandererAgent(BaseAgent):
         card = random.choice(matching_cards)
         logger.info(
             "[%s] Showing '%s' to %s",
-            self.agent_type, card, suggesting_player_id,
+            self.agent_type,
+            card,
+            suggesting_player_id,
         )
         return card
 
@@ -871,7 +871,7 @@ class LLMAgent(BaseAgent):
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
-        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
 
         # Fallback agent shares our observation state
         self._fallback = RandomAgent()
