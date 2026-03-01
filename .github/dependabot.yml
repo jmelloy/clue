@@ -4,13 +4,35 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    groups:
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
 
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
       interval: "weekly"
+    groups:
+      fastapi:
+        patterns:
+          - "fastapi"
+          - "uvicorn"
+      redis:
+        patterns:
+          - "redis"
+          - "fakeredis"
+      testing:
+        patterns:
+          - "pytest"
+          - "pytest-*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
