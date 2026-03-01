@@ -160,7 +160,7 @@ class ClueGame:
         2. Post-roll: offer move (choose room)
         3. Post-move: offer suggest (if in a room), accuse, end_turn
         """
-        actions = ["chat"]
+        actions = []
 
         if state.status != "playing":
             return actions

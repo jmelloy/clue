@@ -33,6 +33,268 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Character personality chat templates
+# ---------------------------------------------------------------------------
+
+# Probability that an agent sends a chat message after each action type.
+_CHAT_PROBABILITY: dict[str, float] = {
+    "roll": 0.7,
+    "move": 0.7,
+    "suggest": 1.0,
+    "accuse": 1.0,
+    "end_turn": 0.3,
+    "show_card": 0.5,
+    "secret_passage": 0.9,
+}
+
+# Per-character, per-action message templates.  Use {dice}, {room}, {suspect},
+# {weapon} as optional format placeholders — missing keys are silently ignored.
+CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
+    "Miss Scarlett": {
+        "roll": [
+            "Come on, lucky number!",
+            "A {dice}? I suppose that'll do.",
+            "The suspense is simply killing me!",
+            "Fortune favors the bold, darling.",
+        ],
+        "move": [
+            "Off to the {room}. Try to keep up, everyone!",
+            "The {room}... how intriguing.",
+            "I always look good arriving somewhere new.",
+            "Let's see what secrets the {room} holds.",
+        ],
+        "suggest": [
+            "I have a hunch... call it feminine intuition.",
+            "Something tells me it was {suspect} with the {weapon}.",
+            "Trust me, darlings. I know what happened here.",
+            "A little birdie told me about {suspect}...",
+        ],
+        "accuse": [
+            "I've figured it all out. Prepare to be dazzled!",
+            "The truth always comes out, darling. And here it is!",
+        ],
+        "end_turn": [
+            "Your move. Don't bore me.",
+            "I'll be watching closely...",
+            "Fine, I'll wait. But not patiently.",
+        ],
+        "show_card": [
+            "Oh, if I must... you're welcome for the peek.",
+            "Don't get too excited, dear.",
+        ],
+        "secret_passage": [
+            "A secret passage? How absolutely thrilling!",
+            "Ooh, sneaky sneaky. I love it!",
+        ],
+    },
+    "Colonel Mustard": {
+        "roll": [
+            "Right then, let's see what we've got!",
+            "A {dice}! Onward!",
+            "Steady as she goes.",
+            "In my army days, we made do with worse odds.",
+        ],
+        "move": [
+            "Advancing to the {room}. Good tactical position.",
+            "The {room} it is. I have a feeling about this one.",
+            "Strategic repositioning to the {room}.",
+            "Forward march to the {room}!",
+        ],
+        "suggest": [
+            "Based on my analysis, I suspect {suspect} with the {weapon}.",
+            "Military intelligence suggests {suspect} is our culprit.",
+            "I've been watching everyone. {suspect} looks guilty to me.",
+            "Time to interrogate. {suspect}, you have some explaining to do!",
+        ],
+        "accuse": [
+            "Case closed! Years of tactical training pay off!",
+            "I'm making my accusation. A colonel is never wrong!",
+        ],
+        "end_turn": [
+            "Carry on, next player.",
+            "At ease. Your turn.",
+            "Standing by for the next move.",
+        ],
+        "show_card": [
+            "Very well. Intelligence shared.",
+            "Here you go. Use it wisely.",
+        ],
+        "secret_passage": [
+            "Excellent! A tactical shortcut!",
+            "Secret passages — every good estate has them.",
+        ],
+    },
+    "Mrs. White": {
+        "roll": [
+            "Oh my... a {dice}.",
+            "Let's see now... oh dear.",
+            "I've been rolling dice since before you were born.",
+            "Hmm, a {dice}. I've seen better, I've seen worse.",
+        ],
+        "move": [
+            "Off to the {room}. I know this house like the back of my hand.",
+            "The {room}? I just cleaned in there!",
+            "I've dusted every corner of the {room}.",
+            "Back to the {room} again. There's always something to find.",
+        ],
+        "suggest": [
+            "Now, I don't like to gossip, but... {suspect} with the {weapon}?",
+            "I've seen things in this house. {suspect} has been acting suspicious.",
+            "Between you and me, I think {suspect} did it.",
+            "I may just be the housekeeper, but I notice everything.",
+        ],
+        "accuse": [
+            "I've kept quiet long enough. I KNOW what happened!",
+            "After all these years of service, I finally have the answer!",
+        ],
+        "end_turn": [
+            "Right then. Who's next?",
+            "I'll just be over here. Watching.",
+            "Don't mind me.",
+        ],
+        "show_card": [
+            "Oh, very well. But you didn't hear it from me.",
+            "I suppose you should see this. Discreetly, please.",
+        ],
+        "secret_passage": [
+            "I know every hidden nook in this house!",
+            "These old walls have more secrets than you'd think.",
+        ],
+    },
+    "Reverend Green": {
+        "roll": [
+            "The Lord provides... a {dice}.",
+            "Let us see what fortune delivers.",
+            "Providence smiles upon us... or perhaps not.",
+            "A {dice}? Everything happens for a reason.",
+        ],
+        "move": [
+            "I shall make my way to the {room}. Peacefully.",
+            "The {room} calls to me. Perhaps the truth awaits there.",
+            "Onward to the {room}, with a clear conscience.",
+            "Let me visit the {room}. For... spiritual reasons.",
+        ],
+        "suggest": [
+            "Forgive me, but I must suggest... {suspect} with the {weapon}.",
+            "Confession is good for the soul, {suspect}.",
+            "Let us seek the truth. Was it {suspect} with the {weapon}?",
+            "I hate to cast suspicion, but someone must.",
+        ],
+        "accuse": [
+            "The truth shall set us free! I know who did it!",
+            "By all that is holy, I have solved this mystery!",
+        ],
+        "end_turn": [
+            "Patience is a virtue. Next player, please.",
+            "I shall reflect quietly while you take your turn.",
+            "Go in peace. And suspicion.",
+        ],
+        "show_card": [
+            "In the spirit of honesty...",
+            "The truth must be shared, even reluctantly.",
+        ],
+        "secret_passage": [
+            "Even a man of the cloth knows a shortcut or two.",
+            "The Lord works in mysterious passages.",
+        ],
+    },
+    "Mrs. Peacock": {
+        "roll": [
+            "A {dice}? How perfectly adequate.",
+            "One does what one can with a {dice}.",
+            "Rolling dice... how undignified. But necessary.",
+            "Let's get on with it, shall we?",
+        ],
+        "move": [
+            "I shall retire to the {room}.",
+            "The {room}? I suppose it will have to do.",
+            "To the {room}. I expect it to be properly maintained.",
+            "Moving to the {room}. Do try to keep things orderly.",
+        ],
+        "suggest": [
+            "If I may be so bold — {suspect} with the {weapon}.",
+            "I have my suspicions about {suspect}. Quite serious ones.",
+            "Good breeding aside, {suspect} seems rather guilty.",
+            "One hears things at parties. {suspect}, for instance.",
+        ],
+        "accuse": [
+            "I am quite certain of this. My reputation depends on it!",
+            "Mark my words — I know exactly who is responsible!",
+        ],
+        "end_turn": [
+            "Your turn. Do be quick about it.",
+            "I believe it's someone else's turn now.",
+            "Next, please. Time is of the essence.",
+        ],
+        "show_card": [
+            "I suppose you need to see this. How tiresome.",
+            "Very well. But do keep this between us.",
+        ],
+        "secret_passage": [
+            "How convenient. Even I can appreciate a shortcut.",
+            "Secret passages are terribly gauche, but useful.",
+        ],
+    },
+    "Professor Plum": {
+        "roll": [
+            "Statistically speaking, a {dice} is... interesting.",
+            "Hmm, a {dice}. Let me think about what that means.",
+            "Fascinating! The probability of rolling that was exactly 1 in 6.",
+            "A {dice}. Yes, yes, I can work with that.",
+        ],
+        "move": [
+            "To the {room}! I believe I left my notes there.",
+            "The {room}... now what was I going there for again?",
+            "Ah yes, the {room}. Excellent for contemplation.",
+            "I have a hypothesis about the {room}.",
+        ],
+        "suggest": [
+            "My research indicates {suspect} with the {weapon}. Probably.",
+            "According to my deductions — and I do have a PhD — {suspect} is suspicious.",
+            "Elementary deduction points to {suspect} with the {weapon}.",
+            "I've been running the numbers. {suspect} is statistically likely.",
+        ],
+        "accuse": [
+            "Eureka! The solution is clear as day! Well, to me at least.",
+            "After careful academic analysis, I've solved it!",
+        ],
+        "end_turn": [
+            "I need time to think. Your turn.",
+            "Let me consult my notes while you go.",
+            "Hmm, where was I? Oh yes, your turn.",
+        ],
+        "show_card": [
+            "For the sake of scientific transparency...",
+            "Here, take a look. Knowledge should be shared. Usually.",
+        ],
+        "secret_passage": [
+            "Ah, a secret passage! Architecturally fascinating!",
+            "I wrote a paper on secret passages once. Or was it bridges?",
+        ],
+    },
+}
+
+# Fallback messages for characters not in CHARACTER_CHAT
+_GENERIC_CHAT: dict[str, list[str]] = {
+    "roll": ["Let's see...", "Here goes nothing."],
+    "move": ["Heading to the {room}.", "On my way."],
+    "suggest": ["I think it was {suspect} with the {weapon}.", "Interesting theory..."],
+    "accuse": ["I've solved it!", "This is it!"],
+    "end_turn": ["Next player.", "Your turn."],
+    "show_card": ["Take a look.", "Here you go."],
+    "secret_passage": ["A shortcut!", "Through the passage!"],
+}
+
+
+def _format_chat(template: str, context: dict) -> str:
+    """Format a chat template, silently ignoring missing keys."""
+    try:
+        return template.format(**context)
+    except (KeyError, IndexError):
+        return template
+
+
+# ---------------------------------------------------------------------------
 # Base
 # ---------------------------------------------------------------------------
 
@@ -52,6 +314,8 @@ class BaseAgent(ABC):
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
+        self.character: str = ""
+        self._pending_chat: str | None = None
         logger.info("[%s] Agent instance created", self.agent_type)
 
     # ------------------------------------------------------------------
@@ -111,6 +375,36 @@ class BaseAgent(ABC):
         unknown_weapons = [w for w in WEAPONS if w not in self.seen_cards]
         unknown_rooms = [r for r in ROOMS if r not in self.seen_cards]
         return unknown_suspects, unknown_weapons, unknown_rooms
+
+    # ------------------------------------------------------------------
+    # Chat generation
+    # ------------------------------------------------------------------
+
+    def generate_chat(
+        self, action_type: str, context: dict | None = None
+    ) -> str | None:
+        """Return an in-character chat message after an action, or None.
+
+        Checks a per-action probability, then picks a random template from
+        the character's personality set and formats it with the given context.
+        """
+        # If the subclass stashed a message (e.g. from an LLM), use it
+        if self._pending_chat:
+            msg = self._pending_chat
+            self._pending_chat = None
+            return msg
+
+        prob = _CHAT_PROBABILITY.get(action_type, 0.5)
+        if random.random() > prob:
+            return None
+
+        char_msgs = CHARACTER_CHAT.get(self.character, {})
+        templates = char_msgs.get(action_type) or _GENERIC_CHAT.get(action_type)
+        if not templates:
+            return None
+
+        template = random.choice(templates)
+        return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
     # Decision interface (async to support LLM calls)
@@ -485,7 +779,9 @@ class WandererAgent(BaseAgent):
 # ---------------------------------------------------------------------------
 
 _ACTION_SYSTEM_PROMPT = """\
-You are playing the board game Clue (Cluedo) as an expert detective.
+You are playing the board game Clue (Cluedo). You are playing as {character}.
+
+{personality}
 
 GAME ELEMENTS:
 - Suspects: Miss Scarlett, Colonel Mustard, Mrs. White, Reverend Green, Mrs. Peacock, Professor Plum
@@ -501,8 +797,45 @@ RULES:
 - Accuse ONLY when you are certain of all three solution cards.
 - A wrong accusation eliminates you from the game.
 
-Respond with ONLY a valid JSON object for your chosen action. No explanation.\
+Respond with a valid JSON object for your chosen action. Include a "chat" field \
+with a short in-character comment about what you're doing (one sentence, stay in \
+character as {character}). Example: {{"type": "roll", "chat": "Let's see what fate has in store!"}}\
 """
+
+# Personality blurbs injected into the LLM system prompt per character.
+_CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
+    "Miss Scarlett": (
+        "You are Miss Scarlett — dramatic, flirtatious, and supremely confident. "
+        "You speak with flair, use endearments like 'darling', and treat the "
+        "investigation like a glamorous adventure."
+    ),
+    "Colonel Mustard": (
+        "You are Colonel Mustard — a retired military officer who is gruff, "
+        "proper, and tactical. You use military jargon, speak decisively, "
+        "and approach the mystery like a battlefield operation."
+    ),
+    "Mrs. White": (
+        "You are Mrs. White — the long-serving housekeeper who knows every "
+        "secret of the mansion. You're observant, a bit gossipy, and "
+        "occasionally nervous. You speak plainly with dry wit."
+    ),
+    "Reverend Green": (
+        "You are Reverend Green — pious, thoughtful, and slightly sanctimonious. "
+        "You sprinkle in religious references, speak gently, and treat the "
+        "investigation as a moral duty."
+    ),
+    "Mrs. Peacock": (
+        "You are Mrs. Peacock — an aristocrat who is dignified, slightly "
+        "snobbish, and proper to a fault. You speak with refined vocabulary "
+        "and mild disdain for anything beneath your station."
+    ),
+    "Professor Plum": (
+        "You are Professor Plum — an absent-minded academic who is brilliant "
+        "but scatterbrained. You reference statistics and research, sometimes "
+        "lose your train of thought, and approach the mystery like a thesis."
+    ),
+}
+
 
 _SHOW_CARD_SYSTEM_PROMPT = """\
 You are playing Clue. Another player made a suggestion and you hold matching cards.
@@ -811,12 +1144,19 @@ class LLMAgent(BaseAgent):
         )
 
         # Build prompt and call LLM
+        personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
+        system_prompt = _ACTION_SYSTEM_PROMPT.format(
+            character=self.character or "a detective",
+            personality=personality,
+        )
         user_prompt = self._build_action_prompt(game_state, player_state)
-        response_text = await self._call_llm(_ACTION_SYSTEM_PROMPT, user_prompt)
+        response_text = await self._call_llm(system_prompt, user_prompt)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
+                # Extract chat message before validation (it's not a game field)
+                llm_chat = parsed.pop("chat", None)
                 logger.info(
                     "[%s:%s] LLM proposed action: %s",
                     self.agent_type,
@@ -830,6 +1170,9 @@ class LLMAgent(BaseAgent):
                         player_id,
                         parsed.get("type"),
                     )
+                    # Stash chat for generate_chat() to return later
+                    if llm_chat and isinstance(llm_chat, str):
+                        self._pending_chat = llm_chat
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
                         room = parsed.get("room")

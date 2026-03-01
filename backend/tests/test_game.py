@@ -326,7 +326,7 @@ async def test_available_actions_waiting_state(game: ClueGame):
     await _add_two_players(game)
     state = await game.get_state()
     actions = game.get_available_actions("P1", state)
-    assert actions == ["chat"]
+    assert actions == []
 
 
 @pytest.mark.asyncio
@@ -339,15 +339,14 @@ async def test_available_actions_before_roll(game: ClueGame):
 
     actions = game.get_available_actions(whose_turn, state)
     assert "roll" in actions
-    assert "chat" in actions
     assert "move" not in actions
     assert "suggest" not in actions
     assert "accuse" in actions
     assert "end_turn" in actions
 
-    # Other player can only chat
+    # Other player has no actions available
     other_actions = game.get_available_actions(not_turn, state)
-    assert other_actions == ["chat"]
+    assert other_actions == []
 
 
 @pytest.mark.asyncio
@@ -366,7 +365,6 @@ async def test_available_actions_after_move_in_room(game: ClueGame):
     assert "accuse" in actions
     assert "end_turn" in actions
     assert "move" not in actions
-    assert "chat" in actions
 
 
 @pytest.mark.asyncio
@@ -398,14 +396,13 @@ async def test_available_actions_after_suggest_pending_show(game: ClueGame):
 
     state = await game.get_state()
 
-    # Suggesting player can only chat while waiting
+    # Suggesting player has no actions while waiting
     turn_actions = game.get_available_actions(whose_turn, state)
-    assert turn_actions == ["chat"]
+    assert turn_actions == []
 
     # The player who must show a card gets show_card action
     other_actions = game.get_available_actions(other_id, state)
     assert "show_card" in other_actions
-    assert "chat" in other_actions
 
 
 @pytest.mark.asyncio
@@ -525,7 +522,6 @@ async def test_player_state_includes_available_actions(game: ClueGame):
     p_state = await game.get_player_state(whose_turn)
     assert p_state.available_actions is not None
     assert "roll" in p_state.available_actions
-    assert "chat" in p_state.available_actions
 
 
 # ---------------------------------------------------------------------------
