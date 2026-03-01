@@ -75,6 +75,12 @@ Deploy through SSH to a remote machine that has `kubectl` configured:
 ./scripts/deploy.sh -r ghcr.io/<owner>/clue -t <tag> --ssh <user>@<host>
 ```
 
+Enable cert-manager TLS (Let's Encrypt) during deploy:
+
+```bash
+./scripts/deploy.sh -r ghcr.io/<owner>/clue -t <tag> --ssh <user>@<host> --cert-manager
+```
+
 You can also use `--skip-build` to only apply manifests and update image tags.
 
 The `k8s/` directory contains:
@@ -84,9 +90,12 @@ The `k8s/` directory contains:
 | `redis.yaml` | Redis deployment and ClusterIP service |
 | `backend.yaml` | FastAPI backend deployment and ClusterIP service |
 | `frontend.yaml` | nginx-based frontend deployment and ClusterIP service |
+| `clusterissuer.yaml` | cert-manager `ClusterIssuer` (`letsencrypt-prod`) for TLS certificates |
 | `ingress.yaml` | Ingress for `clue.melloy.life`, routing `/games` and `/ws` to backend, `/` to frontend |
 
 `scripts/deploy.sh` sets deployment images automatically via `kubectl set image`.
+
+For cert-manager, update the ACME email in `k8s/clusterissuer.yaml` before first deploy.
 
 ## API
 

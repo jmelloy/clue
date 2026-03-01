@@ -28,16 +28,18 @@ TAG="${TAG:-latest}"
 NAMESPACE="clue"
 SKIP_BUILD=false
 SSH_TARGET="${SSH_TARGET:-}"
+WITH_CERT_MANAGER=false
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
 usage() {
-  echo "Usage: $0 [-r REGISTRY] [-t TAG] [-n NAMESPACE] [--skip-build] [--ssh user@host]"
+  echo "Usage: $0 [-r REGISTRY] [-t TAG] [-n NAMESPACE] [--skip-build] [--ssh user@host] [--cert-manager]"
   echo ""
   echo "  -r REGISTRY   Container registry prefix (default: $DEFAULT_REGISTRY)"
   echo "  -t TAG         Image tag (default: latest)"
   echo "  -n NAMESPACE   Kubernetes namespace (default: clue)"
   echo "  --skip-build   Skip Docker build/push, only apply manifests"
   echo "  --ssh TARGET   Run kubectl on remote host over SSH (e.g. ubuntu@k8s-box)"
+  echo "  --cert-manager Apply cert-manager ClusterIssuer before ingress"
   exit 1
 }
 
@@ -48,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     -n) NAMESPACE="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=true; shift ;;
     --ssh) SSH_TARGET="$2"; shift 2 ;;
+    --cert-manager) WITH_CERT_MANAGER=true; shift ;;
     -h|--help) usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
@@ -63,6 +66,7 @@ echo "    Namespace: $NAMESPACE"
 echo "    Backend:   $BACKEND_IMAGE"
 echo "    Frontend:  $FRONTEND_IMAGE"
 echo "    SSH:       ${SSH_TARGET:-local kubectl context}"
+echo "    CertMgr:   $WITH_CERT_MANAGER"
 echo ""
 
 kubectl_cmd() {
@@ -126,6 +130,11 @@ kubectl_cmd set image -n "$NAMESPACE" deployment/backend backend="$BACKEND_IMAGE
 echo "==> Deploying frontend..."
 apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/frontend.yaml"
 kubectl_cmd set image -n "$NAMESPACE" deployment/frontend frontend="$FRONTEND_IMAGE"
+
+if [ "$WITH_CERT_MANAGER" = true ]; then
+  echo "==> Applying cert-manager ClusterIssuer..."
+  apply_manifest "" "$ROOT_DIR/k8s/clusterissuer.yaml"
+fi
 
 echo "==> Applying ingress..."
 apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/ingress.yaml"

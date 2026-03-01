@@ -10,7 +10,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - DEBUG=${DEBUG:-false}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
       - LOG_FORMAT=${LOG_FORMAT:-colored}
       - LLM_MODEL=${LLM_MODEL:-gpt-5-mini}
       - LLM_API_KEY=${LLM_API_KEY}

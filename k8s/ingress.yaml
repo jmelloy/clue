@@ -3,6 +3,7 @@ kind: Ingress
 metadata:
   name: clue
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
@@ -10,6 +11,10 @@ metadata:
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection "upgrade";
 spec:
+  tls:
+    - hosts:
+        - clue.melloy.life
+      secretName: clue-melloy-life-tls
   rules:
     - host: clue.melloy.life
       http:

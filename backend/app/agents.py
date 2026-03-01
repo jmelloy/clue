@@ -30,6 +30,25 @@ _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
 from .models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
+llm_trace_logger = logging.getLogger("llm.agent.trace")
+
+_trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
+if _trace_level_name:
+    trace_level = getattr(logging, _trace_level_name, None)
+    if isinstance(trace_level, int):
+        llm_trace_logger.setLevel(trace_level)
+    else:
+        logger.warning(
+            "[llm] Invalid LLM_TRACE_LOG_LEVEL='%s' (expected logging level name)",
+            _trace_level_name,
+        )
+
+
+def _clip_text(value: str, limit: int = 1200) -> str:
+    """Return text clipped to a max length for safer log output."""
+    if len(value) <= limit:
+        return value
+    return f"{value[:limit]}... [truncated {len(value) - limit} chars]"
 
 
 # ---------------------------------------------------------------------------
@@ -915,12 +934,22 @@ class LLMAgent(BaseAgent):
         }
 
         logger.info(
-            "[%s] Sending LLM request | model=%s | prompt_length=%d",
+            "[%s] Sending LLM request | model=%s | system_prompt_len=%d | user_prompt_len=%d",
             self.agent_type,
             self.model,
+            len(system_prompt),
             len(user_prompt),
         )
-        logger.debug("[%s] LLM user prompt:\n%s", self.agent_type, user_prompt)
+        llm_trace_logger.info(
+            "[%s] LLM system prompt preview: %s",
+            self.agent_type,
+            _clip_text(system_prompt),
+        )
+        llm_trace_logger.info(
+            "[%s] LLM user prompt preview: %s",
+            self.agent_type,
+            _clip_text(user_prompt),
+        )
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -929,11 +958,16 @@ class LLMAgent(BaseAgent):
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
                 logger.info(
-                    "[%s] LLM response received | length=%d",
+                    "[%s] LLM response received | status=%d | length=%d",
                     self.agent_type,
+                    resp.status_code,
                     len(content),
                 )
-                logger.debug("[%s] LLM raw response: %s", self.agent_type, content)
+                llm_trace_logger.info(
+                    "[%s] LLM raw response preview: %s",
+                    self.agent_type,
+                    _clip_text(content),
+                )
                 return content
         except httpx.TimeoutException:
             logger.error("[%s] LLM API call timed out", self.agent_type)
@@ -954,22 +988,53 @@ class LLMAgent(BaseAgent):
     def _parse_json_response(text: str) -> dict | None:
         """Extract a JSON object from the LLM response text."""
         text = text.strip()
+        original_text = text
         # Strip markdown code fences if present
         if text.startswith("```"):
             lines = text.split("\n")
             lines = [l for l in lines if not l.strip().startswith("```")]
             text = "\n".join(lines).strip()
+            llm_trace_logger.info(
+                "[llm] JSON parse: removed code fences | before_len=%d | after_len=%d",
+                len(original_text),
+                len(text),
+            )
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
+            llm_trace_logger.info(
+                "[llm] JSON parse success | method=direct | keys=%s",
+                sorted(parsed.keys()) if isinstance(parsed, dict) else type(parsed),
+            )
+            return parsed
         except json.JSONDecodeError:
             # Try to find JSON within the text
             start = text.find("{")
             end = text.rfind("}")
             if start != -1 and end != -1:
                 try:
-                    return json.loads(text[start : end + 1])
+                    parsed = json.loads(text[start : end + 1])
+                    llm_trace_logger.info(
+                        "[llm] JSON parse success | method=substring | start=%d | end=%d | keys=%s",
+                        start,
+                        end,
+                        (
+                            sorted(parsed.keys())
+                            if isinstance(parsed, dict)
+                            else type(parsed)
+                        ),
+                    )
+                    return parsed
                 except json.JSONDecodeError:
+                    llm_trace_logger.warning(
+                        "[llm] JSON parse failed | method=substring | response_preview=%s",
+                        _clip_text(text),
+                    )
                     pass
+            else:
+                llm_trace_logger.warning(
+                    "[llm] JSON parse failed | reason=no_json_braces | response_preview=%s",
+                    _clip_text(text),
+                )
         return None
 
     # ------------------------------------------------------------------
@@ -1126,6 +1191,8 @@ class LLMAgent(BaseAgent):
     ) -> dict:
         player_id = player_state.your_player_id
         available = player_state.available_actions
+        current_room = game_state.current_room.get(player_id)
+        current_position = game_state.player_positions.get(player_id)
 
         self.seen_cards.update(player_state.your_cards)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
@@ -1141,6 +1208,14 @@ class LLMAgent(BaseAgent):
             len(unknown_rooms),
             len(self.seen_cards),
         )
+        logger.info(
+            "[%s:%s] Decision context | current_room=%s | position=%s | unrefuted_suggestions=%d",
+            self.agent_type,
+            player_id,
+            current_room,
+            current_position,
+            len(self.unrefuted_suggestions),
+        )
 
         # Build prompt and call LLM
         personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
@@ -1149,25 +1224,46 @@ class LLMAgent(BaseAgent):
             personality=personality,
         )
         user_prompt = self._build_action_prompt(game_state, player_state)
+        logger.info(
+            "[%s:%s] Asking LLM what to do next | available_actions=%s",
+            self.agent_type,
+            player_id,
+            available,
+        )
         response_text = await self._call_llm(system_prompt, user_prompt)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
-                # Extract chat message before validation (it's not a game field)
-                llm_chat = parsed.pop("chat", None)
-                logger.info(
-                    "[%s:%s] LLM proposed action: %s",
+                llm_trace_logger.info(
+                    "[%s:%s] Parsed LLM action payload: %s",
                     self.agent_type,
                     player_id,
                     parsed,
                 )
+                # Extract chat message before validation (it's not a game field)
+                llm_chat = parsed.pop("chat", None)
+                logger.info(
+                    "[%s:%s] LLM proposed action fields | action=%s | chat_present=%s",
+                    self.agent_type,
+                    player_id,
+                    parsed,
+                    isinstance(llm_chat, str) and bool(llm_chat.strip()),
+                )
+                if llm_chat and isinstance(llm_chat, str):
+                    llm_trace_logger.info(
+                        "[%s:%s] LLM in-character chat: %s",
+                        self.agent_type,
+                        player_id,
+                        _clip_text(llm_chat, limit=400),
+                    )
                 if self._validate_action(parsed, available, game_state, player_state):
                     logger.info(
-                        "[%s:%s] Using LLM action: %s",
+                        "[%s:%s] Using LLM action | type=%s | payload=%s",
                         self.agent_type,
                         player_id,
                         parsed.get("type"),
+                        parsed,
                     )
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
@@ -1179,22 +1275,25 @@ class LLMAgent(BaseAgent):
                             self.rooms_suggested_in.add(room)
                     return parsed
                 else:
-                    logger.debug(
+                    llm_trace_logger.debug(
                         "[%s:%s] LLM response failed validation: %s",
                         self.agent_type,
                         player_id,
                         parsed,
                     )
                     logger.warning(
-                        "[%s:%s] LLM action failed validation — falling back",
+                        "[%s:%s] LLM action failed validation — falling back to RandomAgent | payload=%s | available=%s",
                         self.agent_type,
                         player_id,
+                        parsed,
+                        available,
                     )
             else:
                 logger.warning(
-                    "[%s:%s] Failed to parse LLM response as JSON — falling back",
+                    "[%s:%s] Failed to parse LLM response as JSON — falling back to RandomAgent | response_preview=%s",
                     self.agent_type,
                     player_id,
+                    _clip_text(response_text),
                 )
         else:
             logger.info(
@@ -1222,34 +1321,50 @@ class LLMAgent(BaseAgent):
             suggesting_player_id,
             matching_cards,
         )
+        logger.info(
+            "[%s] Show-card context | suggesting_player=%s | previously_shown=%s",
+            self.agent_type,
+            suggesting_player_id,
+            sorted(self.shown_to.get(suggesting_player_id, set())),
+        )
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
+        logger.info(
+            "[%s] Asking LLM which card to show | matching_cards=%d",
+            self.agent_type,
+            len(matching_cards),
+        )
         response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
+                llm_trace_logger.info(
+                    "[%s] Parsed show-card payload: %s", self.agent_type, parsed
+                )
                 card = parsed.get("card")
                 if card in matching_cards:
                     self.shown_to.setdefault(suggesting_player_id, set()).add(card)
                     logger.info(
-                        "[%s] LLM chose to show '%s' to %s",
+                        "[%s] LLM chose to show '%s' to %s | matching_cards=%s",
                         self.agent_type,
                         card,
                         suggesting_player_id,
+                        matching_cards,
                     )
                     return card
                 else:
                     logger.warning(
-                        "[%s] LLM chose invalid card '%s' (valid: %s) — falling back",
+                        "[%s] LLM chose invalid card '%s' (valid: %s) — falling back to RandomAgent",
                         self.agent_type,
                         card,
                         matching_cards,
                     )
             else:
                 logger.warning(
-                    "[%s] Failed to parse LLM show_card response — falling back",
+                    "[%s] Failed to parse LLM show_card response — falling back to RandomAgent | response_preview=%s",
                     self.agent_type,
+                    _clip_text(response_text),
                 )
 
         # Fallback
