@@ -3,6 +3,7 @@
 import pytest
 
 from app.board import (
+    DOORS,
     Room,
     Square,
     SquareType,
@@ -83,6 +84,55 @@ def test_reachable_from_room_via_secret_passage(board):
     # Secret passage from Study to Kitchen costs 1 step
     reached = reachable(study, 1, squares, room_nodes)
     assert room_nodes[Room.KITCHEN] in reached
+
+
+def test_door_does_not_cost_extra_step_leaving_room(board):
+    """Leaving a room through a door should not count the door as an extra square.
+
+    The door sits on the room perimeter, so Room->Door is free and only
+    Door->Hallway costs a step.  With 1 step from a room, a player should
+    reach the hallway square just outside a door.
+    """
+    squares, room_nodes = board
+    # Use the Study, which has a door at (3,6).
+    # The hallway square just outside that door is (4,6) — row 4 is outside
+    # the Study bounds (rows 0-3).
+    study = room_nodes[Room.STUDY]
+    reached = reachable(study, 1, squares, room_nodes)
+
+    # The door at (3,6) should be reachable at cost 0 (free Room->Door)
+    door_sq = squares.get((3, 6))
+    assert door_sq is not None, "Door square (3,6) not in graph"
+    assert door_sq in reached
+    assert reached[door_sq] == 0, (
+        f"Door should be distance 0 from its room, got {reached[door_sq]}"
+    )
+
+    # The hallway square outside the door should be reachable at cost 1
+    outside = squares.get((4, 6))
+    assert outside is not None, "Hallway square (4,6) not in graph"
+    assert outside in reached
+    assert reached[outside] == 1, (
+        f"Hallway outside door should be distance 1, got {reached[outside]}"
+    )
+
+
+def test_door_does_not_cost_extra_step_entering_room(board):
+    """Entering a room from a hallway through a door should cost 1 total step,
+    not 2 (hallway->door + door->room)."""
+    squares, room_nodes = board
+    # Hallway square (4,6) is just outside the Study door at (3,6).
+    outside = squares.get((4, 6))
+    assert outside is not None
+    reached = reachable(outside, 1, squares, room_nodes)
+
+    # With 1 step we should be able to enter the Study:
+    # (4,6) -> door (3,6) costs 1, door -> Study room costs 0
+    study = room_nodes[Room.STUDY]
+    assert study in reached, (
+        "Should reach Study in 1 step from hallway outside its door"
+    )
+    assert reached[study] == 1
 
 
 # ---------------------------------------------------------------------------
