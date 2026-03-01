@@ -3,7 +3,15 @@ import random
 import string
 import datetime as dt
 
-from .board import START_POSITIONS, ROOM_CENTERS
+from .board import (
+    START_POSITIONS,
+    ROOM_CENTERS,
+    Room,
+    build_grid,
+    build_graph,
+    reachable,
+    move_towards,
+)
 from .models import (
     ChatMessage,
     GameState,
@@ -13,6 +21,13 @@ from .models import (
     Solution,
     Suggestion,
 )
+
+# Pre-build the board graph for pathfinding
+_GRID = build_grid()
+_SQUARES, _ROOM_NODES = build_graph(_GRID)
+
+# Map room name strings to Room enum values
+_ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
 
 CHARACTER_START_KEY = {
     "Miss Scarlett": "Scarlet",
@@ -305,13 +320,45 @@ class ClueGame:
             raise ValueError(f"Invalid room: {room}")
 
         if room:
-            state.current_room[player_id] = room
-            result["room"] = room
-            # Update board position to room center
-            center = ROOM_CENTERS.get(room)
-            if center:
-                state.player_positions[player_id] = list(center)
-                result["position"] = list(center)
+            # Determine the player's current position on the board graph
+            current_room_name = state.current_room.get(player_id)
+            pos = state.player_positions.get(player_id)
+
+            if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+                start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+            elif pos:
+                start_sq = _SQUARES.get((pos[0], pos[1]))
+            else:
+                start_sq = None
+
+            target_room_enum = _ROOM_NAME_TO_ENUM.get(room)
+
+            if start_sq and target_room_enum:
+                dest, reached = move_towards(
+                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES
+                )
+                if reached:
+                    # Player reaches the room
+                    state.current_room[player_id] = room
+                    result["room"] = room
+                    center = ROOM_CENTERS.get(room)
+                    if center:
+                        state.player_positions[player_id] = list(center)
+                        result["position"] = list(center)
+                else:
+                    # Player ends up in the hallway partway there
+                    result["room"] = None
+                    state.current_room.pop(player_id, None)
+                    state.player_positions[player_id] = [dest.row, dest.col]
+                    result["position"] = [dest.row, dest.col]
+            else:
+                # Fallback: no position info yet — place directly in room
+                state.current_room[player_id] = room
+                result["room"] = room
+                center = ROOM_CENTERS.get(room)
+                if center:
+                    state.player_positions[player_id] = list(center)
+                    result["position"] = list(center)
 
         result["dice"] = total
         result["total"] = total
@@ -322,7 +369,7 @@ class ClueGame:
                 "type": "move",
                 "player_id": player_id,
                 "dice": total,
-                "room": room,
+                "room": result.get("room"),
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         )
@@ -356,6 +403,17 @@ class ClueGame:
             if matching:
                 pending_player_id = other_id
                 matching_cards = matching
+                break
+
+        # Move the suggested suspect's player to the suggestion room
+        moved_suspect_player = None
+        for p in players:
+            if p.character == suspect and p.id != player_id:
+                moved_suspect_player = p.id
+                state.current_room[moved_suspect_player] = room
+                center = ROOM_CENTERS.get(room)
+                if center:
+                    state.player_positions[moved_suspect_player] = list(center)
                 break
 
         suggestion_entry = Suggestion(
@@ -397,6 +455,7 @@ class ClueGame:
                 "weapon": weapon,
                 "room": room,
                 "pending_show_by": pending_player_id,
+                "moved_suspect_player": moved_suspect_player,
             }
         )
         return result

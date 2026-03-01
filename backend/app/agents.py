@@ -14,6 +14,18 @@ from abc import ABC, abstractmethod
 import httpx
 
 from .game import SUSPECTS, WEAPONS, ROOMS
+from .board import (
+    Room,
+    build_grid,
+    build_graph,
+    reachable as bfs_reachable,
+    SquareType,
+)
+
+# Pre-build the board graph for agent pathfinding
+_GRID = build_grid()
+_SQUARES, _ROOM_NODES = build_graph(_GRID)
+_ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
 from .models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
@@ -172,8 +184,9 @@ class RandomAgent(BaseAgent):
 
         # Phase 1: move (dice not rolled yet)
         if not dice_rolled and "move" in available:
+            player_pos = game_state.get("player_positions", {}).get(player_id)
             target_room = self._pick_target_room(
-                unknown_rooms, current_room.get(player_id)
+                unknown_rooms, current_room.get(player_id), player_pos
             )
             logger.info(
                 "[%s:%s] Moving to '%s' (current=%s, unknown_rooms=%s)",
@@ -235,29 +248,30 @@ class RandomAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _pick_target_room(
-        self, unknown_rooms: list[str], current_room: str | None
+        self, unknown_rooms: list[str], current_room: str | None,
+        player_position: list | None = None,
     ) -> str:
-        """Pick the best room to move toward.
+        """Pick the best room to move toward, preferring closer rooms.
 
         Priority:
-        1. Unknown rooms we haven't suggested in yet
-        2. Unknown rooms (even if suggested in before)
-        3. Any room we haven't suggested in
-        4. Random room
+        1. Unknown rooms we haven't suggested in yet (weighted by proximity)
+        2. Unknown rooms (even if suggested in before, weighted by proximity)
+        3. Any room we haven't suggested in (weighted by proximity)
+        4. Random room (weighted by proximity)
         """
         fresh_unknown = [
             r for r in unknown_rooms
             if r not in self.rooms_suggested_in and r != current_room
         ]
         if fresh_unknown:
-            choice = random.choice(fresh_unknown)
-            logger.debug("[%s] Target room '%s' (fresh unknown)", self.agent_type, choice)
+            choice = self._pick_nearest_room(fresh_unknown, current_room, player_position)
+            logger.debug("[%s] Target room '%s' (fresh unknown, proximity-weighted)", self.agent_type, choice)
             return choice
 
         other_unknown = [r for r in unknown_rooms if r != current_room]
         if other_unknown:
-            choice = random.choice(other_unknown)
-            logger.debug("[%s] Target room '%s' (other unknown)", self.agent_type, choice)
+            choice = self._pick_nearest_room(other_unknown, current_room, player_position)
+            logger.debug("[%s] Target room '%s' (other unknown, proximity-weighted)", self.agent_type, choice)
             return choice
 
         unseen = [
@@ -265,14 +279,75 @@ class RandomAgent(BaseAgent):
             if r not in self.rooms_suggested_in and r != current_room
         ]
         if unseen:
-            choice = random.choice(unseen)
-            logger.debug("[%s] Target room '%s' (unvisited)", self.agent_type, choice)
+            choice = self._pick_nearest_room(unseen, current_room, player_position)
+            logger.debug("[%s] Target room '%s' (unvisited, proximity-weighted)", self.agent_type, choice)
             return choice
 
         choices = [r for r in ROOMS if r != current_room]
-        choice = random.choice(choices) if choices else random.choice(ROOMS)
-        logger.debug("[%s] Target room '%s' (fallback random)", self.agent_type, choice)
+        if not choices:
+            choices = list(ROOMS)
+        choice = self._pick_nearest_room(choices, current_room, player_position)
+        logger.debug("[%s] Target room '%s' (fallback, proximity-weighted)", self.agent_type, choice)
         return choice
+
+    @staticmethod
+    def _pick_nearest_room(
+        candidates: list[str],
+        current_room: str | None,
+        player_position: list | None,
+    ) -> str:
+        """Pick a room from candidates, biased toward nearer rooms.
+
+        Uses BFS distance on the board graph.  Closer rooms get higher
+        weight so the agent doesn't waste turns crossing the entire board.
+        Falls back to random choice if position data is unavailable.
+        """
+        from collections import deque
+
+        if len(candidates) == 1:
+            return candidates[0]
+
+        # Determine the starting square for distance calculation
+        start_sq = None
+        if current_room and current_room in _ROOM_NAME_TO_ENUM:
+            start_sq = _ROOM_NODES.get(_ROOM_NAME_TO_ENUM[current_room])
+        elif player_position:
+            start_sq = _SQUARES.get((player_position[0], player_position[1]))
+
+        if start_sq is None:
+            return random.choice(candidates)
+
+        # BFS from start to get distance to every room node
+        dist_map: dict = {start_sq: 0}
+        queue: deque = deque([(start_sq, 0)])
+        while queue:
+            sq, d = queue.popleft()
+            for nb in sq.neighbors:
+                if nb not in dist_map:
+                    dist_map[nb] = d + 1
+                    if nb.type != SquareType.ROOM:
+                        queue.append((nb, d + 1))
+
+        # Compute distances to each candidate room
+        room_dists = {}
+        for room_name in candidates:
+            room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
+            if room_enum:
+                node = _ROOM_NODES.get(room_enum)
+                if node and node in dist_map:
+                    room_dists[room_name] = dist_map[node]
+
+        if not room_dists:
+            return random.choice(candidates)
+
+        # Weight inversely proportional to distance (closer = higher weight)
+        # Use 1/(dist+1) so that rooms at distance 0 still get finite weight
+        weights = []
+        rooms_list = list(room_dists.keys())
+        for r in rooms_list:
+            weights.append(1.0 / (room_dists[r] + 1))
+
+        return random.choices(rooms_list, weights=weights, k=1)[0]
 
     @staticmethod
     def _pick_unknown_or_random(unknown: list[str], full_list: list[str]) -> str:

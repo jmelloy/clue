@@ -17,7 +17,7 @@ from app.agents import RandomAgent
 # Fixtures
 # ---------------------------------------------------------------------------
 
-MAX_TURNS = 500  # safety limit to prevent infinite loops
+MAX_TURNS = 2000  # safety limit — agents may need many turns to reach rooms via pathfinding
 
 
 @pytest_asyncio.fixture
