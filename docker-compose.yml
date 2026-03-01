@@ -18,7 +18,8 @@ services:
       - redis
 
   frontend:
-    image: node:22-alpine
+    build: 
+      context: ./frontend
     working_dir: /app
     command: npm run dev -- --host
     environment:
