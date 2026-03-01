@@ -221,10 +221,10 @@ def get_logging_config(
 
 
 if __name__ == "__main__":
-    import app
     import uvicorn
+    import os
 
-    debug = True
+    debug = os.getenv("DEBUG", "false").lower() == "true"
     log_level = "DEBUG" if debug else "INFO"
     logging_config = get_logging_config(log_level=log_level, log_format="colored")
 

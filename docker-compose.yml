@@ -9,6 +9,7 @@ services:
       context: ./backend
     environment:
       - REDIS_URL=redis://redis:6379
+      - DEBUG=${DEBUG:-false}
     ports:
       - "8000:8000"
     volumes:
