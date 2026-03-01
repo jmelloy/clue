@@ -548,15 +548,21 @@ class ClueGame:
             result.update(
                 {
                     "correct": False,
-                    "solution": solution.model_dump() if state.status == "finished" else None,
+                    "solution": (
+                        solution.model_dump() if state.status == "finished" else None
+                    ),
                 }
             )
 
         return result
 
-    async def _handle_end_turn(self, state: GameState, player_id: str, result: dict) -> dict:
+    async def _handle_end_turn(
+        self, state: GameState, player_id: str, result: dict
+    ) -> dict:
         if state.pending_show_card:
-            raise ValueError("Cannot end turn while waiting for a player to show a card")
+            raise ValueError(
+                "Cannot end turn while waiting for a player to show a card"
+            )
         players = state.players
         active = [p for p in players if p.active]
         idx = next((i for i, p in enumerate(active) if p.id == player_id), None)

@@ -20,7 +20,6 @@ from app.agents import RandomAgent
 from app.main import app, manager, _agent_tasks, _game_agents
 from app.models import GameState
 
-
 # ---------------------------------------------------------------------------
 # Mock WebSocket
 # ---------------------------------------------------------------------------
@@ -98,8 +97,9 @@ async def _create_game(http: AsyncClient) -> str:
     return resp.json()["game_id"]
 
 
-async def _join_game(http: AsyncClient, game_id: str, name: str,
-                     player_type: str = "agent") -> str:
+async def _join_game(
+    http: AsyncClient, game_id: str, name: str, player_type: str = "agent"
+) -> str:
     resp = await http.post(
         f"/games/{game_id}/join",
         json={"player_name": name, "player_type": player_type},
@@ -114,15 +114,16 @@ async def _start_game(http: AsyncClient, game_id: str) -> dict:
     return resp.json()
 
 
-async def _submit_action(http: AsyncClient, game_id: str,
-                         player_id: str, action: dict) -> dict:
+async def _submit_action(
+    http: AsyncClient, game_id: str, player_id: str, action: dict
+) -> dict:
     resp = await http.post(
         f"/games/{game_id}/action",
         json={"player_id": player_id, "action": action},
     )
-    assert resp.status_code == 200, (
-        f"Action {action} by {player_id} failed: {resp.text}"
-    )
+    assert (
+        resp.status_code == 200
+    ), f"Action {action} by {player_id} failed: {resp.text}"
     return resp.json()
 
 
@@ -254,10 +255,18 @@ class TestGameStartBroadcast:
         await _start_game(http, game_id)
 
         # Each player should get a private game_started with their cards
-        started1 = [m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m]
-        started2 = [m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m]
-        assert len(started1) >= 1, f"P1 missing cards. Got: {[m['type'] for m in ws1.sent]}"
-        assert len(started2) >= 1, f"P2 missing cards. Got: {[m['type'] for m in ws2.sent]}"
+        started1 = [
+            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+        ]
+        started2 = [
+            m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m
+        ]
+        assert (
+            len(started1) >= 1
+        ), f"P1 missing cards. Got: {[m['type'] for m in ws1.sent]}"
+        assert (
+            len(started2) >= 1
+        ), f"P2 missing cards. Got: {[m['type'] for m in ws2.sent]}"
 
         # Cards should be non-empty and non-overlapping
         cards1 = set(started1[0]["your_cards"])
@@ -279,7 +288,9 @@ class TestGameStartBroadcast:
         state = await _start_game(http, game_id)
 
         # Should have a broadcast game_started with "state" key
-        broadcast = [m for m in ws1.sent if m["type"] == "game_started" and "state" in m]
+        broadcast = [
+            m for m in ws1.sent if m["type"] == "game_started" and "state" in m
+        ]
         assert len(broadcast) >= 1
         assert broadcast[0]["state"]["whose_turn"] == state["whose_turn"]
 
@@ -295,7 +306,9 @@ class TestGameStartBroadcast:
 
         state = await _start_game(http, game_id)
 
-        started = [m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m]
+        started = [
+            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+        ]
         assert started[0]["whose_turn"] == state["whose_turn"]
 
 
@@ -324,13 +337,15 @@ class TestActionBroadcasts:
         game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
         whose_turn = state["whose_turn"]
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
 
         for ws in (ws1, ws2):
             moved = [m for m in ws.sent if m["type"] == "player_moved"]
-            assert len(moved) >= 1, f"Missing player_moved. Got: {[m['type'] for m in ws.sent]}"
+            assert (
+                len(moved) >= 1
+            ), f"Missing player_moved. Got: {[m['type'] for m in ws.sent]}"
             assert moved[0]["player_id"] == whose_turn
 
     @pytest.mark.asyncio
@@ -360,12 +375,17 @@ class TestActionBroadcasts:
         ws1.drain()
         ws2.drain()
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "suggest",
-            "suspect": SUSPECTS[0],
-            "weapon": WEAPONS[0],
-            "room": "Kitchen",
-        })
+        await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": SUSPECTS[0],
+                "weapon": WEAPONS[0],
+                "room": "Kitchen",
+            },
+        )
 
         for ws in (ws1, ws2):
             sugg = [m for m in ws.sent if m["type"] == "suggestion_made"]
@@ -381,9 +401,9 @@ class TestActionBroadcasts:
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
         ws1.drain()
         ws2.drain()
 
@@ -403,9 +423,9 @@ class TestActionBroadcasts:
         other_ws = ws2 if whose_turn == pid1 else ws1
         current_ws = ws1 if whose_turn == pid1 else ws2
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
         ws1.drain()
         ws2.drain()
 
@@ -461,12 +481,17 @@ class TestShowCardFlow:
         ws1.drain()
         ws2.drain()
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "suggest",
-            "suspect": suggest_suspect,
-            "weapon": suggest_weapon,
-            "room": "Kitchen",
-        })
+        await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": suggest_suspect,
+                "weapon": suggest_weapon,
+                "room": "Kitchen",
+            },
+        )
 
         show_req = [m for m in other_ws.sent if m["type"] == "show_card_request"]
         if show_req:
@@ -511,12 +536,17 @@ class TestShowCardFlow:
         for ws in ws_map.values():
             ws.drain()
 
-        result = await _submit_action(http, game_id, whose_turn, {
-            "type": "suggest",
-            "suspect": suggest_suspect,
-            "weapon": suggest_weapon,
-            "room": "Kitchen",
-        })
+        result = await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": suggest_suspect,
+                "weapon": suggest_weapon,
+                "room": "Kitchen",
+            },
+        )
 
         pending_by = result.get("pending_show_by")
         if not pending_by:
@@ -531,16 +561,16 @@ class TestShowCardFlow:
         for ws in ws_map.values():
             ws.drain()
 
-        await _submit_action(http, game_id, pending_by, {
-            "type": "show_card", "card": card_to_show
-        })
+        await _submit_action(
+            http, game_id, pending_by, {"type": "show_card", "card": card_to_show}
+        )
 
         # Suggesting player should get private card_shown
         sugg_ws = ws_map[whose_turn]
         card_shown = [m for m in sugg_ws.sent if m["type"] == "card_shown"]
-        assert len(card_shown) >= 1, (
-            f"Suggesting player missing card_shown. Got: {[m['type'] for m in sugg_ws.sent]}"
-        )
+        assert (
+            len(card_shown) >= 1
+        ), f"Suggesting player missing card_shown. Got: {[m['type'] for m in sugg_ws.sent]}"
         assert card_shown[0]["card"] == card_to_show
         assert card_shown[0]["shown_by"] == pending_by
 
@@ -579,17 +609,24 @@ class TestGameOverBroadcast:
         ws1.drain()
         ws2.drain()
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "accuse",
-            "suspect": solution.suspect,
-            "weapon": solution.weapon,
-            "room": solution.room,
-        })
+        await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "accuse",
+                "suspect": solution.suspect,
+                "weapon": solution.weapon,
+                "room": solution.room,
+            },
+        )
 
         # Both should receive game_over
         for ws in (ws1, ws2):
             go = [m for m in ws.sent if m["type"] == "game_over"]
-            assert len(go) >= 1, f"Missing game_over. Got: {[m['type'] for m in ws.sent]}"
+            assert (
+                len(go) >= 1
+            ), f"Missing game_over. Got: {[m['type'] for m in ws.sent]}"
             assert go[0]["winner"] == whose_turn
             assert go[0]["solution"] == solution.model_dump()
 
@@ -613,12 +650,17 @@ class TestGameOverBroadcast:
         ws1.drain()
         ws2.drain()
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "accuse",
-            "suspect": wrong_suspect,
-            "weapon": solution.weapon,
-            "room": solution.room,
-        })
+        await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "accuse",
+                "suspect": wrong_suspect,
+                "weapon": solution.weapon,
+                "room": solution.room,
+            },
+        )
 
         # Both players should see the accusation broadcast
         all_msgs = ws1.sent + ws2.sent
@@ -675,9 +717,9 @@ class TestChatIntegration:
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws1.drain()
 
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
 
         chat = [m for m in ws1.sent if m["type"] == "chat_message"]
         assert len(chat) >= 1
@@ -707,8 +749,12 @@ class TestAgentFullGameE2E:
         state = await _start_game(http, game_id)
 
         # Extract dealt cards from the private game_started messages
-        cards1_msg = [m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m]
-        cards2_msg = [m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m]
+        cards1_msg = [
+            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+        ]
+        cards2_msg = [
+            m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m
+        ]
         assert len(cards1_msg) >= 1
         assert len(cards2_msg) >= 1
 
@@ -732,21 +778,35 @@ class TestAgentFullGameE2E:
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
-                await _submit_action(http, game_id, pid, {
-                    "type": "show_card", "card": card,
-                })
+                await _submit_action(
+                    http,
+                    game_id,
+                    pid,
+                    {
+                        "type": "show_card",
+                        "card": card,
+                    },
+                )
                 agents[pending["suggesting_player_id"]].observe_shown_card(
-                    card, shown_by=pid,
+                    card,
+                    shown_by=pid,
                 )
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(GameState(**state), player_state)
+                action = await agents[pid].decide_action(
+                    GameState(**state), player_state
+                )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if action["type"] == "suggest" and result.get("pending_show_by") is None:
+                if (
+                    action["type"] == "suggest"
+                    and result.get("pending_show_by") is None
+                ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"], action["weapon"], action["room"],
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
                     )
 
             # Count WS messages delivered this round
@@ -757,9 +817,9 @@ class TestAgentFullGameE2E:
             state = await _get_state(http, game_id)
             actions_taken += 1
 
-        assert state["status"] == "finished", (
-            f"Game did not finish within {MAX_TURNS} actions"
-        )
+        assert (
+            state["status"] == "finished"
+        ), f"Game did not finish within {MAX_TURNS} actions"
         assert state["winner"] in agents
 
         # Both players should have received WebSocket messages
@@ -786,7 +846,9 @@ class TestAgentFullGameE2E:
         agents = {}
         for pid in pids:
             ws = ws_map[pid]
-            cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
+            cards_msg = [
+                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+            ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
@@ -804,21 +866,35 @@ class TestAgentFullGameE2E:
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
-                await _submit_action(http, game_id, pid, {
-                    "type": "show_card", "card": card,
-                })
+                await _submit_action(
+                    http,
+                    game_id,
+                    pid,
+                    {
+                        "type": "show_card",
+                        "card": card,
+                    },
+                )
                 agents[pending["suggesting_player_id"]].observe_shown_card(
-                    card, shown_by=pid,
+                    card,
+                    shown_by=pid,
                 )
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(GameState(**state), player_state)
+                action = await agents[pid].decide_action(
+                    GameState(**state), player_state
+                )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if action["type"] == "suggest" and result.get("pending_show_by") is None:
+                if (
+                    action["type"] == "suggest"
+                    and result.get("pending_show_by") is None
+                ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"], action["weapon"], action["room"],
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
                     )
 
             for p, ws in ws_map.items():
@@ -853,7 +929,9 @@ class TestAgentFullGameE2E:
         agents = {}
         for pid in pids:
             ws = ws_map[pid]
-            cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
+            cards_msg = [
+                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+            ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
@@ -870,21 +948,35 @@ class TestAgentFullGameE2E:
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
-                await _submit_action(http, game_id, pid, {
-                    "type": "show_card", "card": card,
-                })
+                await _submit_action(
+                    http,
+                    game_id,
+                    pid,
+                    {
+                        "type": "show_card",
+                        "card": card,
+                    },
+                )
                 agents[pending["suggesting_player_id"]].observe_shown_card(
-                    card, shown_by=pid,
+                    card,
+                    shown_by=pid,
                 )
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(GameState(**state), player_state)
+                action = await agents[pid].decide_action(
+                    GameState(**state), player_state
+                )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if action["type"] == "suggest" and result.get("pending_show_by") is None:
+                if (
+                    action["type"] == "suggest"
+                    and result.get("pending_show_by") is None
+                ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"], action["weapon"], action["room"],
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
                     )
 
             for ws in ws_map.values():
@@ -915,7 +1007,9 @@ class TestAgentFullGameE2E:
 
         agents = {pid1: RandomAgent(), pid2: RandomAgent()}
         for pid, ws in [(pid1, ws1), (pid2, ws2)]:
-            cards_msg = [m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m]
+            cards_msg = [
+                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+            ]
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
 
         all_types = set()
@@ -936,21 +1030,35 @@ class TestAgentFullGameE2E:
                     pending["matching_cards"],
                     pending["suggesting_player_id"],
                 )
-                await _submit_action(http, game_id, pid, {
-                    "type": "show_card", "card": card,
-                })
+                await _submit_action(
+                    http,
+                    game_id,
+                    pid,
+                    {
+                        "type": "show_card",
+                        "card": card,
+                    },
+                )
                 agents[pending["suggesting_player_id"]].observe_shown_card(
-                    card, shown_by=pid,
+                    card,
+                    shown_by=pid,
                 )
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(GameState(**state), player_state)
+                action = await agents[pid].decide_action(
+                    GameState(**state), player_state
+                )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if action["type"] == "suggest" and result.get("pending_show_by") is None:
+                if (
+                    action["type"] == "suggest"
+                    and result.get("pending_show_by") is None
+                ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"], action["weapon"], action["room"],
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
                     )
 
             for ws in ws_map.values():
@@ -992,9 +1100,9 @@ class TestReconnection:
         whose_turn = state["whose_turn"]
 
         # Make a move without any WS connections
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
 
         # Now "connect" and verify state
         # Simulate what the WS endpoint does on connect: send game_state
@@ -1022,9 +1130,9 @@ class TestReconnection:
         ws1_new = await _connect_mock_ws(game_id, pid1)
 
         whose_turn = state["whose_turn"]
-        await _submit_action(http, game_id, whose_turn, {
-            "type": "move", "room": "Kitchen"
-        })
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "move", "room": "Kitchen"}
+        )
 
         # New WS should have received the broadcast
         moved = [m for m in ws1_new.sent if m["type"] == "player_moved"]

@@ -47,7 +47,9 @@ def test_secret_passages(board):
     study_neighbors = {nb.room for nb in room_nodes[Room.STUDY].neighbors if nb.room}
     assert Room.KITCHEN in study_neighbors
 
-    kitchen_neighbors = {nb.room for nb in room_nodes[Room.KITCHEN].neighbors if nb.room}
+    kitchen_neighbors = {
+        nb.room for nb in room_nodes[Room.KITCHEN].neighbors if nb.room
+    }
     assert Room.STUDY in kitchen_neighbors
 
     # Lounge <-> Conservatory
