@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ROOM_CENTERS
 from app.agents import RandomAgent
 from app.main import app, manager, _agent_tasks, _game_agents
+from app.models import GameState
 
 
 # ---------------------------------------------------------------------------
@@ -740,7 +741,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state.model_dump())
+                action = await agents[pid].decide_action(GameState(**state), player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -812,7 +813,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state.model_dump())
+                action = await agents[pid].decide_action(GameState(**state), player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -878,7 +879,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state.model_dump())
+                action = await agents[pid].decide_action(GameState(**state), player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
@@ -944,7 +945,7 @@ class TestAgentFullGameE2E:
             else:
                 pid = state["whose_turn"]
                 player_state = await game.get_player_state(pid)
-                action = await agents[pid].decide_action(state, player_state.model_dump())
+                action = await agents[pid].decide_action(GameState(**state), player_state)
                 result = await _submit_action(http, game_id, pid, action)
 
                 if action["type"] == "suggest" and result.get("pending_show_by") is None:
