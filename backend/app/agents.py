@@ -2,6 +2,7 @@
 
 BaseAgent defines the shared interface and card-tracking logic.
 RandomAgent uses rule-based elimination with random selection.
+WandererAgent just moves to a random room and ends its turn (no suggestions/accusations).
 LLMAgent delegates decisions to an LLM API (with RandomAgent fallback).
 """
 
@@ -411,6 +412,53 @@ class RandomAgent(BaseAgent):
         if unknown:
             return random.choice(unknown)
         return random.choice(full_list)
+
+
+# ---------------------------------------------------------------------------
+# WandererAgent (ambient suspect that just moves around)
+# ---------------------------------------------------------------------------
+
+
+class WandererAgent(BaseAgent):
+    """Agent that wanders randomly — moves to a random room and ends its turn.
+
+    Never makes suggestions or accusations. Used for unplayed suspect
+    characters so they still appear on the board and move around.
+    """
+
+    agent_type = "wanderer"
+
+    async def decide_action(
+        self, game_state: GameState, player_state: PlayerState
+    ) -> dict:
+        player_id = player_state.your_player_id
+        available = player_state.available_actions
+        current_room = game_state.current_room.get(player_id)
+
+        if not game_state.dice_rolled and "move" in available:
+            # Pick a random room different from the current one
+            candidates = [r for r in ROOMS if r != current_room]
+            if not candidates:
+                candidates = list(ROOMS)
+            target = random.choice(candidates)
+            logger.info(
+                "[%s:%s] Wandering to '%s'", self.agent_type, player_id, target
+            )
+            return {"type": "move", "room": target}
+
+        logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
+        return {"type": "end_turn"}
+
+    async def decide_show_card(
+        self, matching_cards: list[str], suggesting_player_id: str
+    ) -> str:
+        # Just pick a random card to show
+        card = random.choice(matching_cards)
+        logger.info(
+            "[%s] Showing '%s' to %s",
+            self.agent_type, card, suggesting_player_id,
+        )
+        return card
 
 
 # ---------------------------------------------------------------------------

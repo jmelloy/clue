@@ -50,25 +50,20 @@
             v-for="p in gameState?.players"
             :key="p.id"
             class="legend-item"
-            :class="{ active: gameState?.whose_turn === p.id, eliminated: !p.active, 'is-me': p.id === playerId }"
+            :class="{
+              active: gameState?.whose_turn === p.id,
+              eliminated: !p.active,
+              'is-me': p.id === playerId,
+              'wanderer-legend': p.type === 'wanderer',
+            }"
           >
-            <span class="legend-token" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
+            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
-            <span class="legend-character">{{ p.character }}</span>
+            <span v-if="p.type !== 'wanderer'" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{ gameState.current_room[p.id] }}</span>
             <span v-if="!p.active" class="legend-status">eliminated</span>
-            <span v-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
-          </div>
-          <!-- Non-player character legends -->
-          <div
-            v-for="npc in npcCharacters"
-            :key="'npc-' + npc"
-            class="legend-item npc-legend"
-          >
-            <span class="legend-token npc-token-legend" :style="npcTokenStyle(npc)">{{ abbr(npc) }}</span>
-            <span class="legend-character">{{ npc }}</span>
-            <span v-if="gameState?.npc_rooms?.[npc]" class="legend-room">{{ gameState.npc_rooms[npc] }}</span>
-            <span class="legend-npc-label">wandering</span>
+            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
+            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
           </div>
         </div>
       </div>
@@ -280,10 +275,6 @@ const canSuggest = computed(() => props.availableActions.includes('suggest'))
 const canAccuse = computed(() => props.availableActions.includes('accuse'))
 const canEndTurn = computed(() => props.availableActions.includes('end_turn'))
 
-const npcCharacters = computed(() => {
-  return Object.keys(props.gameState?.npc_positions ?? {})
-})
-
 const currentPlayerName = computed(() => {
   return playerName(props.gameState?.whose_turn)
 })
@@ -310,12 +301,9 @@ function abbr(character) {
 
 function tokenStyle(player) {
   const colors = CHARACTER_COLORS[player.character] ?? { bg: '#666', text: '#fff' }
-  return { backgroundColor: colors.bg, color: colors.text }
-}
-
-function npcTokenStyle(character) {
-  const colors = CHARACTER_COLORS[character] ?? { bg: '#666', text: '#fff' }
-  return { backgroundColor: colors.bg, color: colors.text, opacity: 0.5 }
+  const style = { backgroundColor: colors.bg, color: colors.text }
+  if (player.type === 'wanderer') style.opacity = 0.5
+  return style
 }
 
 function cardCategory(card) {
@@ -596,15 +584,15 @@ watch(
   text-transform: uppercase;
 }
 
-.npc-legend {
+.wanderer-legend {
   opacity: 0.6;
 }
 
-.npc-token-legend {
+.wanderer-token-legend {
   border: 1.5px dashed rgba(255, 255, 255, 0.4);
 }
 
-.legend-npc-label {
+.legend-wanderer-label {
   color: #667;
   font-size: 0.6rem;
   font-style: italic;

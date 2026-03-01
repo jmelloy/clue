@@ -10,7 +10,7 @@ import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
-from app.agents import RandomAgent
+from app.agents import RandomAgent, WandererAgent
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,10 +48,12 @@ async def _setup_game(redis, num_agents=2):
 
     state = await game.start()
 
-    # Give each agent its dealt cards
-    for pid, agent in agents.items():
-        cards = await game._load_player_cards(pid)
-        agent.observe_own_cards(cards)
+    # Give each agent its dealt cards (including auto-added wanderers)
+    for p in state.players:
+        if p.id not in agents:
+            agents[p.id] = WandererAgent()
+        cards = await game._load_player_cards(p.id)
+        agents[p.id].observe_own_cards(cards)
 
     return game, agents, state
 
@@ -276,9 +278,11 @@ async def test_multiple_games_all_finish(redis):
             agents[pid] = RandomAgent()
 
         state = await game.start()
-        for pid, agent in agents.items():
-            cards = await game._load_player_cards(pid)
-            agent.observe_own_cards(cards)
+        for p in state.players:
+            if p.id not in agents:
+                agents[p.id] = WandererAgent()
+            cards = await game._load_player_cards(p.id)
+            agents[p.id].observe_own_cards(cards)
 
         final_state, turns, log = await _run_game(game, agents, state)
         assert final_state.status == "finished", f"Game {i} did not finish"

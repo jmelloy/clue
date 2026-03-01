@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .agents import BaseAgent, LLMAgent, RandomAgent
+from .agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
 from .game import ClueGame
 from .models import (
     ActionRequest,
@@ -73,7 +73,7 @@ _game_agents: dict[str, dict[str, BaseAgent]] = {}
 _agent_tasks: dict[str, asyncio.Task] = {}
 
 # Player types that trigger the automated agent loop
-_AGENT_PLAYER_TYPES = {"agent", "llm_agent"}
+_AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
 
 
 def _new_id(length: int = 6) -> str:
@@ -167,10 +167,6 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         if moved_suspect_player:
             suggestion_msg["moved_suspect_player"] = moved_suspect_player
             suggestion_msg["player_positions"] = dict(state.player_positions)
-        # Include updated NPC positions if an NPC was moved by the suggestion
-        if state.npc_positions:
-            suggestion_msg["npc_positions"] = dict(state.npc_positions)
-            suggestion_msg["npc_rooms"] = dict(state.npc_rooms)
         await manager.broadcast(game_id, suggestion_msg)
         if pending_show_by:
             pending_by_name = _player_name(state, pending_show_by)
@@ -276,12 +272,6 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         next_pid = result.get("next_player_id")
         actor_name = _player_name(state, player_id)
         next_name = _player_name(state, next_pid) if next_pid else "?"
-
-        # Wander NPCs (non-player suspects) on each turn change
-        npc_results = await game.wander_npcs()
-        # Re-fetch state after NPC movement
-        state = await game.get_state()
-
         await manager.broadcast(
             game_id,
             {
@@ -299,18 +289,8 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     else None
                 ),
                 "player_positions": state.player_positions,
-                "npc_positions": state.npc_positions,
-                "npc_rooms": state.npc_rooms,
             },
         )
-        if npc_results:
-            await manager.broadcast(
-                game_id,
-                {
-                    "type": "npc_moved",
-                    "npcs": npc_results,
-                },
-            )
         if next_pid:
             await manager.send_to_player(
                 game_id,
@@ -519,7 +499,7 @@ async def start_game(game_id: str):
     first_player_name = _player_name(state, state.whose_turn)
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
-    # Start background agent loop for any agent players
+    # Start background agent loop for any agent players (including wanderers)
     agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
         agents: dict[str, BaseAgent] = {}
@@ -528,6 +508,8 @@ async def start_game(game_id: str):
             ptype = player.type
             if ptype == "llm_agent":
                 agent: BaseAgent = LLMAgent()
+            elif ptype == "wanderer":
+                agent = WandererAgent()
             else:
                 agent = RandomAgent()
             cards = await game._load_player_cards(pid)

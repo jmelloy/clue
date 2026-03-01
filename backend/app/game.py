@@ -224,6 +224,21 @@ class ClueGame:
         if len(state.players) < 2:
             raise ValueError("Need at least 2 players to start")
 
+        # Auto-add wanderer players for unplayed suspects
+        taken_characters = {p.character for p in state.players}
+        for suspect in SUSPECTS:
+            if suspect not in taken_characters:
+                wanderer_id = "W_" + "".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=6)
+                )
+                wanderer = Player(
+                    id=wanderer_id,
+                    name=suspect,
+                    type="wanderer",
+                    character=suspect,
+                )
+                state.players.append(wanderer)
+
         solution = await self._load_solution()
 
         # Build deck of remaining cards (exclude solution cards)
@@ -234,7 +249,7 @@ class ClueGame:
         ]
         random.shuffle(deck)
 
-        # Deal cards round-robin
+        # Deal cards round-robin to all players (including wanderers)
         players = state.players
         num_players = len(players)
         dealt: dict[str, list[str]] = {p.id: [] for p in players}
@@ -257,17 +272,6 @@ class ClueGame:
             if start_key and start_key in START_POSITIONS:
                 row, col = START_POSITIONS[start_key]
                 state.player_positions[player.id] = [row, col]
-
-        # Initialize non-player characters (suspects not controlled by any player)
-        taken_characters = {p.character for p in players}
-        state.npc_positions = {}
-        state.npc_rooms = {}
-        for suspect in SUSPECTS:
-            if suspect not in taken_characters:
-                start_key = CHARACTER_START_KEY.get(suspect)
-                if start_key and start_key in START_POSITIONS:
-                    row, col = START_POSITIONS[start_key]
-                    state.npc_positions[suspect] = [row, col]
 
         await self._save_state(state)
 
@@ -416,7 +420,7 @@ class ClueGame:
                 matching_cards = matching
                 break
 
-        # Move the suggested suspect's player (or NPC) to the suggestion room
+        # Move the suggested suspect's player to the suggestion room
         moved_suspect_player = None
         for p in players:
             if p.character == suspect and p.id != player_id:
@@ -426,13 +430,6 @@ class ClueGame:
                 if center:
                     state.player_positions[moved_suspect_player] = list(center)
                 break
-
-        # If the suspect is an NPC, move them to the suggestion room
-        if suspect in state.npc_positions:
-            state.npc_rooms[suspect] = room
-            center = ROOM_CENTERS.get(room)
-            if center:
-                state.npc_positions[suspect] = list(center)
 
         suggestion_entry = Suggestion(
             suspect=suspect,
@@ -556,11 +553,13 @@ class ClueGame:
                     p.active = False
                     break
 
-            # Check if only one player left
-            active = [p for p in state.players if p.active]
-            if len(active) == 1:
+            # Check if only one non-wanderer player left
+            active_real = [
+                p for p in state.players if p.active and p.type != "wanderer"
+            ]
+            if len(active_real) == 1:
                 state.status = "finished"
-                state.winner = active[0].id
+                state.winner = active_real[0].id
 
             await self._save_state(state)
             result.update(
@@ -606,58 +605,6 @@ class ClueGame:
 
         result["next_player_id"] = next_player.id
         return result
-
-    async def wander_npcs(self) -> dict[str, dict] | None:
-        """Move each NPC toward a random room. Returns movement results or None."""
-        state = await self._load_state()
-        if state is None or state.status != "playing":
-            return None
-        if not state.npc_positions:
-            return None
-
-        results = {}
-        for suspect, pos in list(state.npc_positions.items()):
-            dice = self.roll_dice()
-            current_room_name = state.npc_rooms.get(suspect)
-
-            # Pick a random room to wander toward (different from current)
-            candidates = [r for r in ROOMS if r != current_room_name]
-            target_room = random.choice(candidates)
-
-            # Determine starting square on the board graph
-            if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
-                start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
-            else:
-                start_sq = _SQUARES.get((pos[0], pos[1]))
-
-            target_room_enum = _ROOM_NAME_TO_ENUM.get(target_room)
-
-            if start_sq and target_room_enum:
-                dest, reached = move_towards(
-                    start_sq, target_room_enum, dice, _SQUARES, _ROOM_NODES
-                )
-                if reached:
-                    state.npc_rooms[suspect] = target_room
-                    center = ROOM_CENTERS.get(target_room)
-                    if center:
-                        state.npc_positions[suspect] = list(center)
-                    results[suspect] = {
-                        "room": target_room,
-                        "position": state.npc_positions[suspect],
-                        "dice": dice,
-                    }
-                else:
-                    state.npc_rooms.pop(suspect, None)
-                    state.npc_positions[suspect] = [dest.row, dest.col]
-                    results[suspect] = {
-                        "room": None,
-                        "position": [dest.row, dest.col],
-                        "dice": dice,
-                    }
-            # else: no position info, skip this NPC
-
-        await self._save_state(state)
-        return results if results else None
 
     async def get_log(self) -> list[dict]:
         entries = await self.redis.lrange(self._log_key, 0, -1)
