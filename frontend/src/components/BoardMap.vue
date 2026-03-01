@@ -180,7 +180,7 @@ const props = defineProps({
   selectable: Boolean,
 })
 
-const emit = defineEmits(['select-room'])
+const emit = defineEmits(['select-room', 'select-position'])
 
 const cells = CELL_DATA
 
@@ -260,26 +260,12 @@ function cellStyle(cell) {
   return {}
 }
 
-function nearestRoom(row, col) {
-  let best = null
-  let bestDist = Infinity
-  for (const info of Object.values(ROOM_INFO)) {
-    const d = Math.abs(info.centerRow - row) + Math.abs(info.centerCol - col)
-    if (d < bestDist) {
-      bestDist = d
-      best = info.name
-    }
-  }
-  return best
-}
-
 function handleCellClick(cell) {
   if (!props.selectable) return
   if (cell.room) {
     emit('select-room', cell.room)
   } else if (cell.type === 'hallway' || cell.type === 'start') {
-    const room = nearestRoom(cell.row, cell.col)
-    if (room) emit('select-room', room)
+    emit('select-position', [cell.row, cell.col])
   }
 }
 

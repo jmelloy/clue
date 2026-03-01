@@ -410,10 +410,39 @@ class ClueGame:
         total = state.last_roll[0] if state.last_roll else 0
 
         room = action.get("room")
+        target_pos = action.get("position")
         if room and room not in ROOMS:
             raise ValueError(f"Invalid room: {room}")
 
-        if room:
+        if target_pos and not room:
+            # Position-based move: player clicked a specific hallway cell
+            target_row, target_col = int(target_pos[0]), int(target_pos[1])
+            target_sq = _SQUARES.get((target_row, target_col))
+            if not target_sq:
+                raise ValueError("Invalid position")
+
+            current_room_name = state.current_room.get(player_id)
+            pos = state.player_positions.get(player_id)
+            if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+                start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+            elif pos:
+                start_sq = _SQUARES.get((pos[0], pos[1]))
+            else:
+                start_sq = None
+
+            if start_sq:
+                reachable_squares = reachable(start_sq, total, _SQUARES, _ROOM_NODES)
+                if target_sq in reachable_squares:
+                    state.current_room.pop(player_id, None)
+                    state.player_positions[player_id] = [target_row, target_col]
+                    result["room"] = None
+                    result["position"] = [target_row, target_col]
+                else:
+                    raise ValueError("That position is not reachable with your roll")
+            else:
+                raise ValueError("Cannot determine current position")
+
+        elif room:
             # Determine the player's current position on the board graph
             current_room_name = state.current_room.get(player_id)
             pos = state.player_positions.get(player_id)

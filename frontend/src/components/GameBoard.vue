@@ -38,6 +38,7 @@
           :selected-room="targetRoom"
           :selectable="canMove"
           @select-room="onRoomSelected"
+          @select-position="onPositionSelected"
         />
 
         <!-- Player Legend -->
@@ -349,6 +350,12 @@ function onRoomSelected(room) {
     targetRoom.value = room
     emit('action', { type: 'move', room })
     targetRoom.value = ''
+  }
+}
+
+function onPositionSelected(position) {
+  if (canMove.value) {
+    emit('action', { type: 'move', position })
   }
 }
 
