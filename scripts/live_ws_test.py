@@ -6,22 +6,23 @@ Usage:
     # Start the Docker environment first:
     docker compose up -d
 
-    # Then run this script:
+    # Then run this script (from the repo root):
     python scripts/live_ws_test.py
 
     # Or point at a different server:
     python scripts/live_ws_test.py --base-url http://myserver:8000
 
 Prerequisites:
-    pip install httpx websockets
+    pip install httpx websockets pydantic
 
 This script:
   1. Creates a game via HTTP
   2. Joins 3 agents via HTTP
   3. Connects each agent to the WebSocket endpoint
   4. Starts the game and reads dealt cards from WebSocket messages
-  5. Plays the full game: agents decide actions, submit via HTTP, observe
-     all WebSocket broadcasts in real time
+  5. Plays the full game using the real RandomAgent class, mirroring the
+     server's _run_agent_loop: agents decide actions, submit via HTTP,
+     observe all WebSocket broadcasts in real time
   6. Verifies the game reaches a valid conclusion
   7. Prints a summary of all WebSocket message types received
 """
@@ -31,6 +32,12 @@ import asyncio
 import json
 import sys
 import time
+from pathlib import Path
+
+# Add the backend directory to sys.path so we can import the app package
+_backend_dir = str(Path(__file__).resolve().parent.parent / "backend")
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 import httpx
 
@@ -40,76 +47,9 @@ except ImportError:
     print("ERROR: 'websockets' package required. Install with: pip install websockets")
     sys.exit(1)
 
-# Inline a minimal version of the agent logic so we don't require the backend
-# to be importable (this script is meant to run standalone).
-
-SUSPECTS = [
-    "Miss Scarlett", "Colonel Mustard", "Mrs. White",
-    "Reverend Green", "Mrs. Peacock", "Professor Plum",
-]
-WEAPONS = ["Candlestick", "Knife", "Lead Pipe", "Revolver", "Rope", "Wrench"]
-ROOMS = [
-    "Kitchen", "Ballroom", "Conservatory", "Billiard Room",
-    "Library", "Study", "Hall", "Lounge", "Dining Room",
-]
-
-import random
-
-
-class SimpleAgent:
-    """Minimal agent that uses elimination logic (same as LLMAgent)."""
-
-    def __init__(self):
-        self.seen_cards: set[str] = set()
-        self.shown_to: dict[str, set[str]] = {}
-        self.rooms_suggested_in: set[str] = set()
-
-    def observe_own_cards(self, cards):
-        self.seen_cards.update(cards)
-
-    def observe_shown_card(self, card, shown_by=None):
-        self.seen_cards.add(card)
-
-    def observe_suggestion_no_show(self, suspect, weapon, room):
-        pass  # simplified
-
-    def decide_action(self, game_state, available_actions):
-        player_id = game_state.get("whose_turn")
-        current_room = (game_state.get("current_room") or {}).get(player_id)
-        dice_rolled = game_state.get("dice_rolled", False)
-
-        unknown_s = [s for s in SUSPECTS if s not in self.seen_cards]
-        unknown_w = [w for w in WEAPONS if w not in self.seen_cards]
-        unknown_r = [r for r in ROOMS if r not in self.seen_cards]
-
-        if (len(unknown_s) == 1 and len(unknown_w) == 1 and len(unknown_r) == 1
-                and "accuse" in available_actions):
-            return {"type": "accuse", "suspect": unknown_s[0],
-                    "weapon": unknown_w[0], "room": unknown_r[0]}
-
-        if not dice_rolled and "move" in available_actions:
-            fresh = [r for r in unknown_r if r not in self.rooms_suggested_in and r != current_room]
-            target = random.choice(fresh) if fresh else random.choice(
-                [r for r in ROOMS if r != current_room] or ROOMS
-            )
-            return {"type": "move", "room": target}
-
-        if current_room and "suggest" in available_actions:
-            suspect = random.choice(unknown_s) if unknown_s else random.choice(SUSPECTS)
-            weapon = random.choice(unknown_w) if unknown_w else random.choice(WEAPONS)
-            self.rooms_suggested_in.add(current_room)
-            return {"type": "suggest", "suspect": suspect, "weapon": weapon, "room": current_room}
-
-        return {"type": "end_turn"}
-
-    def decide_show_card(self, matching_cards, suggesting_player_id):
-        already_known = self.shown_to.get(suggesting_player_id, set())
-        for card in matching_cards:
-            if card in already_known:
-                return card
-        card = random.choice(matching_cards)
-        self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-        return card
+from app.agents import RandomAgent
+from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
+from app.models import GameState, PlayerState
 
 
 # ---------------------------------------------------------------------------
@@ -119,8 +59,31 @@ class SimpleAgent:
 MAX_TURNS = 500
 
 
+def _build_player_state(
+    game_state: GameState, player_id: str, cards: list[str],
+) -> PlayerState:
+    """Build a PlayerState from a GameState, player ID, and known cards.
+
+    Uses ClueGame.get_available_actions (which is pure logic, no Redis)
+    to compute the available actions for the player.
+    """
+    game = ClueGame("_", None)
+    available = game.get_available_actions(player_id, game_state)
+    return PlayerState(
+        **game_state.model_dump(),
+        your_cards=cards,
+        your_player_id=player_id,
+        available_actions=available,
+    )
+
+
 async def run_live_test(base_url: str, num_agents: int = 3):
-    """Run a full game against the live server."""
+    """Run a full game against the live server.
+
+    Mirrors the server-side _run_agent_loop pattern: check game state,
+    handle pending show_card requests, then let the active agent decide
+    and submit actions via HTTP.
+    """
     ws_base = base_url.replace("http://", "ws://").replace("https://", "wss://")
     http = httpx.AsyncClient(base_url=base_url, timeout=10)
 
@@ -193,52 +156,65 @@ async def run_live_test(base_url: str, num_agents: int = 3):
     # Step 5: Start game
     resp = await http.post(f"/games/{game_id}/start")
     assert resp.status_code == 200
-    state = resp.json()
-    print(f"[OK] Game started, first turn: {state['whose_turn']}")
+    print(f"[OK] Game started, first turn: {resp.json()['whose_turn']}")
 
     await asyncio.sleep(0.3)
 
-    # Extract dealt cards from WebSocket messages
-    agents: dict[str, SimpleAgent] = {}
+    # Extract dealt cards from WebSocket messages and create agents
+    agents: dict[str, RandomAgent] = {}
+    agent_cards: dict[str, list[str]] = {}
     for pid in pids:
         cards_msg = [m for m in ws_messages[pid]
                      if m["type"] == "game_started" and "your_cards" in m]
         assert len(cards_msg) >= 1, f"Player {pid} missing game_started with cards"
-        agents[pid] = SimpleAgent()
-        agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
-        print(f"     {pid}: {len(cards_msg[0]['your_cards'])} cards dealt")
+        cards = cards_msg[0]["your_cards"]
+        agent = RandomAgent()
+        agent.observe_own_cards(cards)
+        agents[pid] = agent
+        agent_cards[pid] = cards
+        print(f"     {pid}: {len(cards)} cards dealt")
 
     print(f"[OK] All agents received their cards via WebSocket")
     print()
     print("Playing game...")
 
-    # Step 6: Game loop
+    # Step 6: Main game loop (mirrors _run_agent_loop from main.py)
     actions_taken = 0
     start_time = time.time()
 
-    while state["status"] == "playing" and actions_taken < MAX_TURNS:
-        pending = state.get("pending_show_card")
-        if pending:
-            pid = pending["player_id"]
-            card = agents[pid].decide_show_card(
-                pending["matching_cards"],
-                pending["suggesting_player_id"],
+    # Fetch initial state as a GameState model
+    resp = await http.get(f"/games/{game_id}")
+    game_state = GameState.model_validate(resp.json())
+
+    while game_state.status == "playing" and actions_taken < MAX_TURNS:
+        pending = game_state.pending_show_card
+
+        if pending and pending.player_id in agents:
+            # An agent needs to show a card
+            pid = pending.player_id
+            agent = agents[pid]
+            card = await agent.decide_show_card(
+                pending.matching_cards,
+                pending.suggesting_player_id,
             )
             resp = await http.post(
                 f"/games/{game_id}/action",
                 json={"player_id": pid, "action": {"type": "show_card", "card": card}},
             )
             assert resp.status_code == 200, f"show_card failed: {resp.text}"
-            agents[pending["suggesting_player_id"]].observe_shown_card(card, shown_by=pid)
-        else:
-            pid = state["whose_turn"]
-            # Get available actions from the game state
-            resp = await http.get(f"/games/{game_id}")
-            full_state = resp.json()
+            # The suggesting player learns which card was shown
+            agents[pending.suggesting_player_id].observe_shown_card(
+                card, shown_by=pid,
+            )
 
-            # Determine available actions
-            avail = _compute_available_actions(pid, full_state)
-            action = agents[pid].decide_action(full_state, avail)
+        elif game_state.whose_turn in agents:
+            # It's an agent's turn — build player state and decide
+            pid = game_state.whose_turn
+            agent = agents[pid]
+            player_state = _build_player_state(
+                game_state, pid, agent_cards[pid],
+            )
+            action = await agent.decide_action(game_state, player_state)
             resp = await http.post(
                 f"/games/{game_id}/action",
                 json={"player_id": pid, "action": action},
@@ -246,26 +222,28 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             assert resp.status_code == 200, f"Action {action['type']} failed: {resp.text}"
             result = resp.json()
 
+            # If no one could show a card, the agent notes it
             if action["type"] == "suggest" and result.get("pending_show_by") is None:
-                agents[pid].observe_suggestion_no_show(
+                agent.observe_suggestion_no_show(
                     action["suspect"], action["weapon"], action["room"],
                 )
 
         # Give WebSocket messages time to arrive
         await asyncio.sleep(0.05)
 
+        # Refresh game state
         resp = await http.get(f"/games/{game_id}")
-        state = resp.json()
+        game_state = GameState.model_validate(resp.json())
         actions_taken += 1
 
     elapsed = time.time() - start_time
 
     # Step 7: Verify result
     print()
-    assert state["status"] == "finished", f"Game did not finish in {MAX_TURNS} actions"
+    assert game_state.status == "finished", f"Game did not finish in {MAX_TURNS} actions"
     print(f"[OK] Game finished in {actions_taken} actions ({elapsed:.1f}s)")
-    print(f"     Winner: {state['winner']}")
-    print(f"     Turns: {state.get('turn_number', '?')}")
+    print(f"     Winner: {game_state.winner}")
+    print(f"     Turns: {game_state.turn_number}")
 
     # Close WebSocket connections
     for ws in ws_connections.values():
@@ -315,35 +293,6 @@ async def run_live_test(base_url: str, num_agents: int = 3):
 
     await http.aclose()
     return True
-
-
-def _compute_available_actions(player_id: str, state: dict) -> list[str]:
-    """Compute available actions (mirrors game.get_available_actions)."""
-    actions = ["chat"]
-    if state.get("status") != "playing":
-        return actions
-
-    pending = state.get("pending_show_card")
-    if pending:
-        if pending["player_id"] == player_id:
-            actions.append("show_card")
-        return actions
-
-    if state.get("whose_turn") != player_id:
-        return actions
-
-    dice_rolled = state.get("dice_rolled", False)
-    current_room = (state.get("current_room") or {}).get(player_id)
-    suggestions_made = bool(state.get("suggestions_this_turn"))
-
-    if not dice_rolled:
-        actions.append("move")
-    elif current_room and not suggestions_made:
-        actions.append("suggest")
-
-    actions.append("accuse")
-    actions.append("end_turn")
-    return actions
 
 
 def main():
