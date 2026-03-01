@@ -27,15 +27,17 @@ REGISTRY="${REGISTRY:-$DEFAULT_REGISTRY}"
 TAG="${TAG:-latest}"
 NAMESPACE="clue"
 SKIP_BUILD=false
+SSH_TARGET="${SSH_TARGET:-}"
 
 # ── Parse flags ───────────────────────────────────────────────────────────────
 usage() {
-  echo "Usage: $0 [-r REGISTRY] [-t TAG] [-n NAMESPACE] [--skip-build]"
+  echo "Usage: $0 [-r REGISTRY] [-t TAG] [-n NAMESPACE] [--skip-build] [--ssh user@host]"
   echo ""
   echo "  -r REGISTRY   Container registry prefix (default: $DEFAULT_REGISTRY)"
   echo "  -t TAG         Image tag (default: latest)"
   echo "  -n NAMESPACE   Kubernetes namespace (default: clue)"
   echo "  --skip-build   Skip Docker build/push, only apply manifests"
+  echo "  --ssh TARGET   Run kubectl on remote host over SSH (e.g. ubuntu@k8s-box)"
   exit 1
 }
 
@@ -45,6 +47,7 @@ while [[ $# -gt 0 ]]; do
     -t) TAG="$2"; shift 2 ;;
     -n) NAMESPACE="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=true; shift ;;
+    --ssh) SSH_TARGET="$2"; shift 2 ;;
     -h|--help) usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
@@ -59,7 +62,40 @@ echo "    Tag:       $TAG"
 echo "    Namespace: $NAMESPACE"
 echo "    Backend:   $BACKEND_IMAGE"
 echo "    Frontend:  $FRONTEND_IMAGE"
+echo "    SSH:       ${SSH_TARGET:-local kubectl context}"
 echo ""
+
+kubectl_cmd() {
+  if [ -n "$SSH_TARGET" ]; then
+    local quoted_args=""
+    local arg
+    for arg in "$@"; do
+      quoted_args+=" $(printf '%q' "$arg")"
+    done
+    ssh "$SSH_TARGET" "kubectl${quoted_args}"
+  else
+    kubectl "$@"
+  fi
+}
+
+apply_manifest() {
+  local namespace="$1"
+  local manifest_path="$2"
+
+  if [ -n "$SSH_TARGET" ]; then
+    if [ -n "$namespace" ]; then
+      kubectl_cmd apply -n "$namespace" -f - < "$manifest_path"
+    else
+      kubectl_cmd apply -f - < "$manifest_path"
+    fi
+  else
+    if [ -n "$namespace" ]; then
+      kubectl_cmd apply -n "$namespace" -f "$manifest_path"
+    else
+      kubectl_cmd apply -f "$manifest_path"
+    fi
+  fi
+}
 
 # ── Build & push ──────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" = false ]; then
@@ -78,27 +114,27 @@ fi
 
 # ── Deploy to Kubernetes ──────────────────────────────────────────────────────
 echo "==> Creating namespace '$NAMESPACE' (if needed)..."
-kubectl apply -f "$ROOT_DIR/k8s/namespace.yaml"
+apply_manifest "" "$ROOT_DIR/k8s/namespace.yaml"
 
 echo "==> Deploying Redis..."
-kubectl apply -n "$NAMESPACE" -f "$ROOT_DIR/k8s/redis.yaml"
+apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/redis.yaml"
 
 echo "==> Deploying backend..."
-kubectl apply -n "$NAMESPACE" -f "$ROOT_DIR/k8s/backend.yaml"
-kubectl set image -n "$NAMESPACE" deployment/backend backend="$BACKEND_IMAGE"
+apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/backend.yaml"
+kubectl_cmd set image -n "$NAMESPACE" deployment/backend backend="$BACKEND_IMAGE"
 
 echo "==> Deploying frontend..."
-kubectl apply -n "$NAMESPACE" -f "$ROOT_DIR/k8s/frontend.yaml"
-kubectl set image -n "$NAMESPACE" deployment/frontend frontend="$FRONTEND_IMAGE"
+apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/frontend.yaml"
+kubectl_cmd set image -n "$NAMESPACE" deployment/frontend frontend="$FRONTEND_IMAGE"
 
 echo "==> Applying ingress..."
-kubectl apply -n "$NAMESPACE" -f "$ROOT_DIR/k8s/ingress.yaml"
+apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/ingress.yaml"
 
 echo "==> Waiting for rollouts..."
-kubectl rollout status -n "$NAMESPACE" deployment/redis --timeout=120s
-kubectl rollout status -n "$NAMESPACE" deployment/backend --timeout=120s
-kubectl rollout status -n "$NAMESPACE" deployment/frontend --timeout=120s
+kubectl_cmd rollout status -n "$NAMESPACE" deployment/redis --timeout=120s
+kubectl_cmd rollout status -n "$NAMESPACE" deployment/backend --timeout=120s
+kubectl_cmd rollout status -n "$NAMESPACE" deployment/frontend --timeout=120s
 
 echo ""
 echo "==> Deployment complete!"
-kubectl get pods -n "$NAMESPACE"
+kubectl_cmd get pods -n "$NAMESPACE"

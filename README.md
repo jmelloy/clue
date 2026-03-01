@@ -63,22 +63,19 @@ pytest tests/ -v
 
 ## Kubernetes Deployment
 
-Build and push the container images, then apply the manifests:
+Build, push, and deploy with the helper script:
 
 ```bash
-# Build images
-docker build -t clue-backend:latest ./backend
-docker build -t clue-frontend:latest ./frontend
-
-# Push to your registry (replace with your registry URL)
-docker tag clue-backend:latest <registry>/clue-backend:latest
-docker tag clue-frontend:latest <registry>/clue-frontend:latest
-docker push <registry>/clue-backend:latest
-docker push <registry>/clue-frontend:latest
-
-# Deploy
-kubectl apply -f k8s/
+./scripts/deploy.sh -r ghcr.io/<owner>/clue -t <tag>
 ```
+
+Deploy through SSH to a remote machine that has `kubectl` configured:
+
+```bash
+./scripts/deploy.sh -r ghcr.io/<owner>/clue -t <tag> --ssh <user>@<host>
+```
+
+You can also use `--skip-build` to only apply manifests and update image tags.
 
 The `k8s/` directory contains:
 
@@ -87,9 +84,9 @@ The `k8s/` directory contains:
 | `redis.yaml` | Redis deployment and ClusterIP service |
 | `backend.yaml` | FastAPI backend deployment and ClusterIP service |
 | `frontend.yaml` | nginx-based frontend deployment and ClusterIP service |
-| `ingress.yaml` | Ingress routing `/games` and `/ws` to backend, `/` to frontend |
+| `ingress.yaml` | Ingress for `clue.melloy.life`, routing `/games` and `/ws` to backend, `/` to frontend |
 
-Update the `image:` fields in `k8s/backend.yaml` and `k8s/frontend.yaml` to point to your registry before deploying.
+`scripts/deploy.sh` sets deployment images automatically via `kubectl set image`.
 
 ## API
 
