@@ -436,6 +436,12 @@ async def _run_agent_loop(game_id: str):
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
                 await _execute_action(game_id, pid, {"type": "show_card", "card": card})
+                # Broadcast personality chat for show_card
+                chat_msg = agent.generate_chat("show_card")
+                if chat_msg:
+                    s = await game.get_state()
+                    name = _player_name(s, pid) if s else pid
+                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
 
             elif pending:
                 # A non-agent (human) player must show a card — wait for them
@@ -462,7 +468,19 @@ async def _run_agent_loop(game_id: str):
                     action.get("type"),
                     game_id,
                 )
-                await _execute_action(game_id, pid, action)
+                result = await _execute_action(game_id, pid, action)
+                # Broadcast personality chat after the action
+                chat_context = {
+                    "dice": result.get("dice", ""),
+                    "room": result.get("room", action.get("room", "")),
+                    "suspect": action.get("suspect", ""),
+                    "weapon": action.get("weapon", ""),
+                }
+                chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
+                if chat_msg:
+                    s = await game.get_state()
+                    name = _player_name(s, pid) if s else pid
+                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
 
             else:
                 # Human player's turn — poll periodically
@@ -544,23 +562,32 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    # Pick a name not already taken
+    player_id = _new_player_id()
+
+    # Use a placeholder name; we'll rename to the assigned character below
     taken_names = {p.name for p in state.players}
-    agent_name = None
+    placeholder = None
     for name in _AGENT_NAMES:
         if name not in taken_names:
-            agent_name = name
+            placeholder = name
             break
-    if agent_name is None:
-        agent_name = f"Bot {len(state.players) + 1}"
+    if placeholder is None:
+        placeholder = f"Bot {len(state.players) + 1}"
 
-    player_id = _new_player_id()
     try:
-        player = await game.add_player(player_id, agent_name, agent_type)
+        player = await game.add_player(player_id, placeholder, agent_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    # Use the character name as the display name for more personality
     state = await game.get_state()
+    if player.character:
+        player.name = player.character
+        for p in state.players:
+            if p.id == player_id:
+                p.name = player.character
+                break
+        await game._save_state(state)
     await manager.broadcast(
         game_id,
         {
@@ -615,11 +642,16 @@ async def start_game(game_id: str):
                 agent = WandererAgent()
             else:
                 agent = RandomAgent()
+            agent.character = player.character
             cards = await game._load_player_cards(pid)
             agent.observe_own_cards(cards)
             agents[pid] = agent
             logger.info(
-                "Created %s agent for player %s in game %s", ptype, pid, game_id
+                "Created %s agent for player %s (%s) in game %s",
+                ptype,
+                pid,
+                player.character,
+                game_id,
             )
         _game_agents[game_id] = agents
         _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
