@@ -13,10 +13,18 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 from .agents import BaseAgent, LLMAgent, RandomAgent
 from .game import ClueGame
+from .models import (
+    ActionRequest,
+    ChatMessage,
+    ChatRequest,
+    GameState,
+    JoinRequest,
+    Player,
+    PlayerState,
+)
 from .ws_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -77,47 +85,27 @@ def _new_player_id() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-
-class JoinRequest(BaseModel):
-    player_name: str
-    player_type: str = "human"
-
-
-class ActionRequest(BaseModel):
-    player_id: str
-    action: dict
-
-
-class ChatRequest(BaseModel):
-    player_id: str
-    text: str
-
-
-# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _player_name(state: dict, player_id: str) -> str:
-    for p in state.get("players", []):
-        if p["id"] == player_id:
-            return p["name"]
+def _player_name(state: GameState, player_id: str) -> str:
+    for p in state.players:
+        if p.id == player_id:
+            return p.name
     return player_id
 
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message to all connected players and persist it."""
-    message = {
-        "player_id": player_id,
-        "text": text,
-        "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-    }
+    message = ChatMessage(
+        player_id=player_id,
+        text=text,
+        timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+    )
     game = ClueGame(game_id, redis_client)
     await game.add_chat_message(message)
-    await manager.broadcast(game_id, {"type": "chat_message", **message})
+    await manager.broadcast(game_id, {"type": "chat_message", **message.model_dump()})
 
 
 # ---------------------------------------------------------------------------
@@ -251,13 +239,13 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         next_name = _player_name(state, next_pid) if next_pid else "?"
         await manager.broadcast(game_id, {
             "type": "game_state",
-            "whose_turn": state["whose_turn"],
-            "turn_number": state["turn_number"],
-            "dice_rolled": state["dice_rolled"],
-            "last_roll": state["last_roll"],
-            "suggestions_this_turn": state["suggestions_this_turn"],
-            "pending_show_card": state["pending_show_card"],
-            "player_positions": state.get("player_positions", {}),
+            "whose_turn": state.whose_turn,
+            "turn_number": state.turn_number,
+            "dice_rolled": state.dice_rolled,
+            "last_roll": state.last_roll,
+            "suggestions_this_turn": [s.model_dump() for s in state.suggestions_this_turn],
+            "pending_show_card": state.pending_show_card.model_dump() if state.pending_show_card else None,
+            "player_positions": state.player_positions,
         })
         if next_pid:
             await manager.send_to_player(game_id, next_pid, {
@@ -316,25 +304,25 @@ async def _run_agent_loop(game_id: str):
         while True:
             game = ClueGame(game_id, redis_client)
             state = await game.get_state()
-            if state is None or state["status"] != "playing":
+            if state is None or state.status != "playing":
                 break
 
-            pending = state.get("pending_show_card")
-            if pending and pending["player_id"] in agents:
+            pending = state.pending_show_card
+            if pending and pending.player_id in agents:
                 # An agent needs to show a card
                 await asyncio.sleep(1)
                 # Re-check state (may have changed during sleep)
                 state = await game.get_state()
-                if not state or state["status"] != "playing":
+                if not state or state.status != "playing":
                     break
-                pending = state.get("pending_show_card")
-                if not pending or pending["player_id"] not in agents:
+                pending = state.pending_show_card
+                if not pending or pending.player_id not in agents:
                     continue
 
-                pid = pending["player_id"]
+                pid = pending.player_id
                 agent = agents[pid]
-                matching = pending["matching_cards"]
-                suggesting_pid = pending["suggesting_player_id"]
+                matching = pending.matching_cards
+                suggesting_pid = pending.suggesting_player_id
                 card = await agent.decide_show_card(matching, suggesting_pid)
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
@@ -344,20 +332,20 @@ async def _run_agent_loop(game_id: str):
                 # A non-agent (human) player must show a card — wait for them
                 await asyncio.sleep(0.5)
 
-            elif state["whose_turn"] in agents:
+            elif state.whose_turn in agents:
                 # It's an agent's turn — pace actions for human observers
                 await asyncio.sleep(1.5)
                 # Re-check state
                 state = await game.get_state()
-                if not state or state["status"] != "playing":
+                if not state or state.status != "playing":
                     break
-                pid = state["whose_turn"]
+                pid = state.whose_turn
                 if pid not in agents:
                     continue
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
-                action = await agent.decide_action(state, player_state)
+                action = await agent.decide_action(state.model_dump(), player_state.model_dump())
 
                 logger.info("Agent %s taking action %s in game %s", pid, action.get("type"), game_id)
                 await _execute_action(game_id, pid, action)
@@ -386,7 +374,7 @@ async def create_game():
     game_id = _new_id(6)
     game = ClueGame(game_id, redis_client)
     state = await game.create()
-    return {"game_id": game_id, "status": state["status"]}
+    return {"game_id": game_id, "status": state.status}
 
 
 @app.get("/healthz")
@@ -400,7 +388,7 @@ async def get_game(game_id: str):
     state = await game.get_state()
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
-    return state
+    return state.model_dump()
 
 
 @app.post("/games/{game_id}/join")
@@ -413,9 +401,13 @@ async def join_game(game_id: str, req: JoinRequest):
         raise HTTPException(status_code=400, detail=str(exc))
 
     state = await game.get_state()
-    await manager.broadcast(game_id, {"type": "player_joined", "player": player, "players": state["players"]})
-    await _broadcast_chat(game_id, f"{player['name']} joined the game.")
-    return {"player_id": player_id, "player": player}
+    await manager.broadcast(game_id, {
+        "type": "player_joined",
+        "player": player.model_dump(),
+        "players": [p.model_dump() for p in state.players],
+    })
+    await _broadcast_chat(game_id, f"{player.name} joined the game.")
+    return {"player_id": player_id, "player": player.model_dump()}
 
 
 @app.post("/games/{game_id}/start")
@@ -427,27 +419,27 @@ async def start_game(game_id: str):
         raise HTTPException(status_code=400, detail=str(exc))
 
     # Notify all players
-    for player in state["players"]:
-        pid = player["id"]
+    for player in state.players:
+        pid = player.id
         cards = await game._load_player_cards(pid)
         await manager.send_to_player(game_id, pid, {
             "type": "game_started",
             "your_cards": cards,
-            "whose_turn": state["whose_turn"],
+            "whose_turn": state.whose_turn,
             "available_actions": game.get_available_actions(pid, state),
         })
 
-    await manager.broadcast(game_id, {"type": "game_started", "state": state})
-    first_player_name = _player_name(state, state["whose_turn"])
+    await manager.broadcast(game_id, {"type": "game_started", "state": state.model_dump()})
+    first_player_name = _player_name(state, state.whose_turn)
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
     # Start background agent loop for any agent players
-    agent_players = [p for p in state["players"] if p.get("type") in _AGENT_PLAYER_TYPES]
+    agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
         agents: dict[str, BaseAgent] = {}
         for player in agent_players:
-            pid = player["id"]
-            ptype = player["type"]
+            pid = player.id
+            ptype = player.type
             if ptype == "llm_agent":
                 agent: BaseAgent = LLMAgent()
             else:
@@ -459,7 +451,7 @@ async def start_game(game_id: str):
         _game_agents[game_id] = agents
         _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
 
-    return state
+    return state.model_dump()
 
 
 @app.post("/games/{game_id}/action")
@@ -490,7 +482,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
         if player_state:
             await manager.send_to_player(game_id, player_id, {
                 "type": "game_state",
-                "state": player_state,
+                "state": player_state.model_dump(),
             })
         while True:
             data = await websocket.receive_text()
@@ -524,7 +516,7 @@ async def get_chat(game_id: str):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
     messages = await game.get_chat_messages()
-    return {"messages": messages}
+    return {"messages": [m.model_dump() for m in messages]}
 
 
 @app.post("/games/{game_id}/chat")
