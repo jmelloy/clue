@@ -159,15 +159,20 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
 
     elif action_type == "suggest":
         pending_show_by = result.get("pending_show_by")
+        moved_suspect_player = result.get("moved_suspect_player")
         actor_name = _player_name(state, player_id)
-        await manager.broadcast(game_id, {
+        suggestion_msg = {
             "type": "suggestion_made",
             "player_id": player_id,
             "suspect": result["suspect"],
             "weapon": result["weapon"],
             "room": result["room"],
             "pending_show_by": pending_show_by,
-        })
+        }
+        if moved_suspect_player:
+            suggestion_msg["moved_suspect_player"] = moved_suspect_player
+            suggestion_msg["player_positions"] = state.get("player_positions", {})
+        await manager.broadcast(game_id, suggestion_msg)
         if pending_show_by:
             pending_by_name = _player_name(state, pending_show_by)
             await manager.send_to_player(game_id, pending_show_by, {
