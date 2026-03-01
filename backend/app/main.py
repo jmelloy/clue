@@ -144,6 +144,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             "player_id": player_id,
             "dice": dice,
             "room": room,
+            "position": result.get("position"),
         })
         room_text = f" to {room}" if room else ""
         await _broadcast_chat(
@@ -256,6 +257,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             "last_roll": state["last_roll"],
             "suggestions_this_turn": state["suggestions_this_turn"],
             "pending_show_card": state["pending_show_card"],
+            "player_positions": state.get("player_positions", {}),
         })
         if next_pid:
             await manager.send_to_player(game_id, next_pid, {
