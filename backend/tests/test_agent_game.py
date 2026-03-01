@@ -10,7 +10,7 @@ import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
-from app.llm_agent import LLMAgent
+from app.agents import RandomAgent
 
 
 # ---------------------------------------------------------------------------
@@ -37,12 +37,12 @@ async def _setup_game(redis, num_agents=2):
     game = ClueGame("AGENTGAME", redis)
     await game.create()
 
-    agents: dict[str, LLMAgent] = {}
+    agents: dict[str, RandomAgent] = {}
     player_ids = []
     for i in range(num_agents):
         pid = f"AGENT{i}"
         await game.add_player(pid, f"Bot-{i}", "agent")
-        agents[pid] = LLMAgent()
+        agents[pid] = RandomAgent()
         player_ids.append(pid)
 
     state = await game.start()
@@ -55,7 +55,7 @@ async def _setup_game(redis, num_agents=2):
     return game, agents, state
 
 
-async def _run_game(game: ClueGame, agents: dict[str, LLMAgent],
+async def _run_game(game: ClueGame, agents: dict[str, RandomAgent],
                     initial_state: dict, max_turns: int = MAX_TURNS):
     """Drive the game loop until it finishes or hits the turn limit.
 
@@ -76,7 +76,7 @@ async def _run_game(game: ClueGame, agents: dict[str, LLMAgent],
             suggesting_pid = pending["suggesting_player_id"]
             matching = pending["matching_cards"]
 
-            card = agent.decide_show_card(matching, suggesting_pid)
+            card = await agent.decide_show_card(matching, suggesting_pid)
             action = {"type": "show_card", "card": card}
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
@@ -88,7 +88,7 @@ async def _run_game(game: ClueGame, agents: dict[str, LLMAgent],
             pid = state["whose_turn"]
             agent = agents[pid]
             player_state = await game.get_player_state(pid)
-            action = agent.decide_action(state, player_state)
+            action = await agent.decide_action(state, player_state)
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
 
@@ -267,7 +267,7 @@ async def test_multiple_games_all_finish(redis):
         for j in range(3):
             pid = f"P{j}"
             await game.add_player(pid, f"Bot-{j}", "agent")
-            agents[pid] = LLMAgent()
+            agents[pid] = RandomAgent()
 
         state = await game.start()
         for pid, agent in agents.items():

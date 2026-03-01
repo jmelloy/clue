@@ -15,8 +15,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .agents import BaseAgent, LLMAgent, RandomAgent
 from .game import ClueGame
-from .llm_agent import LLMAgent
 from .ws_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -60,9 +60,12 @@ app.add_middleware(
 
 manager = ConnectionManager()
 
-# Track LLM agent instances and background tasks per game
-_game_agents: dict[str, dict[str, LLMAgent]] = {}
+# Track agent instances and background tasks per game
+_game_agents: dict[str, dict[str, BaseAgent]] = {}
 _agent_tasks: dict[str, asyncio.Task] = {}
+
+# Player types that trigger the automated agent loop
+_AGENT_PLAYER_TYPES = {"agent", "llm_agent"}
 
 
 def _new_id(length: int = 6) -> str:
@@ -272,7 +275,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
 
 
 def _update_agent_observations(game_id: str, player_id: str, action: dict, result: dict):
-    """Update LLM agent observations based on action results."""
+    """Update agent observations based on action results."""
     agents = _game_agents.get(game_id)
     if not agents:
         return
@@ -330,7 +333,7 @@ async def _run_agent_loop(game_id: str):
                 agent = agents[pid]
                 matching = pending["matching_cards"]
                 suggesting_pid = pending["suggesting_player_id"]
-                card = agent.decide_show_card(matching, suggesting_pid)
+                card = await agent.decide_show_card(matching, suggesting_pid)
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
                 await _execute_action(game_id, pid, {"type": "show_card", "card": card})
@@ -348,7 +351,7 @@ async def _run_agent_loop(game_id: str):
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
-                action = agent.decide_action(state, player_state)
+                action = await agent.decide_action(state, player_state)
 
                 logger.info("Agent %s taking action %s in game %s", pid, action.get("type"), game_id)
                 await _execute_action(game_id, pid, action)
@@ -433,15 +436,20 @@ async def start_game(game_id: str):
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
     # Start background agent loop for any agent players
-    agent_players = [p for p in state["players"] if p.get("type") == "agent"]
+    agent_players = [p for p in state["players"] if p.get("type") in _AGENT_PLAYER_TYPES]
     if agent_players:
-        agents: dict[str, LLMAgent] = {}
+        agents: dict[str, BaseAgent] = {}
         for player in agent_players:
             pid = player["id"]
-            agent = LLMAgent()
+            ptype = player["type"]
+            if ptype == "llm_agent":
+                agent: BaseAgent = LLMAgent()
+            else:
+                agent = RandomAgent()
             cards = await game._load_player_cards(pid)
             agent.observe_own_cards(cards)
             agents[pid] = agent
+            logger.info("Created %s agent for player %s in game %s", ptype, pid, game_id)
         _game_agents[game_id] = agents
         _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
 
