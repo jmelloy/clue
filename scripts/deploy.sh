@@ -104,14 +104,10 @@ apply_manifest() {
 # ── Build & push ──────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" = false ]; then
   echo "==> Building backend image..."
-  docker build -t "$BACKEND_IMAGE" "$ROOT_DIR/backend"
-
-  echo "==> Building frontend image..."
-  docker build -t "$FRONTEND_IMAGE" "$ROOT_DIR/frontend"
+  docker build -t "$BACKEND_IMAGE" . -f "$ROOT_DIR/backend/Dockerfile"
 
   echo "==> Pushing images..."
   docker push "$BACKEND_IMAGE"
-  docker push "$FRONTEND_IMAGE"
 else
   echo "==> Skipping build (--skip-build)"
 fi
@@ -127,10 +123,6 @@ echo "==> Deploying backend..."
 apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/backend.yaml"
 kubectl_cmd set image -n "$NAMESPACE" deployment/backend backend="$BACKEND_IMAGE"
 
-echo "==> Deploying frontend..."
-apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/frontend.yaml"
-kubectl_cmd set image -n "$NAMESPACE" deployment/frontend frontend="$FRONTEND_IMAGE"
-
 if [ "$WITH_CERT_MANAGER" = true ]; then
   echo "==> Applying cert-manager ClusterIssuer..."
   apply_manifest "" "$ROOT_DIR/k8s/clusterissuer.yaml"
@@ -142,7 +134,6 @@ apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/ingress.yaml"
 echo "==> Waiting for rollouts..."
 kubectl_cmd rollout status -n "$NAMESPACE" deployment/redis --timeout=120s
 kubectl_cmd rollout status -n "$NAMESPACE" deployment/backend --timeout=120s
-kubectl_cmd rollout status -n "$NAMESPACE" deployment/frontend --timeout=120s
 
 echo ""
 echo "==> Deployment complete!"
