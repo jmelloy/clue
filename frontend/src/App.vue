@@ -1,12 +1,19 @@
 <template>
   <div id="clue-app">
-    <Lobby v-if="!gameId" @game-joined="onGameJoined" @observe="onObserve" />
+    <Lobby
+      v-if="!gameId"
+      :url-game-id="urlGameId"
+      @game-joined="onGameJoined"
+      @observe="onObserve"
+      @clear-url-game="urlGameId = null"
+    />
     <WaitingRoom
       v-else-if="gameStatus === 'waiting'"
       :game-id="gameId"
       :player-id="playerId"
       :players="players"
       @game-started="onGameStarted"
+      @leave-game="leaveGame"
     />
     <GameBoard
       v-else
@@ -27,7 +34,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Lobby from './components/Lobby.vue'
 import WaitingRoom from './components/WaitingRoom.vue'
 import GameBoard from './components/GameBoard.vue'
@@ -41,12 +48,63 @@ const showCardRequest = ref(null)
 const cardShown = ref(null)
 const chatMessages = ref([])
 const isObserver = ref(false)
+const urlGameId = ref(null)
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
 
 let ws = null
 let reconnectTimer = null
+
+// --- URL routing ---
+
+function parseGameIdFromUrl() {
+  const match = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)/)
+  return match ? match[1].toUpperCase() : null
+}
+
+function pushGameUrl(gid) {
+  const url = `/game/${gid}`
+  if (window.location.pathname !== url) {
+    window.history.pushState({ gameId: gid }, '', url)
+  }
+}
+
+function pushLobbyUrl() {
+  if (window.location.pathname !== '/') {
+    window.history.pushState({}, '', '/')
+  }
+}
+
+function onPopState() {
+  const gid = parseGameIdFromUrl()
+  if (gid && gameId.value && gid === gameId.value) {
+    // Already on this game, nothing to do
+    return
+  }
+  if (!gid) {
+    // Back to lobby
+    leaveGame()
+  } else if (gid !== gameId.value) {
+    // Navigated to a different game URL
+    resetState()
+    urlGameId.value = gid
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('popstate', onPopState)
+  const gid = parseGameIdFromUrl()
+  if (gid) {
+    urlGameId.value = gid
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('popstate', onPopState)
+})
+
+// --- WebSocket ---
 
 function connectWS() {
   if (!gameId.value || !playerId.value) return
@@ -178,11 +236,42 @@ function handleMessage(msg) {
   }
 }
 
+// --- Game lifecycle ---
+
+function resetState() {
+  if (ws) {
+    ws.onclose = null // prevent reconnect
+    ws.close()
+    ws = null
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+  gameId.value = null
+  playerId.value = null
+  gameState.value = null
+  yourCards.value = []
+  availableActions.value = []
+  showCardRequest.value = null
+  cardShown.value = null
+  chatMessages.value = []
+  isObserver.value = false
+}
+
+function leaveGame() {
+  resetState()
+  urlGameId.value = null
+  pushLobbyUrl()
+}
+
 function onGameJoined({ gameId: gid, playerId: pid, state }) {
   gameId.value = gid
   playerId.value = pid
   gameState.value = state
   isObserver.value = false
+  urlGameId.value = null
+  pushGameUrl(gid)
   connectWS()
   loadChat(gid)
 }
@@ -192,6 +281,7 @@ function onObserve({ gameId: gid }) {
   // Generate a random observer ID for WS connection
   playerId.value = 'OBS_' + Math.random().toString(36).substring(2, 10)
   isObserver.value = true
+  urlGameId.value = null
 
   // Fetch current state
   fetch(`/games/${gid}`)
@@ -199,6 +289,7 @@ function onObserve({ gameId: gid }) {
     .then(state => { gameState.value = state })
     .catch(() => {})
 
+  pushGameUrl(gid)
   connectWS()
   loadChat(gid)
 }

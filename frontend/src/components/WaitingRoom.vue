@@ -5,8 +5,8 @@
 
     <div class="game-id-box">
       <span>Game ID: <strong>{{ gameId }}</strong></span>
-      <button class="copy-btn" @click="copyId" :title="copied ? 'Copied!' : 'Copy to clipboard'">
-        {{ copied ? 'Copied!' : 'Copy' }}
+      <button class="copy-btn" @click="copyLink" :title="copied ? 'Copied!' : 'Copy invite link'">
+        {{ copied ? 'Copied!' : 'Copy Link' }}
       </button>
     </div>
 
@@ -33,6 +33,7 @@
     </button>
     <p v-if="players.length < 2" class="hint">Need at least 2 players to start.</p>
     <p v-if="error" class="error">{{ error }}</p>
+    <button class="leave-btn" @click="$emit('leave-game')">Leave Game</button>
   </div>
 </template>
 
@@ -62,7 +63,7 @@ const props = defineProps({
   playerId: String,
   players: Array,
 })
-const emit = defineEmits(['game-started'])
+const emit = defineEmits(['game-started', 'leave-game'])
 
 const error = ref('')
 const copied = ref(false)
@@ -76,8 +77,9 @@ function tokenStyle(player) {
   return { backgroundColor: colors.bg, color: colors.text }
 }
 
-function copyId() {
-  navigator.clipboard.writeText(props.gameId)
+function copyLink() {
+  const url = `${window.location.origin}/game/${props.gameId}`
+  navigator.clipboard.writeText(url)
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
 }
@@ -253,5 +255,20 @@ li:last-child {
   color: #e74c3c;
   margin-top: 0.5rem;
   font-size: 0.9rem;
+}
+
+.leave-btn {
+  background: transparent;
+  border: none;
+  color: #667;
+  font-weight: normal;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.leave-btn:hover {
+  color: #aab;
 }
 </style>

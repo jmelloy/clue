@@ -9,8 +9,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -513,11 +514,27 @@ async def send_chat(game_id: str, req: ChatRequest):
 
 
 # ---------------------------------------------------------------------------
+# SPA fallback for /game/{id} routes
+# ---------------------------------------------------------------------------
+
+_static_dir = Path(__file__).parent.parent / "static"
+
+
+@app.get("/game/{game_id}")
+async def spa_game_route(game_id: str):
+    """Serve index.html for /game/{id} so the Vue SPA can handle routing."""
+    index = _static_dir / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    # In dev mode (no static build), return a minimal redirect
+    return FileResponse(str(index)) if index.exists() else {"detail": "Not found"}
+
+
+# ---------------------------------------------------------------------------
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
 
 # NOTE: Static files must be mounted LAST — it acts as a catch-all and would
 # shadow any API routes defined after this point.
-_static_dir = Path(__file__).parent.parent / "static"
 if _static_dir.exists():
     app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
