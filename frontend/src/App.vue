@@ -158,7 +158,11 @@ function handleMessage(msg) {
     case 'game_started':
       if (msg.your_cards) yourCards.value = msg.your_cards
       if (msg.available_actions) availableActions.value = msg.available_actions
-      if (gameState.value) {
+      if (msg.state) {
+        // Broadcast with full state object — use it directly
+        gameState.value = msg.state
+      } else if (gameState.value) {
+        // Individual per-player message with top-level fields
         gameState.value = { ...gameState.value, status: 'playing', whose_turn: msg.whose_turn }
       }
       break
@@ -312,6 +316,8 @@ async function sendAction(action) {
     body: JSON.stringify({ player_id: playerId.value, action })
   })
   if (res.ok) {
+    const result = await res.json()
+    if (result.available_actions) availableActions.value = result.available_actions
     // Refresh full state to stay in sync
     try {
       const stateRes = await fetch(`/games/${gameId.value}`)
