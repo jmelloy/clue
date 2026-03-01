@@ -2,7 +2,7 @@
 node_modules/
 frontend/node_modules/
 dist/
-backend/static/assets/
+backend/static/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
