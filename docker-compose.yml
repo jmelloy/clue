@@ -6,7 +6,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       - REDIS_URL=redis://redis:6379
       - DEBUG=${DEBUG:-false}
