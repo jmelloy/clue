@@ -13,24 +13,11 @@ spec:
   rules:
     - http:
         paths:
-          - path: /games
-            pathType: Prefix
-            backend:
-              service:
-                name: backend
-                port:
-                  number: 8000
-          - path: /ws
-            pathType: Prefix
-            backend:
-              service:
-                name: backend
-                port:
-                  number: 8000
+          # Backend serves API, WebSocket, and static assets (Vue SPA)
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: frontend
+                name: backend
                 port:
-                  number: 80
+                  number: 8000

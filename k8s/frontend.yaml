@@ -1,3 +1,7 @@
+# NOTE: This frontend deployment is NOT required when static assets are served
+# from the backend image (the default). The backend Dockerfile includes a
+# multi-stage build that bundles the Vue SPA into backend/static/.
+# Keep this manifest only if you want to run a standalone nginx frontend.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

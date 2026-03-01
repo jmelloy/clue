@@ -16,7 +16,9 @@ spec:
     spec:
       containers:
         - name: backend
+          # Build from repo root: docker build -f backend/Dockerfile .
           # Replace with your registry image, e.g. ghcr.io/your-org/clue-backend:v1.0.0
+          # This image includes the frontend static assets (Vue SPA build).
           image: clue-backend:latest
           ports:
             - containerPort: 8000
