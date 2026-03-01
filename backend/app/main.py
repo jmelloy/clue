@@ -18,6 +18,7 @@ from .agents import BaseAgent, LLMAgent, RandomAgent
 from .game import ClueGame
 from .models import (
     ActionRequest,
+    AddAgentRequest,
     ChatMessage,
     ChatRequest,
     GameState,
@@ -454,6 +455,52 @@ async def join_game(game_id: str, req: JoinRequest):
     player_id = _new_player_id()
     try:
         player = await game.add_player(player_id, req.player_name, req.player_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    state = await game.get_state()
+    await manager.broadcast(
+        game_id,
+        {
+            "type": "player_joined",
+            "player": player.model_dump(),
+            "players": [p.model_dump() for p in state.players],
+        },
+    )
+    await _broadcast_chat(game_id, f"{player.name} joined the game.")
+    return {"player_id": player_id, "player": player.model_dump()}
+
+
+_AGENT_NAMES = [
+    "Bot Alice", "Bot Bob", "Bot Carol", "Bot Dave", "Bot Eve", "Bot Frank",
+]
+
+
+@app.post("/games/{game_id}/add_agent")
+async def add_agent(game_id: str, req: AddAgentRequest | None = None):
+    """Add an AI agent to a game in the waiting room."""
+    agent_type = req.agent_type if req else "agent"
+    if agent_type not in _AGENT_PLAYER_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid agent type")
+
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Pick a name not already taken
+    taken_names = {p.name for p in state.players}
+    agent_name = None
+    for name in _AGENT_NAMES:
+        if name not in taken_names:
+            agent_name = name
+            break
+    if agent_name is None:
+        agent_name = f"Bot {len(state.players) + 1}"
+
+    player_id = _new_player_id()
+    try:
+        player = await game.add_player(player_id, agent_name, agent_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
