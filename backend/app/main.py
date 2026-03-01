@@ -139,50 +139,70 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         actor_name = _player_name(state, player_id)
         room = result.get("room")
         dice = result.get("dice")
-        await manager.broadcast(game_id, {
-            "type": "player_moved",
-            "player_id": player_id,
-            "dice": dice,
-            "room": room,
-            "position": result.get("position"),
-        })
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "player_moved",
+                "player_id": player_id,
+                "dice": dice,
+                "room": room,
+                "position": result.get("position"),
+            },
+        )
         room_text = f" to {room}" if room else ""
         await _broadcast_chat(
             game_id,
             f"{actor_name} rolled {dice} and moved{room_text}.",
             player_id,
         )
-        await manager.send_to_player(game_id, player_id, {
-            "type": "your_turn",
-            "available_actions": game.get_available_actions(player_id, state),
-        })
+        await manager.send_to_player(
+            game_id,
+            player_id,
+            {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(player_id, state),
+            },
+        )
 
     elif action_type == "suggest":
         pending_show_by = result.get("pending_show_by")
         actor_name = _player_name(state, player_id)
-        await manager.broadcast(game_id, {
-            "type": "suggestion_made",
-            "player_id": player_id,
-            "suspect": result["suspect"],
-            "weapon": result["weapon"],
-            "room": result["room"],
-            "pending_show_by": pending_show_by,
-        })
-        if pending_show_by:
-            pending_by_name = _player_name(state, pending_show_by)
-            await manager.send_to_player(game_id, pending_show_by, {
-                "type": "show_card_request",
-                "suggesting_player_id": player_id,
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "suggestion_made",
+                "player_id": player_id,
                 "suspect": result["suspect"],
                 "weapon": result["weapon"],
                 "room": result["room"],
-                "available_actions": game.get_available_actions(pending_show_by, state),
-            })
+                "pending_show_by": pending_show_by,
+            },
+        )
+        if pending_show_by:
+            pending_by_name = _player_name(state, pending_show_by)
+            await manager.send_to_player(
+                game_id,
+                pending_show_by,
+                {
+                    "type": "show_card_request",
+                    "suggesting_player_id": player_id,
+                    "suspect": result["suspect"],
+                    "weapon": result["weapon"],
+                    "room": result["room"],
+                    "available_actions": game.get_available_actions(
+                        pending_show_by, state
+                    ),
+                },
+            )
             # Update suggesting player's actions (they must wait for card to be shown)
-            await manager.send_to_player(game_id, player_id, {
-                "type": "your_turn",
-                "available_actions": game.get_available_actions(player_id, state),
-            })
+            await manager.send_to_player(
+                game_id,
+                player_id,
+                {
+                    "type": "your_turn",
+                    "available_actions": game.get_available_actions(player_id, state),
+                },
+            )
             chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. {pending_by_name} must show a card."
@@ -192,10 +212,14 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. No one could show a card."
             )
-            await manager.send_to_player(game_id, player_id, {
-                "type": "your_turn",
-                "available_actions": game.get_available_actions(player_id, state),
-            })
+            await manager.send_to_player(
+                game_id,
+                player_id,
+                {
+                    "type": "your_turn",
+                    "available_actions": game.get_available_actions(player_id, state),
+                },
+            )
         await _broadcast_chat(game_id, chat_text, player_id)
 
     elif action_type == "show_card":
@@ -203,17 +227,26 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         suggesting_player_id = result.get("suggesting_player_id")
         shown_by_name = _player_name(state, player_id)
         shown_to_name = _player_name(state, suggesting_player_id)
-        await manager.send_to_player(game_id, suggesting_player_id, {
-            "type": "card_shown",
-            "shown_by": player_id,
-            "card": card,
-            "available_actions": game.get_available_actions(suggesting_player_id, state),
-        })
-        await manager.broadcast(game_id, {
-            "type": "card_shown_public",
-            "shown_by": player_id,
-            "shown_to": suggesting_player_id,
-        })
+        await manager.send_to_player(
+            game_id,
+            suggesting_player_id,
+            {
+                "type": "card_shown",
+                "shown_by": player_id,
+                "card": card,
+                "available_actions": game.get_available_actions(
+                    suggesting_player_id, state
+                ),
+            },
+        )
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "card_shown_public",
+                "shown_by": player_id,
+                "shown_to": suggesting_player_id,
+            },
+        )
         await _broadcast_chat(
             game_id,
             f"{shown_by_name} showed a card to {shown_to_name}.",
@@ -249,21 +282,28 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         next_pid = result.get("next_player_id")
         actor_name = _player_name(state, player_id)
         next_name = _player_name(state, next_pid) if next_pid else "?"
-        await manager.broadcast(game_id, {
-            "type": "game_state",
-            "whose_turn": state["whose_turn"],
-            "turn_number": state["turn_number"],
-            "dice_rolled": state["dice_rolled"],
-            "last_roll": state["last_roll"],
-            "suggestions_this_turn": state["suggestions_this_turn"],
-            "pending_show_card": state["pending_show_card"],
-            "player_positions": state.get("player_positions", {}),
-        })
+        await manager.broadcast(
+            game_id,
+            {
+                "type": "game_state",
+                "whose_turn": state["whose_turn"],
+                "turn_number": state["turn_number"],
+                "dice_rolled": state["dice_rolled"],
+                "last_roll": state["last_roll"],
+                "suggestions_this_turn": state["suggestions_this_turn"],
+                "pending_show_card": state["pending_show_card"],
+                "player_positions": state.get("player_positions", {}),
+            },
+        )
         if next_pid:
-            await manager.send_to_player(game_id, next_pid, {
-                "type": "your_turn",
-                "available_actions": game.get_available_actions(next_pid, state),
-            })
+            await manager.send_to_player(
+                game_id,
+                next_pid,
+                {
+                    "type": "your_turn",
+                    "available_actions": game.get_available_actions(next_pid, state),
+                },
+            )
         await _broadcast_chat(
             game_id,
             f"{actor_name} ended their turn. It is now {next_name}'s turn.",
@@ -276,7 +316,9 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     return result
 
 
-def _update_agent_observations(game_id: str, player_id: str, action: dict, result: dict):
+def _update_agent_observations(
+    game_id: str, player_id: str, action: dict, result: dict
+):
     """Update agent observations based on action results."""
     agents = _game_agents.get(game_id)
     if not agents:
@@ -295,7 +337,9 @@ def _update_agent_observations(game_id: str, player_id: str, action: dict, resul
         # If no one could show a card, the suggesting agent notes this
         if result.get("pending_show_by") is None and player_id in agents:
             agents[player_id].observe_suggestion_no_show(
-                action["suspect"], action["weapon"], action["room"],
+                action["suspect"],
+                action["weapon"],
+                action["room"],
             )
 
 
@@ -359,7 +403,12 @@ async def _run_agent_loop(game_id: str):
                 player_state = await game.get_player_state(pid)
                 action = await agent.decide_action(state, player_state)
 
-                logger.info("Agent %s taking action %s in game %s", pid, action.get("type"), game_id)
+                logger.info(
+                    "Agent %s taking action %s in game %s",
+                    pid,
+                    action.get("type"),
+                    game_id,
+                )
                 await _execute_action(game_id, pid, action)
 
             else:
@@ -413,7 +462,10 @@ async def join_game(game_id: str, req: JoinRequest):
         raise HTTPException(status_code=400, detail=str(exc))
 
     state = await game.get_state()
-    await manager.broadcast(game_id, {"type": "player_joined", "player": player, "players": state["players"]})
+    await manager.broadcast(
+        game_id,
+        {"type": "player_joined", "player": player, "players": state["players"]},
+    )
     await _broadcast_chat(game_id, f"{player['name']} joined the game.")
     return {"player_id": player_id, "player": player}
 
@@ -430,19 +482,25 @@ async def start_game(game_id: str):
     for player in state["players"]:
         pid = player["id"]
         cards = await game._load_player_cards(pid)
-        await manager.send_to_player(game_id, pid, {
-            "type": "game_started",
-            "your_cards": cards,
-            "whose_turn": state["whose_turn"],
-            "available_actions": game.get_available_actions(pid, state),
-        })
+        await manager.send_to_player(
+            game_id,
+            pid,
+            {
+                "type": "game_started",
+                "your_cards": cards,
+                "whose_turn": state["whose_turn"],
+                "available_actions": game.get_available_actions(pid, state),
+            },
+        )
 
     await manager.broadcast(game_id, {"type": "game_started", "state": state})
     first_player_name = _player_name(state, state["whose_turn"])
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
     # Start background agent loop for any agent players
-    agent_players = [p for p in state["players"] if p.get("type") in _AGENT_PLAYER_TYPES]
+    agent_players = [
+        p for p in state["players"] if p.get("type") in _AGENT_PLAYER_TYPES
+    ]
     if agent_players:
         agents: dict[str, BaseAgent] = {}
         for player in agent_players:
@@ -455,7 +513,9 @@ async def start_game(game_id: str):
             cards = await game._load_player_cards(pid)
             agent.observe_own_cards(cards)
             agents[pid] = agent
-            logger.info("Created %s agent for player %s in game %s", ptype, pid, game_id)
+            logger.info(
+                "Created %s agent for player %s in game %s", ptype, pid, game_id
+            )
         _game_agents[game_id] = agents
         _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
 
@@ -488,10 +548,14 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
     try:
         player_state = await game.get_player_state(player_id)
         if player_state:
-            await manager.send_to_player(game_id, player_id, {
-                "type": "game_state",
-                "state": player_state,
-            })
+            await manager.send_to_player(
+                game_id,
+                player_id,
+                {
+                    "type": "game_state",
+                    "state": player_state,
+                },
+            )
         while True:
             data = await websocket.receive_text()
             # Clients can send ping/keep-alive or chat messages
@@ -507,7 +571,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
                         name = _player_name(s, player_id) if s else player_id
                         await _broadcast_chat(game_id, f"{name}: {text}", player_id)
             except Exception:
-                logger.debug("Ignoring non-JSON WebSocket message from %s/%s", game_id, player_id)
+                logger.debug(
+                    "Ignoring non-JSON WebSocket message from %s/%s", game_id, player_id
+                )
     except WebSocketDisconnect:
         manager.disconnect(game_id, player_id)
 
