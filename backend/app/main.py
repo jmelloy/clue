@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .game import ClueGame
+from .llm_agent import LLMAgent
 from .ws_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,11 @@ async def lifespan(app: FastAPI):
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     redis_client = aioredis.from_url(redis_url, decode_responses=True)
     yield
+    # Cancel any running agent loops
+    for task in _agent_tasks.values():
+        task.cancel()
+    _agent_tasks.clear()
+    _game_agents.clear()
     await redis_client.aclose()
 
 
@@ -51,6 +58,10 @@ app.add_middleware(
 )
 
 manager = ConnectionManager()
+
+# Track LLM agent instances and background tasks per game
+_game_agents: dict[str, dict[str, LLMAgent]] = {}
+_agent_tasks: dict[str, asyncio.Task] = {}
 
 
 def _new_id(length: int = 6) -> str:
@@ -103,6 +114,247 @@ async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None)
     game = ClueGame(game_id, redis_client)
     await game.add_chat_message(message)
     await manager.broadcast(game_id, {"type": "chat_message", **message})
+
+
+# ---------------------------------------------------------------------------
+# Action execution (shared by HTTP endpoint and agent loop)
+# ---------------------------------------------------------------------------
+
+
+async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
+    """Process a game action and broadcast WebSocket messages.
+
+    Returns the action result dict. Raises ValueError on invalid actions.
+    """
+    game = ClueGame(game_id, redis_client)
+    result = await game.process_action(player_id, action)
+    state = await game.get_state()
+    action_type = action.get("type")
+
+    if action_type == "move":
+        actor_name = _player_name(state, player_id)
+        room = result.get("room")
+        dice = result.get("dice")
+        await manager.broadcast(game_id, {
+            "type": "player_moved",
+            "player_id": player_id,
+            "dice": dice,
+            "room": room,
+        })
+        room_text = f" to {room}" if room else ""
+        await _broadcast_chat(
+            game_id,
+            f"{actor_name} rolled {dice} and moved{room_text}.",
+            player_id,
+        )
+        await manager.send_to_player(game_id, player_id, {
+            "type": "your_turn",
+            "available_actions": game.get_available_actions(player_id, state),
+        })
+
+    elif action_type == "suggest":
+        pending_show_by = result.get("pending_show_by")
+        actor_name = _player_name(state, player_id)
+        await manager.broadcast(game_id, {
+            "type": "suggestion_made",
+            "player_id": player_id,
+            "suspect": result["suspect"],
+            "weapon": result["weapon"],
+            "room": result["room"],
+            "pending_show_by": pending_show_by,
+        })
+        if pending_show_by:
+            pending_by_name = _player_name(state, pending_show_by)
+            await manager.send_to_player(game_id, pending_show_by, {
+                "type": "show_card_request",
+                "suggesting_player_id": player_id,
+                "suspect": result["suspect"],
+                "weapon": result["weapon"],
+                "room": result["room"],
+                "available_actions": game.get_available_actions(pending_show_by, state),
+            })
+            chat_text = (
+                f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
+                f" in the {result['room']}. {pending_by_name} must show a card."
+            )
+        else:
+            chat_text = (
+                f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
+                f" in the {result['room']}. No one could show a card."
+            )
+            await manager.send_to_player(game_id, player_id, {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(player_id, state),
+            })
+        await _broadcast_chat(game_id, chat_text, player_id)
+
+    elif action_type == "show_card":
+        card = result.get("card")
+        suggesting_player_id = result.get("suggesting_player_id")
+        shown_by_name = _player_name(state, player_id)
+        shown_to_name = _player_name(state, suggesting_player_id)
+        await manager.send_to_player(game_id, suggesting_player_id, {
+            "type": "card_shown",
+            "shown_by": player_id,
+            "card": card,
+            "available_actions": game.get_available_actions(suggesting_player_id, state),
+        })
+        await manager.broadcast(game_id, {
+            "type": "card_shown_public",
+            "shown_by": player_id,
+            "shown_to": suggesting_player_id,
+        })
+        await _broadcast_chat(
+            game_id,
+            f"{shown_by_name} showed a card to {shown_to_name}.",
+            player_id,
+        )
+
+    elif action_type == "accuse":
+        actor_name = _player_name(state, player_id)
+        msg = {
+            "type": "accusation_made",
+            "player_id": player_id,
+            "correct": result.get("correct"),
+        }
+        if result.get("correct"):
+            msg["type"] = "game_over"
+            msg["winner"] = result.get("winner")
+            msg["solution"] = result.get("solution")
+            chat_text = (
+                f"{actor_name} accuses {action.get('suspect')} with the"
+                f" {action.get('weapon')} in the {action.get('room')}."
+                f" Correct! {actor_name} wins!"
+            )
+        else:
+            chat_text = (
+                f"{actor_name} accuses {action.get('suspect')} with the"
+                f" {action.get('weapon')} in the {action.get('room')}."
+                f" Wrong! {actor_name} is eliminated."
+            )
+        await manager.broadcast(game_id, msg)
+        await _broadcast_chat(game_id, chat_text, player_id)
+
+    elif action_type == "end_turn":
+        next_pid = result.get("next_player_id")
+        actor_name = _player_name(state, player_id)
+        next_name = _player_name(state, next_pid) if next_pid else "?"
+        await manager.broadcast(game_id, {
+            "type": "game_state",
+            "whose_turn": state["whose_turn"],
+            "turn_number": state["turn_number"],
+        })
+        if next_pid:
+            await manager.send_to_player(game_id, next_pid, {
+                "type": "your_turn",
+                "available_actions": game.get_available_actions(next_pid, state),
+            })
+        await _broadcast_chat(
+            game_id,
+            f"{actor_name} ended their turn. It is now {next_name}'s turn.",
+            player_id,
+        )
+
+    # Update agent observations for any active agents in this game
+    _update_agent_observations(game_id, player_id, action, result)
+
+    return result
+
+
+def _update_agent_observations(game_id: str, player_id: str, action: dict, result: dict):
+    """Update LLM agent observations based on action results."""
+    agents = _game_agents.get(game_id)
+    if not agents:
+        return
+
+    action_type = action.get("type")
+
+    if action_type == "show_card":
+        # The suggesting player learns which card was shown
+        suggesting_pid = result.get("suggesting_player_id")
+        card = result.get("card")
+        if suggesting_pid and suggesting_pid in agents and card:
+            agents[suggesting_pid].observe_shown_card(card, shown_by=player_id)
+
+    elif action_type == "suggest":
+        # If no one could show a card, the suggesting agent notes this
+        if result.get("pending_show_by") is None and player_id in agents:
+            agents[player_id].observe_suggestion_no_show(
+                action["suspect"], action["weapon"], action["room"],
+            )
+
+
+# ---------------------------------------------------------------------------
+# Agent background loop
+# ---------------------------------------------------------------------------
+
+
+async def _run_agent_loop(game_id: str):
+    """Background task that drives agent players in a game."""
+    agents = _game_agents.get(game_id)
+    if not agents:
+        return
+
+    logger.info("Agent loop started for game %s with %d agent(s)", game_id, len(agents))
+
+    try:
+        while True:
+            game = ClueGame(game_id, redis_client)
+            state = await game.get_state()
+            if state is None or state["status"] != "playing":
+                break
+
+            pending = state.get("pending_show_card")
+            if pending and pending["player_id"] in agents:
+                # An agent needs to show a card
+                await asyncio.sleep(1)
+                # Re-check state (may have changed during sleep)
+                state = await game.get_state()
+                if not state or state["status"] != "playing":
+                    break
+                pending = state.get("pending_show_card")
+                if not pending or pending["player_id"] not in agents:
+                    continue
+
+                pid = pending["player_id"]
+                agent = agents[pid]
+                matching = pending["matching_cards"]
+                suggesting_pid = pending["suggesting_player_id"]
+                card = agent.decide_show_card(matching, suggesting_pid)
+
+                logger.info("Agent %s showing card in game %s", pid, game_id)
+                await _execute_action(game_id, pid, {"type": "show_card", "card": card})
+
+            elif state["whose_turn"] in agents:
+                # It's an agent's turn — pace actions for human observers
+                await asyncio.sleep(1.5)
+                # Re-check state
+                state = await game.get_state()
+                if not state or state["status"] != "playing":
+                    break
+                pid = state["whose_turn"]
+                if pid not in agents:
+                    continue
+
+                agent = agents[pid]
+                player_state = await game.get_player_state(pid)
+                action = agent.decide_action(state, player_state)
+
+                logger.info("Agent %s taking action %s in game %s", pid, action.get("type"), game_id)
+                await _execute_action(game_id, pid, action)
+
+            else:
+                # Human player's turn — poll periodically
+                await asyncio.sleep(0.5)
+
+    except asyncio.CancelledError:
+        logger.info("Agent loop cancelled for game %s", game_id)
+    except Exception:
+        logger.exception("Agent loop error in game %s", game_id)
+    finally:
+        _game_agents.pop(game_id, None)
+        _agent_tasks.pop(game_id, None)
+        logger.info("Agent loop ended for game %s", game_id)
 
 
 # ---------------------------------------------------------------------------
@@ -169,150 +421,29 @@ async def start_game(game_id: str):
     await manager.broadcast(game_id, {"type": "game_started", "state": state})
     first_player_name = _player_name(state, state["whose_turn"])
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
+
+    # Start background agent loop for any agent players
+    agent_players = [p for p in state["players"] if p.get("type") == "agent"]
+    if agent_players:
+        agents: dict[str, LLMAgent] = {}
+        for player in agent_players:
+            pid = player["id"]
+            agent = LLMAgent()
+            cards = await game._load_player_cards(pid)
+            agent.observe_own_cards(cards)
+            agents[pid] = agent
+        _game_agents[game_id] = agents
+        _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
+
     return state
 
 
 @app.post("/games/{game_id}/action")
 async def submit_action(game_id: str, req: ActionRequest):
-    game = ClueGame(game_id, redis_client)
     try:
-        result = await game.process_action(req.player_id, req.action)
+        result = await _execute_action(game_id, req.player_id, req.action)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-
-    state = await game.get_state()
-    action_type = req.action.get("type")
-
-    if action_type == "move":
-        actor_name = _player_name(state, req.player_id)
-        room = result.get("room")
-        dice = result.get("dice")
-        await manager.broadcast(game_id, {
-            "type": "player_moved",
-            "player_id": req.player_id,
-            "dice": dice,
-            "room": room,
-        })
-        room_text = f" to {room}" if room else ""
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} rolled {dice} and moved{room_text}.",
-            req.player_id,
-        )
-        # Notify the current player of their updated available actions
-        await manager.send_to_player(game_id, req.player_id, {
-            "type": "your_turn",
-            "available_actions": game.get_available_actions(req.player_id, state),
-        })
-
-    elif action_type == "suggest":
-        pending_show_by = result.get("pending_show_by")
-        actor_name = _player_name(state, req.player_id)
-        # Broadcast without the card info
-        await manager.broadcast(game_id, {
-            "type": "suggestion_made",
-            "player_id": req.player_id,
-            "suspect": result["suspect"],
-            "weapon": result["weapon"],
-            "room": result["room"],
-            "pending_show_by": pending_show_by,
-        })
-        if pending_show_by:
-            pending_by_name = _player_name(state, pending_show_by)
-            # Ask the player who needs to show a card
-            await manager.send_to_player(game_id, pending_show_by, {
-                "type": "show_card_request",
-                "suggesting_player_id": req.player_id,
-                "suspect": result["suspect"],
-                "weapon": result["weapon"],
-                "room": result["room"],
-                "available_actions": game.get_available_actions(pending_show_by, state),
-            })
-            chat_text = (
-                f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
-                f" in the {result['room']}. {pending_by_name} must show a card."
-            )
-        else:
-            chat_text = (
-                f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
-                f" in the {result['room']}. No one could show a card."
-            )
-            # No card to show -- update suggesting player's available actions
-            await manager.send_to_player(game_id, req.player_id, {
-                "type": "your_turn",
-                "available_actions": game.get_available_actions(req.player_id, state),
-            })
-        await _broadcast_chat(game_id, chat_text, req.player_id)
-
-    elif action_type == "show_card":
-        card = result.get("card")
-        suggesting_player_id = result.get("suggesting_player_id")
-        shown_by_name = _player_name(state, req.player_id)
-        shown_to_name = _player_name(state, suggesting_player_id)
-        # Only the suggesting player sees the card
-        await manager.send_to_player(game_id, suggesting_player_id, {
-            "type": "card_shown",
-            "shown_by": req.player_id,
-            "card": card,
-            "available_actions": game.get_available_actions(suggesting_player_id, state),
-        })
-        # Broadcast that a card was shown (without revealing which card)
-        await manager.broadcast(game_id, {
-            "type": "card_shown_public",
-            "shown_by": req.player_id,
-            "shown_to": suggesting_player_id,
-        })
-        await _broadcast_chat(
-            game_id,
-            f"{shown_by_name} showed a card to {shown_to_name}.",
-            req.player_id,
-        )
-
-    elif action_type == "accuse":
-        actor_name = _player_name(state, req.player_id)
-        msg = {
-            "type": "accusation_made",
-            "player_id": req.player_id,
-            "correct": result.get("correct"),
-        }
-        if result.get("correct"):
-            msg["type"] = "game_over"
-            msg["winner"] = result.get("winner")
-            msg["solution"] = result.get("solution")
-            chat_text = (
-                f"{actor_name} accuses {req.action.get('suspect')} with the"
-                f" {req.action.get('weapon')} in the {req.action.get('room')}."
-                f" Correct! {actor_name} wins!"
-            )
-        else:
-            chat_text = (
-                f"{actor_name} accuses {req.action.get('suspect')} with the"
-                f" {req.action.get('weapon')} in the {req.action.get('room')}."
-                f" Wrong! {actor_name} is eliminated."
-            )
-        await manager.broadcast(game_id, msg)
-        await _broadcast_chat(game_id, chat_text, req.player_id)
-
-    elif action_type == "end_turn":
-        next_pid = result.get("next_player_id")
-        actor_name = _player_name(state, req.player_id)
-        next_name = _player_name(state, next_pid) if next_pid else "?"
-        await manager.broadcast(game_id, {
-            "type": "game_state",
-            "whose_turn": state["whose_turn"],
-            "turn_number": state["turn_number"],
-        })
-        if next_pid:
-            await manager.send_to_player(game_id, next_pid, {
-                "type": "your_turn",
-                "available_actions": game.get_available_actions(next_pid, state),
-            })
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} ended their turn. It is now {next_name}'s turn.",
-            req.player_id,
-        )
-
     return result
 
 
