@@ -24,6 +24,17 @@
       </ul>
     </section>
 
+    <div class="add-agent-section" v-if="players.length < 6">
+      <div class="add-agent-buttons">
+        <button class="add-agent-btn" @click="addAgent('agent')" :disabled="addingAgent">
+          + Add Agent
+        </button>
+        <button class="add-agent-btn llm" @click="addAgent('llm_agent')" :disabled="addingAgent">
+          + Add LLM Agent
+        </button>
+      </div>
+    </div>
+
     <button
       class="start-btn"
       :disabled="players.length < 2"
@@ -67,6 +78,7 @@ const emit = defineEmits(['game-started', 'leave-game'])
 
 const error = ref('')
 const copied = ref(false)
+const addingAgent = ref(false)
 
 function abbr(character) {
   return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? '?'
@@ -82,6 +94,26 @@ function copyLink() {
   navigator.clipboard.writeText(url)
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
+}
+
+async function addAgent(agentType) {
+  error.value = ''
+  addingAgent.value = true
+  try {
+    const res = await fetch(`/games/${props.gameId}/add_agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_type: agentType })
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      error.value = data.detail ?? 'Failed to add agent'
+    }
+  } catch (e) {
+    error.value = 'Error: ' + e.message
+  } finally {
+    addingAgent.value = false
+  }
 }
 
 async function startGame() {
@@ -222,6 +254,46 @@ li:last-child {
   color: #8899aa;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.add-agent-section {
+  margin-bottom: 1rem;
+}
+
+.add-agent-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.add-agent-btn {
+  background: #0f3460;
+  color: #aab;
+  border: 1px solid #334;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.add-agent-btn:hover:not(:disabled) {
+  border-color: #c9a84c;
+  color: #c9a84c;
+}
+
+.add-agent-btn.llm {
+  border-color: #8e44ad40;
+}
+
+.add-agent-btn.llm:hover:not(:disabled) {
+  border-color: #8e44ad;
+  color: #8e44ad;
+}
+
+.add-agent-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .start-btn {

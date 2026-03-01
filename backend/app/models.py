@@ -75,6 +75,10 @@ class JoinRequest(BaseModel):
     player_type: str = "human"
 
 
+class AddAgentRequest(BaseModel):
+    agent_type: str = "agent"  # "agent" or "llm_agent"
+
+
 class ActionRequest(BaseModel):
     player_id: str
     action: dict
