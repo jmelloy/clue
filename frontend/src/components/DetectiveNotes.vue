@@ -9,6 +9,7 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
+        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
         <span class="note-card">{{ card }}</span>
@@ -23,6 +24,7 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
+        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
         <span class="note-card">{{ card }}</span>
@@ -37,6 +39,7 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
+        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
         <span class="note-card">{{ card }}</span>
@@ -62,6 +65,8 @@ const props = defineProps({
 
 // notes: card -> state string
 const notes = reactive({})
+// Track who showed each card
+const shownByMap = reactive({})
 
 // Auto-mark cards in hand
 watch(
@@ -103,10 +108,17 @@ function cycleNote(card) {
 }
 
 // Expose for parent to programmatically mark cards
-function markCard(card, state) {
+function markCard(card, state, shownBy) {
   if (notes[card] !== 'have') {
     notes[card] = state
+    if (shownBy) shownByMap[card] = shownBy
   }
+}
+
+function noteTitle(card) {
+  const state = notes[card] ?? ''
+  if (state === 'seen' && shownByMap[card]) return `Shown by ${shownByMap[card]}`
+  return ''
 }
 
 defineExpose({ markCard })
@@ -173,6 +185,10 @@ h4 {
 
 .note-have .note-mark {
   color: #2ecc71;
+}
+
+.note-seen {
+  color: #888;
 }
 
 .note-seen .note-mark {
