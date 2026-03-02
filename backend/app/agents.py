@@ -1482,6 +1482,16 @@ class LLMAgent(BaseAgent):
             len(self.unrefuted_suggestions),
         )
 
+        # Auto-roll: if "roll" is the only meaningful action, skip the LLM call
+        non_filler = [a for a in available if a not in ("accuse", "end_turn")]
+        if non_filler == ["roll"]:
+            logger.info(
+                "[%s:%s] Auto-rolling (only option is roll, skipping LLM call)",
+                self.agent_type,
+                player_id,
+            )
+            return {"type": "roll"}
+
         # Build prompt and call LLM
         personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
         system_prompt = _ACTION_SYSTEM_PROMPT.format(
@@ -1604,6 +1614,18 @@ class LLMAgent(BaseAgent):
             suggesting_player_id,
             sorted(self.shown_to.get(suggesting_player_id, set())),
         )
+
+        # Auto-show: if only one card matches, show it without calling the LLM
+        if len(matching_cards) == 1:
+            card = matching_cards[0]
+            self.shown_to.setdefault(suggesting_player_id, set()).add(card)
+            logger.info(
+                "[%s] Auto-showing '%s' to %s (only matching card, skipping LLM call)",
+                self.agent_type,
+                card,
+                suggesting_player_id,
+            )
+            return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
         logger.info(
