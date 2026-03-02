@@ -25,7 +25,41 @@
           </span>
         </p>
 
-        <div v-if="urlGameCanJoin" class="join-section">
+        <!-- Rejoin as existing player -->
+        <div v-if="urlGameState?.players?.length" class="rejoin-section">
+          <h3>Join as:</h3>
+          <ul class="player-list">
+            <li
+              v-for="p in urlGameState.players"
+              :key="p.id"
+              class="player-item"
+              :class="{ eliminated: !p.active && urlGameState.status !== 'waiting' }"
+              @click="rejoinAs(p)"
+            >
+              <span class="player-character">{{ p.character }}</span>
+              <span class="player-name">{{ p.name }}</span>
+              <span v-if="!p.active && urlGameState.status !== 'waiting'" class="player-tag eliminated-tag">Eliminated</span>
+              <span v-else-if="p.type !== 'human'" class="player-tag agent-tag">{{ p.type }}</span>
+            </li>
+          </ul>
+          <button class="observe-btn full-width" @click="observeUrlGame">Watch as Observer</button>
+
+          <details v-if="urlGameCanJoin" class="join-new-details">
+            <summary>Join as a new player</summary>
+            <div class="join-section">
+              <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
+              <select v-model="playerType">
+                <option value="human">Human</option>
+                <option value="agent">Random Agent</option>
+                <option value="llm_agent">LLM Agent</option>
+              </select>
+              <button :disabled="!playerName" @click="joinUrlGame">Join Game</button>
+            </div>
+          </details>
+        </div>
+
+        <!-- No players yet -->
+        <div v-else-if="urlGameCanJoin" class="join-section">
           <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
           <select v-model="playerType">
             <option value="human">Human</option>
@@ -87,7 +121,7 @@ const props = defineProps({
   urlGameId: { type: String, default: null },
 })
 
-const emit = defineEmits(['game-joined', 'observe', 'clear-url-game'])
+const emit = defineEmits(['game-joined', 'observe', 'rejoin', 'clear-url-game'])
 
 const playerName = ref('')
 const playerType = ref('human')
@@ -146,6 +180,10 @@ async function joinUrlGame() {
 
 function observeUrlGame() {
   emit('observe', { gameId: props.urlGameId })
+}
+
+function rejoinAs(player) {
+  emit('rejoin', { gameId: props.urlGameId, playerId: player.id })
 }
 
 async function createGame() {
@@ -336,5 +374,86 @@ button:disabled {
   color: #e74c3c;
   margin-top: 1rem;
   font-size: 0.9rem;
+}
+
+.rejoin-section h3 {
+  font-size: 0.95rem;
+  color: #aab;
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+
+.player-list {
+  list-style: none;
+  margin-bottom: 1rem;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+  margin-bottom: 0.35rem;
+}
+
+.player-item:hover {
+  background: #0f3460;
+  border-color: #c9a84c;
+}
+
+.player-item.eliminated {
+  opacity: 0.5;
+}
+
+.player-character {
+  font-weight: bold;
+  color: #c9a84c;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.player-name {
+  flex: 1;
+  text-align: left;
+  color: #ddd;
+}
+
+.player-tag {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.eliminated-tag {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
+.agent-tag {
+  background: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+}
+
+.join-new-details {
+  margin-top: 0.75rem;
+}
+
+.join-new-details summary {
+  color: #667;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.join-new-details summary:hover {
+  color: #aab;
+}
+
+.join-new-details .join-section {
+  margin-top: 0.75rem;
 }
 </style>
