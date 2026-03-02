@@ -213,6 +213,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     if action_type == "roll":
         actor_name = _player_name(state, player_id)
         dice = result.get("dice")
+        reachable_targets = game.get_reachable_targets(player_id, state, dice)
         await manager.broadcast(
             game_id,
             {
@@ -220,6 +221,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "player_id": player_id,
                 "dice": dice,
                 "last_roll": state.last_roll,
+                "reachable_rooms": reachable_targets["reachable_rooms"],
             },
         )
         await _broadcast_chat(
@@ -233,6 +235,8 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             {
                 "type": "your_turn",
                 "available_actions": game.get_available_actions(player_id, state),
+                "reachable_rooms": reachable_targets["reachable_rooms"],
+                "reachable_positions": reachable_targets["reachable_positions"],
             },
         )
 

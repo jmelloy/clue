@@ -11,6 +11,7 @@ from .board import (
     ROOM_CENTERS,
     SECRET_PASSAGES,
     Room,
+    SquareType,
     build_grid,
     build_graph,
     reachable,
@@ -316,6 +317,44 @@ class ClueGame:
 
     def roll_dice(self) -> int:
         return random.randint(1, 6)
+
+    def get_reachable_targets(
+        self, player_id: str, state: "GameState", dice: int
+    ) -> dict:
+        """Compute which rooms and hallway squares are reachable with the given dice roll.
+
+        Returns a dict with:
+          - reachable_rooms: list of room names the player can enter
+          - reachable_positions: list of [row, col] hallway positions reachable
+        """
+        current_room_name = state.current_room.get(player_id)
+        pos = state.player_positions.get(player_id)
+
+        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+            start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+        elif pos:
+            start_sq = _SQUARES.get((pos[0], pos[1]))
+        else:
+            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
+
+        if not start_sq:
+            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
+
+        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES)
+
+        rooms = []
+        positions = []
+        for sq, dist in reached.items():
+            if sq.type == SquareType.ROOM and sq.room:
+                rooms.append(sq.room.value)
+            elif sq != start_sq and sq.type in (
+                SquareType.HALLWAY,
+                SquareType.DOOR,
+                SquareType.START,
+            ):
+                positions.append([sq.row, sq.col])
+
+        return {"reachable_rooms": rooms, "reachable_positions": positions}
 
     async def process_action(self, player_id: str, action: dict) -> dict:
         state = await self._load_state()

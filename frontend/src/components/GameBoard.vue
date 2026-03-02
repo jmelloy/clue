@@ -38,6 +38,8 @@
           :player-id="playerId"
           :selected-room="targetRoom"
           :selectable="canMove"
+          :reachable-rooms="reachableRooms"
+          :reachable-positions="reachablePositions"
           @select-room="onRoomSelected"
           @select-position="onPositionSelected"
         />
@@ -159,10 +161,15 @@
           <!-- Move (choose room after rolling) -->
           <div v-if="canMove" class="action-group">
             <h3>Move (rolled {{ gameState?.last_roll?.[0] }})</h3>
-            <p class="action-hint">Click a room on the board or select below:</p>
+            <p class="action-hint">
+              Click a highlighted room on the board or select below:
+              <span v-if="reachableRooms.length" class="reachable-count">{{ reachableRooms.length }} room{{ reachableRooms.length !== 1 ? 's' : '' }} reachable</span>
+            </p>
             <select v-model="targetRoom" class="action-select">
               <option value="">-- Choose a room --</option>
-              <option v-for="room in ROOMS" :key="room" :value="room">{{ room }}</option>
+              <option v-for="room in ROOMS" :key="room" :value="room" :class="{ 'reachable-option': reachableRooms.includes(room) }">
+                {{ room }}{{ reachableRooms.includes(room) ? ' ✓' : '' }}
+              </option>
             </select>
             <button class="action-btn move-btn" :disabled="!targetRoom" @click="doMove">
               Move{{ targetRoom ? ' to ' + targetRoom : '' }}
@@ -296,6 +303,8 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
+  reachableRooms: { type: Array, default: () => [] },
+  reachablePositions: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
@@ -908,6 +917,13 @@ watch(
   font-size: 0.75rem;
   color: #667;
   margin-bottom: 0.3rem;
+}
+
+.reachable-count {
+  display: inline-block;
+  color: #2ecc71;
+  font-weight: bold;
+  margin-left: 0.3rem;
 }
 
 .action-select {
