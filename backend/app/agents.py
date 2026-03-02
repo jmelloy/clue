@@ -1482,9 +1482,16 @@ class LLMAgent(BaseAgent):
             len(self.unrefuted_suggestions),
         )
 
-        # Auto-roll: if "roll" is the only meaningful action, skip the LLM call
+        # Auto-roll: if "roll" is the only meaningful action and the agent
+        # hasn't narrowed all categories to one unknown (ready to accuse),
+        # skip the LLM call.
+        can_accuse = (
+            len(unknown_suspects) == 1
+            and len(unknown_weapons) == 1
+            and len(unknown_rooms) == 1
+        )
         non_filler = [a for a in available if a not in ("accuse", "end_turn")]
-        if non_filler == ["roll"]:
+        if non_filler == ["roll"] and not can_accuse:
             logger.info(
                 "[%s:%s] Auto-rolling (only option is roll, skipping LLM call)",
                 self.agent_type,
