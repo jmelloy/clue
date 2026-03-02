@@ -79,7 +79,7 @@ _agent_tasks: dict[str, asyncio.Task] = {}
 
 # Auto-end-turn timers: game_id -> asyncio.Task
 _auto_end_timers: dict[str, asyncio.Task] = {}
-AUTO_END_TURN_SECONDS = 10
+AUTO_END_TURN_SECONDS = 7
 
 # Player types that trigger the automated agent loop
 _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
