@@ -80,10 +80,17 @@ jobs:
       - name: Create namespace
         run: kubectl apply -f k8s/namespace.yaml
 
+      - name: Deploy secrets
+        run: |
+          kubectl create secret generic backend-secrets \
+            --namespace=clue \
+            --from-literal=LLM_API_KEY="${{ secrets.LLM_API_KEY }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy Redis
         run: kubectl apply -n clue -f k8s/redis.yaml
 
-      - name: Deploy backend        
+      - name: Deploy backend
         run: |
           TAG=${{ steps.tag.outputs.tag }}
           sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${TAG}|" k8s/backend.yaml \
