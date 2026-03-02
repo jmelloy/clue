@@ -133,6 +133,10 @@ async def _auto_end_turn_task(game_id: str, player_id: str, turn_number: int):
     """Wait AUTO_END_TURN_SECONDS then auto-end the player's turn if still valid."""
     try:
         await asyncio.sleep(AUTO_END_TURN_SECONDS)
+        # Remove ourselves from the timer dict BEFORE calling _execute_action,
+        # otherwise _execute_action -> _cancel_auto_end_timer will cancel this
+        # running task, causing CancelledError before the end_turn completes.
+        _auto_end_timers.pop(game_id, None)
         game = ClueGame(game_id, redis_client)
         state = await game.get_state()
         if (
