@@ -438,7 +438,7 @@ watch(
   () => props.cardShown,
   (shown) => {
     if (shown?.card && notesRef.value) {
-      notesRef.value.markCard(shown.card, 'seen')
+      notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
     }
   }
 )
