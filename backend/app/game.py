@@ -8,6 +8,7 @@ from .board import (
     ROOM_CENTERS,
     SECRET_PASSAGES,
     Room,
+    SquareType,
     build_grid,
     build_graph,
     reachable,
@@ -197,6 +198,29 @@ class ClueGame:
             actions.append("end_turn")
 
         return actions
+
+    def get_reachable_positions(self, player_id: str, state: GameState) -> list:
+        """Return reachable hallway positions as [row, col] pairs for the player."""
+        if not state.dice_rolled or state.moved:
+            return []
+        total = state.last_roll[0] if state.last_roll else 0
+        current_room_name = state.current_room.get(player_id)
+        pos = state.player_positions.get(player_id)
+        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+            start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+        elif pos:
+            start_sq = _SQUARES.get((pos[0], pos[1]))
+        else:
+            return []
+        reached = reachable(start_sq, total, _SQUARES, _ROOM_NODES)
+        positions = []
+        for sq in reached:
+            if sq.type == SquareType.ROOM:
+                continue
+            if sq == start_sq:
+                continue
+            positions.append([sq.row, sq.col])
+        return positions
 
     async def get_player_state(self, player_id: str) -> PlayerState | None:
         state = await self._load_state()

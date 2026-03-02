@@ -178,6 +178,7 @@ const props = defineProps({
   playerId: String,
   selectedRoom: String,
   selectable: Boolean,
+  reachablePositions: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['select-room', 'select-position'])
@@ -185,6 +186,14 @@ const emit = defineEmits(['select-room', 'select-position'])
 const cells = CELL_DATA
 
 const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
+
+const reachableSet = computed(() => {
+  const s = new Set()
+  for (const pos of props.reachablePositions) {
+    s.add(`${pos[0]},${pos[1]}`)
+  }
+  return s
+})
 
 const roomLabels = computed(() => Object.values(ROOM_INFO))
 
@@ -248,7 +257,10 @@ function cellClasses(cell) {
     if (props.selectedRoom === cell.room) cls.push('selected')
     if (currentRoom.value === cell.room) cls.push('my-room')
   } else if ((cell.type === 'hallway' || cell.type === 'start') && props.selectable) {
-    cls.push('clickable')
+    const key = `${cell.row},${cell.col}`
+    if (reachableSet.value.size === 0 || reachableSet.value.has(key)) {
+      cls.push('clickable')
+    }
   }
   return cls
 }
@@ -265,7 +277,10 @@ function handleCellClick(cell) {
   if (cell.room) {
     emit('select-room', cell.room)
   } else if (cell.type === 'hallway' || cell.type === 'start') {
-    emit('select-position', [cell.row, cell.col])
+    const key = `${cell.row},${cell.col}`
+    if (reachableSet.value.size === 0 || reachableSet.value.has(key)) {
+      emit('select-position', [cell.row, cell.col])
+    }
   }
 }
 

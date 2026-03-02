@@ -38,6 +38,7 @@
           :player-id="playerId"
           :selected-room="targetRoom"
           :selectable="canMove"
+          :reachable-positions="reachablePositions"
           @select-room="onRoomSelected"
           @select-position="onPositionSelected"
         />
@@ -273,6 +274,7 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
+  reachablePositions: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])

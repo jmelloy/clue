@@ -229,6 +229,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             {
                 "type": "your_turn",
                 "available_actions": game.get_available_actions(player_id, state),
+                "reachable_positions": game.get_reachable_positions(player_id, state),
             },
         )
 
