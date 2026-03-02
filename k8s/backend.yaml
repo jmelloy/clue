@@ -24,6 +24,8 @@ spec:
           env:
             - name: REDIS_URL
               value: redis://redis:6379
+            - name: AGENT_MODE
+              value: external
             # Set CORS_ORIGINS to restrict allowed origins in production,
             # e.g. "https://yourdomain.com". Defaults to "*" if unset.
             # - name: CORS_ORIGINS

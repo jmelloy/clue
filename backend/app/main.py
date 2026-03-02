@@ -84,6 +84,9 @@ AUTO_END_TURN_SECONDS = 15
 # Player types that trigger the automated agent loop
 _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
 
+# Agent mode: "inline" runs agents in-process (legacy), "external" relies on agent_runner
+_AGENT_MODE = os.getenv("AGENT_MODE", "inline")
+
 
 def _new_id(length: int = 6) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -452,6 +455,9 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     # Update agent observations for any active agents in this game
     _update_agent_observations(game_id, player_id, action, result)
 
+    # Publish observation events to Redis for external agent runners
+    await _publish_agent_event(game_id, player_id, action, result)
+
     # Check if the current player should get an auto-end-turn timer
     await _maybe_start_auto_end_timer(game_id)
 
@@ -513,6 +519,48 @@ def _update_agent_observations(
                 action["weapon"],
                 action["room"],
             )
+
+
+# ---------------------------------------------------------------------------
+# Agent observation events (Redis-backed for external agent runner)
+# ---------------------------------------------------------------------------
+
+
+async def _publish_agent_event(
+    game_id: str, player_id: str, action: dict, result: dict
+):
+    """Publish observation events to Redis for external agent runners."""
+    if not redis_client:
+        return
+
+    action_type = action.get("type")
+    event = None
+
+    if action_type == "show_card":
+        event = {
+            "type": "show_card",
+            "shown_by": player_id,
+            "shown_to": result.get("suggesting_player_id"),
+            "card": result.get("card"),
+            "suspect": result.get("suspect", ""),
+            "weapon": result.get("weapon", ""),
+            "room": result.get("room", ""),
+        }
+    elif action_type == "suggest":
+        event = {
+            "type": "suggest",
+            "suggesting_player_id": player_id,
+            "suspect": action["suspect"],
+            "weapon": action["weapon"],
+            "room": action["room"],
+            "shown_by": result.get("pending_show_by"),
+            "players_without_match": result.get("players_without_match", []),
+        }
+
+    if event:
+        key = f"game:{game_id}:agent_events"
+        await redis_client.rpush(key, json.dumps(event))
+        await redis_client.expire(key, 86400)
 
 
 # ---------------------------------------------------------------------------
@@ -758,30 +806,55 @@ async def start_game(game_id: str):
     # Start background agent loop for any agent players (including wanderers)
     agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
-        agents: dict[str, BaseAgent] = {}
+        # Always store agent config in Redis so external runners can pick it up
+        agent_config = {}
         for player in agent_players:
             pid = player.id
-            ptype = player.type
-            if ptype == "llm_agent":
-                agent: BaseAgent = LLMAgent()
-            elif ptype == "wanderer":
-                agent = WandererAgent()
-            else:
-                agent = RandomAgent()
-            agent.character = player.character
-            agent.player_id = pid
             cards = await game._load_player_cards(pid)
-            agent.observe_own_cards(cards)
-            agents[pid] = agent
+            agent_config[pid] = {
+                "type": player.type,
+                "character": player.character,
+                "cards": cards,
+            }
+        await redis_client.set(
+            f"game:{game_id}:agent_config",
+            json.dumps(agent_config),
+            ex=86400,
+        )
+
+        if _AGENT_MODE == "inline":
+            # Run agents in-process (original behavior)
+            agents: dict[str, BaseAgent] = {}
+            for player in agent_players:
+                pid = player.id
+                ptype = player.type
+                if ptype == "llm_agent":
+                    agent: BaseAgent = LLMAgent()
+                elif ptype == "wanderer":
+                    agent = WandererAgent()
+                else:
+                    agent = RandomAgent()
+                agent.character = player.character
+                agent.player_id = pid
+                cards = await game._load_player_cards(pid)
+                agent.observe_own_cards(cards)
+                agents[pid] = agent
+                logger.info(
+                    "Created %s agent for player %s (%s) in game %s",
+                    ptype,
+                    pid,
+                    player.character,
+                    game_id,
+                )
+            _game_agents[game_id] = agents
+            _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
+        else:
             logger.info(
-                "Created %s agent for player %s (%s) in game %s",
-                ptype,
-                pid,
-                player.character,
+                "Agent mode is '%s' — %d agent(s) in game %s will be managed externally",
+                _AGENT_MODE,
+                len(agent_players),
                 game_id,
             )
-        _game_agents[game_id] = agents
-        _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
 
     return state.model_dump()
 
