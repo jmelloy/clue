@@ -534,7 +534,9 @@ async def _run_agent_loop(game_id: str):
 
             elif state.whose_turn in agents:
                 # It's an agent's turn — pace actions for human observers
-                await asyncio.sleep(1.5)
+                agent = agents[state.whose_turn]
+                if agent.agent_type != "llm":
+                    await asyncio.sleep(1.35)
                 # Re-check state
                 state = await game.get_state()
                 if not state or state.status != "playing":

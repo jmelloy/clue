@@ -258,6 +258,8 @@ async def test_end_turn_advances_player(game: ClueGame):
     first_player = state.whose_turn
     second_player = "P2" if first_player == "P1" else "P1"
 
+    # Player must do something before ending turn (roll dice first)
+    await game.process_action(first_player, {"type": "roll"})
     result = await game.process_action(first_player, {"type": "end_turn"})
     assert result["next_player_id"] == second_player
 
@@ -342,7 +344,7 @@ async def test_available_actions_before_roll(game: ClueGame):
     assert "move" not in actions
     assert "suggest" not in actions
     assert "accuse" in actions
-    assert "end_turn" in actions
+    assert "end_turn" not in actions  # can't end turn without doing anything first
 
     # Other player has no actions available
     other_actions = game.get_available_actions(not_turn, state)
