@@ -1282,7 +1282,7 @@ class LLMAgent(BaseAgent):
             f"- Unknown weapons (could be solution): {unknown_weapons}",
             f"- Unknown rooms (could be solution): {unknown_rooms}",
             f"- Your current room: {current_room.get(player_id, 'none')}",
-            f"- Dice rolled this turn: {dice_rolled}",
+            f"- Dice roll: {game_state.last_roll[0] if game_state.last_roll else 'not rolled yet'}",
             f"- Available actions: {available}",
         ]
 
