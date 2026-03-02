@@ -66,8 +66,8 @@ jobs:
         with:
           kubeconfig: ${{ secrets.KUBECONFIG }}
 
-      - name: Create namespace
-        run: kubectl apply -f k8s/namespace.yaml
+      # - name: Create namespace
+      #   run: kubectl apply -f k8s/namespace.yaml
 
       - name: Deploy Redis
         run: kubectl apply -n clue -f k8s/redis.yaml
