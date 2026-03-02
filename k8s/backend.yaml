@@ -24,10 +24,17 @@ spec:
           env:
             - name: REDIS_URL
               value: redis://redis:6379
-            # Set CORS_ORIGINS to restrict allowed origins in production,
-            # e.g. "https://yourdomain.com". Defaults to "*" if unset.
-            # - name: CORS_ORIGINS
-            #   value: "https://yourdomain.com"
+            - name: CORS_ORIGINS
+              value: "https://clue.melloy.life"
+            - name: LLM_API_URL
+              value: "https://api.openai.com/v1/chat/completions"
+            - name: LLM_MODEL
+              value: "gpt-5-mini"
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: LLM_API_KEY
           resources:
             requests:
               memory: "128Mi"
