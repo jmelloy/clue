@@ -480,24 +480,28 @@ class TestShowCardFlow:
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
 
-        # Find a card the other player holds
+        # Build a suggestion guaranteed to match a card the other player holds
         game = ClueGame(game_id, redis)
         other_cards = await game._load_player_cards(other_pid)
-        other_suspects = [c for c in other_cards if c in SUSPECTS]
-        other_weapons = [c for c in other_cards if c in WEAPONS]
+        assert other_cards, "Other player must have cards after game start"
 
-        if not other_suspects and not other_weapons:
-            pytest.skip("Other player has no suspects/weapons to trigger show_card")
-
-        suggest_suspect = other_suspects[0] if other_suspects else SUSPECTS[0]
-        suggest_weapon = other_weapons[0] if other_weapons else WEAPONS[0]
+        suggest_suspect = SUSPECTS[0]
+        suggest_weapon = WEAPONS[0]
+        suggest_room = "Kitchen"
+        first_card = other_cards[0]
+        if first_card in SUSPECTS:
+            suggest_suspect = first_card
+        elif first_card in WEAPONS:
+            suggest_weapon = first_card
+        else:
+            suggest_room = first_card
 
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
         other_ws = ws2 if other_pid == pid2 else ws1
 
-        # Place player directly in Kitchen for suggestion
-        await _place_in_room(redis, game_id, whose_turn, "Kitchen")
+        # Place player in the room being suggested
+        await _place_in_room(redis, game_id, whose_turn, suggest_room)
         ws1.drain()
         ws2.drain()
 
@@ -509,15 +513,15 @@ class TestShowCardFlow:
                 "type": "suggest",
                 "suspect": suggest_suspect,
                 "weapon": suggest_weapon,
-                "room": "Kitchen",
+                "room": suggest_room,
             },
         )
 
         show_req = [m for m in other_ws.sent if m["type"] == "show_card_request"]
-        if show_req:
-            assert show_req[0]["suggesting_player_id"] == whose_turn
-            assert "available_actions" in show_req[0]
-            assert "show_card" in show_req[0]["available_actions"]
+        assert len(show_req) >= 1, "Expected show_card_request was not sent to other player"
+        assert show_req[0]["suggesting_player_id"] == whose_turn
+        assert "available_actions" in show_req[0]
+        assert "show_card" in show_req[0]["available_actions"]
 
     @pytest.mark.asyncio
     async def test_card_shown_private_and_public(self, http, redis):
@@ -534,25 +538,28 @@ class TestShowCardFlow:
 
         game = ClueGame(game_id, redis)
 
-        # Find a suggestion that forces a show_card
+        # Build a suggestion guaranteed to trigger show_card using actual cards from other players
         suggest_suspect = SUSPECTS[0]
         suggest_weapon = WEAPONS[0]
-        target_pid = None
+        suggest_room = "Kitchen"
         for opid in other_pids:
             cards = await game._load_player_cards(opid)
-            if any(c in (suggest_suspect, suggest_weapon, "Kitchen") for c in cards):
-                target_pid = opid
+            if cards:
+                first_card = cards[0]
+                if first_card in SUSPECTS:
+                    suggest_suspect = first_card
+                elif first_card in WEAPONS:
+                    suggest_weapon = first_card
+                else:
+                    suggest_room = first_card
                 break
-
-        if target_pid is None:
-            pytest.skip("No other player holds matching cards")
 
         ws_map = {}
         for pid in all_pids:
             ws_map[pid] = await _connect_mock_ws(game_id, pid)
 
-        # Place player directly in Kitchen for suggestion
-        await _place_in_room(redis, game_id, whose_turn, "Kitchen")
+        # Place player in the room being suggested
+        await _place_in_room(redis, game_id, whose_turn, suggest_room)
         for ws in ws_map.values():
             ws.drain()
 
@@ -564,13 +571,12 @@ class TestShowCardFlow:
                 "type": "suggest",
                 "suspect": suggest_suspect,
                 "weapon": suggest_weapon,
-                "room": "Kitchen",
+                "room": suggest_room,
             },
         )
 
         pending_by = result.get("pending_show_by")
-        if not pending_by:
-            pytest.skip("No one needed to show a card")
+        assert pending_by is not None, "Expected show_card request but none was triggered"
 
         # Get matching cards and show one
         gs = await game.get_state()
