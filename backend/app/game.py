@@ -338,6 +338,24 @@ class ClueGame:
     def roll_dice(self) -> int:
         return random.randint(1, 6)
 
+    @staticmethod
+    def _get_occupied_positions(
+        state: "GameState", exclude_player_id: str
+    ) -> set[tuple[int, int]]:
+        """Return hallway positions occupied by other pawns.
+
+        Only players who are NOT currently inside a room are counted —
+        rooms have infinite capacity.
+        """
+        occupied: set[tuple[int, int]] = set()
+        for pid, pos in state.player_positions.items():
+            if pid == exclude_player_id:
+                continue
+            # Only count players in the hallway (not in a room)
+            if pid not in state.current_room:
+                occupied.add((pos[0], pos[1]))
+        return occupied
+
     def get_reachable_targets(
         self, player_id: str, state: "GameState", dice: int
     ) -> dict:
@@ -346,6 +364,10 @@ class ClueGame:
         Returns a dict with:
           - reachable_rooms: list of room names the player can enter
           - reachable_positions: list of [row, col] hallway positions reachable
+
+        Applies movement constraints:
+          - Occupied hallway/door squares are impassable
+          - The player's current room is excluded (cannot re-enter same room)
         """
         current_room_name = state.current_room.get(player_id)
         pos = state.player_positions.get(player_id)
@@ -360,12 +382,13 @@ class ClueGame:
         if not start_sq:
             return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
 
-        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES)
+        occupied = self._get_occupied_positions(state, player_id)
+        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES, occupied)
 
         rooms = []
         positions = []
         for sq, dist in reached.items():
-            if sq.type == SquareType.ROOM and sq.room:
+            if sq.type == SquareType.ROOM and sq.room and sq != start_sq:
                 rooms.append(sq.room.value)
             elif sq != start_sq and sq.type in (
                 SquareType.HALLWAY,
@@ -485,6 +508,13 @@ class ClueGame:
         if room and room not in ROOMS:
             raise ValueError(f"Invalid room: {room}")
 
+        # Cannot re-enter the room you are already in
+        current_room_name = state.current_room.get(player_id)
+        if room and room == current_room_name:
+            raise ValueError("Cannot re-enter the room you are already in")
+
+        occupied = self._get_occupied_positions(state, player_id)
+
         if target_pos and not room:
             # Position-based move: player clicked a specific hallway cell
             target_row, target_col = int(target_pos[0]), int(target_pos[1])
@@ -492,7 +522,6 @@ class ClueGame:
             if not target_sq:
                 raise ValueError("Invalid position")
 
-            current_room_name = state.current_room.get(player_id)
             pos = state.player_positions.get(player_id)
             if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
                 start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
@@ -502,7 +531,9 @@ class ClueGame:
                 start_sq = None
 
             if start_sq:
-                reachable_squares = reachable(start_sq, total, _SQUARES, _ROOM_NODES)
+                reachable_squares = reachable(
+                    start_sq, total, _SQUARES, _ROOM_NODES, occupied
+                )
                 if target_sq in reachable_squares:
                     state.current_room.pop(player_id, None)
                     state.player_positions[player_id] = [target_row, target_col]
@@ -515,7 +546,6 @@ class ClueGame:
 
         elif room:
             # Determine the player's current position on the board graph
-            current_room_name = state.current_room.get(player_id)
             pos = state.player_positions.get(player_id)
 
             if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
@@ -529,7 +559,8 @@ class ClueGame:
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
-                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES
+                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES,
+                    occupied,
                 )
                 if reached:
                     # Player reaches the room
@@ -539,6 +570,10 @@ class ClueGame:
                     if center:
                         state.player_positions[player_id] = list(center)
                         result["position"] = list(center)
+                elif dest == start_sq:
+                    # Player couldn't actually move (all paths blocked)
+                    result["room"] = current_room_name
+                    result["position"] = state.player_positions.get(player_id)
                 else:
                     # Player ends up in the hallway partway there
                     result["room"] = None
