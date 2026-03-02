@@ -178,6 +178,8 @@ const props = defineProps({
   playerId: String,
   selectedRoom: String,
   selectable: Boolean,
+  reachableRooms: { type: Array, default: () => [] },
+  reachablePositions: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['select-room', 'select-position'])
@@ -185,6 +187,16 @@ const emit = defineEmits(['select-room', 'select-position'])
 const cells = CELL_DATA
 
 const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
+
+const reachablePositionSet = computed(() => {
+  const set = new Set()
+  for (const pos of props.reachablePositions) {
+    set.add(`${pos[0]},${pos[1]}`)
+  }
+  return set
+})
+
+const hasReachableData = computed(() => props.reachableRooms.length > 0 || props.reachablePositions.length > 0)
 
 const roomLabels = computed(() => Object.values(ROOM_INFO))
 
@@ -247,8 +259,28 @@ function cellClasses(cell) {
     if (props.selectable) cls.push('clickable')
     if (props.selectedRoom === cell.room) cls.push('selected')
     if (currentRoom.value === cell.room) cls.push('my-room')
+    // Highlight reachable/unreachable rooms when selectable
+    if (props.selectable && hasReachableData.value) {
+      if (props.reachableRooms.includes(cell.room)) {
+        cls.push('reachable')
+      } else {
+        cls.push('unreachable')
+      }
+    }
   } else if ((cell.type === 'hallway' || cell.type === 'start') && props.selectable) {
     cls.push('clickable')
+    // Highlight reachable hallway positions
+    if (hasReachableData.value) {
+      const key = `${cell.row},${cell.col}`
+      if (reachablePositionSet.value.has(key)) {
+        cls.push('reachable')
+      }
+    }
+  } else if (cell.type === 'door' && props.selectable && hasReachableData.value) {
+    // Highlight doors of reachable rooms
+    if (props.reachableRooms.includes(cell.room)) {
+      cls.push('reachable-door')
+    }
   }
   return cls
 }
@@ -385,6 +417,39 @@ function tokenStyle(token) {
 
 .cell.my-room {
   box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.3);
+}
+
+/* ── Reachable highlights ── */
+.cell.reachable {
+  outline: 1px solid rgba(46, 204, 113, 0.6);
+  z-index: 1;
+  animation: reachable-glow 2s ease-in-out infinite;
+}
+
+.cell-room.reachable {
+  filter: brightness(1.3);
+}
+
+.cell-hallway.reachable,
+.cell-start.reachable {
+  background: #3a4a4e;
+}
+
+.cell.unreachable {
+  filter: brightness(0.5);
+  opacity: 0.6;
+}
+
+.cell.reachable-door {
+  filter: brightness(1.6);
+  outline: 1px solid rgba(46, 204, 113, 0.8);
+  z-index: 2;
+  animation: reachable-glow 2s ease-in-out infinite;
+}
+
+@keyframes reachable-glow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(46, 204, 113, 0); }
+  50% { box-shadow: inset 0 0 4px 1px rgba(46, 204, 113, 0.3); }
 }
 
 /* ── Overlay ── */

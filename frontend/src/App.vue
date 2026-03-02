@@ -27,6 +27,8 @@
       :chat-messages="chatMessages"
       :is-observer="isObserver"
       :auto-end-timer="autoEndTimer"
+      :reachable-rooms="reachableRooms"
+      :reachable-positions="reachablePositions"
       @action="sendAction"
       @send-chat="sendChat"
       @dismiss-card-shown="cardShown = null"
@@ -51,6 +53,8 @@ const chatMessages = ref([])
 const isObserver = ref(false)
 const urlGameId = ref(null)
 const autoEndTimer = ref(null)
+const reachableRooms = ref([])
+const reachablePositions = ref([])
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -150,6 +154,8 @@ function handleMessage(msg) {
         gameState.value = { ...gameState.value, ...fields }
       }
       autoEndTimer.value = null
+      reachableRooms.value = []
+      reachablePositions.value = []
       break
 
     case 'player_joined':
@@ -172,6 +178,8 @@ function handleMessage(msg) {
 
     case 'your_turn':
       if (msg.available_actions) availableActions.value = msg.available_actions
+      if (msg.reachable_rooms) reachableRooms.value = msg.reachable_rooms
+      if (msg.reachable_positions) reachablePositions.value = msg.reachable_positions
       showCardRequest.value = null
       autoEndTimer.value = null
       break
@@ -194,6 +202,7 @@ function handleMessage(msg) {
       if (gameState.value) {
         gameState.value = { ...gameState.value, last_roll: msg.last_roll, dice_rolled: true }
       }
+      if (msg.reachable_rooms) reachableRooms.value = msg.reachable_rooms
       break
 
     case 'player_moved':
@@ -205,6 +214,9 @@ function handleMessage(msg) {
         if (msg.dice) updates.last_roll = [msg.dice]
         gameState.value = { ...gameState.value, ...updates }
       }
+      // Clear reachable highlights after movement
+      reachableRooms.value = []
+      reachablePositions.value = []
       break
 
     case 'suggestion_made':
@@ -283,6 +295,8 @@ function resetState() {
   chatMessages.value = []
   isObserver.value = false
   autoEndTimer.value = null
+  reachableRooms.value = []
+  reachablePositions.value = []
 }
 
 function leaveGame() {
