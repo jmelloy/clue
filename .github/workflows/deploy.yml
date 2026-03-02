@@ -58,31 +58,28 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Configure kubectl
+      - name: Set up kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Set Kubernetes context
-        uses: azure/k8s-set-context@v4
-        with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      # - name: Create namespace
-      #   run: kubectl apply -f k8s/namespace.yaml
+      - name: Verify cluster connectivity
+        run: kubectl cluster-info
+        
+      - name: Create namespace
+        run: kubectl apply -f k8s/namespace.yaml
 
       - name: Deploy Redis
         run: kubectl apply -n clue -f k8s/redis.yaml
 
       - name: Deploy backend
         run: |
-          kubectl apply -n clue -f k8s/backend.yaml
-          kubectl set image -n clue deployment/backend \
-            backend=${{ env.BACKEND_IMAGE }}:${{ needs.build-backend.outputs.image-tag }}
-
-      - name: Deploy frontend
-        run: |
-          kubectl apply -n clue -f k8s/frontend.yaml
-          kubectl set image -n clue deployment/frontend \
-            frontend=${{ env.FRONTEND_IMAGE }}:${{ needs.build-frontend.outputs.image-tag }}
+          sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${{ needs.build-backend.outputs.image-tag }}|" k8s/backend.yaml \
+            | kubectl apply -n clue -f -
 
       - name: Apply ingress
         run: kubectl apply -n clue -f k8s/ingress.yaml

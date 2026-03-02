@@ -3,9 +3,9 @@
 # deploy.sh — Build, push, and deploy the Clue app to Kubernetes.
 #
 # Usage:
-#   ./scripts/deploy.sh                          # defaults: registry=ghcr.io/<git-owner>/clue, tag=latest
+#   ./scripts/deploy.sh                          # defaults: registry=ghcr.io/<git-owner>/clue, tag=<short sha>
 #   ./scripts/deploy.sh -r ghcr.io/myorg/clue -t v1.2.3
-#   ./scripts/deploy.sh -t $(git rev-parse --short HEAD)
+#   ./scripts/deploy.sh -t latest
 #
 # Prerequisites:
 #   - docker (logged in to your registry)
@@ -24,7 +24,8 @@ DEFAULT_OWNER=$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null \
 DEFAULT_REGISTRY="ghcr.io/${DEFAULT_OWNER:-clue}/clue"
 
 REGISTRY="${REGISTRY:-$DEFAULT_REGISTRY}"
-TAG="${TAG:-latest}"
+TAG="${TAG:-}"
+TAG_SET=false
 NAMESPACE="clue"
 SKIP_BUILD=false
 SSH_TARGET="${SSH_TARGET:-}"
@@ -35,7 +36,7 @@ usage() {
   echo "Usage: $0 [-r REGISTRY] [-t TAG] [-n NAMESPACE] [--skip-build] [--ssh user@host] [--cert-manager]"
   echo ""
   echo "  -r REGISTRY   Container registry prefix (default: $DEFAULT_REGISTRY)"
-  echo "  -t TAG         Image tag (default: latest)"
+  echo "  -t TAG         Image tag (default: git short SHA)"
   echo "  -n NAMESPACE   Kubernetes namespace (default: clue)"
   echo "  --skip-build   Skip Docker build/push, only apply manifests"
   echo "  --ssh TARGET   Run kubectl on remote host over SSH (e.g. ubuntu@k8s-box)"
@@ -46,7 +47,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case $1 in
     -r) REGISTRY="$2"; shift 2 ;;
-    -t) TAG="$2"; shift 2 ;;
+    -t) TAG="$2"; TAG_SET=true; shift 2 ;;
     -n) NAMESPACE="$2"; shift 2 ;;
     --skip-build) SKIP_BUILD=true; shift ;;
     --ssh) SSH_TARGET="$2"; shift 2 ;;
@@ -55,6 +56,15 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1"; usage ;;
   esac
 done
+
+# Default TAG to git short SHA for builds; require explicit -t with --skip-build
+if [ -z "$TAG" ]; then
+  if [ "$SKIP_BUILD" = true ]; then
+    echo "Error: --skip-build requires an explicit tag (-t TAG)" >&2
+    exit 1
+  fi
+  TAG="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
+fi
 
 BACKEND_IMAGE="$REGISTRY-backend:$TAG"
 FRONTEND_IMAGE="$REGISTRY-frontend:$TAG"
@@ -103,8 +113,11 @@ apply_manifest() {
 
 # ── Build & push ──────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" = false ]; then
+  echo "==> Logging in to ghcr.io..."
+  echo "${GITHUB_TOKEN:-$(gh auth token)}" | docker login ghcr.io -u "${GITHUB_ACTOR:-$(gh api user -q .login)}" --password-stdin
+
   echo "==> Building backend image..."
-  docker build -t "$BACKEND_IMAGE" . -f "$ROOT_DIR/backend/Dockerfile"
+  docker build -t "$BACKEND_IMAGE" -f "$ROOT_DIR/backend/Dockerfile" "$ROOT_DIR"
 
   echo "==> Pushing images..."
   docker push "$BACKEND_IMAGE"
@@ -120,8 +133,10 @@ echo "==> Deploying Redis..."
 apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/redis.yaml"
 
 echo "==> Deploying backend..."
-apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/backend.yaml"
-kubectl_cmd set image -n "$NAMESPACE" deployment/backend backend="$BACKEND_IMAGE"
+# Substitute the correct image before applying so the manifest always
+# carries the pinned SHA tag and doesn't trigger a spurious rollout.
+sed "s|image: clue-backend:.*|image: $BACKEND_IMAGE|" "$ROOT_DIR/k8s/backend.yaml" \
+  | kubectl_cmd apply -n "$NAMESPACE" -f -
 
 if [ "$WITH_CERT_MANAGER" = true ]; then
   echo "==> Applying cert-manager ClusterIssuer..."
