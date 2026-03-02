@@ -12,7 +12,6 @@ permissions:
 env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: ghcr.io/${{ github.repository }}-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}-frontend
 
 jobs:
   test:
@@ -42,7 +41,8 @@ jobs:
           images: ${{ env.BACKEND_IMAGE }}
           tags: |
             type=sha,prefix=
-            type=raw,value=latest
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - uses: docker/build-push-action@v6
         with:
@@ -69,6 +69,10 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
+      
+      - name: Determine image tag
+        id: tag
+        run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Verify cluster connectivity
         run: kubectl cluster-info
@@ -79,9 +83,10 @@ jobs:
       - name: Deploy Redis
         run: kubectl apply -n clue -f k8s/redis.yaml
 
-      - name: Deploy backend
+      - name: Deploy backend        
         run: |
-          sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${{ needs.build-backend.outputs.image-tag }}|" k8s/backend.yaml \
+          TAG=${{ steps.tag.outputs.tag }}
+          sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${TAG}|" k8s/backend.yaml \
             | kubectl apply -n clue -f -
 
       - name: Apply ingress
