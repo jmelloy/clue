@@ -6,7 +6,10 @@ if __name__ == "__main__":
 
     debug = os.getenv("DEBUG", "false").lower() == "true"
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-    logging_config = get_logging_config(log_level=log_level, log_format="colored")
+    trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
+    logging_config = get_logging_config(
+        log_level=log_level, trace_level=trace_level_name, log_format="colored"
+    )
 
     uvicorn.run(
         "app.main:app",

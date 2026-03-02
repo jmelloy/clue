@@ -33,18 +33,6 @@ from .models import GameState, PlayerState
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
 
-_trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
-if _trace_level_name:
-    logger.info("Setting LLM trace log level to '%s'", _trace_level_name)
-    trace_level = getattr(logging, _trace_level_name, None)
-    if isinstance(trace_level, int):
-        llm_trace_logger.setLevel(trace_level)
-    else:
-        logger.warning(
-            "[llm] Invalid LLM_TRACE_LOG_LEVEL='%s' (expected logging level name)",
-            _trace_level_name,
-        )
-
 
 def _compute_room_distances(
     current_room: str | None, player_position: list | None
@@ -1196,12 +1184,12 @@ class LLMAgent(BaseAgent):
         llm_trace_logger.debug(
             "[%s] LLM system prompt preview: %s",
             self.agent_type,
-            _clip_text(system_prompt),
+            _clip_text(system_prompt, 250),
         )
         llm_trace_logger.info(
             "[%s] LLM user prompt preview: %s",
             self.agent_type,
-            _clip_text(user_prompt),
+            user_prompt,
         )
 
         try:
