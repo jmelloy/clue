@@ -149,6 +149,7 @@ class AccessFormatter(logging.Formatter):
 
 def get_logging_config(
     log_level: str = "INFO",
+    trace_level: str = "",
     log_format: str = "colored",
 ) -> dict[str, Any]:
     """
@@ -176,9 +177,11 @@ def get_logging_config(
             "()": ColoredFormatter,
             "fmt": "%(asctime)s - %(name)s - %(levelname)s - %(message)s %(request_id)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
+            "use_colors": log_format == "colored",
         }
         access_formatter = {
             "()": AccessFormatter,
+            "use_colors": log_format == "colored",
         }
 
     return {
@@ -214,6 +217,11 @@ def get_logging_config(
             "app": {
                 "handlers": ["default"],
                 "level": log_level,
+                "propagate": False,
+            },
+            "app.agents.trace": {
+                "handlers": ["default"],
+                "level": trace_level if trace_level else "WARNING",
                 "propagate": False,
             },
         },

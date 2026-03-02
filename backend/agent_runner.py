@@ -120,7 +120,9 @@ class AgentRunner:
         for pid, info in config.items():
             ptype = info["type"]
             if ptype == "llm_agent":
-                agent: BaseAgent = LLMAgent()
+                agent: BaseAgent = LLMAgent(
+                    redis_client=self.redis, game_id=game_id
+                )
             elif ptype == "wanderer":
                 agent = WandererAgent()
             else:
@@ -129,6 +131,8 @@ class AgentRunner:
             agent.character = info["character"]
             agent.player_id = pid
             agent.observe_own_cards(info["cards"])
+            if ptype == "llm_agent":
+                await agent.load_memory()
             agents[pid] = agent
             logger.info(
                 "Created %s agent for %s (%s) in game %s",

@@ -79,7 +79,7 @@ _agent_tasks: dict[str, asyncio.Task] = {}
 
 # Auto-end-turn timers: game_id -> asyncio.Task
 _auto_end_timers: dict[str, asyncio.Task] = {}
-AUTO_END_TURN_SECONDS = 15
+AUTO_END_TURN_SECONDS = 10
 
 # Player types that trigger the automated agent loop
 _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
@@ -216,6 +216,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     if action_type == "roll":
         actor_name = _player_name(state, player_id)
         dice = result.get("dice")
+        reachable_targets = game.get_reachable_targets(player_id, state, dice)
         await manager.broadcast(
             game_id,
             {
@@ -223,6 +224,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "player_id": player_id,
                 "dice": dice,
                 "last_roll": state.last_roll,
+                "reachable_rooms": reachable_targets["reachable_rooms"],
             },
         )
         await _broadcast_chat(
@@ -236,6 +238,8 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             {
                 "type": "your_turn",
                 "available_actions": game.get_available_actions(player_id, state),
+                "reachable_rooms": reachable_targets["reachable_rooms"],
+                "reachable_positions": reachable_targets["reachable_positions"],
             },
         )
 
@@ -829,7 +833,9 @@ async def start_game(game_id: str):
                 pid = player.id
                 ptype = player.type
                 if ptype == "llm_agent":
-                    agent: BaseAgent = LLMAgent()
+                    agent: BaseAgent = LLMAgent(
+                        redis_client=redis_client, game_id=game_id
+                    )
                 elif ptype == "wanderer":
                     agent = WandererAgent()
                 else:
@@ -838,6 +844,8 @@ async def start_game(game_id: str):
                 agent.player_id = pid
                 cards = await game._load_player_cards(pid)
                 agent.observe_own_cards(cards)
+                if ptype == "llm_agent":
+                    await agent.load_memory()
                 agents[pid] = agent
                 logger.info(
                     "Created %s agent for player %s (%s) in game %s",

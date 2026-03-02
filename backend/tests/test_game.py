@@ -696,3 +696,337 @@ async def test_secret_passage_all_pairs(game: ClueGame):
         state = await g.get_state()
         assert state.current_room[whose_turn] == to_room
         await redis.aclose()
+
+
+# ---------------------------------------------------------------------------
+# Pawn moved by suggestion — free suggest on next turn
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_suggest_available_without_roll_after_moved_by_suggestion(game: ClueGame):
+    """A player moved into a room by a suggestion can suggest without rolling."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    # Find the other player's character
+    other_char = next(p.character for p in state.players if p.id == other_id)
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    # Make a suggestion naming the other player's character to pull them into the room
+    result = await game.process_action(
+        whose_turn,
+        {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
+    )
+
+    # Resolve show_card if pending
+    if result.get("pending_show_by"):
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+        )
+
+    # End the current player's turn
+    await game.process_action(whose_turn, {"type": "end_turn"})
+
+    # Now it's other_id's turn — they were moved by suggestion
+    state = await game.get_state()
+    # Skip wanderers to find the actual next human turn
+    while state.whose_turn != other_id:
+        # Advance past wanderer turns
+        wt = state.whose_turn
+        await game.process_action(wt, {"type": "roll"})
+        await game.process_action(wt, {"type": "end_turn"})
+        state = await game.get_state()
+
+    assert state.whose_turn == other_id
+    assert state.was_moved_by_suggestion.get(other_id) is True
+    assert state.current_room.get(other_id) == room
+
+    actions = game.get_available_actions(other_id, state)
+    assert "suggest" in actions
+    assert "roll" in actions  # can still choose to roll instead
+
+
+@pytest.mark.asyncio
+async def test_free_suggest_then_end_turn(game: ClueGame):
+    """A player pulled into a room can suggest and then end their turn."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+    other_char = next(p.character for p in state.players if p.id == other_id)
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    result = await game.process_action(
+        whose_turn,
+        {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
+    )
+    if result.get("pending_show_by"):
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+        )
+
+    await game.process_action(whose_turn, {"type": "end_turn"})
+
+    # Advance to other_id's turn
+    state = await game.get_state()
+    while state.whose_turn != other_id:
+        wt = state.whose_turn
+        await game.process_action(wt, {"type": "roll"})
+        await game.process_action(wt, {"type": "end_turn"})
+        state = await game.get_state()
+
+    # Use the free suggest
+    result = await game.process_action(
+        other_id,
+        {"type": "suggest", "suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room},
+    )
+    assert result["type"] == "suggest"
+
+    # Resolve show_card if pending
+    if result.get("pending_show_by"):
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+        )
+
+    # Should be able to end turn now
+    state = await game.get_state()
+    actions = game.get_available_actions(other_id, state)
+    assert "end_turn" in actions
+    assert "suggest" not in actions  # already suggested this turn
+
+    await game.process_action(other_id, {"type": "end_turn"})
+
+
+@pytest.mark.asyncio
+async def test_flag_cleared_after_turn_ends(game: ClueGame):
+    """The was_moved_by_suggestion flag is cleared when the player ends their turn."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+    other_char = next(p.character for p in state.players if p.id == other_id)
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    result = await game.process_action(
+        whose_turn,
+        {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
+    )
+    if result.get("pending_show_by"):
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+        )
+
+    await game.process_action(whose_turn, {"type": "end_turn"})
+
+    # Advance to other_id's turn
+    state = await game.get_state()
+    while state.whose_turn != other_id:
+        wt = state.whose_turn
+        await game.process_action(wt, {"type": "roll"})
+        await game.process_action(wt, {"type": "end_turn"})
+        state = await game.get_state()
+
+    # Flag is set
+    assert state.was_moved_by_suggestion.get(other_id) is True
+
+    # Roll and end turn (choosing not to use free suggest)
+    await game.process_action(other_id, {"type": "roll"})
+    await game.process_action(other_id, {"type": "end_turn"})
+
+    # Flag should be cleared
+    state = await game.get_state()
+    assert state.was_moved_by_suggestion.get(other_id) is None
+
+
+@pytest.mark.asyncio
+async def test_no_free_suggest_without_being_moved(game: ClueGame):
+    """A player NOT moved by suggestion should not get suggest before rolling."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+
+    # Place player in a room but without the suggestion flag
+    st = await game._load_state()
+    st.current_room[whose_turn] = ROOMS[0]
+    center = ROOM_CENTERS.get(ROOMS[0])
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game.get_state()
+    actions = game.get_available_actions(whose_turn, state)
+    assert "suggest" not in actions  # no free suggest
+    assert "roll" in actions
+
+
+# ---------------------------------------------------------------------------
+# Memory tests
+# ---------------------------------------------------------------------------
+
+
+async def test_memory_empty_initially(game):
+    """Memory for a player starts empty."""
+    entries = await game.get_memory("player1")
+    assert entries == []
+
+
+async def test_memory_append_and_retrieve(game):
+    """Appending memory entries persists and retrieves them in order."""
+    await game.append_memory("player1", "I suspect Colonel Mustard.")
+    await game.append_memory("player1", "Kitchen card has been shown to me.")
+
+    entries = await game.get_memory("player1")
+    assert len(entries) == 2
+    assert entries[0] == "I suspect Colonel Mustard."
+    assert entries[1] == "Kitchen card has been shown to me."
+
+
+async def test_memory_per_player(game):
+    """Each player has their own separate memory."""
+    await game.append_memory("player1", "Note for player 1")
+    await game.append_memory("player2", "Note for player 2")
+
+    assert await game.get_memory("player1") == ["Note for player 1"]
+    assert await game.get_memory("player2") == ["Note for player 2"]
+
+
+# ---------------------------------------------------------------------------
+# Pawn movement rules
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cannot_reenter_same_room(game: ClueGame):
+    """A player cannot move to the room they are already in."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Kitchen
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Kitchen"
+    center = ROOM_CENTERS.get("Kitchen")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    # Roll dice
+    await game.process_action(whose_turn, {"type": "roll"})
+
+    # Try to move to Kitchen (the room they're already in)
+    with pytest.raises(ValueError, match="Cannot re-enter"):
+        await game.process_action(whose_turn, {"type": "move", "room": "Kitchen"})
+
+
+@pytest.mark.asyncio
+async def test_current_room_excluded_from_reachable(game: ClueGame):
+    """The player's current room should not appear in reachable_rooms."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Study
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Study"
+    center = ROOM_CENTERS.get("Study")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 6)
+    assert "Study" not in targets["reachable_rooms"]
+
+
+@pytest.mark.asyncio
+async def test_occupied_hallway_blocks_movement(game: ClueGame):
+    """A hallway square occupied by another pawn cannot be moved to."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    # Place both players in adjacent hallway positions
+    st = await game._load_state()
+    st.player_positions[whose_turn] = [7, 17]
+    st.player_positions[other_id] = [7, 18]
+    st.current_room.pop(whose_turn, None)
+    st.current_room.pop(other_id, None)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 1)
+    # The occupied square (7, 18) must not be reachable
+    assert [7, 18] not in targets["reachable_positions"]
+
+
+@pytest.mark.asyncio
+async def test_door_blocking_prevents_exit(game: ClueGame):
+    """A pawn blocking the only door of a room traps players inside."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    # Place current player in Conservatory (1 door at (19,4))
+    # Place other player on that door square
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Conservatory"
+    center = ROOM_CENTERS.get("Conservatory")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    st.player_positions[other_id] = [19, 4]
+    st.current_room.pop(other_id, None)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 6)
+    # No hallway positions reachable
+    assert len(targets["reachable_positions"]) == 0
+    # Secret passage to Lounge still works
+    assert "Lounge" in targets["reachable_rooms"]
+
+
+@pytest.mark.asyncio
+async def test_room_players_do_not_block(game: ClueGame):
+    """Players inside a room do not block hallway squares."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+
+    # Both players in the same room — should not interfere
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Kitchen"
+    st.current_room[other_id] = "Kitchen"
+    center = ROOM_CENTERS.get("Kitchen")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+        st.player_positions[other_id] = list(center)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 6)
+    # Should still be able to reach hallway/rooms (door is not blocked)
+    assert len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0

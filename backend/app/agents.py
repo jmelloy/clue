@@ -33,18 +33,6 @@ from .models import GameState, PlayerState
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
 
-_trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
-if _trace_level_name:
-    logger.info("Setting LLM trace log level to '%s'", _trace_level_name)
-    trace_level = getattr(logging, _trace_level_name, None)
-    if isinstance(trace_level, int):
-        llm_trace_logger.setLevel(trace_level)
-    else:
-        logger.warning(
-            "[llm] Invalid LLM_TRACE_LOG_LEVEL='%s' (expected logging level name)",
-            _trace_level_name,
-        )
-
 
 def _compute_room_distances(
     current_room: str | None, player_position: list | None
@@ -1032,7 +1020,16 @@ RULES:
 
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
 with a short in-character comment about what you're doing (one sentence, stay in \
-character as {character}). Example: {{"type": "roll", "chat": "Let's see what fate has in store!"}}\
+character as {character}).
+
+Also include a "memory" field with your private detective notes — deductions, \
+suspicions, which cards you've eliminated, your strategy for next turns. These \
+notes will be shown back to you on your next turn so you can remember your \
+reasoning. Be concise but thorough. Example:
+
+{{"type": "roll", "chat": "Let's see what fate has in store!", "memory": "I know \
+Mrs. White and Rope are not the solution (in my hand). Colonel Mustard showed me \
+the Kitchen card. I should investigate the Study next."}}\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1098,13 +1095,16 @@ class LLMAgent(BaseAgent):
 
     agent_type = "llm"
 
-    def __init__(self):
+    def __init__(self, redis_client=None, game_id: str = ""):
         super().__init__()
         self.api_url = os.getenv(
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
+        self.memory: list[str] = []
+        self._redis = redis_client
+        self._game_id = game_id
 
         # Fallback agent shares our observation state
         self._fallback = RandomAgent()
@@ -1124,6 +1124,29 @@ class LLMAgent(BaseAgent):
             self.model,
             bool(self.api_key),
         )
+
+    async def load_memory(self):
+        """Load memory from Redis into the in-memory list."""
+        if self._redis and self._game_id and self.player_id:
+            from .game import ClueGame
+
+            game = ClueGame(self._game_id, self._redis)
+            self.memory = await game.get_memory(self.player_id)
+            logger.info(
+                "[%s:%s] Loaded %d memory entries from Redis",
+                self.agent_type,
+                self.player_id,
+                len(self.memory),
+            )
+
+    async def _save_memory_entry(self, entry: str):
+        """Append a memory entry both in-memory and to Redis."""
+        self.memory.append(entry)
+        if self._redis and self._game_id and self.player_id:
+            from .game import ClueGame
+
+            game = ClueGame(self._game_id, self._redis)
+            await game.append_memory(self.player_id, entry)
 
     # ------------------------------------------------------------------
     # LLM communication
@@ -1161,12 +1184,12 @@ class LLMAgent(BaseAgent):
         llm_trace_logger.debug(
             "[%s] LLM system prompt preview: %s",
             self.agent_type,
-            _clip_text(system_prompt),
+            _clip_text(system_prompt, 250),
         )
         llm_trace_logger.info(
             "[%s] LLM user prompt preview: %s",
             self.agent_type,
-            _clip_text(user_prompt),
+            user_prompt,
         )
 
         try:
@@ -1303,6 +1326,13 @@ class LLMAgent(BaseAgent):
                 f"- Unrefuted suggestions (no one could show a card): "
                 f"{self.unrefuted_suggestions}"
             )
+
+        # Include memory from previous turns
+        if self.memory:
+            lines.append("")
+            lines.append("YOUR PRIVATE NOTES FROM PREVIOUS TURNS:")
+            for i, entry in enumerate(self.memory, 1):
+                lines.append(f"  Turn {i}: {entry}")
 
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
@@ -1476,14 +1506,16 @@ class LLMAgent(BaseAgent):
                     player_id,
                     parsed,
                 )
-                # Extract chat message before validation (it's not a game field)
+                # Extract chat and memory before validation (not game fields)
                 llm_chat = parsed.pop("chat", None)
+                llm_memory = parsed.pop("memory", None)
                 logger.info(
-                    "[%s:%s] LLM proposed action fields | action=%s | chat_present=%s",
+                    "[%s:%s] LLM proposed action fields | action=%s | chat_present=%s | memory_present=%s",
                     self.agent_type,
                     player_id,
                     parsed,
                     isinstance(llm_chat, str) and bool(llm_chat.strip()),
+                    isinstance(llm_memory, str) and bool(llm_memory.strip()),
                 )
                 if llm_chat and isinstance(llm_chat, str):
                     llm_trace_logger.info(
@@ -1491,6 +1523,13 @@ class LLMAgent(BaseAgent):
                         self.agent_type,
                         player_id,
                         _clip_text(llm_chat, limit=400),
+                    )
+                if llm_memory and isinstance(llm_memory, str):
+                    llm_trace_logger.info(
+                        "[%s:%s] LLM memory note: %s",
+                        self.agent_type,
+                        player_id,
+                        _clip_text(llm_memory, limit=400),
                     )
                 if self._validate_action(parsed, available, game_state, player_state):
                     logger.info(
@@ -1503,6 +1542,9 @@ class LLMAgent(BaseAgent):
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
+                    # Save memory entry if provided
+                    if llm_memory and isinstance(llm_memory, str):
+                        await self._save_memory_entry(llm_memory.strip())
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
                         room = parsed.get("room")

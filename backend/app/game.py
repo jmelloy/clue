@@ -11,6 +11,7 @@ from .board import (
     ROOM_CENTERS,
     SECRET_PASSAGES,
     Room,
+    SquareType,
     build_grid,
     build_graph,
     reachable,
@@ -91,6 +92,9 @@ class ClueGame:
     def _cards_key(self, player_id: str) -> str:
         return f"game:{self.game_id}:cards:{player_id}"
 
+    def _memory_key(self, player_id: str) -> str:
+        return f"game:{self.game_id}:memory:{player_id}"
+
     # ------------------------------------------------------------------
     # Internal Redis helpers
     # ------------------------------------------------------------------
@@ -126,6 +130,16 @@ class ClueGame:
     async def _append_log(self, entry: dict):
         await self.redis.rpush(self._log_key, json.dumps(entry))
         await self.redis.expire(self._log_key, EXPIRY)
+
+    async def append_memory(self, player_id: str, entry: str):
+        """Append a memory entry for an LLM agent."""
+        await self.redis.rpush(self._memory_key(player_id), entry)
+        await self.redis.expire(self._memory_key(player_id), EXPIRY)
+
+    async def get_memory(self, player_id: str) -> list[str]:
+        """Retrieve all memory entries for an LLM agent."""
+        entries = await self.redis.lrange(self._memory_key(player_id), 0, -1)
+        return [e if isinstance(e, str) else e.decode() for e in entries]
 
     async def add_chat_message(self, message: ChatMessage):
         await self.redis.rpush(self._chat_key, message.model_dump_json())
@@ -188,6 +202,13 @@ class ClueGame:
             if current_room and current_room in SECRET_PASSAGE_MAP:
                 actions.append("secret_passage")
             actions.append("roll")
+            # If pulled into a room by a suggestion, can suggest without rolling
+            if (
+                current_room
+                and not suggestions_made
+                and state.was_moved_by_suggestion.get(player_id)
+            ):
+                actions.append("suggest")
         elif state.dice_rolled and not state.moved:
             # Phase 2: dice rolled, choose room to move toward
             actions.append("move")
@@ -317,6 +338,67 @@ class ClueGame:
     def roll_dice(self) -> int:
         return random.randint(1, 6)
 
+    @staticmethod
+    def _get_occupied_positions(
+        state: "GameState", exclude_player_id: str
+    ) -> set[tuple[int, int]]:
+        """Return hallway positions occupied by other pawns.
+
+        Only players who are NOT currently inside a room are counted —
+        rooms have infinite capacity.
+        """
+        occupied: set[tuple[int, int]] = set()
+        for pid, pos in state.player_positions.items():
+            if pid == exclude_player_id:
+                continue
+            # Only count players in the hallway (not in a room)
+            if pid not in state.current_room:
+                occupied.add((pos[0], pos[1]))
+        return occupied
+
+    def get_reachable_targets(
+        self, player_id: str, state: "GameState", dice: int
+    ) -> dict:
+        """Compute which rooms and hallway squares are reachable with the given dice roll.
+
+        Returns a dict with:
+          - reachable_rooms: list of room names the player can enter
+          - reachable_positions: list of [row, col] hallway positions reachable
+
+        Applies movement constraints:
+          - Occupied hallway/door squares are impassable
+          - The player's current room is excluded (cannot re-enter same room)
+        """
+        current_room_name = state.current_room.get(player_id)
+        pos = state.player_positions.get(player_id)
+
+        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+            start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+        elif pos:
+            start_sq = _SQUARES.get((pos[0], pos[1]))
+        else:
+            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
+
+        if not start_sq:
+            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
+
+        occupied = self._get_occupied_positions(state, player_id)
+        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES, occupied)
+
+        rooms = []
+        positions = []
+        for sq, dist in reached.items():
+            if sq.type == SquareType.ROOM and sq.room and sq != start_sq:
+                rooms.append(sq.room.value)
+            elif sq != start_sq and sq.type in (
+                SquareType.HALLWAY,
+                SquareType.DOOR,
+                SquareType.START,
+            ):
+                positions.append([sq.row, sq.col])
+
+        return {"reachable_rooms": rooms, "reachable_positions": positions}
+
     async def process_action(self, player_id: str, action: dict) -> dict:
         state = await self._load_state()
         if state is None:
@@ -426,6 +508,13 @@ class ClueGame:
         if room and room not in ROOMS:
             raise ValueError(f"Invalid room: {room}")
 
+        # Cannot re-enter the room you are already in
+        current_room_name = state.current_room.get(player_id)
+        if room and room == current_room_name:
+            raise ValueError("Cannot re-enter the room you are already in")
+
+        occupied = self._get_occupied_positions(state, player_id)
+
         if target_pos and not room:
             # Position-based move: player clicked a specific hallway cell
             target_row, target_col = int(target_pos[0]), int(target_pos[1])
@@ -433,7 +522,6 @@ class ClueGame:
             if not target_sq:
                 raise ValueError("Invalid position")
 
-            current_room_name = state.current_room.get(player_id)
             pos = state.player_positions.get(player_id)
             if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
                 start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
@@ -443,7 +531,9 @@ class ClueGame:
                 start_sq = None
 
             if start_sq:
-                reachable_squares = reachable(start_sq, total, _SQUARES, _ROOM_NODES)
+                reachable_squares = reachable(
+                    start_sq, total, _SQUARES, _ROOM_NODES, occupied
+                )
                 if target_sq in reachable_squares:
                     state.current_room.pop(player_id, None)
                     state.player_positions[player_id] = [target_row, target_col]
@@ -456,7 +546,6 @@ class ClueGame:
 
         elif room:
             # Determine the player's current position on the board graph
-            current_room_name = state.current_room.get(player_id)
             pos = state.player_positions.get(player_id)
 
             if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
@@ -470,7 +559,8 @@ class ClueGame:
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
-                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES
+                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES,
+                    occupied,
                 )
                 if reached:
                     # Player reaches the room
@@ -480,6 +570,10 @@ class ClueGame:
                     if center:
                         state.player_positions[player_id] = list(center)
                         result["position"] = list(center)
+                elif dest == start_sq:
+                    # Player couldn't actually move (all paths blocked)
+                    result["room"] = current_room_name
+                    result["position"] = state.player_positions.get(player_id)
                 else:
                     # Player ends up in the hallway partway there
                     result["room"] = None
@@ -553,6 +647,9 @@ class ClueGame:
                 center = ROOM_CENTERS.get(room)
                 if center:
                     state.player_positions[moved_suspect_player] = list(center)
+                # Mark that this player was pulled into a room by a suggestion,
+                # so they can suggest from it on their next turn without rolling.
+                state.was_moved_by_suggestion[moved_suspect_player] = True
                 break
 
         suggestion_entry = Suggestion(
@@ -721,6 +818,7 @@ class ClueGame:
         state.moved = False
         state.last_roll = None
         state.suggestions_this_turn = []
+        state.was_moved_by_suggestion.pop(player_id, None)
         await self._save_state(state)
 
         await self._append_log(

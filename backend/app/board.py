@@ -330,13 +330,22 @@ def reachable(
     steps: int,
     squares: dict,
     room_nodes: dict[Room, Square],
+    occupied: set[tuple[int, int]] | None = None,
 ) -> dict[Square, int]:
     """
     BFS from `start` up to `steps` moves.
     Entering a room ends your turn (don't expand further from room node).
     Door <-> Room transitions are free (the door sits on the room perimeter).
     Uses 0-1 BFS: 0-cost edges go to the front of the deque.
+
+    occupied: set of (row, col) positions occupied by other pawns.
+        Hallway/door/start squares in this set are impassable (cannot be
+        entered or passed through).  Room nodes are never blocked — rooms
+        have infinite capacity.
     """
+    if occupied is None:
+        occupied = set()
+
     visited: dict[Square, int] = {start: 0}
     queue: deque[tuple[Square, int]] = deque([(start, 0)])
 
@@ -344,6 +353,11 @@ def reachable(
         sq, dist = queue.popleft()
 
         for nb in sq.neighbors:
+            # Hallway/door/start squares occupied by other pawns are
+            # impassable — cannot land on or pass through.
+            if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
+                continue
+
             # Door <-> Room transitions are free: the door square sits on
             # the room perimeter and shouldn't count as an extra step.
             if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (
@@ -477,6 +491,7 @@ def move_towards(
     dice: int,
     squares: dict,
     room_nodes: dict[Room, Square],
+    occupied: set[tuple[int, int]] | None = None,
 ) -> tuple[Square, bool]:
     """
     Given a current location, a target room, and a dice roll, attempt to move
@@ -485,22 +500,32 @@ def move_towards(
     Returns (destination, reached) where:
       - destination is the Square to move to
       - reached is True if the target room was entered with this dice roll
+
+    occupied: forwarded to reachable() and the reverse BFS so that
+        hallway squares blocked by other pawns are avoided.
     """
-    reachable_squares = reachable(start, dice, squares, room_nodes)
+    if occupied is None:
+        occupied = set()
+
+    reachable_squares = reachable(start, dice, squares, room_nodes, occupied)
     target_node = room_nodes[target_room]
 
     # If the target room is directly reachable, move there
     if target_node in reachable_squares:
         return (target_node, True)
 
-    # Otherwise do an unconstrained BFS from the target room to get distances
+    # Otherwise do a reverse BFS from the target room to get distances
     # from every square back to the target, then pick the reachable square with
     # the smallest distance.  Uses 0-1 BFS for free Door <-> Room edges.
+    # Occupied squares are also impassable in the reverse BFS so that the
+    # distance estimate accounts for blocked paths.
     dist_from_target: dict[Square, int] = {target_node: 0}
     bfs_queue: deque[tuple[Square, int]] = deque([(target_node, 0)])
     while bfs_queue:
         sq, dist = bfs_queue.popleft()
         for nb in sq.neighbors:
+            if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
+                continue
             if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (
                 sq.type == SquareType.DOOR and nb.type == SquareType.ROOM
             ):
