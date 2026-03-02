@@ -86,6 +86,15 @@ def test_reachable_from_room_via_secret_passage(board):
     assert room_nodes[Room.KITCHEN] in reached
 
 
+def test_reachable_excludes_secret_passage_when_disabled(board):
+    """With use_secret_passages=False, secret passage rooms are not reachable."""
+    squares, room_nodes = board
+    study = room_nodes[Room.STUDY]
+    reached = reachable(study, 6, squares, room_nodes, use_secret_passages=False)
+    # Kitchen should NOT be reachable via secret passage
+    assert room_nodes[Room.KITCHEN] not in reached
+
+
 def test_door_does_not_cost_extra_step_leaving_room(board):
     """Leaving a room through a door should not count the door as an extra square.
 

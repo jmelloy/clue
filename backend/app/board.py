@@ -331,6 +331,7 @@ def reachable(
     squares: dict,
     room_nodes: dict[Room, Square],
     occupied: set[tuple[int, int]] | None = None,
+    use_secret_passages: bool = True,
 ) -> dict[Square, int]:
     """
     BFS from `start` up to `steps` moves.
@@ -342,6 +343,10 @@ def reachable(
         Hallway/door/start squares in this set are impassable (cannot be
         entered or passed through).  Room nodes are never blocked — rooms
         have infinite capacity.
+
+    use_secret_passages: if False, room-to-room edges (secret passages)
+        are ignored.  Secret passages are an alternative to rolling the
+        dice, so they should be excluded from dice-based reachability.
     """
     if occupied is None:
         occupied = set()
@@ -353,6 +358,10 @@ def reachable(
         sq, dist = queue.popleft()
 
         for nb in sq.neighbors:
+            # Skip secret passage edges (room-to-room) when not allowed
+            if not use_secret_passages and sq.type == SquareType.ROOM and nb.type == SquareType.ROOM:
+                continue
+
             # Hallway/door/start squares occupied by other pawns are
             # impassable — cannot land on or pass through.
             if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
@@ -492,6 +501,7 @@ def move_towards(
     squares: dict,
     room_nodes: dict[Room, Square],
     occupied: set[tuple[int, int]] | None = None,
+    use_secret_passages: bool = True,
 ) -> tuple[Square, bool]:
     """
     Given a current location, a target room, and a dice roll, attempt to move
@@ -503,11 +513,14 @@ def move_towards(
 
     occupied: forwarded to reachable() and the reverse BFS so that
         hallway squares blocked by other pawns are avoided.
+
+    use_secret_passages: forwarded to reachable() to control whether
+        secret passage edges are considered.
     """
     if occupied is None:
         occupied = set()
 
-    reachable_squares = reachable(start, dice, squares, room_nodes, occupied)
+    reachable_squares = reachable(start, dice, squares, room_nodes, occupied, use_secret_passages)
     target_node = room_nodes[target_room]
 
     # If the target room is directly reachable, move there
@@ -524,6 +537,8 @@ def move_towards(
     while bfs_queue:
         sq, dist = bfs_queue.popleft()
         for nb in sq.neighbors:
+            if not use_secret_passages and sq.type == SquareType.ROOM and nb.type == SquareType.ROOM:
+                continue
             if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
                 continue
             if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (

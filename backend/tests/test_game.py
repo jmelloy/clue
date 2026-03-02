@@ -1004,8 +1004,36 @@ async def test_door_blocking_prevents_exit(game: ClueGame):
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # No hallway positions reachable
     assert len(targets["reachable_positions"]) == 0
-    # Secret passage to Lounge still works
-    assert "Lounge" in targets["reachable_rooms"]
+    # Secret passage rooms should NOT appear in dice-based reachability
+    # (secret passages are used instead of rolling, not after rolling)
+    assert "Lounge" not in targets["reachable_rooms"]
+
+
+@pytest.mark.asyncio
+async def test_secret_passage_rooms_excluded_from_dice_reachability(game: ClueGame):
+    """Secret passage destinations should not appear in get_reachable_targets.
+
+    Secret passages are an alternative to rolling the dice, so after rolling
+    they must not show up as reachable rooms.
+    """
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Study (has secret passage to Kitchen)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Study"
+    center = ROOM_CENTERS.get("Study")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 6)
+    # Kitchen (secret passage from Study) must NOT be in reachable rooms
+    assert "Kitchen" not in targets["reachable_rooms"]
+    # Study (current room) also excluded
+    assert "Study" not in targets["reachable_rooms"]
 
 
 @pytest.mark.asyncio
