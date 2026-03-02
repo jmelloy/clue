@@ -27,9 +27,51 @@ from .board import (
 _GRID = build_grid()
 _SQUARES, _ROOM_NODES = build_graph(_GRID)
 _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
+from .board import ROOM_CENTERS
 from .models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
+
+
+def _compute_room_distances(
+    current_room: str | None, player_position: list | None
+) -> list[tuple[str, int]]:
+    """Return a sorted list of (room_name, bfs_distance) from the player's position.
+
+    Uses the pre-built board graph for BFS. Returns an empty list if the
+    player's position cannot be determined.
+    """
+    from collections import deque
+
+    start_sq = None
+    if current_room and current_room in _ROOM_NAME_TO_ENUM:
+        start_sq = _ROOM_NODES.get(_ROOM_NAME_TO_ENUM[current_room])
+    elif player_position:
+        start_sq = _SQUARES.get((player_position[0], player_position[1]))
+
+    if start_sq is None:
+        return []
+
+    dist_map: dict = {start_sq: 0}
+    queue: deque = deque([(start_sq, 0)])
+    while queue:
+        sq, d = queue.popleft()
+        for nb in sq.neighbors:
+            if nb not in dist_map:
+                dist_map[nb] = d + 1
+                if nb.type != SquareType.ROOM:
+                    queue.append((nb, d + 1))
+
+    results = []
+    for room_name in ROOMS:
+        room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
+        if room_enum:
+            node = _ROOM_NODES.get(room_enum)
+            if node and node in dist_map:
+                results.append((room_name, dist_map[node]))
+
+    results.sort(key=lambda x: x[1])
+    return results
 llm_trace_logger = logging.getLogger("llm.agent.trace")
 
 _trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
@@ -767,8 +809,13 @@ class WandererAgent(BaseAgent):
         available = player_state.available_actions
         current_room = game_state.current_room.get(player_id)
 
-        if not game_state.dice_rolled and "move" in available:
-            # Pick a random room different from the current one
+        # Phase 1: roll dice first
+        if "roll" in available:
+            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            return {"type": "roll"}
+
+        # Phase 2: move to a random room
+        if "move" in available:
             candidates = [r for r in ROOMS if r != current_room]
             if not candidates:
                 candidates = list(ROOMS)
@@ -776,6 +823,7 @@ class WandererAgent(BaseAgent):
             logger.info("[%s:%s] Wandering to '%s'", self.agent_type, player_id, target)
             return {"type": "move", "room": target}
 
+        # Phase 3: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
         return {"type": "end_turn"}
 
@@ -1065,6 +1113,15 @@ class LLMAgent(BaseAgent):
             f"- Dice rolled this turn: {dice_rolled}",
             f"- Available actions: {available}",
         ]
+
+        # Add closest rooms by BFS distance
+        player_pos = game_state.player_positions.get(player_id)
+        room_distances = _compute_room_distances(
+            current_room.get(player_id), player_pos
+        )
+        if room_distances:
+            closest = [f"{name} ({dist} steps)" for name, dist in room_distances]
+            lines.append(f"- Rooms by distance: {', '.join(closest)}")
 
         if self.unrefuted_suggestions:
             lines.append(
