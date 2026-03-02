@@ -225,7 +225,7 @@ if __name__ == "__main__":
     import os
 
     debug = os.getenv("DEBUG", "false").lower() == "true"
-    log_level = "DEBUG" if debug else "INFO"
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     logging_config = get_logging_config(log_level=log_level, log_format="colored")
 
     uvicorn.run(

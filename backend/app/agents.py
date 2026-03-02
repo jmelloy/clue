@@ -31,6 +31,19 @@ from .board import ROOM_CENTERS
 from .models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
+llm_trace_logger = logging.getLogger(f"{__name__}.trace")
+
+_trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
+if _trace_level_name:
+    logger.info("Setting LLM trace log level to '%s'", _trace_level_name)
+    trace_level = getattr(logging, _trace_level_name, None)
+    if isinstance(trace_level, int):
+        llm_trace_logger.setLevel(trace_level)
+    else:
+        logger.warning(
+            "[llm] Invalid LLM_TRACE_LOG_LEVEL='%s' (expected logging level name)",
+            _trace_level_name,
+        )
 
 
 def _compute_room_distances(
@@ -72,18 +85,6 @@ def _compute_room_distances(
 
     results.sort(key=lambda x: x[1])
     return results
-llm_trace_logger = logging.getLogger("llm.agent.trace")
-
-_trace_level_name = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
-if _trace_level_name:
-    trace_level = getattr(logging, _trace_level_name, None)
-    if isinstance(trace_level, int):
-        llm_trace_logger.setLevel(trace_level)
-    else:
-        logger.warning(
-            "[llm] Invalid LLM_TRACE_LOG_LEVEL='%s' (expected logging level name)",
-            _trace_level_name,
-        )
 
 
 def _clip_text(value: str, limit: int = 1200) -> str:
