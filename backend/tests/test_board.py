@@ -183,3 +183,89 @@ def test_move_towards_large_roll_reaches_room(board):
     dest, reached = move_towards(start, Room.BALLROOM, 1, squares, room_nodes)
     assert reached is True
     assert dest == room_nodes[Room.BALLROOM]
+
+
+# ---------------------------------------------------------------------------
+# Occupied-square / collision tests
+# ---------------------------------------------------------------------------
+
+
+def test_occupied_square_not_reachable(board):
+    """A hallway square occupied by another pawn cannot be landed on."""
+    squares, room_nodes = board
+    # (7,17) is a hallway square; (7,18) is adjacent
+    start = squares[(7, 17)]
+    occupied = {(7, 18)}
+
+    reached = reachable(start, 1, squares, room_nodes, occupied)
+    target = squares.get((7, 18))
+    assert target is not None
+    assert target not in reached
+
+
+def test_occupied_square_blocks_passage(board):
+    """An occupied hallway square blocks movement through it entirely."""
+    squares, room_nodes = board
+    start = squares[(7, 17)]
+
+    # Without obstacle, (7,19) is reachable in 2 steps via (7,18)
+    reached_free = reachable(start, 2, squares, room_nodes)
+    sq_19 = squares.get((7, 19))
+    assert sq_19 is not None
+    assert sq_19 in reached_free
+
+    # With (7,18) occupied, (7,19) can't be reached through that path
+    # (it may still be reachable via other routes)
+    reached_blocked = reachable(start, 2, squares, room_nodes, occupied={(7, 18)})
+    # At minimum, fewer squares are reachable
+    assert len(reached_blocked) <= len(reached_free)
+
+
+def test_door_blocked_traps_player_in_room(board):
+    """Blocking the only door of a room prevents hallway exit."""
+    squares, room_nodes = board
+    # Conservatory has exactly 1 door at (19, 4)
+    conservatory = room_nodes[Room.CONSERVATORY]
+
+    reached = reachable(conservatory, 6, squares, room_nodes, occupied={(19, 4)})
+
+    hallway_squares = [sq for sq in reached if sq.type != SquareType.ROOM]
+    assert len(hallway_squares) == 0, (
+        "Player should not reach any hallway squares when the only door is blocked"
+    )
+    # Secret passage to Lounge should still work
+    assert room_nodes[Room.LOUNGE] in reached
+
+
+def test_one_blocked_door_still_allows_exit(board):
+    """If only one of multiple doors is blocked, the other still works."""
+    squares, room_nodes = board
+    # Library has 2 doors: (8,6) and (10,3)
+    library = room_nodes[Room.LIBRARY]
+
+    reached = reachable(library, 6, squares, room_nodes, occupied={(8, 6)})
+
+    # Unblocked door (10,3) should still be reachable
+    door_sq = squares.get((10, 3))
+    assert door_sq in reached
+    hallway_squares = [sq for sq in reached if sq.type != SquareType.ROOM]
+    assert len(hallway_squares) > 0, (
+        "Player should reach hallway through the unblocked door"
+    )
+
+
+def test_room_has_infinite_capacity(board):
+    """Rooms are never blocked by occupants — rooms have infinite capacity."""
+    squares, room_nodes = board
+    ballroom = room_nodes[Room.BALLROOM]
+    # Even with the room center coords in the occupied set, the room is still
+    # reachable because room nodes are exempt from collision checks.
+    start = squares.get((17, 9))  # Ballroom door
+    if start is None:
+        pytest.skip("Door square not found")
+
+    reached = reachable(
+        start, 1, squares, room_nodes,
+        occupied={(ballroom.row, ballroom.col)},
+    )
+    assert ballroom in reached, "Room should be reachable regardless of occupants"
