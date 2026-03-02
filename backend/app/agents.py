@@ -1026,14 +1026,11 @@ Respond with a valid JSON object for your chosen action. Include a "chat" field 
 with a short in-character comment about what you're doing (one sentence, stay in \
 character as {character}).
 
-Also include a "memory" field with your private detective notes — deductions, \
+When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
 suspicions, which cards you've eliminated, your strategy for next turns. These \
 notes will be shown back to you on your next turn so you can remember your \
-reasoning. Be concise but thorough. Example:
-
-{{"type": "roll", "chat": "Let's see what fate has in store!", "memory": "I know \
-Mrs. White and Rope are not the solution (in my hand). Colonel Mustard showed me \
-the Kitchen card. I should investigate the Study next."}}\
+reasoning. Be concise but thorough. \
+You will always get the known/unkonwn cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1175,7 +1172,6 @@ class LLMAgent(BaseAgent):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "max_completion_tokens": 500,
         }
 
         logger.info(
@@ -1335,8 +1331,7 @@ class LLMAgent(BaseAgent):
         if self.memory:
             lines.append("")
             lines.append("YOUR PRIVATE NOTES FROM PREVIOUS TURNS:")
-            for i, entry in enumerate(self.memory, 1):
-                lines.append(f"  Turn {i}: {entry}")
+            lines.append(f"  Turn {len(self.memory)}: {self.memory[-1]}")
 
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
