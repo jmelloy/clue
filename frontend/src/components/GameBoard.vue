@@ -71,13 +71,36 @@
         <!-- Your Cards -->
         <section v-if="!isObserver" class="sidebar-panel cards-panel">
           <h2>Your Cards</h2>
-          <div class="card-hand">
-            <div v-for="card in yourCards" :key="card" class="hand-card" :class="cardCategory(card)">
-              <span class="card-icon">{{ cardIcon(card) }}</span>
-              <span class="card-label">{{ card }}</span>
+          <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
+          <template v-else>
+            <div v-if="suspectCards.length" class="card-group">
+              <h3 class="card-group-label card-group-suspect">Suspects</h3>
+              <div class="card-hand">
+                <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect">
+                  <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
+              </div>
             </div>
-            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-          </div>
+            <div v-if="weaponCards.length" class="card-group">
+              <h3 class="card-group-label card-group-weapon">Weapons</h3>
+              <div class="card-hand">
+                <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon">
+                  <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="roomCards.length" class="card-group">
+              <h3 class="card-group-label card-group-room">Rooms</h3>
+              <div class="card-hand">
+                <div v-for="card in roomCards" :key="card" class="hand-card card-room">
+                  <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
         </section>
 
         <!-- Card Shown notification -->
@@ -348,6 +371,10 @@ const currentPlayerName = computed(() => {
 const winnerName = computed(() => {
   return playerName(props.gameState?.winner)
 })
+
+const suspectCards = computed(() => props.yourCards.filter(c => SUSPECTS.includes(c)))
+const weaponCards = computed(() => props.yourCards.filter(c => WEAPONS.includes(c)))
+const roomCards = computed(() => props.yourCards.filter(c => ROOMS.includes(c)))
 
 const matchingCards = computed(() => {
   if (!props.showCardRequest) return []
@@ -734,6 +761,34 @@ watch(
 .card-room {
   background: rgba(46, 204, 113, 0.15);
   border-color: rgba(46, 204, 113, 0.3);
+  color: #8ed8ad;
+}
+
+.card-group {
+  margin-bottom: 0.5rem;
+}
+
+.card-group:last-child {
+  margin-bottom: 0;
+}
+
+.card-group-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.card-group-suspect {
+  color: #e8a49c;
+}
+
+.card-group-weapon {
+  color: #94c6e8;
+}
+
+.card-group-room {
   color: #8ed8ad;
 }
 
