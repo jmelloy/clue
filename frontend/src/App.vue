@@ -5,6 +5,7 @@
       :url-game-id="urlGameId"
       @game-joined="onGameJoined"
       @observe="onObserve"
+      @rejoin="onRejoin"
       @clear-url-game="urlGameId = null"
     />
     <WaitingRoom
@@ -331,6 +332,23 @@ function onObserve({ gameId: gid }) {
 
   pushGameUrl(gid)
   connectWS()
+  loadChat(gid)
+}
+
+function onRejoin({ gameId: gid, playerId: pid }) {
+  gameId.value = gid
+  playerId.value = pid
+  isObserver.value = false
+  urlGameId.value = null
+
+  // Fetch current state
+  fetch(`/games/${gid}`)
+    .then(r => r.json())
+    .then(state => { gameState.value = state })
+    .catch(() => {})
+
+  pushGameUrl(gid)
+  connectWS()  // WS will send player-specific state (cards, actions)
   loadChat(gid)
 }
 
