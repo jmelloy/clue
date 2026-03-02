@@ -607,6 +607,10 @@ class BaseAgent(ABC):
         if self._pending_chat:
             msg = self._pending_chat
             self._pending_chat = None
+            # Strip leading character name prefix if the LLM included it,
+            # since the caller already prepends "{name}: ".
+            if self.character and msg.startswith(self.character + ": "):
+                msg = msg[len(self.character) + 2:]
             return msg
 
         prob = _CHAT_PROBABILITY.get(action_type, 0.5)
