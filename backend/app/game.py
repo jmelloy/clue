@@ -202,6 +202,13 @@ class ClueGame:
             if current_room and current_room in SECRET_PASSAGE_MAP:
                 actions.append("secret_passage")
             actions.append("roll")
+            # If pulled into a room by a suggestion, can suggest without rolling
+            if (
+                current_room
+                and not suggestions_made
+                and state.was_moved_by_suggestion.get(player_id)
+            ):
+                actions.append("suggest")
         elif state.dice_rolled and not state.moved:
             # Phase 2: dice rolled, choose room to move toward
             actions.append("move")
@@ -605,6 +612,9 @@ class ClueGame:
                 center = ROOM_CENTERS.get(room)
                 if center:
                     state.player_positions[moved_suspect_player] = list(center)
+                # Mark that this player was pulled into a room by a suggestion,
+                # so they can suggest from it on their next turn without rolling.
+                state.was_moved_by_suggestion[moved_suspect_player] = True
                 break
 
         suggestion_entry = Suggestion(
@@ -773,6 +783,7 @@ class ClueGame:
         state.moved = False
         state.last_roll = None
         state.suggestions_this_turn = []
+        state.was_moved_by_suggestion.pop(player_id, None)
         await self._save_state(state)
 
         await self._append_log(
