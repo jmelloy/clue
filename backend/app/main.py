@@ -87,6 +87,10 @@ _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
 # Agent mode: "inline" runs agents in-process (legacy), "external" relies on agent_runner
 _AGENT_MODE = os.getenv("AGENT_MODE", "inline")
 
+# Accumulate wanderer turn info so we can emit one collapsed chat line
+# Key: (game_id, player_id) -> {"dice": int, "room": str|None}
+_wanderer_turn_info: dict[tuple[str, str], dict] = {}
+
 
 def _new_id(length: int = 6) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -106,6 +110,13 @@ def _player_name(state: GameState, player_id: str) -> str:
         if p.id == player_id:
             return p.name
     return player_id
+
+
+def _is_wanderer(state: GameState, player_id: str) -> bool:
+    for p in state.players:
+        if p.id == player_id:
+            return p.type == "wanderer"
+    return False
 
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
@@ -213,6 +224,8 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     state = await game.get_state()
     action_type = action.get("type")
 
+    wanderer = _is_wanderer(state, player_id)
+
     if action_type == "roll":
         actor_name = _player_name(state, player_id)
         dice = result.get("dice")
@@ -227,11 +240,14 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "reachable_rooms": reachable_targets["reachable_rooms"],
             },
         )
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} rolled {dice}.",
-            player_id,
-        )
+        if wanderer:
+            _wanderer_turn_info[(game_id, player_id)] = {"dice": dice, "room": None}
+        else:
+            await _broadcast_chat(
+                game_id,
+                f"{actor_name} rolled {dice}.",
+                player_id,
+            )
         await manager.send_to_player(
             game_id,
             player_id,
@@ -286,12 +302,17 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "position": result.get("position"),
             },
         )
-        room_text = f" to {room}" if room else ""
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} moved{room_text}.",
-            player_id,
-        )
+        if wanderer:
+            info = _wanderer_turn_info.get((game_id, player_id))
+            if info is not None:
+                info["room"] = room
+        else:
+            room_text = f" to {room}" if room else ""
+            await _broadcast_chat(
+                game_id,
+                f"{actor_name} moved{room_text}.",
+                player_id,
+            )
         await manager.send_to_player(
             game_id,
             player_id,
@@ -450,11 +471,23 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     "available_actions": game.get_available_actions(next_pid, state),
                 },
             )
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} ended their turn. It is now {next_name}'s turn.",
-            player_id,
-        )
+        if wanderer:
+            # Emit one collapsed line for the wanderer's entire turn
+            info = _wanderer_turn_info.pop((game_id, player_id), None)
+            dice = info["dice"] if info else "?"
+            room = info["room"] if info else None
+            room_text = f" to the {room}" if room else ""
+            await _broadcast_chat(
+                game_id,
+                f"{actor_name} rolled a {dice} and moved{room_text}.",
+                player_id,
+            )
+        else:
+            await _broadcast_chat(
+                game_id,
+                f"{actor_name} ended their turn. It is now {next_name}'s turn.",
+                player_id,
+            )
 
     # Update agent observations for any active agents in this game
     _update_agent_observations(game_id, player_id, action, result)
