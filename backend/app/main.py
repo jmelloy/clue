@@ -557,7 +557,7 @@ async def _run_agent_loop(game_id: str):
                 # Broadcast personality chat after the action
                 chat_context = {
                     "dice": result.get("dice", ""),
-                    "room": result.get("room", action.get("room", "")),
+                    "room": result.get("room") or action.get("room") or "",
                     "suspect": action.get("suspect", ""),
                     "weapon": action.get("weapon", ""),
                 }
