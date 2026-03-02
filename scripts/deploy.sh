@@ -116,11 +116,8 @@ if [ "$SKIP_BUILD" = false ]; then
   echo "==> Logging in to ghcr.io..."
   echo "${GITHUB_TOKEN:-$(gh auth token)}" | docker login ghcr.io -u "${GITHUB_ACTOR:-$(gh api user -q .login)}" --password-stdin
 
-  echo "==> Building backend image..."
-  docker build -t "$BACKEND_IMAGE" -f "$ROOT_DIR/backend/Dockerfile" "$ROOT_DIR"
-
-  echo "==> Pushing images..."
-  docker push "$BACKEND_IMAGE"
+  echo "==> Building backend image (linux/amd64)..."
+  docker buildx build --platform linux/amd64 -t "$BACKEND_IMAGE" -f "$ROOT_DIR/backend/Dockerfile" --push "$ROOT_DIR"
 else
   echo "==> Skipping build (--skip-build)"
 fi
