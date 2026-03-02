@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-runner
+  namespace: clue
+  labels:
+    app: agent-runner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-runner
+  template:
+    metadata:
+      labels:
+        app: agent-runner
+    spec:
+      containers:
+        - name: agent-runner
+          # Same image as the backend — just a different entrypoint
+          image: clue-backend:latest
+          command: ["python", "agent_runner.py"]
+          env:
+            - name: REDIS_URL
+              value: redis://redis:6379
+            - name: BACKEND_URL
+              value: http://backend:8000
+            - name: AGENT_POLL_INTERVAL
+              value: "2"
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: clue-secrets
+                  key: llm-api-key
+                  optional: true
+            - name: LLM_MODEL
+              value: "gpt-5-mini"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"

@@ -16,6 +16,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-5-mini}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_TRACE_LOG_LEVEL=${LLM_TRACE_LOG_LEVEL:-info}
+      - AGENT_MODE=external
     ports:
       - "8000:8000"
     volumes:
@@ -23,8 +24,29 @@ services:
     depends_on:
       - redis
 
+  agent-runner:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python agent_runner.py
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - BACKEND_URL=http://backend:8000
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_FORMAT=${LOG_FORMAT:-colored}
+      - LLM_MODEL=${LLM_MODEL:-gpt-5-mini}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_TRACE_LOG_LEVEL=${LLM_TRACE_LOG_LEVEL:-info}
+      - AGENT_POLL_INTERVAL=2
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+
   frontend:
-    build: 
+    build:
       context: ./frontend
     working_dir: /app
     command: npm run dev -- --host
