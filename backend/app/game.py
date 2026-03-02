@@ -520,6 +520,7 @@ class ClueGame:
 
         pending_player_id = None
         matching_cards: list[str] = []
+        players_without_match: list[str] = []
         for other_player in order:
             other_id = other_player.id
             cards = await self._load_player_cards(other_id)
@@ -528,6 +529,8 @@ class ClueGame:
                 pending_player_id = other_id
                 matching_cards = matching
                 break
+            else:
+                players_without_match.append(other_id)
 
         # Move the suggested suspect's player to the suggestion room
         moved_suspect_player = None
@@ -580,6 +583,7 @@ class ClueGame:
                 "room": room,
                 "pending_show_by": pending_player_id,
                 "moved_suspect_player": moved_suspect_player,
+                "players_without_match": players_without_match,
             }
         )
         return result
@@ -614,6 +618,9 @@ class ClueGame:
             {
                 "card": card,
                 "suggesting_player_id": suggesting_player_id,
+                "suspect": pending.suspect,
+                "weapon": pending.weapon,
+                "room": pending.room,
             }
         )
         return result
