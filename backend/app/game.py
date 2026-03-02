@@ -92,6 +92,9 @@ class ClueGame:
     def _cards_key(self, player_id: str) -> str:
         return f"game:{self.game_id}:cards:{player_id}"
 
+    def _memory_key(self, player_id: str) -> str:
+        return f"game:{self.game_id}:memory:{player_id}"
+
     # ------------------------------------------------------------------
     # Internal Redis helpers
     # ------------------------------------------------------------------
@@ -127,6 +130,16 @@ class ClueGame:
     async def _append_log(self, entry: dict):
         await self.redis.rpush(self._log_key, json.dumps(entry))
         await self.redis.expire(self._log_key, EXPIRY)
+
+    async def append_memory(self, player_id: str, entry: str):
+        """Append a memory entry for an LLM agent."""
+        await self.redis.rpush(self._memory_key(player_id), entry)
+        await self.redis.expire(self._memory_key(player_id), EXPIRY)
+
+    async def get_memory(self, player_id: str) -> list[str]:
+        """Retrieve all memory entries for an LLM agent."""
+        entries = await self.redis.lrange(self._memory_key(player_id), 0, -1)
+        return [e if isinstance(e, str) else e.decode() for e in entries]
 
     async def add_chat_message(self, message: ChatMessage):
         await self.redis.rpush(self._chat_key, message.model_dump_json())
