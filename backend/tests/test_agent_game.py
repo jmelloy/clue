@@ -52,6 +52,7 @@ async def _setup_game(redis, num_agents=2):
     for p in state.players:
         if p.id not in agents:
             agents[p.id] = WandererAgent()
+        agents[p.id].player_id = p.id
         cards = await game._load_player_cards(p.id)
         agents[p.id].observe_own_cards(cards)
 
@@ -88,8 +89,23 @@ async def _run_game(
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
 
-            # The suggesting agent learns the shown card
+            # The suggesting agent learns the actual card
             agents[suggesting_pid].observe_shown_card(card, shown_by=pid)
+
+            # All other agents observe a card was shown (inference).
+            # Exclude suggesting player (got actual card) and showing player.
+            suspect = result.get("suspect", "")
+            weapon = result.get("weapon", "")
+            room = result.get("room", "")
+            for aid, a in agents.items():
+                if aid not in (suggesting_pid, pid) and suspect and weapon and room:
+                    a.observe_card_shown_to_other(
+                        shown_by=pid,
+                        shown_to=suggesting_pid,
+                        suspect=suspect,
+                        weapon=weapon,
+                        room=room,
+                    )
         else:
             # Current player's turn
             pid = state.whose_turn
@@ -101,8 +117,22 @@ async def _run_game(
 
             # Post-action observations
             if action["type"] == "suggest":
-                if result.get("pending_show_by") is None:
-                    # No one could show a card — valuable info
+                shown_by = result.get("pending_show_by")
+                players_without = result.get("players_without_match", [])
+
+                # Notify ALL agents about the suggestion
+                for aid, a in agents.items():
+                    a.observe_suggestion(
+                        suggesting_player_id=pid,
+                        suspect=action["suspect"],
+                        weapon=action["weapon"],
+                        room=action["room"],
+                        shown_by=shown_by,
+                        players_without_match=players_without,
+                    )
+
+                if shown_by is None:
+                    # No one could show a card
                     agent.observe_suggestion_no_show(
                         action["suspect"],
                         action["weapon"],
@@ -281,6 +311,7 @@ async def test_multiple_games_all_finish(redis):
         for p in state.players:
             if p.id not in agents:
                 agents[p.id] = WandererAgent()
+            agents[p.id].player_id = p.id
             cards = await game._load_player_cards(p.id)
             agents[p.id].observe_own_cards(cards)
 

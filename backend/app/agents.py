@@ -378,6 +378,12 @@ class BaseAgent(ABC):
         self.unrefuted_suggestions: list[dict] = []
         self.character: str = ""
         self._pending_chat: str | None = None
+        # Inference tracking
+        self.player_id: str = ""  # set externally after creation
+        self.own_cards: list[str] = []
+        self.player_has_cards: dict[str, set[str]] = {}
+        self.player_not_has_cards: dict[str, set[str]] = {}
+        self.suggestion_log: list[dict] = []
         logger.info("[%s] Agent instance created", self.agent_type)
 
     # ------------------------------------------------------------------
@@ -387,6 +393,7 @@ class BaseAgent(ABC):
     def observe_own_cards(self, cards: list[str]):
         """Called once at game start with the agent's dealt hand."""
         self.seen_cards.update(cards)
+        self.own_cards = list(cards)
         logger.info(
             "[%s] Received hand: %s (%d cards)", self.agent_type, cards, len(cards)
         )
@@ -395,6 +402,8 @@ class BaseAgent(ABC):
         """Called when another player shows us a card."""
         is_new = card not in self.seen_cards
         self.seen_cards.add(card)
+        if shown_by:
+            self.player_has_cards.setdefault(shown_by, set()).add(card)
         logger.info(
             "[%s] Card shown by %s: '%s' (new_info=%s, total_seen=%d)",
             self.agent_type,
@@ -403,6 +412,8 @@ class BaseAgent(ABC):
             is_new,
             len(self.seen_cards),
         )
+        if is_new:
+            self._run_inference()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
         """Called when a suggestion gets no card shown by anyone."""
@@ -418,14 +429,170 @@ class BaseAgent(ABC):
             len(self.unrefuted_suggestions),
         )
 
-    def observe_card_shown_to_other(self, shown_by: str, shown_to: str):
-        """Called when we see that player A showed a card to player B."""
+    def observe_card_shown_to_other(
+        self, shown_by: str, shown_to: str, suspect: str, weapon: str, room: str
+    ):
+        """Called when we see that player A showed a card to player B.
+
+        We don't know which card was shown, but we can deduce it if we can
+        rule out all but one of the suggested cards for the showing player.
+        A card is impossible for the shower if: it's in our hand (unique),
+        it's known to be held by a different player, or the shower is known
+        not to have it.
+        """
+        inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
+        if inferred:
+            logger.info(
+                "[%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
+                self.agent_type,
+                shown_by,
+                inferred,
+                suspect,
+                weapon,
+                room,
+            )
+            self._run_inference()
+        else:
+            suggested_cards = {suspect, weapon, room}
+            possible = self._possible_cards_for_player(shown_by, suggested_cards)
+            logger.debug(
+                "[%s] Observed: %s showed a card to %s for %s/%s/%s "
+                "(%d possible cards, cannot deduce)",
+                self.agent_type,
+                shown_by,
+                shown_to,
+                suspect,
+                weapon,
+                room,
+                len(possible),
+            )
+
+    def _possible_cards_for_player(
+        self, player_id: str, candidates: set[str]
+    ) -> set[str]:
+        """From a set of candidate cards, return those the player could hold.
+
+        Eliminates cards that are: in our own hand, known to be held by a
+        different player, or known to not be held by this player.
+        """
+        impossible = set(self.own_cards) & candidates
+
+        # Cards known to be held by someone else
+        for pid, cards in self.player_has_cards.items():
+            if pid != player_id:
+                impossible |= cards & candidates
+
+        # Cards this player is known NOT to have (from being skipped)
+        not_has = self.player_not_has_cards.get(player_id, set())
+        impossible |= not_has & candidates
+
+        return candidates - impossible
+
+    def _try_infer_shown_card(
+        self, shown_by: str, suspect: str, weapon: str, room: str
+    ) -> str | None:
+        """Try to infer which card was shown. Returns the card or None."""
+        suggested_cards = {suspect, weapon, room}
+        possible = self._possible_cards_for_player(shown_by, suggested_cards)
+
+        if len(possible) == 1:
+            inferred_card = next(iter(possible))
+            if inferred_card in self.seen_cards:
+                return None  # Already known, no new information
+            self.seen_cards.add(inferred_card)
+            self.player_has_cards.setdefault(shown_by, set()).add(inferred_card)
+            return inferred_card
+        return None
+
+    def observe_suggestion(
+        self,
+        suggesting_player_id: str,
+        suspect: str,
+        weapon: str,
+        room: str,
+        shown_by: str | None,
+        players_without_match: list[str],
+    ):
+        """Called for ALL agents when any player makes a suggestion.
+
+        Records the suggestion and tracks negative knowledge: players who
+        were checked and couldn't show don't have any of the suggested cards.
+        """
+        entry = {
+            "suggesting_player_id": suggesting_player_id,
+            "suspect": suspect,
+            "weapon": weapon,
+            "room": room,
+            "shown_by": shown_by,
+            "players_without_match": list(players_without_match),
+        }
+        self.suggestion_log.append(entry)
+
+        # Players who were checked and couldn't show lack ALL three cards
+        suggested_cards = {suspect, weapon, room}
+        for pid in players_without_match:
+            self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
+
         logger.debug(
-            "[%s] Observed: %s showed a card to %s",
+            "[%s] Observed suggestion: %s suggested %s/%s/%s, shown_by=%s, "
+            "%d players couldn't show",
             self.agent_type,
+            suggesting_player_id,
+            suspect,
+            weapon,
+            room,
             shown_by,
-            shown_to,
+            len(players_without_match),
         )
+
+    def _run_inference(self):
+        """Re-examine suggestion log for new deductions from updated knowledge.
+
+        When we learn a new card or new negative knowledge, previous
+        suggestions where someone showed a card might now be deducible.
+        """
+        changed = True
+        while changed:
+            changed = False
+            for entry in self.suggestion_log:
+                shown_by = entry.get("shown_by")
+                if not shown_by:
+                    continue
+
+                # Don't try to infer what WE showed — our own_cards would
+                # be incorrectly excluded as "impossible for self".
+                if self.player_id and shown_by == self.player_id:
+                    continue
+
+                # Don't try to infer what the suggesting player showed us —
+                # we already got the actual card via observe_shown_card.
+                suggesting_pid = entry.get("suggesting_player_id")
+                if self.player_id and suggesting_pid == self.player_id:
+                    continue
+
+                suspect = entry["suspect"]
+                weapon = entry["weapon"]
+                room = entry["room"]
+
+                # Skip if we already know what was shown (all 3 are seen)
+                suggested_cards = {suspect, weapon, room}
+                if suggested_cards <= self.seen_cards:
+                    continue
+
+                inferred = self._try_infer_shown_card(
+                    shown_by, suspect, weapon, room
+                )
+                if inferred:
+                    logger.info(
+                        "[%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
+                        self.agent_type,
+                        shown_by,
+                        inferred,
+                        suspect,
+                        weapon,
+                        room,
+                    )
+                    changed = True
 
     # ------------------------------------------------------------------
     # Helpers
@@ -947,6 +1114,10 @@ class LLMAgent(BaseAgent):
         self._fallback.shown_to = self.shown_to
         self._fallback.rooms_suggested_in = self.rooms_suggested_in
         self._fallback.unrefuted_suggestions = self.unrefuted_suggestions
+        self._fallback.own_cards = self.own_cards
+        self._fallback.player_has_cards = self.player_has_cards
+        self._fallback.player_not_has_cards = self.player_not_has_cards
+        self._fallback.suggestion_log = self.suggestion_log
 
         logger.info(
             "[%s] Configured | api_url=%s | model=%s | api_key_set=%s",
@@ -1251,6 +1422,9 @@ class LLMAgent(BaseAgent):
         available = player_state.available_actions
         current_room = game_state.current_room.get(player_id)
         current_position = game_state.player_positions.get(player_id)
+
+        # Keep fallback agent's player_id in sync
+        self._fallback.player_id = self.player_id
 
         self.seen_cards.update(player_state.your_cards)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()

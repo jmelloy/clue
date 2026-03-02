@@ -468,12 +468,42 @@ def _update_agent_observations(
         # The suggesting player learns which card was shown
         suggesting_pid = result.get("suggesting_player_id")
         card = result.get("card")
+        suspect = result.get("suspect", "")
+        weapon = result.get("weapon", "")
+        room = result.get("room", "")
         if suggesting_pid and suggesting_pid in agents and card:
             agents[suggesting_pid].observe_shown_card(card, shown_by=player_id)
 
+        # All OTHER agents observe that a card was shown (they don't see which)
+        # and can try to infer it from their own knowledge.
+        # Exclude the suggesting player (gets the actual card) and the showing
+        # player (already knows what they showed).
+        for aid, agent in agents.items():
+            if aid not in (suggesting_pid, player_id) and suspect and weapon and room:
+                agent.observe_card_shown_to_other(
+                    shown_by=player_id,
+                    shown_to=suggesting_pid,
+                    suspect=suspect,
+                    weapon=weapon,
+                    room=room,
+                )
+
     elif action_type == "suggest":
-        # If no one could show a card, the suggesting agent notes this
-        if result.get("pending_show_by") is None and player_id in agents:
+        # Notify ALL agents about the suggestion (for inference tracking)
+        shown_by = result.get("pending_show_by")
+        players_without = result.get("players_without_match", [])
+        for aid, agent in agents.items():
+            agent.observe_suggestion(
+                suggesting_player_id=player_id,
+                suspect=action["suspect"],
+                weapon=action["weapon"],
+                room=action["room"],
+                shown_by=shown_by,
+                players_without_match=players_without,
+            )
+
+        # If no one could show a card, the suggesting agent also notes this
+        if shown_by is None and player_id in agents:
             agents[player_id].observe_suggestion_no_show(
                 action["suspect"],
                 action["weapon"],
@@ -735,6 +765,7 @@ async def start_game(game_id: str):
             else:
                 agent = RandomAgent()
             agent.character = player.character
+            agent.player_id = pid
             cards = await game._load_player_cards(pid)
             agent.observe_own_cards(cards)
             agents[pid] = agent
