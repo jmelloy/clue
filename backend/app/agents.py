@@ -579,9 +579,7 @@ class BaseAgent(ABC):
                 if suggested_cards <= self.seen_cards:
                     continue
 
-                inferred = self._try_infer_shown_card(
-                    shown_by, suspect, weapon, room
-                )
+                inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
                 if inferred:
                     logger.info(
                         "[%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
@@ -1160,7 +1158,7 @@ class LLMAgent(BaseAgent):
             len(system_prompt),
             len(user_prompt),
         )
-        llm_trace_logger.info(
+        llm_trace_logger.debug(
             "[%s] LLM system prompt preview: %s",
             self.agent_type,
             _clip_text(system_prompt),
@@ -1176,6 +1174,11 @@ class LLMAgent(BaseAgent):
                 resp = await client.post(self.api_url, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
+                logger.debug(
+                    "[%s] LLM raw response: %s",
+                    self.agent_type,
+                    json.dumps(data)[:500],
+                )
                 content = data["choices"][0]["message"]["content"]
                 logger.info(
                     "[%s] LLM response received | status=%d | length=%d",

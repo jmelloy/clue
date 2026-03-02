@@ -2,6 +2,9 @@ import json
 import random
 import string
 import datetime as dt
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .board import (
     START_POSITIONS,
@@ -95,11 +98,14 @@ class ClueGame:
     async def _save_state(self, state: GameState):
         await self.redis.set(self._state_key, state.model_dump_json(), ex=EXPIRY)
 
-    async def _load_state(self) -> GameState | None:
-        raw = await self.redis.get(self._state_key)
-        if raw is None:
-            return None
-        return GameState.model_validate_json(raw)
+    async def _load_state(self) -> GameState:
+        try:
+            raw = await self.redis.get(self._state_key)
+            return GameState.model_validate_json(raw)
+        except Exception as e:
+            # Log the error and return None to indicate failure to load state
+            logger.error(f"Error loading game state from Redis: {e}")
+            raise ValueError("Failed to load game state")
 
     async def _save_solution(self, solution: Solution):
         await self.redis.set(self._solution_key, solution.model_dump_json(), ex=EXPIRY)
@@ -149,7 +155,7 @@ class ClueGame:
         await self._save_state(state)
         return state
 
-    async def get_state(self) -> GameState | None:
+    async def get_state(self) -> GameState:
         return await self._load_state()
 
     def get_available_actions(self, player_id: str, state: GameState) -> list[str]:
@@ -192,7 +198,9 @@ class ClueGame:
         actions.append("accuse")
 
         # Only offer end_turn if the player has done something this turn
-        has_acted = state.dice_rolled or state.moved or bool(state.suggestions_this_turn)
+        has_acted = (
+            state.dice_rolled or state.moved or bool(state.suggestions_this_turn)
+        )
         if has_acted:
             actions.append("end_turn")
 
