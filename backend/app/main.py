@@ -763,7 +763,9 @@ async def start_game(game_id: str):
             pid = player.id
             ptype = player.type
             if ptype == "llm_agent":
-                agent: BaseAgent = LLMAgent()
+                agent: BaseAgent = LLMAgent(
+                    redis_client=redis_client, game_id=game_id
+                )
             elif ptype == "wanderer":
                 agent = WandererAgent()
             else:
@@ -772,6 +774,8 @@ async def start_game(game_id: str):
             agent.player_id = pid
             cards = await game._load_player_cards(pid)
             agent.observe_own_cards(cards)
+            if ptype == "llm_agent":
+                await agent.load_memory()
             agents[pid] = agent
             logger.info(
                 "Created %s agent for player %s (%s) in game %s",

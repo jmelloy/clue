@@ -696,3 +696,34 @@ async def test_secret_passage_all_pairs(game: ClueGame):
         state = await g.get_state()
         assert state.current_room[whose_turn] == to_room
         await redis.aclose()
+
+
+# ---------------------------------------------------------------------------
+# Memory tests
+# ---------------------------------------------------------------------------
+
+
+async def test_memory_empty_initially(game):
+    """Memory for a player starts empty."""
+    entries = await game.get_memory("player1")
+    assert entries == []
+
+
+async def test_memory_append_and_retrieve(game):
+    """Appending memory entries persists and retrieves them in order."""
+    await game.append_memory("player1", "I suspect Colonel Mustard.")
+    await game.append_memory("player1", "Kitchen card has been shown to me.")
+
+    entries = await game.get_memory("player1")
+    assert len(entries) == 2
+    assert entries[0] == "I suspect Colonel Mustard."
+    assert entries[1] == "Kitchen card has been shown to me."
+
+
+async def test_memory_per_player(game):
+    """Each player has their own separate memory."""
+    await game.append_memory("player1", "Note for player 1")
+    await game.append_memory("player2", "Note for player 2")
+
+    assert await game.get_memory("player1") == ["Note for player 1"]
+    assert await game.get_memory("player2") == ["Note for player 2"]
