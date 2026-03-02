@@ -72,37 +72,42 @@
       <div class="sidebar-column">
         <!-- Your Cards -->
         <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2>Your Cards</h2>
-          <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-          <template v-else>
-            <div v-if="suspectCards.length" class="card-group">
-              <h3 class="card-group-label card-group-suspect">Suspects</h3>
-              <div class="card-hand">
-                <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect">
-                  <span class="card-icon">{{ cardIcon(card) }}</span>
-                  <span class="card-label">{{ card }}</span>
+          <h2 class="collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
+            <span>Your Cards</span>
+            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
+          </h2>
+          <div v-if="!cardsCollapsed">
+            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
+            <template v-else>
+              <div v-if="suspectCards.length" class="card-group">
+                <h3 class="card-group-label card-group-suspect">Suspects</h3>
+                <div class="card-hand">
+                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div v-if="weaponCards.length" class="card-group">
-              <h3 class="card-group-label card-group-weapon">Weapons</h3>
-              <div class="card-hand">
-                <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon">
-                  <span class="card-icon">{{ cardIcon(card) }}</span>
-                  <span class="card-label">{{ card }}</span>
+              <div v-if="weaponCards.length" class="card-group">
+                <h3 class="card-group-label card-group-weapon">Weapons</h3>
+                <div class="card-hand">
+                  <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div v-if="roomCards.length" class="card-group">
-              <h3 class="card-group-label card-group-room">Rooms</h3>
-              <div class="card-hand">
-                <div v-for="card in roomCards" :key="card" class="hand-card card-room">
-                  <span class="card-icon">{{ cardIcon(card) }}</span>
-                  <span class="card-label">{{ card }}</span>
+              <div v-if="roomCards.length" class="card-group">
+                <h3 class="card-group-label card-group-room">Rooms</h3>
+                <div class="card-hand">
+                  <div v-for="card in roomCards" :key="card" class="hand-card card-room">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </section>
 
         <!-- Card Shown notification -->
@@ -319,6 +324,7 @@ const accuseSuspect = ref('')
 const accuseWeapon = ref('')
 const accuseRoom = ref('')
 const showAccuseForm = ref(false)
+const cardsCollapsed = ref(false)
 
 // Auto-end timer countdown
 const countdown = ref(null)
@@ -735,6 +741,29 @@ watch(
   color: #c9a84c;
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
+}
+
+/* Collapsible header */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-header:hover {
+  opacity: 0.85;
+}
+
+.collapse-indicator {
+  font-size: 0.65rem;
+  transition: transform 0.2s ease;
+  color: #667;
+}
+
+.collapse-indicator.collapsed {
+  transform: rotate(-90deg);
 }
 
 /* Cards */
