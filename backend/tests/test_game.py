@@ -71,6 +71,14 @@ async def test_create_game(redis):
 
 
 @pytest.mark.asyncio
+async def test_get_state_returns_none_for_missing_game(redis):
+    """_load_state / get_state must return None for a game that was never created."""
+    g = ClueGame("DOESNOTEXIST", redis)
+    state = await g.get_state()
+    assert state is None
+
+
+@pytest.mark.asyncio
 async def test_add_players(game: ClueGame):
     p1, p2 = await _add_two_players(game)
 

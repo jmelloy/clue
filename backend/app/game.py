@@ -4,6 +4,8 @@ import string
 import datetime as dt
 import logging
 
+from pydantic import ValidationError
+
 logger = logging.getLogger(__name__)
 
 from .board import (
@@ -102,12 +104,13 @@ class ClueGame:
     async def _save_state(self, state: GameState):
         await self.redis.set(self._state_key, state.model_dump_json(), ex=EXPIRY)
 
-    async def _load_state(self) -> GameState:
+    async def _load_state(self) -> "GameState | None":
+        raw = await self.redis.get(self._state_key)
+        if raw is None:
+            return None
         try:
-            raw = await self.redis.get(self._state_key)
             return GameState.model_validate_json(raw)
-        except Exception as e:
-            # Log the error and return None to indicate failure to load state
+        except ValidationError as e:
             logger.error(f"Error loading game state from Redis: {e}")
             raise ValueError("Failed to load game state")
 
@@ -339,6 +342,17 @@ class ClueGame:
         return random.randint(1, 6)
 
     @staticmethod
+    def _get_start_square(player_id: str, state: "GameState"):
+        """Return the board Square for the given player's current location."""
+        current_room_name = state.current_room.get(player_id)
+        pos = state.player_positions.get(player_id)
+        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
+            return _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+        elif pos:
+            return _SQUARES.get((pos[0], pos[1]))
+        return None
+
+    @staticmethod
     def _get_occupied_positions(
         state: "GameState", exclude_player_id: str
     ) -> set[tuple[int, int]]:
@@ -369,16 +383,7 @@ class ClueGame:
           - Occupied hallway/door squares are impassable
           - The player's current room is excluded (cannot re-enter same room)
         """
-        current_room_name = state.current_room.get(player_id)
-        pos = state.player_positions.get(player_id)
-
-        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
-            start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
-        elif pos:
-            start_sq = _SQUARES.get((pos[0], pos[1]))
-        else:
-            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
-
+        start_sq = self._get_start_square(player_id, state)
         if not start_sq:
             return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
 
@@ -514,6 +519,7 @@ class ClueGame:
             raise ValueError("Cannot re-enter the room you are already in")
 
         occupied = self._get_occupied_positions(state, player_id)
+        start_sq = self._get_start_square(player_id, state)
 
         if target_pos and not room:
             # Position-based move: player clicked a specific hallway cell
@@ -521,14 +527,6 @@ class ClueGame:
             target_sq = _SQUARES.get((target_row, target_col))
             if not target_sq:
                 raise ValueError("Invalid position")
-
-            pos = state.player_positions.get(player_id)
-            if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
-                start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
-            elif pos:
-                start_sq = _SQUARES.get((pos[0], pos[1]))
-            else:
-                start_sq = None
 
             if start_sq:
                 reachable_squares = reachable(
@@ -545,16 +543,6 @@ class ClueGame:
                 raise ValueError("Cannot determine current position")
 
         elif room:
-            # Determine the player's current position on the board graph
-            pos = state.player_positions.get(player_id)
-
-            if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
-                start_sq = _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
-            elif pos:
-                start_sq = _SQUARES.get((pos[0], pos[1]))
-            else:
-                start_sq = None
-
             target_room_enum = _ROOM_NAME_TO_ENUM.get(room)
 
             if start_sq and target_room_enum:
