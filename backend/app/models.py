@@ -304,6 +304,12 @@ class AutoEndTimerMessage(WSMessage):
     seconds: int
 
 
+class AutoShowCardTimerMessage(WSMessage):
+    type: Literal["auto_show_card_timer"] = "auto_show_card_timer"
+    player_id: str
+    seconds: int
+
+
 class PlayerJoinedMessage(WSMessage):
     type: Literal["player_joined"] = "player_joined"
     player: Player
