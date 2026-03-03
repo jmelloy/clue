@@ -10,7 +10,9 @@
         <div v-if="gameState?.status === 'finished'" class="status-banner winner">
           Game Over! {{ winnerName }} wins!
           <div v-if="gameState.solution" class="solution-detail">
-            {{ gameState.solution.suspect }} with the {{ gameState.solution.weapon }} in the {{ gameState.solution.room }}
+            <span class="highlight-suspect">{{ gameState.solution.suspect }}</span> with the
+            <span class="highlight-weapon">{{ gameState.solution.weapon }}</span> in the
+            <span class="highlight-room">{{ gameState.solution.room }}</span>
           </div>
         </div>
         <div v-else-if="isMyTurn" class="status-banner my-turn">
@@ -127,9 +129,9 @@
           <h2>You Must Show a Card</h2>
           <p class="show-card-desc">
             <strong>{{ playerName(showCardRequest.suggestingPlayerId) }}</strong> suggested:
-            <em>{{ showCardRequest.suspect }}</em> with the
-            <em>{{ showCardRequest.weapon }}</em> in the
-            <em>{{ showCardRequest.room }}</em>
+            <span class="highlight-suspect">{{ showCardRequest.suspect }}</span> with the
+            <span class="highlight-weapon">{{ showCardRequest.weapon }}</span> in the
+            <span class="highlight-room">{{ showCardRequest.room }}</span>
           </p>
           <p class="show-card-prompt">Choose a card to reveal:</p>
           <div class="show-card-options">
@@ -137,8 +139,9 @@
               v-for="card in matchingCards"
               :key="card"
               class="show-card-btn"
+              :class="cardCategory(card)"
               @click="doShowCard(card)"
-            >{{ card }}</button>
+            ><span class="card-icon">{{ cardIcon(card) }}</span> {{ card }}</button>
           </div>
         </section>
 
@@ -183,7 +186,7 @@
 
           <!-- Suggest -->
           <div v-if="canSuggest" class="action-group">
-            <h3>Suggest (in {{ myCurrentRoom }})</h3>
+            <h3>Suggest (in <span class="highlight-room">{{ myCurrentRoom }}</span>)</h3>
             <select v-model="suggestSuspect" class="action-select">
               <option value="">-- Suspect --</option>
               <option v-for="s in SUSPECTS" :key="s" :value="s">{{ s }}</option>
@@ -917,8 +920,20 @@ watch(
   line-height: 1.4;
 }
 
-.show-card-desc em {
-  color: #c9a84c;
+/* Card type color highlights */
+.highlight-suspect {
+  color: #e8a49c;
+  font-weight: bold;
+}
+
+.highlight-weapon {
+  color: #94c6e8;
+  font-weight: bold;
+}
+
+.highlight-room {
+  color: #8ed8ad;
+  font-weight: bold;
 }
 
 .show-card-prompt {
@@ -934,7 +949,6 @@ watch(
 }
 
 .show-card-btn {
-  background: #e74c3c;
   color: #fff;
   border: none;
   padding: 0.5rem 1rem;
@@ -943,10 +957,26 @@ watch(
   font-weight: bold;
   font-size: 0.85rem;
   transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #e74c3c;
 }
 
 .show-card-btn:hover {
+  filter: brightness(0.85);
+}
+
+.show-card-btn.card-suspect {
   background: #c0392b;
+}
+
+.show-card-btn.card-weapon {
+  background: #2471a3;
+}
+
+.show-card-btn.card-room {
+  background: #1e8449;
 }
 
 /* Actions */
