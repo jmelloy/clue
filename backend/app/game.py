@@ -219,6 +219,13 @@ class ClueGame:
         current_room = state.current_room.get(player_id)
         suggestions_made = bool(state.suggestions_this_turn)
 
+        # After making a suggestion, you can only accuse or end turn
+        # (no more rolling/moving this turn).
+        if suggestions_made:
+            actions.append("accuse")
+            actions.append("end_turn")
+            return actions
+
         if not state.dice_rolled and not state.moved:
             # Phase 1: before rolling — offer passage (if applicable) and roll
             if current_room and current_room in SECRET_PASSAGE_MAP:
@@ -227,7 +234,6 @@ class ClueGame:
             # If pulled into a room by a suggestion, can suggest without rolling
             if (
                 current_room
-                and not suggestions_made
                 and state.was_moved_by_suggestion.get(player_id)
             ):
                 actions.append("suggest")
@@ -241,10 +247,11 @@ class ClueGame:
         actions.append("accuse")
 
         # Only offer end_turn if the player has done something this turn
+        # and doesn't still need to move (Phase 2).
         has_acted = (
             state.dice_rolled or state.moved or bool(state.suggestions_this_turn)
         )
-        if has_acted:
+        if has_acted and "move" not in actions:
             actions.append("end_turn")
 
         return actions
