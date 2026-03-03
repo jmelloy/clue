@@ -901,6 +901,21 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
                     "state": player_state.model_dump(),
                 },
             )
+            # Resend show_card_request if there's a pending one for this player
+            pending = player_state.pending_show_card
+            if pending and pending.player_id == player_id:
+                await manager.send_to_player(
+                    game_id,
+                    player_id,
+                    {
+                        "type": "show_card_request",
+                        "suggesting_player_id": pending.suggesting_player_id,
+                        "suspect": pending.suspect,
+                        "weapon": pending.weapon,
+                        "room": pending.room,
+                        "available_actions": player_state.available_actions,
+                    },
+                )
         while True:
             data = await websocket.receive_text()
             # Clients can send ping/keep-alive or chat messages
