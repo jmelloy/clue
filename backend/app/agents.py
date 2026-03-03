@@ -19,16 +19,15 @@ from .board import (
     Room,
     build_grid,
     build_graph,
-    reachable as bfs_reachable,
     SquareType,
 )
+from .models import GameState, PlayerState
 
 # Pre-build the board graph for agent pathfinding
 _GRID = build_grid()
 _SQUARES, _ROOM_NODES = build_graph(_GRID)
 _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
-from .board import ROOM_CENTERS
-from .models import GameState, PlayerState
+
 
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
@@ -482,6 +481,8 @@ class BaseAgent(ABC):
         self.player_has_cards: dict[str, set[str]] = {}
         self.player_not_has_cards: dict[str, set[str]] = {}
         self.suggestion_log: list[dict] = []
+        # Accumulate inference notifications for LLM agents to consume
+        self._pending_inferences: list[str] = []
         logger.info("[%s] Agent instance created", self.agent_type)
 
     # ------------------------------------------------------------------
@@ -511,12 +512,21 @@ class BaseAgent(ABC):
             len(self.seen_cards),
         )
         if is_new:
+            by_text = f" by {shown_by}" if shown_by else ""
+            self._pending_inferences.append(
+                f"CARD SHOWN: '{card}' was shown to me{by_text}. "
+                f"This card is NOT the solution."
+            )
             self._run_inference()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
         """Called when a suggestion gets no card shown by anyone."""
         self.unrefuted_suggestions.append(
             {"suspect": suspect, "weapon": weapon, "room": room}
+        )
+        self._pending_inferences.append(
+            f"UNREFUTED: My suggestion of {suspect}/{weapon}/{room} was not "
+            f"disproved by anyone! These could all be the solution."
         )
         logger.info(
             "[%s] Unrefuted suggestion: %s / %s / %s (total_unrefuted=%d)",
@@ -548,6 +558,11 @@ class BaseAgent(ABC):
                 suspect,
                 weapon,
                 room,
+            )
+            self._pending_inferences.append(
+                f"DEDUCED: {shown_by} showed a card to {shown_to} for "
+                f"{suspect}/{weapon}/{room}. By elimination I deduced the "
+                f"card was '{inferred}' — it is NOT the solution."
             )
             self._run_inference()
         else:
@@ -631,6 +646,18 @@ class BaseAgent(ABC):
         for pid in players_without_match:
             self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
 
+        if players_without_match:
+            pids = ", ".join(players_without_match)
+            self._pending_inferences.append(
+                f"NEGATIVE: {suggesting_player_id} suggested {suspect}/{weapon}/{room}. "
+                f"Players [{pids}] could NOT show any of these cards."
+            )
+        if shown_by and shown_by != self.player_id and suggesting_player_id != self.player_id:
+            self._pending_inferences.append(
+                f"OBSERVED: {shown_by} showed a card to {suggesting_player_id} "
+                f"for {suspect}/{weapon}/{room}."
+            )
+
         logger.debug(
             "[%s] Observed suggestion: %s suggested %s/%s/%s, shown_by=%s, "
             "%d players couldn't show",
@@ -688,6 +715,11 @@ class BaseAgent(ABC):
                         weapon,
                         room,
                     )
+                    self._pending_inferences.append(
+                        f"DEDUCED (chain): From earlier suggestion "
+                        f"{suspect}/{weapon}/{room}, I now deduce {shown_by} "
+                        f"has '{inferred}' — it is NOT the solution."
+                    )
                     changed = True
 
     # ------------------------------------------------------------------
@@ -720,7 +752,7 @@ class BaseAgent(ABC):
         if self._pending_chat:
             msg = self._pending_chat
             self._pending_chat = None
-            logger.info(f"Using pending chat message for {self.character}: {msg}")
+            logger.info(f"Using pending chat message for {self.character}: '{msg}'")
             # Strip leading character name prefix if the LLM included it,
             # since the caller already prepends "{name}: ".
             if self.character and msg.startswith(self.character + ": "):
@@ -738,7 +770,7 @@ class BaseAgent(ABC):
 
         template = random.choice(templates)
         logger.info(
-            f"Selected chat template for {self.character}: {template} with context {context}"
+            f"Selected chat template for {self.character}: '{template}' with context {context}"
         )
         return _format_chat(template, context or {})
 
@@ -1153,7 +1185,12 @@ When the action is end_turn, also include a "memory" field with your private det
 suspicions, which cards you've eliminated, your strategy for next turns. These \
 notes will be shown back to you on your next turn so you can remember your \
 reasoning. Be concise but thorough. \
-You will always get the known/unkonwn cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.\
+You will always get the known/unknown cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.
+
+INFERENCE LOG: Your notes section may contain automatic inference notifications \
+(prefixed CARD SHOWN, DEDUCED, NEGATIVE, UNREFUTED, OBSERVED). These are events \
+the game engine tracked between your turns. Pay close attention to DEDUCED entries — \
+they reveal cards eliminated by logical deduction. Use these to refine your strategy.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1271,6 +1308,20 @@ class LLMAgent(BaseAgent):
 
             game = ClueGame(self._game_id, self._redis)
             await game.append_memory(self.player_id, entry)
+
+    async def _flush_pending_inferences(self):
+        """Save any accumulated inference notifications to memory."""
+        if not self._pending_inferences:
+            return
+        # Combine all pending inferences into a single memory entry
+        entry = "INFERENCE UPDATE: " + " | ".join(self._pending_inferences)
+        self._pending_inferences.clear()
+        await self._save_memory_entry(entry)
+        logger.info(
+            "[%s:%s] Flushed inference notifications to memory",
+            self.agent_type,
+            self.player_id,
+        )
 
     # ------------------------------------------------------------------
     # LLM communication
@@ -1446,11 +1497,15 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
-        # Include memory from previous turns
+        # Include memory from previous turns (recent entries, capped to avoid
+        # overwhelming the prompt)
         if self.memory:
             lines.append("")
-            lines.append("YOUR PRIVATE NOTES FROM PREVIOUS TURNS:")
-            lines.append(f"  Turn {len(self.memory)}: {self.memory[-1]}")
+            lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
+            recent = self.memory[-10:]  # last 10 entries
+            start_idx = len(self.memory) - len(recent) + 1
+            for i, entry in enumerate(recent):
+                lines.append(f"  [{start_idx + i}] {entry}")
 
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
@@ -1569,6 +1624,9 @@ class LLMAgent(BaseAgent):
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState
     ) -> dict:
+        # Flush any inference notifications accumulated since last decision
+        await self._flush_pending_inferences()
+
         player_id = player_state.your_player_id
         available = player_state.available_actions
         current_room = game_state.current_room.get(player_id)
@@ -1727,6 +1785,9 @@ class LLMAgent(BaseAgent):
     async def decide_show_card(
         self, matching_cards: list[str], suggesting_player_id: str
     ) -> str:
+        # Flush any inference notifications before making a decision
+        await self._flush_pending_inferences()
+
         logger.info(
             "[%s] Deciding which card to show to %s from %s",
             self.agent_type,

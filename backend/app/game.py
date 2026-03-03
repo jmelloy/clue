@@ -6,8 +6,6 @@ import logging
 
 from pydantic import TypeAdapter, ValidationError
 
-logger = logging.getLogger(__name__)
-
 from .board import (
     START_POSITIONS,
     ROOM_CENTERS,
@@ -44,6 +42,8 @@ from .models import (
     SuggestResult,
     Suggestion,
 )
+
+logger = logging.getLogger(__name__)
 
 # Pre-build the board graph for pathfinding
 _GRID = build_grid()
@@ -116,6 +116,9 @@ class ClueGame:
     def _memory_key(self, player_id: str) -> str:
         return f"game:{self.game_id}:memory:{player_id}"
 
+    def _notes_key(self, player_id: str) -> str:
+        return f"game:{self.game_id}:notes:{player_id}"
+
     # ------------------------------------------------------------------
     # Internal Redis helpers
     # ------------------------------------------------------------------
@@ -162,6 +165,17 @@ class ClueGame:
         """Retrieve all memory entries for an LLM agent."""
         entries = await self.redis.lrange(self._memory_key(player_id), 0, -1)
         return [e if isinstance(e, str) else e.decode() for e in entries]
+
+    async def save_detective_notes(self, player_id: str, notes: dict):
+        """Save a player's detective notes to Redis."""
+        await self.redis.set(self._notes_key(player_id), json.dumps(notes), ex=EXPIRY)
+
+    async def load_detective_notes(self, player_id: str) -> dict | None:
+        """Load a player's detective notes from Redis."""
+        raw = await self.redis.get(self._notes_key(player_id))
+        if raw is None:
+            return None
+        return json.loads(raw)
 
     async def add_chat_message(self, message: ChatMessage):
         await self.redis.rpush(self._chat_key, message.model_dump_json())
@@ -247,11 +261,8 @@ class ClueGame:
         actions.append("accuse")
 
         # Only offer end_turn if the player has done something this turn
-        # and doesn't still need to move (Phase 2).
-        has_acted = (
-            state.dice_rolled or state.moved or bool(state.suggestions_this_turn)
-        )
-        if has_acted and "move" not in actions:
+        has_acted = state.moved or bool(state.suggestions_this_turn)
+        if has_acted:
             actions.append("end_turn")
 
         return actions
@@ -261,11 +272,13 @@ class ClueGame:
         if state is None:
             return None
         cards = await self._load_player_cards(player_id)
+        notes = await self.load_detective_notes(player_id)
         return PlayerState(
             **state.model_dump(),
             your_cards=cards,
             your_player_id=player_id,
             available_actions=self.get_available_actions(player_id, state),
+            detective_notes=notes,
         )
 
     async def add_player(
@@ -414,7 +427,9 @@ class ClueGame:
             return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
 
         occupied = self._get_occupied_positions(state, player_id)
-        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False)
+        reached = reachable(
+            start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+        )
 
         rooms = []
         positions = []
@@ -567,7 +582,12 @@ class ClueGame:
 
             if start_sq:
                 reachable_squares = reachable(
-                    start_sq, total, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+                    start_sq,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if target_sq in reachable_squares:
                     state.current_room.pop(player_id, None)
@@ -584,8 +604,13 @@ class ClueGame:
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
-                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES,
-                    occupied, use_secret_passages=False,
+                    start_sq,
+                    target_room_enum,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if reached:
                     # Player reaches the room

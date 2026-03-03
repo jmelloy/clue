@@ -51,13 +51,13 @@ class AgentRunner:
     """Manages agent players across all active games."""
 
     def __init__(self):
-        self.redis: aioredis.Redis | None = None
-        self.http: httpx.AsyncClient | None = None
+        self.redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+        self.http: httpx.AsyncClient = httpx.AsyncClient(
+            base_url=BACKEND_URL, timeout=30
+        )
         self.managed_games: dict[str, asyncio.Task] = {}
 
     async def start(self):
-        self.redis = aioredis.from_url(REDIS_URL, decode_responses=True)
-        self.http = httpx.AsyncClient(base_url=BACKEND_URL, timeout=30)
         logger.info(
             "Agent runner started (backend=%s, redis=%s)", BACKEND_URL, REDIS_URL
         )
@@ -227,11 +227,22 @@ class AgentRunner:
             f"/games/{game_id}/action",
             json={"player_id": player_id, "action": action},
         )
+        if resp.status_code == 400:
+            body = resp.text
+            logger.warning(
+                "Action rejected (400) for %s in game %s: %s — action=%s",
+                player_id,
+                game_id,
+                body,
+                action,
+            )
+            return {"error": True, "status": 400, "detail": body}
         resp.raise_for_status()
         return resp.json()
 
     async def _send_chat(self, game_id: str, player_id: str, text: str):
         """Send a chat message via the HTTP API."""
+        logger.info("Sending chat from %s in game %s: %s", player_id, game_id, text)
         try:
             await self.http.post(
                 f"/games/{game_id}/chat",
@@ -256,6 +267,9 @@ class AgentRunner:
             game_id,
             len(agents),
         )
+
+        max_consecutive_errors = 5
+        consecutive_errors = 0
 
         while True:
             # Consume any pending observation events
@@ -285,16 +299,44 @@ class AgentRunner:
                 )
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
-                await self._send_action(
-                    game_id, pid, {"type": "show_card", "card": card}
-                )
+                try:
+                    result = await self._send_action(
+                        game_id, pid, {"type": "show_card", "card": card}
+                    )
+                except httpx.HTTPError as exc:
+                    consecutive_errors += 1
+                    logger.warning(
+                        "Network error showing card for %s in game %s: %s",
+                        pid, game_id, exc,
+                    )
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(
+                            "Too many consecutive errors (%d) in game %s, exiting",
+                            consecutive_errors, game_id,
+                        )
+                        return
+                    await asyncio.sleep(1)
+                    continue
+
+                if isinstance(result, dict) and result.get("error"):
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(
+                            "Too many consecutive errors (%d) in game %s, exiting",
+                            consecutive_errors, game_id,
+                        )
+                        return
+                    await asyncio.sleep(0.5)
+                    continue
+
+                consecutive_errors = 0
                 # Broadcast personality chat
                 chat_msg = agent.generate_chat("show_card")
 
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
+                    await self._send_chat(game_id, pid, chat_msg)
 
             elif pending:
                 # A human player must show a card — wait
@@ -325,8 +367,49 @@ class AgentRunner:
                     action.get("type"),
                     game_id,
                 )
-                result = await self._send_action(game_id, pid, action)
+                try:
+                    result = await self._send_action(game_id, pid, action)
+                except httpx.HTTPError as exc:
+                    consecutive_errors += 1
+                    logger.warning(
+                        "Network error for %s action %s in game %s: %s",
+                        pid, action.get("type"), game_id, exc,
+                    )
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(
+                            "Too many consecutive errors (%d) in game %s, exiting",
+                            consecutive_errors, game_id,
+                        )
+                        return
+                    await asyncio.sleep(1)
+                    continue
 
+                if isinstance(result, dict) and result.get("error"):
+                    consecutive_errors += 1
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(
+                            "Too many consecutive errors (%d) in game %s, exiting",
+                            consecutive_errors, game_id,
+                        )
+                        return
+                    # If the action was rejected, try ending the turn instead
+                    if action.get("type") != "end_turn":
+                        logger.info(
+                            "Falling back to end_turn for %s in game %s",
+                            pid, game_id,
+                        )
+                        try:
+                            fallback = await self._send_action(
+                                game_id, pid, {"type": "end_turn"}
+                            )
+                            if not (isinstance(fallback, dict) and fallback.get("error")):
+                                consecutive_errors = 0
+                        except httpx.HTTPError:
+                            pass
+                    await asyncio.sleep(0.5)
+                    continue
+
+                consecutive_errors = 0
                 # Broadcast personality chat after the action
                 chat_context = {
                     "dice": result.get("dice", ""),
@@ -338,7 +421,7 @@ class AgentRunner:
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
+                    await self._send_chat(game_id, pid, chat_msg)
 
             else:
                 # Human player's turn — poll periodically

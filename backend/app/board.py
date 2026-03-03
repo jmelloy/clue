@@ -359,7 +359,11 @@ def reachable(
 
         for nb in sq.neighbors:
             # Skip secret passage edges (room-to-room) when not allowed
-            if not use_secret_passages and sq.type == SquareType.ROOM and nb.type == SquareType.ROOM:
+            if (
+                not use_secret_passages
+                and sq.type == SquareType.ROOM
+                and nb.type == SquareType.ROOM
+            ):
                 continue
 
             # Hallway/door/start squares occupied by other pawns are
@@ -426,7 +430,7 @@ def show_reachable_on_grid(
         print(f"{i:2} " + "".join(row))
 
     if reached_rooms:
-        print(f"\n  Rooms reachable:")
+        print("\n  Rooms reachable:")
         for sq, dist in sorted(reached_rooms, key=lambda x: x[1]):
             via = "secret passage" if (dist == 1 and start.room) else "door"
             print(f"    {sq.room.value} (dist {dist}, via {via})")
@@ -461,7 +465,7 @@ def print_room_info():
 
 
 def print_graph_summary(squares, room_nodes):
-    print(f"\n=== Graph Summary ===")
+    print("\n=== Graph Summary ===")
     print(
         f"  Hallway: {sum(1 for s in squares.values() if s.type == SquareType.HALLWAY)}"
     )
@@ -471,7 +475,7 @@ def print_graph_summary(squares, room_nodes):
     )
     print(f"  Rooms:   {len(room_nodes)}")
 
-    print(f"\n=== Room Connectivity ===")
+    print("\n=== Room Connectivity ===")
     for room in Room:
         node = room_nodes[room]
         conns = []
@@ -520,7 +524,9 @@ def move_towards(
     if occupied is None:
         occupied = set()
 
-    reachable_squares = reachable(start, dice, squares, room_nodes, occupied, use_secret_passages)
+    reachable_squares = reachable(
+        start, dice, squares, room_nodes, occupied, use_secret_passages
+    )
     target_node = room_nodes[target_room]
 
     # If the target room is directly reachable, move there
@@ -537,7 +543,11 @@ def move_towards(
     while bfs_queue:
         sq, dist = bfs_queue.popleft()
         for nb in sq.neighbors:
-            if not use_secret_passages and sq.type == SquareType.ROOM and nb.type == SquareType.ROOM:
+            if (
+                not use_secret_passages
+                and sq.type == SquareType.ROOM
+                and nb.type == SquareType.ROOM
+            ):
                 continue
             if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
                 continue
