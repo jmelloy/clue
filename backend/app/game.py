@@ -255,9 +255,7 @@ class ClueGame:
         actions.append("accuse")
 
         # Only offer end_turn if the player has done something this turn
-        has_acted = (
-            state.dice_rolled or state.moved or bool(state.suggestions_this_turn)
-        )
+        has_acted = state.moved or bool(state.suggestions_this_turn)
         if has_acted:
             actions.append("end_turn")
 
