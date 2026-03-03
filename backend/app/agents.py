@@ -960,6 +960,12 @@ class WandererAgent(BaseAgent):
 
     agent_type = "wanderer"
 
+    def generate_chat(
+        self, action_type: str, context: dict | None = None
+    ) -> str | None:
+        """Wanderers don't chat."""
+        return None
+
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState
     ) -> dict:
