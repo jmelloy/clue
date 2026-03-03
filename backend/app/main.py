@@ -128,6 +128,27 @@ async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None)
     await manager.broadcast(game_id, {"type": "chat_message", **message.model_dump()})
 
 
+async def _broadcast_agent_chat(
+    game_id: str,
+    player_id: str,
+    system_text: str | None,
+    personality_text: str | None,
+):
+    """Combine a system log message with optional agent personality chat.
+
+    Produces a single chat message like:
+        Miss Scarlett rolled 7. "Let's see what fate has in store!"
+    instead of two separate messages that both repeat the agent's name.
+    """
+    if system_text and personality_text:
+        combined = f'{system_text} "{personality_text}"'
+        await _broadcast_chat(game_id, combined, player_id)
+    elif system_text:
+        await _broadcast_chat(game_id, system_text, player_id)
+    elif personality_text:
+        await _broadcast_chat(game_id, f'"{personality_text}"', player_id)
+
+
 # ---------------------------------------------------------------------------
 # Auto-end-turn timer helpers
 # ---------------------------------------------------------------------------
@@ -208,10 +229,12 @@ async def _maybe_start_auto_end_timer(game_id: str):
 # ---------------------------------------------------------------------------
 
 
-async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
+async def _execute_action(game_id: str, player_id: str, action: dict, suppress_chat: bool = False) -> dict:
     """Process a game action and broadcast WebSocket messages.
 
     Returns the action result dict. Raises ValueError on invalid actions.
+    When suppress_chat is True, the chat message is not broadcast but stored
+    in result["_chat_text"] so the caller can combine it with other text.
     """
     # Cancel any pending auto-end timer when a player takes an action
     _cancel_auto_end_timer(game_id)
@@ -220,6 +243,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
     result = await game.process_action(player_id, action)
     state = await game.get_state()
     action_type = action.get("type")
+    _chat_text = None  # collected and broadcast (or returned) at end
 
     if action_type == "roll":
         actor_name = _player_name(state, player_id)
@@ -235,11 +259,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "reachable_rooms": reachable_targets["reachable_rooms"],
             },
         )
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} rolled {dice}.",
-            player_id,
-        )
+        _chat_text = f"{actor_name} rolled {dice}."
         await manager.send_to_player(
             game_id,
             player_id,
@@ -266,11 +286,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "secret_passage": True,
             },
         )
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} used the secret passage from {from_room} to {to_room}.",
-            player_id,
-        )
+        _chat_text = f"{actor_name} used the secret passage from {from_room} to {to_room}."
         await manager.send_to_player(
             game_id,
             player_id,
@@ -295,11 +311,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             },
         )
         room_text = f" to {room}" if room else ""
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} moved{room_text}.",
-            player_id,
-        )
+        _chat_text = f"{actor_name} moved{room_text}."
         await manager.send_to_player(
             game_id,
             player_id,
@@ -350,12 +362,12 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     "available_actions": game.get_available_actions(player_id, state),
                 },
             )
-            chat_text = (
+            _chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. {pending_by_name} must show a card."
             )
         else:
-            chat_text = (
+            _chat_text = (
                 f"{actor_name} suggests {result['suspect']} with the {result['weapon']}"
                 f" in the {result['room']}. No one could show a card."
             )
@@ -367,7 +379,6 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     "available_actions": game.get_available_actions(player_id, state),
                 },
             )
-        await _broadcast_chat(game_id, chat_text, player_id)
 
     elif action_type == "show_card":
         card = result.get("card")
@@ -394,11 +405,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 "shown_to": suggesting_player_id,
             },
         )
-        await _broadcast_chat(
-            game_id,
-            f"{shown_by_name} showed a card to {shown_to_name}.",
-            player_id,
-        )
+        _chat_text = f"{shown_by_name} showed a card to {shown_to_name}."
 
     elif action_type == "accuse":
         actor_name = _player_name(state, player_id)
@@ -411,19 +418,18 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             msg["type"] = "game_over"
             msg["winner"] = result.get("winner")
             msg["solution"] = result.get("solution")
-            chat_text = (
+            _chat_text = (
                 f"{actor_name} accuses {action.get('suspect')} with the"
                 f" {action.get('weapon')} in the {action.get('room')}."
                 f" Correct! {actor_name} wins!"
             )
         else:
-            chat_text = (
+            _chat_text = (
                 f"{actor_name} accuses {action.get('suspect')} with the"
                 f" {action.get('weapon')} in the {action.get('room')}."
                 f" Wrong! {actor_name} is eliminated."
             )
         await manager.broadcast(game_id, msg)
-        await _broadcast_chat(game_id, chat_text, player_id)
 
     elif action_type == "end_turn":
         next_pid = result.get("next_player_id")
@@ -458,11 +464,14 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                     "available_actions": game.get_available_actions(next_pid, state),
                 },
             )
-        await _broadcast_chat(
-            game_id,
-            f"{actor_name} ended their turn. It is now {next_name}'s turn.",
-            player_id,
-        )
+        _chat_text = f"{actor_name} ended their turn. It is now {next_name}'s turn."
+
+    # Broadcast or stash the chat text
+    if _chat_text:
+        if suppress_chat:
+            result["_chat_text"] = _chat_text
+        else:
+            await _broadcast_chat(game_id, _chat_text, player_id)
 
     # Update agent observations for any active agents in this game
     _update_agent_observations(game_id, player_id, action, result)
@@ -614,13 +623,12 @@ async def _run_agent_loop(game_id: str):
                 card = await agent.decide_show_card(matching, suggesting_pid)
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
-                await _execute_action(game_id, pid, {"type": "show_card", "card": card})
-                # Broadcast personality chat for show_card
+                result = await _execute_action(
+                    game_id, pid, {"type": "show_card", "card": card}, suppress_chat=True
+                )
+                system_text = result.pop("_chat_text", None)
                 chat_msg = agent.generate_chat("show_card")
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, _prepend_name(name, chat_msg), pid)
+                await _broadcast_agent_chat(game_id, pid, system_text, chat_msg)
 
             elif pending:
                 # A non-agent (human) player must show a card — wait for them
@@ -649,8 +657,8 @@ async def _run_agent_loop(game_id: str):
                     action.get("type"),
                     game_id,
                 )
-                result = await _execute_action(game_id, pid, action)
-                # Broadcast personality chat after the action
+                result = await _execute_action(game_id, pid, action, suppress_chat=True)
+                system_text = result.pop("_chat_text", None)
                 chat_context = {
                     "dice": result.get("dice", ""),
                     "room": result.get("room") or action.get("room") or "",
@@ -658,10 +666,7 @@ async def _run_agent_loop(game_id: str):
                     "weapon": action.get("weapon", ""),
                 }
                 chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, _prepend_name(name, chat_msg), pid)
+                await _broadcast_agent_chat(game_id, pid, system_text, chat_msg)
 
             else:
                 # Human player's turn — poll periodically
