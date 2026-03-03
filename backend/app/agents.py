@@ -713,14 +713,18 @@ class BaseAgent(ABC):
         Checks a per-action probability, then picks a random template from
         the character's personality set and formats it with the given context.
         """
+        logger.info(
+            f"Generating chat for {self.character} after action '{action_type}' with context {context}"
+        )
         # If the subclass stashed a message (e.g. from an LLM), use it
         if self._pending_chat:
             msg = self._pending_chat
             self._pending_chat = None
+            logger.info(f"Using pending chat message for {self.character}: {msg}")
             # Strip leading character name prefix if the LLM included it,
             # since the caller already prepends "{name}: ".
             if self.character and msg.startswith(self.character + ": "):
-                msg = msg[len(self.character) + 2:]
+                msg = msg[len(self.character) + 2 :]
             return msg
 
         prob = _CHAT_PROBABILITY.get(action_type, 0.5)
@@ -733,6 +737,9 @@ class BaseAgent(ABC):
             return None
 
         template = random.choice(templates)
+        logger.info(
+            f"Selected chat template for {self.character}: {template} with context {context}"
+        )
         return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
@@ -1313,11 +1320,7 @@ class LLMAgent(BaseAgent):
                 resp = await client.post(self.api_url, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
-                logger.debug(
-                    "[%s] LLM raw response: %s",
-                    self.agent_type,
-                    json.dumps(data)[:500],
-                )
+
                 content = data["choices"][0]["message"]["content"]
                 logger.info(
                     "[%s] LLM response received | status=%d | length=%d",

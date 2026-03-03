@@ -106,9 +106,7 @@ class AgentRunner:
                 await self.redis.delete(key)
                 continue
 
-            logger.info(
-                "Discovered game %s with %d agent(s)", game_id, len(config)
-            )
+            logger.info("Discovered game %s with %d agent(s)", game_id, len(config))
             task = asyncio.create_task(self._run_game(game_id, config))
             self.managed_games[game_id] = task
 
@@ -120,9 +118,7 @@ class AgentRunner:
         for pid, info in config.items():
             ptype = info["type"]
             if ptype == "llm_agent":
-                agent: BaseAgent = LLMAgent(
-                    redis_client=self.redis, game_id=game_id
-                )
+                agent: BaseAgent = LLMAgent(redis_client=self.redis, game_id=game_id)
             elif ptype == "wanderer":
                 agent = WandererAgent()
             else:
@@ -225,9 +221,7 @@ class AgentRunner:
     # HTTP helpers
     # ------------------------------------------------------------------
 
-    async def _send_action(
-        self, game_id: str, player_id: str, action: dict
-    ) -> dict:
+    async def _send_action(self, game_id: str, player_id: str, action: dict) -> dict:
         """Send an action to the backend via the HTTP API."""
         resp = await self.http.post(
             f"/games/{game_id}/action",
@@ -244,9 +238,7 @@ class AgentRunner:
                 json={"player_id": player_id, "text": text},
             )
         except Exception:
-            logger.debug(
-                "Failed to send chat for %s in game %s", player_id, game_id
-            )
+            logger.debug("Failed to send chat for %s in game %s", player_id, game_id)
 
     # ------------------------------------------------------------------
     # Main agent loop
@@ -267,9 +259,7 @@ class AgentRunner:
 
         while True:
             # Consume any pending observation events
-            event_cursor = await self._consume_events(
-                game_id, agents, event_cursor
-            )
+            event_cursor = await self._consume_events(game_id, agents, event_cursor)
 
             game = ClueGame(game_id, self.redis)
             state = await game.get_state()
@@ -280,9 +270,7 @@ class AgentRunner:
             if pending and pending.player_id in agents:
                 # An agent needs to show a card
                 await asyncio.sleep(1)
-                event_cursor = await self._consume_events(
-                    game_id, agents, event_cursor
-                )
+                event_cursor = await self._consume_events(game_id, agents, event_cursor)
                 state = await game.get_state()
                 if not state or state.status != "playing":
                     break
@@ -302,12 +290,11 @@ class AgentRunner:
                 )
                 # Broadcast personality chat
                 chat_msg = agent.generate_chat("show_card")
+
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(
-                        game_id, pid, f"{name}: {chat_msg}"
-                    )
+                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
 
             elif pending:
                 # A human player must show a card — wait
@@ -320,9 +307,7 @@ class AgentRunner:
                     await asyncio.sleep(1.35)
 
                 # Re-check state
-                event_cursor = await self._consume_events(
-                    game_id, agents, event_cursor
-                )
+                event_cursor = await self._consume_events(game_id, agents, event_cursor)
                 state = await game.get_state()
                 if not state or state.status != "playing":
                     break
@@ -349,15 +334,11 @@ class AgentRunner:
                     "suspect": action.get("suspect", ""),
                     "weapon": action.get("weapon", ""),
                 }
-                chat_msg = agent.generate_chat(
-                    action.get("type", ""), chat_context
-                )
+                chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(
-                        game_id, pid, f"{name}: {chat_msg}"
-                    )
+                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
 
             else:
                 # Human player's turn — poll periodically
@@ -374,5 +355,7 @@ if __name__ == "__main__":
 
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_format = os.getenv("LOG_FORMAT", "colored")
-    logging.config.dictConfig(get_logging_config(log_level=log_level, log_format=log_format))
+    logging.config.dictConfig(
+        get_logging_config(log_level=log_level, log_format=log_format)
+    )
     asyncio.run(main())

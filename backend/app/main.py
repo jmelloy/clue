@@ -14,7 +14,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent, generate_character_chat
+from .agents import (
+    BaseAgent,
+    LLMAgent,
+    RandomAgent,
+    WandererAgent,
+    generate_character_chat,
+)
 from .game import ClueGame
 from .models import (
     ActionRequest,
@@ -110,11 +116,6 @@ def _player_name(state: GameState, player_id: str) -> str:
     return player.name if player else player_id
 
 
-def _player_character(state: GameState, player_id: str) -> str | None:
-    player = next((p for p in state.players if p.id == player_id), None)
-    return player.character if player else None
-
-
 def _is_wanderer(state: GameState, player_id: str) -> bool:
     player = next((p for p in state.players if p.id == player_id), None)
     return player.type == "wanderer" if player else False
@@ -122,6 +123,7 @@ def _is_wanderer(state: GameState, player_id: str) -> bool:
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message to all connected players and persist it."""
+    logger.info(f"Broadcasting chat in game {game_id} from player {player_id}: {text}")
     message = ChatMessage(
         player_id=player_id,
         text=text,
@@ -397,12 +399,16 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         suspected_msg = generate_character_chat(
             suspect_character,
             "suspected",
-            {"accuser": accuser_name, "weapon": result["weapon"], "room": result["room"]},
+            {
+                "accuser": accuser_name,
+                "weapon": result["weapon"],
+                "room": result["room"],
+            },
         )
         if suspected_msg:
             await _broadcast_chat(
                 game_id,
-                f"{suspect_character}: {suspected_msg}",
+                suspected_msg,
                 suspect_pid,
             )
 
@@ -416,7 +422,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             if dragged_msg:
                 await _broadcast_chat(
                     game_id,
-                    f"{suspect_character}: {dragged_msg}",
+                    dragged_msg,
                     moved_suspect_player,
                 )
 
