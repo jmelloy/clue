@@ -61,12 +61,37 @@ const CYCLE = ['', 'no', 'maybe', '']
 
 const props = defineProps({
   yourCards: { type: Array, default: () => [] },
+  savedNotes: { type: Object, default: null },
 })
+
+const emit = defineEmits(['notes-changed'])
 
 // notes: card -> state string
 const notes = reactive({})
 // Track who showed each card
 const shownByMap = reactive({})
+// Flag to prevent emitting during restoration
+let restoring = false
+
+// Restore saved notes when they arrive (e.g. on rejoin)
+watch(
+  () => props.savedNotes,
+  (saved) => {
+    if (saved) {
+      restoring = true
+      const noteStates = saved.notes || {}
+      const shownBy = saved.shownBy || {}
+      for (const [card, state] of Object.entries(noteStates)) {
+        notes[card] = state
+      }
+      for (const [card, by] of Object.entries(shownBy)) {
+        shownByMap[card] = by
+      }
+      restoring = false
+    }
+  },
+  { immediate: true }
+)
 
 // Auto-mark cards in hand
 watch(
@@ -78,6 +103,17 @@ watch(
   },
   { immediate: true }
 )
+
+function emitNotesChanged() {
+  if (restoring) return
+  emit('notes-changed', {
+    notes: { ...notes },
+    shownBy: { ...shownByMap },
+  })
+}
+
+// Watch for any notes changes and emit
+watch(notes, () => emitNotesChanged(), { deep: true })
 
 function noteMark(card) {
   const state = notes[card] ?? ''

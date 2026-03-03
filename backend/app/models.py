@@ -59,6 +59,7 @@ class PlayerState(GameState):
     your_cards: list[str] = Field(default_factory=list)
     your_player_id: str = ""
     available_actions: list[str] = Field(default_factory=list)
+    detective_notes: Optional[dict] = None
 
 
 class ChatMessage(BaseModel):
@@ -379,3 +380,8 @@ class ActionRequest(BaseModel):
 class ChatRequest(BaseModel):
     player_id: str
     text: str
+
+
+class SaveNotesRequest(BaseModel):
+    player_id: str
+    notes: dict

@@ -30,6 +30,7 @@
       :auto-end-timer="autoEndTimer"
       :reachable-rooms="reachableRooms"
       :reachable-positions="reachablePositions"
+      :saved-notes="savedNotes"
       @action="sendAction"
       @send-chat="sendChat"
       @dismiss-card-shown="cardShown = null"
@@ -56,6 +57,7 @@ const urlGameId = ref(null)
 const autoEndTimer = ref(null)
 const reachableRooms = ref([])
 const reachablePositions = ref([])
+const savedNotes = ref(null)
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -149,6 +151,8 @@ function handleMessage(msg) {
         gameState.value = msg.state
         if (msg.state.your_cards) yourCards.value = msg.state.your_cards
         if (msg.state.available_actions) availableActions.value = msg.state.available_actions
+        // Restore detective notes on reconnect
+        if (msg.state.detective_notes) savedNotes.value = msg.state.detective_notes
         // Restore showCardRequest from pending_show_card on reconnect
         const pending = msg.state.pending_show_card
         if (pending && pending.player_id === playerId.value) {
@@ -310,6 +314,7 @@ function resetState() {
   autoEndTimer.value = null
   reachableRooms.value = []
   reachablePositions.value = []
+  savedNotes.value = null
 }
 
 function leaveGame() {

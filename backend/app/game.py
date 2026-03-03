@@ -116,6 +116,9 @@ class ClueGame:
     def _memory_key(self, player_id: str) -> str:
         return f"game:{self.game_id}:memory:{player_id}"
 
+    def _notes_key(self, player_id: str) -> str:
+        return f"game:{self.game_id}:notes:{player_id}"
+
     # ------------------------------------------------------------------
     # Internal Redis helpers
     # ------------------------------------------------------------------
@@ -162,6 +165,17 @@ class ClueGame:
         """Retrieve all memory entries for an LLM agent."""
         entries = await self.redis.lrange(self._memory_key(player_id), 0, -1)
         return [e if isinstance(e, str) else e.decode() for e in entries]
+
+    async def save_detective_notes(self, player_id: str, notes: dict):
+        """Save a player's detective notes to Redis."""
+        await self.redis.set(self._notes_key(player_id), json.dumps(notes), ex=EXPIRY)
+
+    async def load_detective_notes(self, player_id: str) -> dict | None:
+        """Load a player's detective notes from Redis."""
+        raw = await self.redis.get(self._notes_key(player_id))
+        if raw is None:
+            return None
+        return json.loads(raw)
 
     async def add_chat_message(self, message: ChatMessage):
         await self.redis.rpush(self._chat_key, message.model_dump_json())
@@ -254,11 +268,13 @@ class ClueGame:
         if state is None:
             return None
         cards = await self._load_player_cards(player_id)
+        notes = await self.load_detective_notes(player_id)
         return PlayerState(
             **state.model_dump(),
             your_cards=cards,
             your_player_id=player_id,
             available_actions=self.get_available_actions(player_id, state),
+            detective_notes=notes,
         )
 
     async def add_player(

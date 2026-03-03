@@ -50,6 +50,7 @@ from .models import (
     PlayerJoinedMessage,
     PlayerMovedMessage,
     PlayerState,
+    SaveNotesRequest,
     PongMessage,
     RollResult,
     SecretPassageResult,
@@ -968,6 +969,21 @@ async def submit_action(game_id: str, req: ActionRequest):
     if state:
         response["available_actions"] = game.get_available_actions(req.player_id, state)
     return response
+
+
+# ---------------------------------------------------------------------------
+# Detective notes
+# ---------------------------------------------------------------------------
+
+
+@app.put("/games/{game_id}/notes")
+async def save_notes(game_id: str, req: SaveNotesRequest):
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    await game.save_detective_notes(req.player_id, req.notes)
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
