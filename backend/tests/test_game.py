@@ -44,6 +44,13 @@ async def _add_two_players(game: ClueGame):
     return p1, p2
 
 
+async def _advance_turn(game: ClueGame, player_id: str):
+    """Advance past a player's turn by rolling, moving, and ending turn."""
+    await game.process_action(player_id, {"type": "roll"})
+    await game.process_action(player_id, {"type": "move", "room": ROOMS[0]})
+    await game.process_action(player_id, {"type": "end_turn"})
+
+
 async def _place_player_in_room(game: ClueGame, player_id: str, room: str):
     """Directly place a player in a room and mark dice as rolled and moved."""
     state = await game._load_state()
@@ -274,8 +281,9 @@ async def test_end_turn_advances_player(game: ClueGame):
     first_player = state.whose_turn
     second_player = "P2" if first_player == "P1" else "P1"
 
-    # Player must do something before ending turn (roll dice first)
+    # Player must roll and move before ending turn
     await game.process_action(first_player, {"type": "roll"})
+    await game.process_action(first_player, {"type": "move", "room": ROOMS[0]})
     result = await game.process_action(first_player, {"type": "end_turn"})
     assert result.next_player_id == second_player
 
@@ -564,13 +572,14 @@ async def test_roll_then_move(game: ClueGame):
     assert result.type == "roll"
     assert result.dice >= 1
 
-    # After rolling: move is available, roll is not
+    # After rolling: move is available, roll and end_turn are not
     state = await game.get_state()
     assert state.dice_rolled is True
     assert state.moved is False
     actions = game.get_available_actions(whose_turn, state)
     assert "move" in actions
     assert "roll" not in actions
+    assert "end_turn" not in actions  # must move before ending turn
 
     # Choose a room
     room = ROOMS[0]
@@ -756,8 +765,7 @@ async def test_suggest_available_without_roll_after_moved_by_suggestion(game: Cl
     while state.whose_turn != other_id:
         # Advance past wanderer turns
         wt = state.whose_turn
-        await game.process_action(wt, {"type": "roll"})
-        await game.process_action(wt, {"type": "end_turn"})
+        await _advance_turn(game, wt)
         state = await game.get_state()
 
     assert state.whose_turn == other_id
@@ -799,8 +807,7 @@ async def test_free_suggest_then_end_turn(game: ClueGame):
     state = await game.get_state()
     while state.whose_turn != other_id:
         wt = state.whose_turn
-        await game.process_action(wt, {"type": "roll"})
-        await game.process_action(wt, {"type": "end_turn"})
+        await _advance_turn(game, wt)
         state = await game.get_state()
 
     # Use the free suggest
@@ -818,11 +825,14 @@ async def test_free_suggest_then_end_turn(game: ClueGame):
             result.pending_show_by, {"type": "show_card", "card": matching[0]}
         )
 
-    # Should be able to end turn now
+    # After suggesting: only accuse and end_turn available (no roll/move)
     state = await game.get_state()
     actions = game.get_available_actions(other_id, state)
     assert "end_turn" in actions
+    assert "accuse" in actions
     assert "suggest" not in actions  # already suggested this turn
+    assert "roll" not in actions     # can't roll after suggesting
+    assert "move" not in actions     # can't move after suggesting
 
     await game.process_action(other_id, {"type": "end_turn"})
 
@@ -857,15 +867,15 @@ async def test_flag_cleared_after_turn_ends(game: ClueGame):
     state = await game.get_state()
     while state.whose_turn != other_id:
         wt = state.whose_turn
-        await game.process_action(wt, {"type": "roll"})
-        await game.process_action(wt, {"type": "end_turn"})
+        await _advance_turn(game, wt)
         state = await game.get_state()
 
     # Flag is set
     assert state.was_moved_by_suggestion.get(other_id) is True
 
-    # Roll and end turn (choosing not to use free suggest)
+    # Roll, move, and end turn (choosing not to use free suggest)
     await game.process_action(other_id, {"type": "roll"})
+    await game.process_action(other_id, {"type": "move", "room": ROOMS[1]})
     await game.process_action(other_id, {"type": "end_turn"})
 
     # Flag should be cleared
