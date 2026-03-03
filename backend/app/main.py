@@ -408,7 +408,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
         if suspected_msg:
             await _broadcast_chat(
                 game_id,
-                suspected_msg,
+                f"{suspect_character}: {suspected_msg}",
                 suspect_pid,
             )
 
@@ -422,7 +422,7 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
             if dragged_msg:
                 await _broadcast_chat(
                     game_id,
-                    dragged_msg,
+                    f"{suspect_character}: {dragged_msg}",
                     moved_suspect_player,
                 )
 
