@@ -8,6 +8,7 @@
           :key="i"
           :class="cellClasses(cell)"
           :style="cellStyle(cell)"
+          :data-door-dir="cell.doorDir"
           @click="handleCellClick(cell)"
         ></div>
       </div>
@@ -29,7 +30,7 @@
           class="secret-passage"
           :style="overlayPos(sp.row, sp.col)"
           :title="'Secret passage to ' + sp.to"
-        >&#x2194; {{ sp.to }}</div>
+        >&#x21C9; {{ sp.to }}</div>
         <!-- Player tokens -->
         <div
           v-for="token in playerTokens"
@@ -91,6 +92,26 @@ const DOORS = {
   '19,4': 'Conservatory',
   '17,9': 'Ballroom', '17,14': 'Ballroom', '19,8': 'Ballroom', '19,15': 'Ballroom',
   '18,19': 'Kitchen',
+}
+
+const DOOR_DIRECTIONS = {
+  '3,6': 'east',      // Study → hallway right
+  '4,9': 'west',      // Hall → hallway left
+  '6,11': 'south',    // Hall → hallway below
+  '6,12': 'south',    // Hall → hallway below
+  '5,17': 'south',    // Lounge → hallway below
+  '8,6': 'east',      // Library → hallway right
+  '10,3': 'south',    // Library → hallway below
+  '12,1': 'north',    // Billiard Room → hallway above
+  '15,5': 'east',     // Billiard Room → hallway right
+  '12,16': 'west',    // Dining Room → hallway left
+  '9,17': 'north',    // Dining Room → hallway above
+  '19,4': 'north',    // Conservatory → hallway above
+  '17,9': 'north',    // Ballroom → hallway above
+  '17,14': 'north',   // Ballroom → hallway above
+  '19,8': 'west',     // Ballroom → hallway left
+  '19,15': 'east',    // Ballroom → hallway right
+  '18,19': 'north',   // Kitchen → hallway above
 }
 
 const STARTS = {
@@ -160,7 +181,7 @@ for (let r = 0; r < 25; r++) {
     const startChar = STARTS[key]
 
     if (doorRoom) {
-      CELL_DATA.push({ row: r, col: c, type: 'door', room: doorRoom })
+      CELL_DATA.push({ row: r, col: c, type: 'door', room: doorRoom, doorDir: DOOR_DIRECTIONS[key] })
     } else if (ROOM_KEY_MAP[ch]) {
       CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
     } else if (ch === '.') {
@@ -201,10 +222,10 @@ const hasReachableData = computed(() => props.reachableRooms.length > 0 || props
 const roomLabels = computed(() => Object.values(ROOM_INFO))
 
 const secretPassages = [
-  { from: 'Study', to: 'Kitchen', row: ROOM_INFO['Study'].maxRow - 0.5, col: ROOM_INFO['Study'].maxCol - 1 },
-  { from: 'Kitchen', to: 'Study', row: ROOM_INFO['Kitchen'].minRow + 0.5, col: ROOM_INFO['Kitchen'].minCol + 1 },
-  { from: 'Lounge', to: 'Conservatory', row: ROOM_INFO['Lounge'].maxRow - 0.5, col: ROOM_INFO['Lounge'].minCol + 1 },
-  { from: 'Conservatory', to: 'Lounge', row: ROOM_INFO['Conservatory'].minRow + 0.5, col: ROOM_INFO['Conservatory'].maxCol - 1 },
+  { from: 'Study', to: 'Kitchen', row: ROOM_INFO['Study'].minRow + 0.8, col: ROOM_INFO['Study'].minCol + 1.5 },
+  { from: 'Kitchen', to: 'Study', row: ROOM_INFO['Kitchen'].maxRow - 0.3, col: ROOM_INFO['Kitchen'].maxCol - 1.5 },
+  { from: 'Lounge', to: 'Conservatory', row: ROOM_INFO['Lounge'].minRow + 0.8, col: ROOM_INFO['Lounge'].maxCol - 1.5 },
+  { from: 'Conservatory', to: 'Lounge', row: ROOM_INFO['Conservatory'].maxRow - 0.3, col: ROOM_INFO['Conservatory'].minCol + 1.5 },
 ]
 
 const playerTokens = computed(() => {
@@ -371,8 +392,47 @@ function tokenStyle(token) {
 }
 
 .cell-door {
+  position: relative;
   filter: brightness(1.4);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
+  overflow: visible;
+}
+
+/* Door direction indicators — golden bar on the exit side */
+.cell-door[data-door-dir]::after {
+  content: '';
+  position: absolute;
+  background: rgba(201, 168, 76, 0.85);
+  border-radius: 1px;
+  z-index: 3;
+}
+
+.cell-door[data-door-dir="north"]::after {
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+}
+
+.cell-door[data-door-dir="south"]::after {
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+}
+
+.cell-door[data-door-dir="east"]::after {
+  right: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+}
+
+.cell-door[data-door-dir="west"]::after {
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
 }
 
 .cell-hallway {
@@ -436,8 +496,13 @@ function tokenStyle(token) {
 }
 
 .cell.unreachable {
-  filter: brightness(0.5);
-  opacity: 0.6;
+  filter: brightness(0.6);
+  opacity: 0.7;
+}
+
+.cell-door.unreachable {
+  filter: brightness(1.1);
+  opacity: 0.9;
 }
 
 .cell.reachable-door {
@@ -488,11 +553,28 @@ function tokenStyle(token) {
 .secret-passage {
   position: absolute;
   color: #e67e22;
-  font-size: clamp(5px, 0.9vw, 8px);
-  font-style: italic;
+  font-size: clamp(7px, 1.2vw, 11px);
+  font-weight: 600;
   white-space: nowrap;
-  opacity: 0.85;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  padding: 1px 4px;
+  border: 1px dashed rgba(230, 126, 34, 0.45);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.02em;
+}
+
+.secret-passage::before {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 0.75em;
+  border: 1.5px solid currentColor;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  margin-right: 0.25em;
+  vertical-align: text-bottom;
+  opacity: 0.9;
 }
 
 /* ── Player tokens ── */
