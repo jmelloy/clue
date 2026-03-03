@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -277,7 +277,10 @@ async def _execute_action(
             ),
         )
         if wanderer:
-            _wanderer_turn_info[(game_id, player_id)] = {"dice": result.dice, "room": None}
+            _wanderer_turn_info[(game_id, player_id)] = {
+                "dice": result.dice,
+                "room": None,
+            }
         else:
             await _broadcast_chat(
                 game_id,
@@ -888,9 +891,7 @@ async def start_game(game_id: str):
             ),
         )
 
-    await manager.broadcast(
-        game_id, GameStartedMessage(state=state)
-    )
+    await manager.broadcast(game_id, GameStartedMessage(state=state))
     first_player_name = _player_name(state, state.whose_turn)
     await _broadcast_chat(game_id, f"Game started! {first_player_name} goes first.")
 
@@ -1006,9 +1007,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
             try:
                 msg = json.loads(data)
                 if msg.get("type") == "ping":
-                    await manager.send_to_player(
-                        game_id, player_id, PongMessage()
-                    )
+                    await manager.send_to_player(game_id, player_id, PongMessage())
                 elif msg.get("type") == "chat":
                     text = str(msg.get("text", "")).strip()
                     if text:

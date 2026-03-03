@@ -6,8 +6,6 @@ import logging
 
 from pydantic import TypeAdapter, ValidationError
 
-logger = logging.getLogger(__name__)
-
 from .board import (
     START_POSITIONS,
     ROOM_CENTERS,
@@ -44,6 +42,8 @@ from .models import (
     SuggestResult,
     Suggestion,
 )
+
+logger = logging.getLogger(__name__)
 
 # Pre-build the board graph for pathfinding
 _GRID = build_grid()
@@ -407,7 +407,9 @@ class ClueGame:
             return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
 
         occupied = self._get_occupied_positions(state, player_id)
-        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False)
+        reached = reachable(
+            start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+        )
 
         rooms = []
         positions = []
@@ -560,7 +562,12 @@ class ClueGame:
 
             if start_sq:
                 reachable_squares = reachable(
-                    start_sq, total, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+                    start_sq,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if target_sq in reachable_squares:
                     state.current_room.pop(player_id, None)
@@ -577,8 +584,13 @@ class ClueGame:
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
-                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES,
-                    occupied, use_secret_passages=False,
+                    start_sq,
+                    target_room_enum,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if reached:
                     # Player reaches the room

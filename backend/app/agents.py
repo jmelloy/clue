@@ -19,16 +19,15 @@ from .board import (
     Room,
     build_grid,
     build_graph,
-    reachable as bfs_reachable,
     SquareType,
 )
+from .models import GameState, PlayerState
 
 # Pre-build the board graph for agent pathfinding
 _GRID = build_grid()
 _SQUARES, _ROOM_NODES = build_graph(_GRID)
 _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
-from .board import ROOM_CENTERS
-from .models import GameState, PlayerState
+
 
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
@@ -753,7 +752,7 @@ class BaseAgent(ABC):
         if self._pending_chat:
             msg = self._pending_chat
             self._pending_chat = None
-            logger.info(f"Using pending chat message for {self.character}: {msg}")
+            logger.info(f"Using pending chat message for {self.character}: '{msg}'")
             # Strip leading character name prefix if the LLM included it,
             # since the caller already prepends "{name}: ".
             if self.character and msg.startswith(self.character + ": "):
@@ -771,7 +770,7 @@ class BaseAgent(ABC):
 
         template = random.choice(templates)
         logger.info(
-            f"Selected chat template for {self.character}: {template} with context {context}"
+            f"Selected chat template for {self.character}: '{template}' with context {context}"
         )
         return _format_chat(template, context or {})
 

@@ -51,13 +51,13 @@ class AgentRunner:
     """Manages agent players across all active games."""
 
     def __init__(self):
-        self.redis: aioredis.Redis | None = None
-        self.http: httpx.AsyncClient | None = None
+        self.redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+        self.http: httpx.AsyncClient = httpx.AsyncClient(
+            base_url=BACKEND_URL, timeout=30
+        )
         self.managed_games: dict[str, asyncio.Task] = {}
 
     async def start(self):
-        self.redis = aioredis.from_url(REDIS_URL, decode_responses=True)
-        self.http = httpx.AsyncClient(base_url=BACKEND_URL, timeout=30)
         logger.info(
             "Agent runner started (backend=%s, redis=%s)", BACKEND_URL, REDIS_URL
         )
@@ -232,6 +232,7 @@ class AgentRunner:
 
     async def _send_chat(self, game_id: str, player_id: str, text: str):
         """Send a chat message via the HTTP API."""
+        logger.info("Sending chat from %s in game %s: %s", player_id, game_id, text)
         try:
             await self.http.post(
                 f"/games/{game_id}/chat",
@@ -294,7 +295,7 @@ class AgentRunner:
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
+                    await self._send_chat(game_id, pid, chat_msg)
 
             elif pending:
                 # A human player must show a card — wait
@@ -338,7 +339,7 @@ class AgentRunner:
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, f"{name}: {chat_msg}")
+                    await self._send_chat(game_id, pid, chat_msg)
 
             else:
                 # Human player's turn — poll periodically

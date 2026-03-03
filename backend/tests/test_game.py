@@ -4,7 +4,15 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ALL_CARDS, ROOM_CENTERS, SECRET_PASSAGE_MAP
+from app.game import (
+    ClueGame,
+    SUSPECTS,
+    WEAPONS,
+    ROOMS,
+    ALL_CARDS,
+    ROOM_CENTERS,
+    SECRET_PASSAGE_MAP,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1064,4 +1072,6 @@ async def test_room_players_do_not_block(game: ClueGame):
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Should still be able to reach hallway/rooms (door is not blocked)
-    assert len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0
+    assert (
+        len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0
+    )

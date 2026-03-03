@@ -3,7 +3,6 @@
 import pytest
 
 from app.board import (
-    DOORS,
     Room,
     Square,
     SquareType,
@@ -113,17 +112,17 @@ def test_door_does_not_cost_extra_step_leaving_room(board):
     door_sq = squares.get((3, 6))
     assert door_sq is not None, "Door square (3,6) not in graph"
     assert door_sq in reached
-    assert reached[door_sq] == 0, (
-        f"Door should be distance 0 from its room, got {reached[door_sq]}"
-    )
+    assert (
+        reached[door_sq] == 0
+    ), f"Door should be distance 0 from its room, got {reached[door_sq]}"
 
     # The hallway square outside the door should be reachable at cost 1
     outside = squares.get((4, 6))
     assert outside is not None, "Hallway square (4,6) not in graph"
     assert outside in reached
-    assert reached[outside] == 1, (
-        f"Hallway outside door should be distance 1, got {reached[outside]}"
-    )
+    assert (
+        reached[outside] == 1
+    ), f"Hallway outside door should be distance 1, got {reached[outside]}"
 
 
 def test_door_does_not_cost_extra_step_entering_room(board):
@@ -138,9 +137,9 @@ def test_door_does_not_cost_extra_step_entering_room(board):
     # With 1 step we should be able to enter the Study:
     # (4,6) -> door (3,6) costs 1, door -> Study room costs 0
     study = room_nodes[Room.STUDY]
-    assert study in reached, (
-        "Should reach Study in 1 step from hallway outside its door"
-    )
+    assert (
+        study in reached
+    ), "Should reach Study in 1 step from hallway outside its door"
     assert reached[study] == 1
 
 
@@ -239,9 +238,9 @@ def test_door_blocked_traps_player_in_room(board):
     reached = reachable(conservatory, 6, squares, room_nodes, occupied={(19, 4)})
 
     hallway_squares = [sq for sq in reached if sq.type != SquareType.ROOM]
-    assert len(hallway_squares) == 0, (
-        "Player should not reach any hallway squares when the only door is blocked"
-    )
+    assert (
+        len(hallway_squares) == 0
+    ), "Player should not reach any hallway squares when the only door is blocked"
     # Secret passage to Lounge should still work
     assert room_nodes[Room.LOUNGE] in reached
 
@@ -258,9 +257,9 @@ def test_one_blocked_door_still_allows_exit(board):
     door_sq = squares.get((10, 3))
     assert door_sq in reached
     hallway_squares = [sq for sq in reached if sq.type != SquareType.ROOM]
-    assert len(hallway_squares) > 0, (
-        "Player should reach hallway through the unblocked door"
-    )
+    assert (
+        len(hallway_squares) > 0
+    ), "Player should reach hallway through the unblocked door"
 
 
 def test_room_has_infinite_capacity(board):
@@ -274,7 +273,10 @@ def test_room_has_infinite_capacity(board):
         pytest.skip("Door square not found")
 
     reached = reachable(
-        start, 1, squares, room_nodes,
+        start,
+        1,
+        squares,
+        room_nodes,
         occupied={(ballroom.row, ballroom.col)},
     )
     assert ballroom in reached, "Room should be reachable regardless of occupants"

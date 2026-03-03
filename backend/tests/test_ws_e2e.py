@@ -15,7 +15,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ROOM_CENTERS
+from app.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
 from app.agents import RandomAgent, WandererAgent
 from app.main import app, manager, _agent_tasks, _game_agents
 from app.models import GameState, PongMessage, WSMessage
@@ -133,9 +133,7 @@ async def _get_state(http: AsyncClient, game_id: str) -> dict:
     return resp.json()
 
 
-async def _add_wanderer_agents(
-    agents: dict, state: dict, game: ClueGame
-) -> None:
+async def _add_wanderer_agents(agents: dict, state: dict, game: ClueGame) -> None:
     """Add WandererAgent instances for any auto-added wanderer players."""
     for p in state.get("players", []):
         pid = p["id"] if isinstance(p, dict) else p.id
@@ -518,7 +516,9 @@ class TestShowCardFlow:
         )
 
         show_req = [m for m in other_ws.sent if m["type"] == "show_card_request"]
-        assert len(show_req) >= 1, "Expected show_card_request was not sent to other player"
+        assert (
+            len(show_req) >= 1
+        ), "Expected show_card_request was not sent to other player"
         assert show_req[0]["suggesting_player_id"] == whose_turn
         assert "available_actions" in show_req[0]
         assert "show_card" in show_req[0]["available_actions"]
@@ -576,7 +576,9 @@ class TestShowCardFlow:
         )
 
         pending_by = result.get("pending_show_by")
-        assert pending_by is not None, "Expected show_card request but none was triggered"
+        assert (
+            pending_by is not None
+        ), "Expected show_card request but none was triggered"
 
         # Get matching cards and show one
         gs = await game.get_state()
