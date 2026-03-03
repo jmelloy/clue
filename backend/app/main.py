@@ -106,23 +106,18 @@ def _new_player_id() -> str:
 
 
 def _player_name(state: GameState, player_id: str) -> str:
-    for p in state.players:
-        if p.id == player_id:
-            return p.name
-    return player_id
+    player = next((p for p in state.players if p.id == player_id), None)
+    return player.name if player else player_id
 
 
 def _player_character(state: GameState, player_id: str) -> str | None:
-    for p in state.players:
-        if p.id == player_id:
-            return p.character
-    return None
-  
+    player = next((p for p in state.players if p.id == player_id), None)
+    return player.character if player else None
+
+
 def _is_wanderer(state: GameState, player_id: str) -> bool:
-    for p in state.players:
-        if p.id == player_id:
-            return p.type == "wanderer"
-    return False
+    player = next((p for p in state.players if p.id == player_id), None)
+    return player.type == "wanderer" if player else False
 
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
