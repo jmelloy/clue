@@ -307,12 +307,15 @@ class AgentRunner:
                     consecutive_errors += 1
                     logger.warning(
                         "Network error showing card for %s in game %s: %s",
-                        pid, game_id, exc,
+                        pid,
+                        game_id,
+                        exc,
                     )
                     if consecutive_errors >= max_consecutive_errors:
                         logger.error(
                             "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors, game_id,
+                            consecutive_errors,
+                            game_id,
                         )
                         return
                     await asyncio.sleep(1)
@@ -323,7 +326,8 @@ class AgentRunner:
                     if consecutive_errors >= max_consecutive_errors:
                         logger.error(
                             "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors, game_id,
+                            consecutive_errors,
+                            game_id,
                         )
                         return
                     await asyncio.sleep(0.5)
@@ -373,12 +377,16 @@ class AgentRunner:
                     consecutive_errors += 1
                     logger.warning(
                         "Network error for %s action %s in game %s: %s",
-                        pid, action.get("type"), game_id, exc,
+                        pid,
+                        action.get("type"),
+                        game_id,
+                        exc,
                     )
                     if consecutive_errors >= max_consecutive_errors:
                         logger.error(
                             "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors, game_id,
+                            consecutive_errors,
+                            game_id,
                         )
                         return
                     await asyncio.sleep(1)
@@ -389,20 +397,24 @@ class AgentRunner:
                     if consecutive_errors >= max_consecutive_errors:
                         logger.error(
                             "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors, game_id,
+                            consecutive_errors,
+                            game_id,
                         )
                         return
                     # If the action was rejected, try ending the turn instead
                     if action.get("type") != "end_turn":
                         logger.info(
                             "Falling back to end_turn for %s in game %s",
-                            pid, game_id,
+                            pid,
+                            game_id,
                         )
                         try:
                             fallback = await self._send_action(
                                 game_id, pid, {"type": "end_turn"}
                             )
-                            if not (isinstance(fallback, dict) and fallback.get("error")):
+                            if not (
+                                isinstance(fallback, dict) and fallback.get("error")
+                            ):
                                 consecutive_errors = 0
                         except httpx.HTTPError:
                             pass

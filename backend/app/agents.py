@@ -652,7 +652,11 @@ class BaseAgent(ABC):
                 f"NEGATIVE: {suggesting_player_id} suggested {suspect}/{weapon}/{room}. "
                 f"Players [{pids}] could NOT show any of these cards."
             )
-        if shown_by and shown_by != self.player_id and suggesting_player_id != self.player_id:
+        if (
+            shown_by
+            and shown_by != self.player_id
+            and suggesting_player_id != self.player_id
+        ):
             self._pending_inferences.append(
                 f"OBSERVED: {shown_by} showed a card to {suggesting_player_id} "
                 f"for {suspect}/{weapon}/{room}."
@@ -745,14 +749,10 @@ class BaseAgent(ABC):
         Checks a per-action probability, then picks a random template from
         the character's personality set and formats it with the given context.
         """
-        logger.info(
-            f"Generating chat for {self.character} after action '{action_type}' with context {context}"
-        )
         # If the subclass stashed a message (e.g. from an LLM), use it
         if self._pending_chat:
             msg = self._pending_chat
             self._pending_chat = None
-            logger.info(f"Using pending chat message for {self.character}: '{msg}'")
             # Strip leading character name prefix if the LLM included it,
             # since the caller already prepends "{name}: ".
             if self.character and msg.startswith(self.character + ": "):
@@ -1269,6 +1269,7 @@ class LLMAgent(BaseAgent):
 
         # Fallback agent shares our observation state
         self._fallback = RandomAgent()
+        self._fallback.player_id = self.player_id
         self._fallback.seen_cards = self.seen_cards
         self._fallback.shown_to = self.shown_to
         self._fallback.rooms_suggested_in = self.rooms_suggested_in

@@ -138,6 +138,7 @@ python scripts/live_ws_test.py --base-url http://localhost:8000 --agents 3
 ### Game State in Redis
 
 All state lives in Redis with 24-hour TTL. Key schema:
+
 - `game:{id}` — primary game state (JSON)
 - `game:{id}:solution` — the hidden solution cards (JSON)
 - `game:{id}:cards:{player_id}` — a player's hand (JSON)
@@ -152,6 +153,7 @@ The backend is stateless — every request fetches fresh state from Redis.
 ### Game Logic (backend/app/game.py)
 
 `ClueGame` is the core class. It manages:
+
 - Player join/leave, card dealing (round-robin)
 - Turn tracking via `whose_turn`
 - Action processing: `"move"`, `"suggest"`, `"accuse"`, `"show_card"`, `"end_turn"`
