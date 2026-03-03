@@ -95,6 +95,8 @@ _CHAT_PROBABILITY: dict[str, float] = {
     "end_turn": 0.3,
     "show_card": 0.5,
     "secret_passage": 0.9,
+    "suspected": 0.85,
+    "dragged_to_room": 0.9,
 }
 
 # Per-character, per-action message templates.  Use {dice}, {room}, {suspect},
@@ -136,6 +138,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "A secret passage? How absolutely thrilling!",
             "Ooh, sneaky sneaky. I love it!",
         ],
+        "suspected": [
+            "Me?! How DARE you. I'm far too glamorous for this.",
+            "Oh please, {accuser}. You wish you had my alibi.",
+            "Suspect ME? Darling, I'm the victim of jealousy here.",
+            "Ha! {accuser} is just trying to distract from their own guilt.",
+            "The audacity! I was busy being fabulous, thank you very much.",
+        ],
+        "dragged_to_room": [
+            "Excuse me?! I did NOT agree to be dragged to the {room}!",
+            "Ugh, the {room}? I just did my hair!",
+            "Being summoned to the {room} like common help... the nerve!",
+            "Fine, I'll go to the {room}. But I won't enjoy it.",
+        ],
     },
     "Colonel Mustard": {
         "roll": [
@@ -172,6 +187,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         "secret_passage": [
             "Excellent! A tactical shortcut!",
             "Secret passages — every good estate has them.",
+        ],
+        "suspected": [
+            "ME?! I'll have you court-martialed for that, {accuser}!",
+            "Preposterous! A decorated colonel would never stoop so low!",
+            "That's a bold accusation, {accuser}. Bold and WRONG.",
+            "I've fought wars, {accuser}. You think I'm afraid of your little theory?",
+            "Suspect the Colonel? You clearly have no military intelligence.",
+        ],
+        "dragged_to_room": [
+            "I did NOT authorize this troop movement to the {room}!",
+            "Forced march to the {room}?! This is an outrage!",
+            "The {room}? I was perfectly fine where I was, thank you!",
+            "Being relocated without orders... highly irregular!",
         ],
     },
     "Mrs. White": {
@@ -210,6 +238,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "I know every hidden nook in this house!",
             "These old walls have more secrets than you'd think.",
         ],
+        "suspected": [
+            "Well I never! After all I've done for this household, {accuser}?!",
+            "Oh, blame the housekeeper. How original, {accuser}.",
+            "I've cleaned up after all of you for YEARS and THIS is my thanks?",
+            "Suspect me? I know where all the bodies are buried. Figuratively.",
+            "{accuser}, I've scrubbed blood out of carpets that would make you faint.",
+        ],
+        "dragged_to_room": [
+            "Oh, the {room} again? I JUST finished cleaning in there!",
+            "Dragged to the {room}... at my age!",
+            "If I have to go to the {room} ONE more time...",
+            "The {room}? Fine. But I'm not dusting while I'm there.",
+        ],
     },
     "Reverend Green": {
         "roll": [
@@ -246,6 +287,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         "secret_passage": [
             "Even a man of the cloth knows a shortcut or two.",
             "The Lord works in mysterious passages.",
+        ],
+        "suspected": [
+            "I forgive you, {accuser}... but the Lord may not!",
+            "Bearing false witness, {accuser}? That's a sin, you know.",
+            "Suspecting a man of the cloth? Heavens! The NERVE, {accuser}!",
+            "I shall pray for your judgment, {accuser}. You clearly need it.",
+            "Thou shalt not bear false witness, {accuser}. Look it up.",
+        ],
+        "dragged_to_room": [
+            "Summoned to the {room}? I am not at your beck and call!",
+            "The {room}?! I was in the middle of my evening prayers!",
+            "Being hauled to the {room} like a common sinner...",
+            "Fine. I'll go to the {room}. But I'm bringing my Bible.",
         ],
     },
     "Mrs. Peacock": {
@@ -284,6 +338,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "How convenient. Even I can appreciate a shortcut.",
             "Secret passages are terribly gauche, but useful.",
         ],
+        "suspected": [
+            "I beg your PARDON, {accuser}?! Do you know who I am?!",
+            "The sheer impertinence! {accuser}, I have connections!",
+            "Suspecting a woman of MY social standing? Scandalous, {accuser}!",
+            "My lawyers will hear about this, {accuser}. Mark my words.",
+            "{accuser}, this is beneath you. And me. Especially me.",
+        ],
+        "dragged_to_room": [
+            "The {room}?! I was NOT consulted about this relocation!",
+            "How DARE someone drag me to the {room} like luggage!",
+            "The {room} is beneath my station. I demand better accommodations!",
+            "Marched to the {room} without so much as an invitation!",
+        ],
     },
     "Professor Plum": {
         "roll": [
@@ -321,6 +388,19 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "Ah, a secret passage! Architecturally fascinating!",
             "I wrote a paper on secret passages once. Or was it bridges?",
         ],
+        "suspected": [
+            "Me?! {accuser}, your methodology is deeply flawed!",
+            "I have TENURE, {accuser}. You can't just accuse me willy-nilly!",
+            "That hypothesis has a p-value of basically zero, {accuser}.",
+            "Ridiculous! Check your data again, {accuser}.",
+            "{accuser}, I've peer-reviewed your theory and it's REJECTED.",
+        ],
+        "dragged_to_room": [
+            "The {room}?! But my research was in the OTHER room!",
+            "Forced relocation to the {room}? This isn't academia!",
+            "I had a perfectly good train of thought before being dragged to the {room}!",
+            "The {room}... wait, did I leave my glasses here?",
+        ],
     },
 }
 
@@ -333,6 +413,15 @@ _GENERIC_CHAT: dict[str, list[str]] = {
     "end_turn": ["Next player.", "Your turn."],
     "show_card": ["Take a look.", "Here you go."],
     "secret_passage": ["A shortcut!", "Through the passage!"],
+    "suspected": [
+        "Me?! You've got the wrong person, {accuser}!",
+        "That's a bold claim, {accuser}. Bold and wrong.",
+        "Oh, so NOW I'm a suspect? Unbelievable, {accuser}!",
+    ],
+    "dragged_to_room": [
+        "Hey! I didn't want to go to the {room}!",
+        "Being dragged to the {room}... how rude!",
+    ],
 }
 
 
@@ -342,6 +431,27 @@ def _format_chat(template: str, context: dict) -> str:
         return template.format(**context)
     except (KeyError, IndexError):
         return template
+
+
+def generate_character_chat(
+    character: str, action_type: str, context: dict | None = None
+) -> str | None:
+    """Generate a chat message for a character without needing an agent instance.
+
+    Used by main.py to make ANY piece trash talk (including human players'
+    pieces) when they're suspected or dragged to a room.
+    """
+    prob = _CHAT_PROBABILITY.get(action_type, 0.5)
+    if random.random() > prob:
+        return None
+
+    char_msgs = CHARACTER_CHAT.get(character, {})
+    templates = char_msgs.get(action_type) or _GENERIC_CHAT.get(action_type)
+    if not templates:
+        return None
+
+    template = random.choice(templates)
+    return _format_chat(template, context or {})
 
 
 # ---------------------------------------------------------------------------

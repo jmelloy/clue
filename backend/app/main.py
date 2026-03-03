@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
+from .agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent, generate_character_chat
 from .game import ClueGame
 from .models import (
     ActionRequest,
@@ -112,6 +112,12 @@ def _player_name(state: GameState, player_id: str) -> str:
     return player_id
 
 
+def _player_character(state: GameState, player_id: str) -> str | None:
+    for p in state.players:
+        if p.id == player_id:
+            return p.character
+    return None
+  
 def _is_wanderer(state: GameState, player_id: str) -> bool:
     for p in state.players:
         if p.id == player_id:
@@ -381,6 +387,43 @@ async def _execute_action(game_id: str, player_id: str, action: dict) -> dict:
                 },
             )
         await _broadcast_chat(game_id, chat_text, player_id)
+
+        # --- Piece trash talk: the suspected character reacts! ---
+        suspect_character = result["suspect"]
+        accuser_name = actor_name
+        # Find the player whose character was suspected
+        suspect_pid = None
+        for p in state.players:
+            if p.character == suspect_character:
+                suspect_pid = p.id
+                break
+
+        # "suspected" reaction — the named character claps back
+        suspected_msg = generate_character_chat(
+            suspect_character,
+            "suspected",
+            {"accuser": accuser_name, "weapon": result["weapon"], "room": result["room"]},
+        )
+        if suspected_msg:
+            await _broadcast_chat(
+                game_id,
+                f"{suspect_character}: {suspected_msg}",
+                suspect_pid,
+            )
+
+        # "dragged_to_room" reaction — if the piece was physically moved
+        if moved_suspect_player:
+            dragged_msg = generate_character_chat(
+                suspect_character,
+                "dragged_to_room",
+                {"room": result["room"], "accuser": accuser_name},
+            )
+            if dragged_msg:
+                await _broadcast_chat(
+                    game_id,
+                    f"{suspect_character}: {dragged_msg}",
+                    moved_suspect_player,
+                )
 
     elif action_type == "show_card":
         card = result.get("card")
