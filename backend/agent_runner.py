@@ -412,7 +412,8 @@ if __name__ == "__main__":
 
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_format = os.getenv("LOG_FORMAT", "colored")
+    trace_level = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
     logging.config.dictConfig(
-        get_logging_config(log_level=log_level, log_format=log_format)
+        get_logging_config(log_level=log_level, trace_level=trace_level, log_format=log_format)
     )
     asyncio.run(main())
