@@ -7,13 +7,10 @@ Discovery:
   - Polls Redis for ``game:{id}:agent_config`` keys written by the backend
     when a game with agent players starts.
 
-Actions:
-  - Sends actions via the backend HTTP API (POST /games/{game_id}/action)
-    so the backend handles WebSocket broadcasting.
-
-Observations:
-  - Reads observation events from ``game:{id}:agent_events`` (Redis list)
-    published by the backend after every action.
+Communication:
+  - Connects to the backend via WebSocket for real-time game events.
+  - Submits actions via the backend HTTP API (POST /games/{game_id}/action).
+  - Fetches player state via HTTP GET when making decisions.
 """
 
 import asyncio
@@ -24,6 +21,7 @@ import sys
 
 import httpx
 import redis.asyncio as aioredis
+import websockets
 
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.dirname(__file__))
@@ -31,13 +29,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 from app.agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
 from app.game import ClueGame
 from app.logging import get_logging_config
-from app.models import GameState
+from app.models import GameState, PlayerState
 
 logger = logging.getLogger(__name__)
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 POLL_INTERVAL = float(os.getenv("AGENT_POLL_INTERVAL", "2"))
+
+# Derive WebSocket URL from the HTTP backend URL
+_WS_URL = BACKEND_URL.replace("http://", "ws://").replace("https://", "wss://")
 
 
 def _player_name(state: GameState, player_id: str) -> str:
@@ -111,9 +112,9 @@ class AgentRunner:
             self.managed_games[game_id] = task
 
     async def _run_game(self, game_id: str, config: dict):
-        """Manage agents for a single game."""
+        """Manage agents for a single game via WebSocket connections."""
         agents: dict[str, BaseAgent] = {}
-        event_cursor = 0
+        agent_cards: dict[str, list[str]] = {}
 
         for pid, info in config.items():
             ptype = info["type"]
@@ -127,6 +128,7 @@ class AgentRunner:
             agent.character = info["character"]
             agent.player_id = pid
             agent.observe_own_cards(info["cards"])
+            agent_cards[pid] = info["cards"]
             if ptype == "llm_agent":
                 await agent.load_memory()
             agents[pid] = agent
@@ -139,83 +141,244 @@ class AgentRunner:
             )
 
         try:
-            await self._agent_loop(game_id, agents, event_cursor)
+            # Launch a WebSocket connection per agent
+            tasks = [
+                asyncio.create_task(
+                    self._run_agent_ws(game_id, pid, agent, agent_cards[pid])
+                )
+                for pid, agent in agents.items()
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    pid = list(agents.keys())[i]
+                    logger.error(
+                        "Agent %s in game %s failed: %s", pid, game_id, result
+                    )
         except asyncio.CancelledError:
-            logger.info("Agent loop cancelled for game %s", game_id)
-        except Exception:
-            logger.exception("Agent loop error in game %s", game_id)
+            logger.info("Agent tasks cancelled for game %s", game_id)
         finally:
             await self.redis.delete(f"game:{game_id}:agent_config")
-            logger.info("Agent loop ended for game %s", game_id)
+            logger.info("Agents finished for game %s", game_id)
 
     # ------------------------------------------------------------------
-    # Observation events
+    # Per-agent WebSocket connection
     # ------------------------------------------------------------------
 
-    async def _consume_events(
-        self, game_id: str, agents: dict[str, BaseAgent], cursor: int
-    ) -> int:
-        """Read new observation events from Redis and update agents.
+    async def _run_agent_ws(
+        self,
+        game_id: str,
+        player_id: str,
+        agent: BaseAgent,
+        cards: list[str],
+    ):
+        """Drive a single agent via a WebSocket connection to the backend."""
+        ws_url = f"{_WS_URL}/ws/{game_id}/{player_id}"
+        logger.info("Connecting agent %s to WebSocket %s", player_id, ws_url)
 
-        Returns the updated cursor position.
-        """
-        key = f"game:{game_id}:agent_events"
-        events = await self.redis.lrange(key, cursor, -1)
-        for event_raw in events:
-            event = json.loads(event_raw)
-            self._apply_event(agents, event)
-        return cursor + len(events)
+        max_reconnects = 5
+        reconnects = 0
+
+        async for ws in websockets.connect(ws_url):
+            try:
+                async for raw_msg in ws:
+                    msg = json.loads(raw_msg)
+                    done = await self._handle_message(
+                        game_id, player_id, agent, cards, msg
+                    )
+                    if done:
+                        return
+                # Server closed the connection cleanly
+                return
+            except websockets.ConnectionClosed:
+                reconnects += 1
+                if reconnects > max_reconnects:
+                    logger.error(
+                        "Too many reconnections for agent %s in game %s",
+                        player_id,
+                        game_id,
+                    )
+                    return
+                logger.warning(
+                    "WebSocket disconnected for agent %s in game %s, "
+                    "reconnecting (%d/%d)...",
+                    player_id,
+                    game_id,
+                    reconnects,
+                    max_reconnects,
+                )
+
+    async def _handle_message(
+        self,
+        game_id: str,
+        player_id: str,
+        agent: BaseAgent,
+        cards: list[str],
+        msg: dict,
+    ) -> bool:
+        """Process a WebSocket message. Returns True when the game is over."""
+        msg_type = msg.get("type")
+
+        if msg_type == "your_turn":
+            await self._handle_your_turn(game_id, player_id, agent)
+
+        elif msg_type == "show_card_request":
+            await self._handle_show_card(game_id, player_id, agent, cards, msg)
+
+        elif msg_type == "suggestion_made":
+            self._handle_suggestion_observation(player_id, agent, msg)
+
+        elif msg_type == "card_shown":
+            # This agent was the suggesting player — it sees the actual card
+            agent.observe_shown_card(msg["card"], shown_by=msg["shown_by"])
+
+        elif msg_type == "card_shown_public":
+            # Someone showed a card to someone else
+            shown_by = msg["shown_by"]
+            shown_to = msg["shown_to"]
+            if player_id not in (shown_by, shown_to):
+                agent.observe_card_shown_to_other(
+                    shown_by=shown_by,
+                    shown_to=shown_to,
+                    suspect=msg.get("suspect", ""),
+                    weapon=msg.get("weapon", ""),
+                    room=msg.get("room", ""),
+                )
+
+        elif msg_type == "game_over":
+            logger.info("Game %s is over, stopping agent %s", game_id, player_id)
+            return True
+
+        return False
+
+    # ------------------------------------------------------------------
+    # Action handlers
+    # ------------------------------------------------------------------
+
+    async def _handle_your_turn(
+        self, game_id: str, player_id: str, agent: BaseAgent
+    ):
+        """React to a your_turn message: fetch state, decide, and send action."""
+        # Pace non-LLM agents for human observers
+        if agent.agent_type != "llm":
+            await asyncio.sleep(1.35)
+
+        # Fetch fresh player state from the backend
+        resp = await self.http.get(f"/games/{game_id}/player/{player_id}")
+        if resp.status_code != 200:
+            logger.warning(
+                "Failed to fetch player state for %s in game %s: %s",
+                player_id,
+                game_id,
+                resp.status_code,
+            )
+            return
+
+        ps_data = resp.json()
+        game_state = GameState(
+            **{k: v for k, v in ps_data.items() if k in GameState.model_fields}
+        )
+        player_state = PlayerState(**ps_data)
+
+        if game_state.status != "playing":
+            return
+
+        try:
+            action = await agent.decide_action(game_state, player_state)
+        except Exception:
+            logger.exception(
+                "Agent %s failed to decide action in game %s", player_id, game_id
+            )
+            return
+
+        logger.info(
+            "Agent %s taking action %s in game %s",
+            player_id,
+            action.get("type"),
+            game_id,
+        )
+
+        result = await self._send_action(game_id, player_id, action)
+        if isinstance(result, dict) and result.get("error"):
+            return
+
+        # Broadcast personality chat after the action
+        chat_context = {
+            "dice": result.get("dice", ""),
+            "room": result.get("room") or action.get("room") or "",
+            "suspect": action.get("suspect", ""),
+            "weapon": action.get("weapon", ""),
+        }
+        chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
+        if chat_msg:
+            await self._send_chat(game_id, player_id, chat_msg)
+
+    async def _handle_show_card(
+        self,
+        game_id: str,
+        player_id: str,
+        agent: BaseAgent,
+        cards: list[str],
+        msg: dict,
+    ):
+        """React to a show_card_request: decide which card to show."""
+        suggesting_pid = msg["suggesting_player_id"]
+        matching = msg.get("matching_cards", [])
+        if not matching:
+            # Fallback: compute from own hand
+            matching = [
+                c
+                for c in cards
+                if c
+                in [msg.get("suspect", ""), msg.get("weapon", ""), msg.get("room", "")]
+            ]
+
+        if not matching:
+            logger.warning(
+                "Agent %s has no matching cards for show_card_request in game %s",
+                player_id,
+                game_id,
+            )
+            return
+
+        try:
+            card = await agent.decide_show_card(matching, suggesting_pid)
+        except Exception:
+            logger.exception(
+                "Agent %s failed to decide show_card in game %s",
+                player_id,
+                game_id,
+            )
+            card = matching[0]
+
+        logger.info("Agent %s showing card in game %s", player_id, game_id)
+        await self._send_action(game_id, player_id, {"type": "show_card", "card": card})
+
+        chat_msg = agent.generate_chat("show_card")
+        if chat_msg:
+            await self._send_chat(game_id, player_id, chat_msg)
 
     @staticmethod
-    def _apply_event(agents: dict[str, BaseAgent], event: dict):
-        """Apply an observation event to all relevant agents."""
-        etype = event.get("type")
-
-        if etype == "show_card":
-            shown_by = event["shown_by"]
-            shown_to = event["shown_to"]
-            card = event["card"]
-            suspect = event.get("suspect", "")
-            weapon = event.get("weapon", "")
-            room = event.get("room", "")
-
-            # The suggesting player learns which card was shown
-            if shown_to in agents and card:
-                agents[shown_to].observe_shown_card(card, shown_by=shown_by)
-
-            # Other agents note that a card was shown (for inference)
-            for aid, agent in agents.items():
-                if aid not in (shown_to, shown_by) and suspect and weapon and room:
-                    agent.observe_card_shown_to_other(
-                        shown_by=shown_by,
-                        shown_to=shown_to,
-                        suspect=suspect,
-                        weapon=weapon,
-                        room=room,
-                    )
-
-        elif etype == "suggest":
-            suggesting_pid = event["suggesting_player_id"]
-            shown_by = event.get("shown_by")
-            players_without = event.get("players_without_match", [])
-
-            for _aid, agent in agents.items():
-                agent.observe_suggestion(
-                    suggesting_player_id=suggesting_pid,
-                    suspect=event["suspect"],
-                    weapon=event["weapon"],
-                    room=event["room"],
-                    shown_by=shown_by,
-                    players_without_match=players_without,
-                )
-
-            # If no one could show a card, the suggesting agent also notes this
-            if shown_by is None and suggesting_pid in agents:
-                agents[suggesting_pid].observe_suggestion_no_show(
-                    event["suspect"],
-                    event["weapon"],
-                    event["room"],
-                )
+    def _handle_suggestion_observation(
+        player_id: str, agent: BaseAgent, msg: dict
+    ):
+        """Update agent observations from a suggestion_made broadcast."""
+        suggesting_pid = msg.get("player_id")
+        agent.observe_suggestion(
+            suggesting_player_id=suggesting_pid,
+            suspect=msg.get("suspect", ""),
+            weapon=msg.get("weapon", ""),
+            room=msg.get("room", ""),
+            shown_by=msg.get("pending_show_by"),
+            players_without_match=msg.get("players_without_match", []),
+        )
+        # If nobody could show, and this agent made the suggestion
+        if msg.get("pending_show_by") is None and suggesting_pid == player_id:
+            agent.observe_suggestion_no_show(
+                msg.get("suspect", ""),
+                msg.get("weapon", ""),
+                msg.get("room", ""),
+            )
 
     # ------------------------------------------------------------------
     # HTTP helpers
@@ -250,156 +413,6 @@ class AgentRunner:
             )
         except Exception:
             logger.debug("Failed to send chat for %s in game %s", player_id, game_id)
-
-    # ------------------------------------------------------------------
-    # Main agent loop
-    # ------------------------------------------------------------------
-
-    async def _agent_loop(
-        self,
-        game_id: str,
-        agents: dict[str, BaseAgent],
-        event_cursor: int,
-    ):
-        """Drive agent players — mirrors _run_agent_loop but uses HTTP."""
-        logger.info(
-            "Agent loop started for game %s with %d agent(s)",
-            game_id,
-            len(agents),
-        )
-
-        max_consecutive_errors = 5
-        consecutive_errors = 0
-
-        while True:
-            # Consume any pending observation events
-            event_cursor = await self._consume_events(game_id, agents, event_cursor)
-
-            game = ClueGame(game_id, self.redis)
-            state = await game.get_state()
-            if state is None or state.status != "playing":
-                break
-
-            pending = state.pending_show_card
-            if pending and pending.player_id in agents:
-                # An agent needs to show a card
-                event_cursor = await self._consume_events(game_id, agents, event_cursor)
-                state = await game.get_state()
-                if not state or state.status != "playing":
-                    break
-                pending = state.pending_show_card
-                if not pending or pending.player_id not in agents:
-                    continue
-
-                pid = pending.player_id
-                agent = agents[pid]
-                try:
-                    card = await agent.decide_show_card(
-                        pending.matching_cards,
-                        pending.suggesting_player_id,
-                        errors=consecutive_errors,
-                    )
-
-                    logger.info("Agent %s showing card in game %s", pid, game_id)
-
-                    result = await self._send_action(
-                        game_id, pid, {"type": "show_card", "card": card}
-                    )
-                except httpx.HTTPError as exc:
-                    consecutive_errors += 1
-                    logger.warning(
-                        "Network error showing card for %s in game %s: %s",
-                        pid,
-                        game_id,
-                        exc,
-                    )
-                    await asyncio.sleep(0.5)
-                    continue
-
-                if isinstance(result, dict) and result.get("error"):
-                    consecutive_errors += 1
-                    if consecutive_errors >= max_consecutive_errors:
-                        logger.error(
-                            "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors,
-                            game_id,
-                        )
-                        return
-                    await asyncio.sleep(0.5)
-                    continue
-
-                consecutive_errors = 0
-                # Broadcast personality chat
-                chat_msg = agent.generate_chat("show_card")
-
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, chat_msg)
-
-            elif pending:
-                # A human player must show a card — wait
-                await asyncio.sleep(0.5)
-
-            elif state.whose_turn in agents:
-                # It's an agent's turn
-                agent = agents[state.whose_turn]
-                if agent.agent_type != "llm":
-                    await asyncio.sleep(1.35)
-
-                # Re-check state
-                event_cursor = await self._consume_events(game_id, agents, event_cursor)
-                state = await game.get_state()
-                if not state or state.status != "playing":
-                    break
-                pid = state.whose_turn
-                if pid not in agents:
-                    continue
-
-                agent = agents[pid]
-                player_state = await game.get_player_state(pid)
-                try:
-                    action = await agent.decide_action(
-                        state, player_state, errors=consecutive_errors
-                    )
-
-                    logger.info(
-                        "Agent %s taking action %s in game %s",
-                        pid,
-                        action.get("type"),
-                        game_id,
-                    )
-
-                    result = await self._send_action(game_id, pid, action)
-                except httpx.HTTPError as exc:
-                    consecutive_errors += 1
-                    logger.warning(
-                        "Network error for %s action %s in game %s: %s",
-                        pid,
-                        action.get("type"),
-                        game_id,
-                        exc,
-                    )
-                    await asyncio.sleep(1)
-                    continue
-
-                consecutive_errors = 0
-                # Broadcast personality chat after the action
-                chat_context = {
-                    "dice": result.get("dice", ""),
-                    "room": result.get("room") or action.get("room") or "",
-                    "suspect": action.get("suspect", ""),
-                    "weapon": action.get("weapon", ""),
-                }
-                chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await self._send_chat(game_id, pid, chat_msg)
-
-            else:
-                # Human player's turn — poll periodically
-                await asyncio.sleep(0.5)
 
 
 async def main():
