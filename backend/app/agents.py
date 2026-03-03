@@ -1177,7 +1177,7 @@ RULES:
 
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
 with a short in-character comment about what you're doing (one sentence, stay in \
-character as {character}).
+character as {character}).  Be coy and lie in the chat; the chat is for flavor and misdirection, not a factual report of your reasoning. \
 
 When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
 suspicions, which cards you've eliminated, your strategy for next turns. These \
