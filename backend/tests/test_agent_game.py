@@ -94,9 +94,9 @@ async def _run_game(
 
             # All other agents observe a card was shown (inference).
             # Exclude suggesting player (got actual card) and showing player.
-            suspect = result.get("suspect", "")
-            weapon = result.get("weapon", "")
-            room = result.get("room", "")
+            suspect = getattr(result, "suspect", "")
+            weapon = getattr(result, "weapon", "")
+            room = getattr(result, "room", "")
             for aid, a in agents.items():
                 if aid not in (suggesting_pid, pid) and suspect and weapon and room:
                     a.observe_card_shown_to_other(
@@ -117,8 +117,8 @@ async def _run_game(
 
             # Post-action observations
             if action["type"] == "suggest":
-                shown_by = result.get("pending_show_by")
-                players_without = result.get("players_without_match", [])
+                shown_by = getattr(result, "pending_show_by", None)
+                players_without = getattr(result, "players_without_match", [])
 
                 # Notify ALL agents about the suggestion
                 for aid, a in agents.items():

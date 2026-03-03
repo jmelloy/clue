@@ -15,10 +15,10 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ROOM_CENTERS
+from app.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
 from app.agents import RandomAgent, WandererAgent
 from app.main import app, manager, _agent_tasks, _game_agents
-from app.models import GameState
+from app.models import GameState, PongMessage, WSMessage
 
 # ---------------------------------------------------------------------------
 # Mock WebSocket
@@ -133,9 +133,7 @@ async def _get_state(http: AsyncClient, game_id: str) -> dict:
     return resp.json()
 
 
-async def _add_wanderer_agents(
-    agents: dict, state: dict, game: ClueGame
-) -> None:
+async def _add_wanderer_agents(agents: dict, state: dict, game: ClueGame) -> None:
     """Add WandererAgent instances for any auto-added wanderer players."""
     for p in state.get("players", []):
         pid = p["id"] if isinstance(p, dict) else p.id
@@ -197,12 +195,12 @@ class TestWebSocketConnection:
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
 
-        await manager.broadcast(game_id, {"type": "test", "data": "hello"})
+        await manager.broadcast(game_id, PongMessage())
 
         assert len(ws1.sent) == 1
-        assert ws1.sent[0] == {"type": "test", "data": "hello"}
+        assert ws1.sent[0] == {"type": "pong"}
         assert len(ws2.sent) == 1
-        assert ws2.sent[0] == {"type": "test", "data": "hello"}
+        assert ws2.sent[0] == {"type": "pong"}
 
     @pytest.mark.asyncio
     async def test_send_to_player_is_private(self, http, redis):
@@ -214,10 +212,10 @@ class TestWebSocketConnection:
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
 
-        await manager.send_to_player(game_id, pid1, {"type": "secret", "card": "Knife"})
+        await manager.send_to_player(game_id, pid1, PongMessage())
 
         assert len(ws1.sent) == 1
-        assert ws1.sent[0]["type"] == "secret"
+        assert ws1.sent[0]["type"] == "pong"
         assert len(ws2.sent) == 0  # Bob got nothing
 
 
@@ -271,10 +269,10 @@ class TestGameStartBroadcast:
 
         # Each player should get a private game_started with their cards
         started1 = [
-            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+            m for m in ws1.sent if m["type"] == "game_started" and m.get("your_cards")
         ]
         started2 = [
-            m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m
+            m for m in ws2.sent if m["type"] == "game_started" and m.get("your_cards")
         ]
         assert (
             len(started1) >= 1
@@ -304,7 +302,7 @@ class TestGameStartBroadcast:
 
         # Should have a broadcast game_started with "state" key
         broadcast = [
-            m for m in ws1.sent if m["type"] == "game_started" and "state" in m
+            m for m in ws1.sent if m["type"] == "game_started" and m.get("state")
         ]
         assert len(broadcast) >= 1
         assert broadcast[0]["state"]["whose_turn"] == state["whose_turn"]
@@ -322,7 +320,7 @@ class TestGameStartBroadcast:
         state = await _start_game(http, game_id)
 
         started = [
-            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+            m for m in ws1.sent if m["type"] == "game_started" and m.get("your_cards")
         ]
         assert started[0]["whose_turn"] == state["whose_turn"]
 
@@ -518,7 +516,9 @@ class TestShowCardFlow:
         )
 
         show_req = [m for m in other_ws.sent if m["type"] == "show_card_request"]
-        assert len(show_req) >= 1, "Expected show_card_request was not sent to other player"
+        assert (
+            len(show_req) >= 1
+        ), "Expected show_card_request was not sent to other player"
         assert show_req[0]["suggesting_player_id"] == whose_turn
         assert "available_actions" in show_req[0]
         assert "show_card" in show_req[0]["available_actions"]
@@ -576,7 +576,9 @@ class TestShowCardFlow:
         )
 
         pending_by = result.get("pending_show_by")
-        assert pending_by is not None, "Expected show_card request but none was triggered"
+        assert (
+            pending_by is not None
+        ), "Expected show_card request but none was triggered"
 
         # Get matching cards and show one
         gs = await game.get_state()
@@ -774,10 +776,10 @@ class TestAgentFullGameE2E:
 
         # Extract dealt cards from the private game_started messages
         cards1_msg = [
-            m for m in ws1.sent if m["type"] == "game_started" and "your_cards" in m
+            m for m in ws1.sent if m["type"] == "game_started" and m.get("your_cards")
         ]
         cards2_msg = [
-            m for m in ws2.sent if m["type"] == "game_started" and "your_cards" in m
+            m for m in ws2.sent if m["type"] == "game_started" and m.get("your_cards")
         ]
         assert len(cards1_msg) >= 1
         assert len(cards2_msg) >= 1
@@ -872,7 +874,7 @@ class TestAgentFullGameE2E:
         for pid in pids:
             ws = ws_map[pid]
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
@@ -956,7 +958,7 @@ class TestAgentFullGameE2E:
         for pid in pids:
             ws = ws_map[pid]
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
@@ -1034,7 +1036,7 @@ class TestAgentFullGameE2E:
         agents = {pid1: RandomAgent(), pid2: RandomAgent()}
         for pid, ws in [(pid1, ws1), (pid2, ws2)]:
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and "your_cards" in m
+                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
             ]
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
 

@@ -4,7 +4,15 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS, ALL_CARDS, ROOM_CENTERS, SECRET_PASSAGE_MAP
+from app.game import (
+    ClueGame,
+    SUSPECTS,
+    WEAPONS,
+    ROOMS,
+    ALL_CARDS,
+    ROOM_CENTERS,
+    SECRET_PASSAGE_MAP,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -179,9 +187,9 @@ async def test_make_suggestion(game: ClueGame):
                 "room": room,
             },
         )
-        assert result["type"] == "suggest"
+        assert result.type == "suggest"
         # The other player has a matching card, so they should be asked to show it
-        assert result["pending_show_by"] == other_id
+        assert result.pending_show_by == other_id
 
 
 @pytest.mark.asyncio
@@ -202,8 +210,8 @@ async def test_correct_accusation_wins(game: ClueGame):
         },
     )
 
-    assert result["correct"] is True
-    assert result["winner"] == whose_turn
+    assert result.correct is True
+    assert result.winner == whose_turn
 
     final_state = await game.get_state()
     assert final_state.status == "finished"
@@ -231,7 +239,7 @@ async def test_incorrect_accusation_eliminates_player(game: ClueGame):
         },
     )
 
-    assert result["correct"] is False
+    assert result.correct is False
 
     # With only 2 players, the other player should win
     final_state = await game.get_state()
@@ -269,7 +277,7 @@ async def test_end_turn_advances_player(game: ClueGame):
     # Player must do something before ending turn (roll dice first)
     await game.process_action(first_player, {"type": "roll"})
     result = await game.process_action(first_player, {"type": "end_turn"})
-    assert result["next_player_id"] == second_player
+    assert result.next_player_id == second_player
 
     new_state = await game.get_state()
     assert new_state.whose_turn == second_player
@@ -402,7 +410,7 @@ async def test_available_actions_after_suggest_pending_show(game: ClueGame):
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}
     )
-    assert result["pending_show_by"] == other_id
+    assert result.pending_show_by == other_id
 
     state = await game.get_state()
 
@@ -440,14 +448,14 @@ async def test_show_card_action(game: ClueGame):
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}
     )
-    assert result["pending_show_by"] == other_id
+    assert result.pending_show_by == other_id
 
     # Other player shows the card
     show_result = await game.process_action(
         other_id, {"type": "show_card", "card": card}
     )
-    assert show_result["card"] == card
-    assert show_result["suggesting_player_id"] == whose_turn
+    assert show_result.card == card
+    assert show_result.suggesting_player_id == whose_turn
 
     # pending_show_card should be cleared
     state = await game.get_state()
@@ -484,7 +492,7 @@ async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}
     )
-    assert result["pending_show_by"] == other_id
+    assert result.pending_show_by == other_id
 
     with pytest.raises(ValueError, match="not available at this time"):
         await game.process_action(whose_turn, {"type": "end_turn"})
@@ -553,9 +561,8 @@ async def test_roll_then_move(game: ClueGame):
 
     # Roll dice
     result = await game.process_action(whose_turn, {"type": "roll"})
-    assert result["type"] == "roll"
-    assert "dice" in result
-    assert result["dice"] >= 1
+    assert result.type == "roll"
+    assert result.dice >= 1
 
     # After rolling: move is available, roll is not
     state = await game.get_state()
@@ -568,7 +575,7 @@ async def test_roll_then_move(game: ClueGame):
     # Choose a room
     room = ROOMS[0]
     move_result = await game.process_action(whose_turn, {"type": "move", "room": room})
-    assert move_result["type"] == "move"
+    assert move_result.type == "move"
 
     # After moving: neither roll nor move available
     state = await game.get_state()
@@ -664,9 +671,9 @@ async def test_use_secret_passage(game: ClueGame):
     await game._save_state(st)
 
     result = await game.process_action(whose_turn, {"type": "secret_passage"})
-    assert result["type"] == "secret_passage"
-    assert result["from_room"] == "Study"
-    assert result["room"] == "Kitchen"
+    assert result.type == "secret_passage"
+    assert result.from_room == "Study"
+    assert result.room == "Kitchen"
 
     # Player is now in Kitchen, moved=True, can suggest
     state = await game.get_state()
@@ -698,8 +705,8 @@ async def test_secret_passage_all_pairs(game: ClueGame):
         await g._save_state(st)
 
         result = await g.process_action(whose_turn, {"type": "secret_passage"})
-        assert result["room"] == to_room
-        assert result["from_room"] == from_room
+        assert result.room == to_room
+        assert result.from_room == from_room
 
         state = await g.get_state()
         assert state.current_room[whose_turn] == to_room
@@ -733,11 +740,11 @@ async def test_suggest_available_without_roll_after_moved_by_suggestion(game: Cl
     )
 
     # Resolve show_card if pending
-    if result.get("pending_show_by"):
+    if result.pending_show_by:
         st = await game._load_state()
         matching = st.pending_show_card.matching_cards
         await game.process_action(
-            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
         )
 
     # End the current player's turn
@@ -779,11 +786,11 @@ async def test_free_suggest_then_end_turn(game: ClueGame):
         whose_turn,
         {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
     )
-    if result.get("pending_show_by"):
+    if result.pending_show_by:
         st = await game._load_state()
         matching = st.pending_show_card.matching_cards
         await game.process_action(
-            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
         )
 
     await game.process_action(whose_turn, {"type": "end_turn"})
@@ -801,14 +808,14 @@ async def test_free_suggest_then_end_turn(game: ClueGame):
         other_id,
         {"type": "suggest", "suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room},
     )
-    assert result["type"] == "suggest"
+    assert result.type == "suggest"
 
     # Resolve show_card if pending
-    if result.get("pending_show_by"):
+    if result.pending_show_by:
         st = await game._load_state()
         matching = st.pending_show_card.matching_cards
         await game.process_action(
-            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
         )
 
     # Should be able to end turn now
@@ -837,11 +844,11 @@ async def test_flag_cleared_after_turn_ends(game: ClueGame):
         whose_turn,
         {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
     )
-    if result.get("pending_show_by"):
+    if result.pending_show_by:
         st = await game._load_state()
         matching = st.pending_show_card.matching_cards
         await game.process_action(
-            result["pending_show_by"], {"type": "show_card", "card": matching[0]}
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
         )
 
     await game.process_action(whose_turn, {"type": "end_turn"})
@@ -1065,4 +1072,6 @@ async def test_room_players_do_not_block(game: ClueGame):
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Should still be able to reach hallway/rooms (door is not blocked)
-    assert len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0
+    assert (
+        len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0
+    )

@@ -4,9 +4,7 @@ import string
 import datetime as dt
 import logging
 
-from pydantic import ValidationError
-
-logger = logging.getLogger(__name__)
+from pydantic import TypeAdapter, ValidationError
 
 from .board import (
     START_POSITIONS,
@@ -20,14 +18,32 @@ from .board import (
     move_towards,
 )
 from .models import (
+    AccuseAction,
+    AccuseResult,
+    ActionResult,
     ChatMessage,
+    EndTurnAction,
+    EndTurnResult,
+    GameAction,
     GameState,
+    MoveAction,
+    MoveResult,
     PendingShowCard,
     Player,
     PlayerState,
+    RollAction,
+    RollResult,
+    SecretPassageAction,
+    SecretPassageResult,
+    ShowCardAction,
+    ShowCardResult,
     Solution,
+    SuggestAction,
+    SuggestResult,
     Suggestion,
 )
+
+logger = logging.getLogger(__name__)
 
 # Pre-build the board graph for pathfinding
 _GRID = build_grid()
@@ -35,6 +51,9 @@ _SQUARES, _ROOM_NODES = build_graph(_GRID)
 
 # Map room name strings to Room enum values
 _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
+
+# TypeAdapter for parsing action dicts into typed GameAction models
+_action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)
 
 CHARACTER_START_KEY = {
     "Miss Scarlett": "Scarlet",
@@ -404,7 +423,9 @@ class ClueGame:
             return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
 
         occupied = self._get_occupied_positions(state, player_id)
-        reached = reachable(start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False)
+        reached = reachable(
+            start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+        )
 
         rooms = []
         positions = []
@@ -420,46 +441,52 @@ class ClueGame:
 
         return {"reachable_rooms": rooms, "reachable_positions": positions}
 
-    async def process_action(self, player_id: str, action: dict) -> dict:
+    async def process_action(
+        self, player_id: str, action: GameAction | dict
+    ) -> ActionResult:
+        """Process a game action and return a typed result.
+
+        Accepts either a typed GameAction or a plain dict (for backward
+        compatibility with agents and tests). Dicts are parsed into the
+        appropriate GameAction subclass via the discriminated union.
+        """
+        # Parse dict actions into typed models
+        if isinstance(action, dict):
+            action = _action_adapter.validate_python(action)
+
         state = await self._load_state()
         if state is None:
             raise ValueError("Game not found")
         if state.status != "playing":
             raise ValueError("Game is not in progress")
 
-        action_type = action.get("type")
-
-        if action_type != "show_card" and state.whose_turn != player_id:
+        if not isinstance(action, ShowCardAction) and state.whose_turn != player_id:
             raise ValueError("It is not your turn")
 
         available = self.get_available_actions(player_id, state)
-        if action_type not in available:
-            raise ValueError(f"Action '{action_type}' is not available at this time")
+        if action.type not in available:
+            raise ValueError(f"Action '{action.type}' is not available at this time")
 
-        result: dict = {"type": action_type, "player_id": player_id}
-
-        if action_type == "roll":
-            result = await self._handle_roll(state, player_id, result)
-        elif action_type == "secret_passage":
-            result = await self._handle_secret_passage(state, player_id, result)
-        elif action_type == "move":
-            result = await self._handle_move(state, player_id, action, result)
-        elif action_type == "suggest":
-            result = await self._handle_suggest(state, player_id, action, result)
-        elif action_type == "accuse":
-            result = await self._handle_accuse(state, player_id, action, result)
-        elif action_type == "end_turn":
-            result = await self._handle_end_turn(state, player_id, result)
-        elif action_type == "show_card":
-            result = await self._handle_show_card(state, player_id, action, result)
+        if isinstance(action, RollAction):
+            return await self._handle_roll(state, player_id)
+        elif isinstance(action, SecretPassageAction):
+            return await self._handle_secret_passage(state, player_id)
+        elif isinstance(action, MoveAction):
+            return await self._handle_move(state, player_id, action)
+        elif isinstance(action, SuggestAction):
+            return await self._handle_suggest(state, player_id, action)
+        elif isinstance(action, AccuseAction):
+            return await self._handle_accuse(state, player_id, action)
+        elif isinstance(action, EndTurnAction):
+            return await self._handle_end_turn(state, player_id)
+        elif isinstance(action, ShowCardAction):
+            return await self._handle_show_card(state, player_id, action)
         else:
-            raise ValueError(f"Unknown action type: {action_type}")
-
-        return result
+            raise ValueError(f"Unknown action type: {action.type}")
 
     async def _handle_roll(
-        self, state: GameState, player_id: str, result: dict
-    ) -> dict:
+        self, state: GameState, player_id: str
+    ) -> RollResult:
         """Roll the dice without moving. The player then chooses a room."""
         if state.dice_rolled:
             raise ValueError("You already rolled this turn")
@@ -478,13 +505,11 @@ class ClueGame:
             }
         )
 
-        result["dice"] = total
-        result["total"] = total
-        return result
+        return RollResult(player_id=player_id, dice=total, total=total)
 
     async def _handle_secret_passage(
-        self, state: GameState, player_id: str, result: dict
-    ) -> dict:
+        self, state: GameState, player_id: str
+    ) -> SecretPassageResult:
         """Use a secret passage to move to the linked corner room."""
         current_room = state.current_room.get(player_id)
         if not current_room or current_room not in SECRET_PASSAGE_MAP:
@@ -493,13 +518,11 @@ class ClueGame:
         dest_room = SECRET_PASSAGE_MAP[current_room]
         state.current_room[player_id] = dest_room
         state.moved = True
+        position: list[int] | None = None
         center = ROOM_CENTERS.get(dest_room)
         if center:
             state.player_positions[player_id] = list(center)
-            result["position"] = list(center)
-
-        result["from_room"] = current_room
-        result["room"] = dest_room
+            position = list(center)
 
         await self._save_state(state)
         await self._append_log(
@@ -511,11 +534,17 @@ class ClueGame:
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         )
-        return result
+
+        return SecretPassageResult(
+            player_id=player_id,
+            from_room=current_room,
+            room=dest_room,
+            position=position,
+        )
 
     async def _handle_move(
-        self, state: GameState, player_id: str, action: dict, result: dict
-    ) -> dict:
+        self, state: GameState, player_id: str, action: MoveAction
+    ) -> MoveResult:
         """Choose a room to move toward using the already-rolled dice."""
         if not state.dice_rolled:
             raise ValueError("You must roll the dice first")
@@ -524,20 +553,23 @@ class ClueGame:
 
         total = state.last_roll[0] if state.last_roll else 0
 
-        room = action.get("room")
-        target_pos = action.get("position")
-        if room and room not in ROOMS:
-            raise ValueError(f"Invalid room: {room}")
+        room_name = action.room
+        target_pos = action.position
+        if room_name and room_name not in ROOMS:
+            raise ValueError(f"Invalid room: {room_name}")
 
         # Cannot re-enter the room you are already in
         current_room_name = state.current_room.get(player_id)
-        if room and room == current_room_name:
+        if room_name and room_name == current_room_name:
             raise ValueError("Cannot re-enter the room you are already in")
 
         occupied = self._get_occupied_positions(state, player_id)
         start_sq = self._get_start_square(player_id, state)
 
-        if target_pos and not room:
+        final_room: str | None = None
+        final_position: list[int] | None = None
+
+        if target_pos and not room_name:
             # Position-based move: player clicked a specific hallway cell
             target_row, target_col = int(target_pos[0]), int(target_pos[1])
             target_sq = _SQUARES.get((target_row, target_col))
@@ -546,56 +578,64 @@ class ClueGame:
 
             if start_sq:
                 reachable_squares = reachable(
-                    start_sq, total, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+                    start_sq,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if target_sq in reachable_squares:
                     state.current_room.pop(player_id, None)
                     state.player_positions[player_id] = [target_row, target_col]
-                    result["room"] = None
-                    result["position"] = [target_row, target_col]
+                    final_room = None
+                    final_position = [target_row, target_col]
                 else:
                     raise ValueError("That position is not reachable with your roll")
             else:
                 raise ValueError("Cannot determine current position")
 
-        elif room:
-            target_room_enum = _ROOM_NAME_TO_ENUM.get(room)
+        elif room_name:
+            target_room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
-                    start_sq, target_room_enum, total, _SQUARES, _ROOM_NODES,
-                    occupied, use_secret_passages=False,
+                    start_sq,
+                    target_room_enum,
+                    total,
+                    _SQUARES,
+                    _ROOM_NODES,
+                    occupied,
+                    use_secret_passages=False,
                 )
                 if reached:
                     # Player reaches the room
-                    state.current_room[player_id] = room
-                    result["room"] = room
-                    center = ROOM_CENTERS.get(room)
+                    state.current_room[player_id] = room_name
+                    final_room = room_name
+                    center = ROOM_CENTERS.get(room_name)
                     if center:
                         state.player_positions[player_id] = list(center)
-                        result["position"] = list(center)
+                        final_position = list(center)
                 elif dest == start_sq:
                     # Player couldn't actually move (all paths blocked)
-                    result["room"] = current_room_name
-                    result["position"] = state.player_positions.get(player_id)
+                    final_room = current_room_name
+                    final_position = state.player_positions.get(player_id)
                 else:
                     # Player ends up in the hallway partway there
-                    result["room"] = None
+                    final_room = None
                     state.current_room.pop(player_id, None)
                     state.player_positions[player_id] = [dest.row, dest.col]
-                    result["position"] = [dest.row, dest.col]
+                    final_position = [dest.row, dest.col]
             else:
                 # Fallback: no position info yet — place directly in room
-                state.current_room[player_id] = room
-                result["room"] = room
-                center = ROOM_CENTERS.get(room)
+                state.current_room[player_id] = room_name
+                final_room = room_name
+                center = ROOM_CENTERS.get(room_name)
                 if center:
                     state.player_positions[player_id] = list(center)
-                    result["position"] = list(center)
+                    final_position = list(center)
 
         state.moved = True
-        result["dice"] = total
-        result["total"] = total
 
         await self._save_state(state)
         await self._append_log(
@@ -603,18 +643,25 @@ class ClueGame:
                 "type": "move",
                 "player_id": player_id,
                 "dice": total,
-                "room": result.get("room"),
+                "room": final_room,
                 "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             }
         )
-        return result
+
+        return MoveResult(
+            player_id=player_id,
+            room=final_room,
+            position=final_position,
+            dice=total,
+            total=total,
+        )
 
     async def _handle_suggest(
-        self, state: GameState, player_id: str, action: dict, result: dict
-    ) -> dict:
-        suspect = action.get("suspect")
-        weapon = action.get("weapon")
-        room = action.get("room")
+        self, state: GameState, player_id: str, action: SuggestAction
+    ) -> SuggestResult:
+        suspect = action.suspect
+        weapon = action.weapon
+        room = action.room
 
         if suspect not in SUSPECTS:
             raise ValueError(f"Invalid suspect: {suspect}")
@@ -689,28 +736,26 @@ class ClueGame:
             }
         )
 
-        result.update(
-            {
-                "suspect": suspect,
-                "weapon": weapon,
-                "room": room,
-                "pending_show_by": pending_player_id,
-                "moved_suspect_player": moved_suspect_player,
-                "players_without_match": players_without_match,
-            }
+        return SuggestResult(
+            player_id=player_id,
+            suspect=suspect,
+            weapon=weapon,
+            room=room,
+            pending_show_by=pending_player_id,
+            moved_suspect_player=moved_suspect_player,
+            players_without_match=players_without_match,
         )
-        return result
 
     async def _handle_show_card(
-        self, state: GameState, player_id: str, action: dict, result: dict
-    ) -> dict:
+        self, state: GameState, player_id: str, action: ShowCardAction
+    ) -> ShowCardResult:
         pending = state.pending_show_card
         if not pending:
             raise ValueError("No pending show card request")
         if pending.player_id != player_id:
             raise ValueError("You are not the player who must show a card")
 
-        card = action.get("card")
+        card = action.card
         if card not in pending.matching_cards:
             raise ValueError(f"Card '{card}' is not valid to show for this suggestion")
 
@@ -727,23 +772,21 @@ class ClueGame:
             }
         )
 
-        result.update(
-            {
-                "card": card,
-                "suggesting_player_id": suggesting_player_id,
-                "suspect": pending.suspect,
-                "weapon": pending.weapon,
-                "room": pending.room,
-            }
+        return ShowCardResult(
+            player_id=player_id,
+            card=card,
+            suggesting_player_id=suggesting_player_id,
+            suspect=pending.suspect,
+            weapon=pending.weapon,
+            room=pending.room,
         )
-        return result
 
     async def _handle_accuse(
-        self, state: GameState, player_id: str, action: dict, result: dict
-    ) -> dict:
-        suspect = action.get("suspect")
-        weapon = action.get("weapon")
-        room = action.get("room")
+        self, state: GameState, player_id: str, action: AccuseAction
+    ) -> AccuseResult:
+        suspect = action.suspect
+        weapon = action.weapon
+        room = action.room
 
         solution = await self._load_solution()
         correct = (
@@ -768,12 +811,11 @@ class ClueGame:
             state.status = "finished"
             state.winner = player_id
             await self._save_state(state)
-            result.update(
-                {
-                    "correct": True,
-                    "winner": player_id,
-                    "solution": solution.model_dump(),
-                }
+            return AccuseResult(
+                player_id=player_id,
+                correct=True,
+                winner=player_id,
+                solution=solution.model_dump(),
             )
         else:
             # Player is eliminated but game continues
@@ -791,20 +833,17 @@ class ClueGame:
                 state.winner = active_real[0].id
 
             await self._save_state(state)
-            result.update(
-                {
-                    "correct": False,
-                    "solution": (
-                        solution.model_dump() if state.status == "finished" else None
-                    ),
-                }
+            return AccuseResult(
+                player_id=player_id,
+                correct=False,
+                solution=(
+                    solution.model_dump() if state.status == "finished" else None
+                ),
             )
 
-        return result
-
     async def _handle_end_turn(
-        self, state: GameState, player_id: str, result: dict
-    ) -> dict:
+        self, state: GameState, player_id: str
+    ) -> EndTurnResult:
         if state.pending_show_card:
             raise ValueError(
                 "Cannot end turn while waiting for a player to show a card"
@@ -834,8 +873,7 @@ class ClueGame:
             }
         )
 
-        result["next_player_id"] = next_player.id
-        return result
+        return EndTurnResult(player_id=player_id, next_player_id=next_player.id)
 
     async def get_log(self) -> list[dict]:
         entries = await self.redis.lrange(self._log_key, 0, -1)
