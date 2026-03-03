@@ -96,6 +96,12 @@ jobs:
           sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${TAG}|" k8s/backend.yaml \
             | kubectl apply -n clue -f -
 
+      - name: Deploy agent-runner
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          sed "s|image: clue-backend:.*|image: ${{ env.BACKEND_IMAGE }}:${TAG}|" k8s/agent-runner.yaml \
+            | kubectl apply -n clue -f -
+
       - name: Apply ingress
         run: kubectl apply -n clue -f k8s/ingress.yaml
 
@@ -103,6 +109,7 @@ jobs:
         run: |
           kubectl rollout status -n clue deployment/redis --timeout=120s
           kubectl rollout status -n clue deployment/backend --timeout=120s
+          kubectl rollout status -n clue deployment/agent-runner --timeout=120s
 
       - name: Show deployment status
         if: always()
