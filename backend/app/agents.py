@@ -769,9 +769,7 @@ class BaseAgent(ABC):
             return None
 
         template = random.choice(templates)
-        logger.info(
-            f"Selected chat template for {self.character}: '{template}' with context {context}"
-        )
+
         return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
@@ -1509,7 +1507,7 @@ class LLMAgent(BaseAgent):
         if self.memory:
             lines.append("")
             lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
-            recent = self.memory[-10:]  # last 10 entries
+            recent = self.memory[-1:]  # last 1 entry
             start_idx = len(self.memory) - len(recent) + 1
             for i, entry in enumerate(recent):
                 lines.append(f"  [{start_idx + i}] {entry}")

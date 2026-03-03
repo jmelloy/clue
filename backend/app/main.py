@@ -158,7 +158,6 @@ def _is_wanderer(state: GameState, player_id: str) -> bool:
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message to all connected players and persist it."""
-    logger.info(f"Broadcasting chat in game {game_id} from player {player_id}: {text}")
     timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
     message = ChatMessage(
         player_id=player_id,
