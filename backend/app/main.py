@@ -108,6 +108,14 @@ def _player_name(state: GameState, player_id: str) -> str:
     return player_id
 
 
+def _prepend_name(name: str, text: str) -> str:
+    """Prepend 'name: ' to text, but only if it doesn't already start with it."""
+    prefix = f"{name}: "
+    if text.startswith(prefix):
+        return text
+    return prefix + text
+
+
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message to all connected players and persist it."""
     message = ChatMessage(
@@ -612,7 +620,7 @@ async def _run_agent_loop(game_id: str):
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
+                    await _broadcast_chat(game_id, _prepend_name(name, chat_msg), pid)
 
             elif pending:
                 # A non-agent (human) player must show a card — wait for them
@@ -653,7 +661,7 @@ async def _run_agent_loop(game_id: str):
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
+                    await _broadcast_chat(game_id, _prepend_name(name, chat_msg), pid)
 
             else:
                 # Human player's turn — poll periodically

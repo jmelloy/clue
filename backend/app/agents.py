@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import random
+import re
 from abc import ABC, abstractmethod
 
 import httpx
@@ -609,8 +610,12 @@ class BaseAgent(ABC):
             self._pending_chat = None
             # Strip leading character name prefix if the LLM included it,
             # since the caller already prepends "{name}: ".
-            if self.character and msg.startswith(self.character + ": "):
-                msg = msg[len(self.character) + 2:]
+            if self.character:
+                prefix_re = re.compile(
+                    r'^' + re.escape(self.character) + r'\s*[:\-–—;]\s*',
+                    re.IGNORECASE,
+                )
+                msg = prefix_re.sub('', msg, count=1)
             return msg
 
         prob = _CHAT_PROBABILITY.get(action_type, 0.5)
@@ -1024,7 +1029,8 @@ RULES:
 
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
 with a short in-character comment about what you're doing (one sentence, stay in \
-character as {character}).
+character as {character}). Do not prefix the chat with your character name — just \
+the comment itself.
 
 When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
 suspicions, which cards you've eliminated, your strategy for next turns. These \
