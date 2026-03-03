@@ -1,7 +1,8 @@
-import json
 import logging
 from collections import defaultdict
+
 from fastapi import WebSocket
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ class ConnectionManager:
         if not game_conns:
             self._connections.pop(game_id, None)
 
-    async def broadcast(self, game_id: str, message: dict):
-        payload = json.dumps(message)
+    async def broadcast(self, game_id: str, message: BaseModel):
+        payload = message.model_dump_json()
         dead = []
         for player_id, ws in list(self._connections.get(game_id, {}).items()):
             try:
@@ -35,11 +36,11 @@ class ConnectionManager:
         for pid in dead:
             self.disconnect(game_id, pid)
 
-    async def send_to_player(self, game_id: str, player_id: str, message: dict):
+    async def send_to_player(self, game_id: str, player_id: str, message: BaseModel):
         ws = self._connections.get(game_id, {}).get(player_id)
         if ws:
             try:
-                await ws.send_text(json.dumps(message))
+                await ws.send_text(message.model_dump_json())
             except Exception as exc:
                 logger.warning(
                     "Failed to send to player %s in game %s: %s",
