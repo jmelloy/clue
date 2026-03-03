@@ -283,7 +283,6 @@ class AgentRunner:
             pending = state.pending_show_card
             if pending and pending.player_id in agents:
                 # An agent needs to show a card
-                await asyncio.sleep(1)
                 event_cursor = await self._consume_events(game_id, agents, event_cursor)
                 state = await game.get_state()
                 if not state or state.status != "playing":
@@ -294,12 +293,15 @@ class AgentRunner:
 
                 pid = pending.player_id
                 agent = agents[pid]
-                card = await agent.decide_show_card(
-                    pending.matching_cards, pending.suggesting_player_id
-                )
-
-                logger.info("Agent %s showing card in game %s", pid, game_id)
                 try:
+                    card = await agent.decide_show_card(
+                        pending.matching_cards,
+                        pending.suggesting_player_id,
+                        errors=consecutive_errors,
+                    )
+
+                    logger.info("Agent %s showing card in game %s", pid, game_id)
+
                     result = await self._send_action(
                         game_id, pid, {"type": "show_card", "card": card}
                     )
@@ -311,14 +313,7 @@ class AgentRunner:
                         game_id,
                         exc,
                     )
-                    if consecutive_errors >= max_consecutive_errors:
-                        logger.error(
-                            "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors,
-                            game_id,
-                        )
-                        return
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.5)
                     continue
 
                 if isinstance(result, dict) and result.get("error"):
@@ -363,15 +358,18 @@ class AgentRunner:
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
-                action = await agent.decide_action(state, player_state)
-
-                logger.info(
-                    "Agent %s taking action %s in game %s",
-                    pid,
-                    action.get("type"),
-                    game_id,
-                )
                 try:
+                    action = await agent.decide_action(
+                        state, player_state, errors=consecutive_errors
+                    )
+
+                    logger.info(
+                        "Agent %s taking action %s in game %s",
+                        pid,
+                        action.get("type"),
+                        game_id,
+                    )
+
                     result = await self._send_action(game_id, pid, action)
                 except httpx.HTTPError as exc:
                     consecutive_errors += 1
@@ -382,43 +380,7 @@ class AgentRunner:
                         game_id,
                         exc,
                     )
-                    if consecutive_errors >= max_consecutive_errors:
-                        logger.error(
-                            "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors,
-                            game_id,
-                        )
-                        return
                     await asyncio.sleep(1)
-                    continue
-
-                if isinstance(result, dict) and result.get("error"):
-                    consecutive_errors += 1
-                    if consecutive_errors >= max_consecutive_errors:
-                        logger.error(
-                            "Too many consecutive errors (%d) in game %s, exiting",
-                            consecutive_errors,
-                            game_id,
-                        )
-                        return
-                    # If the action was rejected, try ending the turn instead
-                    if action.get("type") != "end_turn":
-                        logger.info(
-                            "Falling back to end_turn for %s in game %s",
-                            pid,
-                            game_id,
-                        )
-                        try:
-                            fallback = await self._send_action(
-                                game_id, pid, {"type": "end_turn"}
-                            )
-                            if not (
-                                isinstance(fallback, dict) and fallback.get("error")
-                            ):
-                                consecutive_errors = 0
-                        except httpx.HTTPError:
-                            pass
-                    await asyncio.sleep(0.5)
                     continue
 
                 consecutive_errors = 0

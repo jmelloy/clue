@@ -780,14 +780,14 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState
+        self, game_state: GameState, player_state: PlayerState, errors: int = 0
     ) -> dict:
         """Return an action dict for the current turn phase."""
         ...
 
     @abstractmethod
     async def decide_show_card(
-        self, matching_cards: list[str], suggesting_player_id: str
+        self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
         """Pick which card to reveal when we must show one."""
         ...
@@ -819,7 +819,7 @@ class RandomAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState
+        self, game_state: GameState, player_state: PlayerState, errors: int = 0
     ) -> dict:
         player_id = player_state.your_player_id
         known_cards = player_state.your_cards
@@ -927,7 +927,7 @@ class RandomAgent(BaseAgent):
         return {"type": "end_turn"}
 
     async def decide_show_card(
-        self, matching_cards: list[str], suggesting_player_id: str
+        self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
         logger.info(
             "[%s] Deciding which card to show to %s from %s",
@@ -1116,7 +1116,7 @@ class WandererAgent(BaseAgent):
         return None
 
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState
+        self, game_state: GameState, player_state: PlayerState, errors: int = 0
     ) -> dict:
         player_id = player_state.your_player_id
         available = player_state.available_actions
@@ -1141,7 +1141,7 @@ class WandererAgent(BaseAgent):
         return {"type": "end_turn"}
 
     async def decide_show_card(
-        self, matching_cards: list[str], suggesting_player_id: str
+        self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
         # Just pick a random card to show
         card = random.choice(matching_cards)
@@ -1489,6 +1489,12 @@ class LLMAgent(BaseAgent):
             current_room.get(player_id), player_pos
         )
         if room_distances:
+            player_current_room = current_room.get(player_id)
+            room_distances = [
+                (name, dist)
+                for name, dist in room_distances
+                if name != player_current_room
+            ]
             closest = [f"{name} ({dist} steps)" for name, dist in room_distances]
             lines.append(f"- Rooms by distance: {', '.join(closest)}")
 
@@ -1623,7 +1629,7 @@ class LLMAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState
+        self, game_state: GameState, player_state: PlayerState, errors: int = 0
     ) -> dict:
         # Flush any inference notifications accumulated since last decision
         await self._flush_pending_inferences()
@@ -1663,9 +1669,9 @@ class LLMAgent(BaseAgent):
         # hasn't narrowed all categories to one unknown (ready to accuse),
         # skip the LLM call.
         can_accuse = (
-            len(unknown_suspects) == 1
-            and len(unknown_weapons) == 1
-            and len(unknown_rooms) == 1
+            len(unknown_suspects) <= 2
+            and len(unknown_weapons) <= 2
+            and len(unknown_rooms) <= 2
         )
         non_filler = [a for a in available if a not in ("accuse", "end_turn")]
         if non_filler == ["roll"] and not can_accuse:
@@ -1675,6 +1681,24 @@ class LLMAgent(BaseAgent):
                 player_id,
             )
             return {"type": "roll"}
+
+        if errors > 2:
+            logger.warning(
+                "[%s:%s] Too many errors (%d) in LLM responses — falling back to random agent",
+                self.agent_type,
+                player_id,
+                errors,
+            )
+            fallback_action = await self._fallback.decide_action(
+                game_state, player_state
+            )
+            logger.info(
+                "[%s:%s] Fallback action after LLM errors: %s",
+                self.agent_type,
+                player_id,
+                fallback_action,
+            )
+            return fallback_action
 
         # Build prompt and call LLM
         personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
@@ -1784,7 +1808,7 @@ class LLMAgent(BaseAgent):
         return fallback_action
 
     async def decide_show_card(
-        self, matching_cards: list[str], suggesting_player_id: str
+        self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
         # Flush any inference notifications before making a decision
         await self._flush_pending_inferences()
@@ -1808,6 +1832,23 @@ class LLMAgent(BaseAgent):
             self.shown_to.setdefault(suggesting_player_id, set()).add(card)
             logger.info(
                 "[%s] Auto-showing '%s' to %s (only matching card, skipping LLM call)",
+                self.agent_type,
+                card,
+                suggesting_player_id,
+            )
+            return card
+
+        if errors > 2:
+            logger.warning(
+                "[%s] Too many errors (%d) in show_card decisions — falling back to random choice",
+                self.agent_type,
+                errors,
+            )
+            card = await self._fallback.decide_show_card(
+                matching_cards, suggesting_player_id
+            )
+            logger.info(
+                "[%s] Fallback: showing '%s' to %s",
                 self.agent_type,
                 card,
                 suggesting_player_id,
