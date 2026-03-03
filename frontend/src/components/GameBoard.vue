@@ -251,7 +251,7 @@
 
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
-          <DetectiveNotes ref="notesRef" :your-cards="yourCards" />
+          <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes" @notes-changed="onNotesChanged" />
         </section>
       </div>
     </div>
@@ -310,6 +310,7 @@ const props = defineProps({
   autoEndTimer: { type: Object, default: null },
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
+  savedNotes: { type: Object, default: null },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
@@ -474,6 +475,23 @@ function doAccuse() {
 function doEndTurn() {
   emit('action', { type: 'end_turn' })
 }
+
+// Debounced save of detective notes to backend
+let saveNotesTimer = null
+function onNotesChanged(notesData) {
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
+  saveNotesTimer = setTimeout(() => {
+    fetch(`/games/${props.gameId}/notes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: props.playerId, notes: notesData }),
+    }).catch(() => {})
+  }, 500)
+}
+
+onUnmounted(() => {
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
+})
 
 // Auto-mark shown cards in detective notes
 watch(
