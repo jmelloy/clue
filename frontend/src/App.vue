@@ -149,6 +149,18 @@ function handleMessage(msg) {
         gameState.value = msg.state
         if (msg.state.your_cards) yourCards.value = msg.state.your_cards
         if (msg.state.available_actions) availableActions.value = msg.state.available_actions
+        // Restore showCardRequest from pending_show_card on reconnect
+        const pending = msg.state.pending_show_card
+        if (pending && pending.player_id === playerId.value) {
+          showCardRequest.value = {
+            suggestingPlayerId: pending.suggesting_player_id,
+            suspect: pending.suspect,
+            weapon: pending.weapon,
+            room: pending.room,
+          }
+        } else {
+          showCardRequest.value = null
+        }
       } else {
         // Partial update: merge individual fields
         const { type: _type, ...fields } = msg
