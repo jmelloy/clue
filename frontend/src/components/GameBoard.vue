@@ -106,8 +106,9 @@
               <div v-if="roomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div v-for="card in roomCards" :key="card" class="hand-card card-room">
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb card-thumb-room" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -297,8 +298,9 @@
               <div v-if="observerRoomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room">
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb card-thumb-room" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -553,14 +555,23 @@ const CARD_ICONS = {
   'Dining Room': '\u{1F37D}',       // 🍽️
 }
 
-// Suspect card image filenames
-const SUSPECT_IMAGES = {
+// Card image filenames
+const CARD_IMAGES = {
   'Miss Scarlett': '/images/MissScarlett.jpg',
   'Colonel Mustard': '/images/ColonelMustard.jpg',
   'Mrs. White': '/images/MrsWhite.jpg',
   'Reverend Green': '/images/MrGreen.jpg',
   'Mrs. Peacock': '/images/MrsPeacock.jpg',
   'Professor Plum': '/images/ProfessorPlum.jpg',
+  'Kitchen': '/images/Kitchen.jpg',
+  'Ballroom': '/images/BallRoom.jpg',
+  'Conservatory': '/images/Conservatory.jpg',
+  'Billiard Room': '/images/BillardRoom.jpg',
+  'Library': '/images/Library.jpg',
+  'Study': '/images/Study.jpg',
+  'Hall': '/images/Hall.jpg',
+  'Lounge': '/images/Lounge.jpg',
+  'Dining Room': '/images/DiningRoom.jpg',
 }
 
 function cardIcon(card) {
@@ -568,11 +579,11 @@ function cardIcon(card) {
 }
 
 function hasCardImage(card) {
-  return !!SUSPECT_IMAGES[card]
+  return !!CARD_IMAGES[card]
 }
 
 function cardImageUrl(card) {
-  return SUSPECT_IMAGES[card] || ''
+  return CARD_IMAGES[card] || ''
 }
 
 // Card preview state
@@ -1388,9 +1399,18 @@ watch(
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+.card-thumb-room {
+  border-radius: 4px;
+  object-position: center center;
+}
+
 .card-with-image:hover .card-thumb {
   border-color: #d4a849;
   box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
+}
+
+.card-with-image.card-room:hover {
+  background: rgba(26, 107, 60, 0.28);
 }
 
 .show-card-thumb {

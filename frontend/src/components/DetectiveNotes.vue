@@ -44,7 +44,8 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <span class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
+        <img v-if="ROOM_IMAGES[card]" :src="ROOM_IMAGES[card]" :alt="card" class="note-thumb note-thumb-room" />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -75,6 +76,18 @@ const SUSPECT_IMAGES = {
   'Reverend Green': '/images/MrGreen.jpg',
   'Mrs. Peacock': '/images/MrsPeacock.jpg',
   'Professor Plum': '/images/ProfessorPlum.jpg',
+}
+
+const ROOM_IMAGES = {
+  'Kitchen': '/images/Kitchen.jpg',
+  'Ballroom': '/images/BallRoom.jpg',
+  'Conservatory': '/images/Conservatory.jpg',
+  'Billiard Room': '/images/BillardRoom.jpg',
+  'Library': '/images/Library.jpg',
+  'Study': '/images/Study.jpg',
+  'Hall': '/images/Hall.jpg',
+  'Lounge': '/images/Lounge.jpg',
+  'Dining Room': '/images/DiningRoom.jpg',
 }
 
 const CARD_ICONS = {
@@ -339,11 +352,17 @@ h4 {
   opacity: 0.5;
 }
 
+.note-thumb-room {
+  border-radius: 3px;
+  object-position: center center;
+  border-color: rgba(122, 200, 154, 0.4);
+}
+
 .note-row:hover .note-thumb {
   box-shadow: 0 1px 6px rgba(212, 168, 73, 0.2);
 }
 
-/* Card emoji for weapons/rooms */
+/* Card emoji for weapons */
 .note-emoji {
   font-size: 0.75rem;
   flex-shrink: 0;
