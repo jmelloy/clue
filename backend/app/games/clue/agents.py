@@ -1184,8 +1184,10 @@ class RandomAgent(BaseAgent):
 class WandererAgent(BaseAgent):
     """Agent that wanders randomly — moves to a random room and ends its turn.
 
-    Never makes suggestions or accusations. Used for unplayed suspect
-    characters so they still appear on the board and move around.
+    After creation, another player shows it a random card via
+    ``observe_shown_card``.  If through passive observation and inference
+    the wanderer deduces the full solution (exactly 1 unknown in each
+    category), it will make an accusation.
     """
 
     agent_type = "wanderer"
@@ -1193,7 +1195,7 @@ class WandererAgent(BaseAgent):
     def generate_chat(
         self, action_type: str, context: dict | None = None
     ) -> str | None:
-        """Wanderers don't chat."""
+        """Wanderers don't chat — unless they're about to accuse."""
         return None
 
     async def decide_action(
@@ -1202,6 +1204,27 @@ class WandererAgent(BaseAgent):
         player_id = player_state.your_player_id
         available = player_state.available_actions
         current_room = game_state.current_room.get(player_id)
+
+        # Check if we've deduced the solution through inference alone
+        if "accuse" in available:
+            unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
+            if (
+                len(unknown_suspects) == 1
+                and len(unknown_weapons) == 1
+                and len(unknown_rooms) == 1
+            ):
+                suspect = unknown_suspects[0]
+                weapon = unknown_weapons[0]
+                room = unknown_rooms[0]
+                logger.info(
+                    "[%s:%s] Full deduction achieved! Accusing: %s/%s/%s",
+                    self.agent_type,
+                    player_id,
+                    suspect,
+                    weapon,
+                    room,
+                )
+                return AccuseAction(suspect=suspect, weapon=weapon, room=room)
 
         # Phase 1: roll dice first
         if "roll" in available:

@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import sys
 
 import httpx
@@ -144,6 +145,18 @@ class AgentRunner:
                 info["character"],
                 game_id,
             )
+
+        # Show one random card from a real player's hand to each wanderer
+        real_agents = {
+            pid: a for pid, a in agents.items()
+            if a.agent_type != "wanderer" and a.own_cards
+        }
+        if real_agents:
+            for pid, a in agents.items():
+                if a.agent_type == "wanderer":
+                    donor_pid, donor = random.choice(list(real_agents.items()))
+                    card = random.choice(list(donor.own_cards))
+                    a.observe_shown_card(card, shown_by=donor_pid)
 
         try:
             # Launch a WebSocket connection per agent

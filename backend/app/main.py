@@ -1172,6 +1172,18 @@ async def start_game(game_id: str):
                     player.character,
                     game_id,
                 )
+            # Show one random card from a real player's hand to each wanderer
+            real_agents = {
+                pid: a for pid, a in agents.items()
+                if a.agent_type != "wanderer" and a.own_cards
+            }
+            if real_agents:
+                for pid, a in agents.items():
+                    if a.agent_type == "wanderer":
+                        donor_pid, donor = random.choice(list(real_agents.items()))
+                        card = random.choice(list(donor.own_cards))
+                        a.observe_shown_card(card, shown_by=donor_pid)
+
             _game_agents[game_id] = agents
             _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
         else:
