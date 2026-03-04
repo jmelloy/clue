@@ -348,6 +348,24 @@ class PongMessage(WSMessage):
     type: Literal["pong"] = "pong"
 
 
+class AgentDebugMessage(WSMessage):
+    type: Literal["agent_debug"] = "agent_debug"
+    player_id: str
+    agent_type: str = ""
+    character: str = ""
+    status: str = ""  # e.g. "thinking", "decided", "observing"
+    action_description: str = ""  # human-readable description of what agent is doing
+    seen_cards: list[str] = Field(default_factory=list)
+    unknown_suspects: list[str] = Field(default_factory=list)
+    unknown_weapons: list[str] = Field(default_factory=list)
+    unknown_rooms: list[str] = Field(default_factory=list)
+    recent_inferences: list[str] = Field(default_factory=list)
+    memory: list[str] = Field(default_factory=list)
+    unrefuted_suggestions: list[dict] = Field(default_factory=list)
+    player_has_cards: dict[str, list[str]] = Field(default_factory=dict)
+    decided_action: Optional[dict] = None
+
+
 # ---------------------------------------------------------------------------
 # Agent event types (published to Redis for external agent runners)
 # ---------------------------------------------------------------------------

@@ -787,6 +787,32 @@ class BaseAgent(ABC):
         return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
+    # Debug info export
+    # ------------------------------------------------------------------
+
+    def get_debug_info(self, status: str = "", action_description: str = "", decided_action: dict | None = None) -> dict:
+        """Export agent state as a dict for debug display."""
+        unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
+        return {
+            "player_id": self.player_id,
+            "agent_type": self.agent_type,
+            "character": self.character,
+            "status": status,
+            "action_description": action_description,
+            "seen_cards": sorted(self.seen_cards),
+            "unknown_suspects": unknown_suspects,
+            "unknown_weapons": unknown_weapons,
+            "unknown_rooms": unknown_rooms,
+            "recent_inferences": list(self._pending_inferences),
+            "memory": getattr(self, "memory", []),
+            "unrefuted_suggestions": list(self.unrefuted_suggestions),
+            "player_has_cards": {
+                pid: sorted(cards) for pid, cards in self.player_has_cards.items()
+            },
+            "decided_action": decided_action,
+        }
+
+    # ------------------------------------------------------------------
     # Decision interface (async to support LLM calls)
     # ------------------------------------------------------------------
 
