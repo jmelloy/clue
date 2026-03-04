@@ -468,16 +468,18 @@ class BaseAgent(ABC):
 
     agent_type: str = "base"
 
-    def __init__(self):
-        self.seen_cards: set[str] = set()
+    def __init__(self, player_id: str, character: str, cards: list[str]):
+        self.own_cards: set[str] = set(cards)
+        self.seen_cards: set[str] = set(cards)
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
         self.character: str = ""
         self._pending_chat: str | None = None
+
+        self.player_id: str = player_id
+
         # Inference tracking
-        self.player_id: str = ""  # set externally after creation
-        self.own_cards: list[str] = []
         self.player_has_cards: dict[str, set[str]] = {}
         self.player_not_has_cards: dict[str, set[str]] = {}
         self.suggestion_log: list[dict] = []
@@ -488,14 +490,6 @@ class BaseAgent(ABC):
     # ------------------------------------------------------------------
     # Observations (shared by all agent types)
     # ------------------------------------------------------------------
-
-    def observe_own_cards(self, cards: list[str]):
-        """Called once at game start with the agent's dealt hand."""
-        self.seen_cards.update(cards)
-        self.own_cards = list(cards)
-        logger.info(
-            "[%s] Received hand: %s (%d cards)", self.agent_type, cards, len(cards)
-        )
 
     def observe_shown_card(self, card: str, shown_by: str | None = None):
         """Called when another player shows us a card."""
@@ -513,10 +507,10 @@ class BaseAgent(ABC):
         )
         if is_new:
             by_text = f" by {shown_by}" if shown_by else ""
-            self._pending_inferences.append(
-                f"CARD SHOWN: '{card}' was shown to me{by_text}. "
-                f"This card is NOT the solution."
-            )
+            # self._pending_inferences.append(
+            #     f"CARD SHOWN: '{card}' was shown to me{by_text}. "
+            #     f"This card is NOT the solution."
+            # )
             self._run_inference()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
@@ -551,8 +545,9 @@ class BaseAgent(ABC):
         inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
         if inferred:
             logger.info(
-                "[%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
+                "[%s:%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
                 self.agent_type,
+                self.player_id,
                 shown_by,
                 inferred,
                 suspect,
@@ -564,14 +559,16 @@ class BaseAgent(ABC):
                 f"{suspect}/{weapon}/{room}. By elimination I deduced the "
                 f"card was '{inferred}' — it is NOT the solution."
             )
+            self.seen_cards.add(inferred)
             self._run_inference()
         else:
             suggested_cards = {suspect, weapon, room}
             possible = self._possible_cards_for_player(shown_by, suggested_cards)
             logger.debug(
-                "[%s] Observed: %s showed a card to %s for %s/%s/%s "
+                "[%s:%s] Observed: %s showed a card to %s for %s/%s/%s "
                 "(%d possible cards, cannot deduce)",
                 self.agent_type,
+                self.player_id,
                 shown_by,
                 shown_to,
                 suspect,
@@ -711,8 +708,9 @@ class BaseAgent(ABC):
                 inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
                 if inferred:
                     logger.info(
-                        "[%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
+                        "[%s:%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
                         self.agent_type,
+                        self.player_id,
                         shown_by,
                         inferred,
                         suspect,
@@ -724,6 +722,7 @@ class BaseAgent(ABC):
                         f"{suspect}/{weapon}/{room}, I now deduce {shown_by} "
                         f"has '{inferred}' — it is NOT the solution."
                     )
+                    self.seen_cards.add(inferred)
                     changed = True
 
     # ------------------------------------------------------------------
@@ -985,8 +984,9 @@ class RandomAgent(BaseAgent):
                 fresh_unknown, current_room, player_position
             )
             logger.debug(
-                "[%s] Target room '%s' (fresh unknown, proximity-weighted)",
+                "[%s:%s] Target room '%s' (fresh unknown, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -997,8 +997,9 @@ class RandomAgent(BaseAgent):
                 other_unknown, current_room, player_position
             )
             logger.debug(
-                "[%s] Target room '%s' (other unknown, proximity-weighted)",
+                "[%s:%s] Target room '%s' (other unknown, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -1009,8 +1010,9 @@ class RandomAgent(BaseAgent):
         if unseen:
             choice = self._pick_nearest_room(unseen, current_room, player_position)
             logger.debug(
-                "[%s] Target room '%s' (unvisited, proximity-weighted)",
+                "[%s:%s] Target room '%s' (unvisited, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -1020,8 +1022,9 @@ class RandomAgent(BaseAgent):
             choices = list(ROOMS)
         choice = self._pick_nearest_room(choices, current_room, player_position)
         logger.debug(
-            "[%s] Target room '%s' (fallback, proximity-weighted)",
+            "[%s:%s] Target room '%s' (fallback, proximity-weighted)",
             self.agent_type,
+            self.player_id,
             choice,
         )
         return choice
@@ -1254,8 +1257,15 @@ class LLMAgent(BaseAgent):
 
     agent_type = "llm"
 
-    def __init__(self, redis_client=None, game_id: str = ""):
-        super().__init__()
+    def __init__(
+        self,
+        player_id: str,
+        character: str,
+        cards: list[str],
+        redis_client=None,
+        game_id: str = "",
+    ):
+        super().__init__(player_id=player_id, character=character, cards=cards)
         self.api_url = os.getenv(
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
@@ -1266,13 +1276,15 @@ class LLMAgent(BaseAgent):
         self._game_id = game_id
 
         # Fallback agent shares our observation state
-        self._fallback = RandomAgent()
+        self._fallback = RandomAgent(
+            player_id=player_id, character=character, cards=cards
+        )
         self._fallback.player_id = self.player_id
         self._fallback.seen_cards = self.seen_cards
         self._fallback.shown_to = self.shown_to
         self._fallback.rooms_suggested_in = self.rooms_suggested_in
         self._fallback.unrefuted_suggestions = self.unrefuted_suggestions
-        self._fallback.own_cards = self.own_cards
+
         self._fallback.player_has_cards = self.player_has_cards
         self._fallback.player_not_has_cards = self.player_not_has_cards
         self._fallback.suggestion_log = self.suggestion_log

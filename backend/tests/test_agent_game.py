@@ -53,8 +53,6 @@ async def _setup_game(redis, num_agents=2):
         if p.id not in agents:
             agents[p.id] = WandererAgent()
         agents[p.id].player_id = p.id
-        cards = await game._load_player_cards(p.id)
-        agents[p.id].observe_own_cards(cards)
 
     return game, agents, state
 

@@ -139,9 +139,13 @@ async def _add_wanderer_agents(agents: dict, state: dict, game: ClueGame) -> Non
         pid = p["id"] if isinstance(p, dict) else p.id
         ptype = p["type"] if isinstance(p, dict) else p.type
         if pid not in agents and ptype == "wanderer":
-            agent = WandererAgent()
             cards = await game._load_player_cards(pid)
-            agent.observe_own_cards(cards)
+            agent = WandererAgent(
+                player_id=pid,
+                character=p["character"] if isinstance(p, dict) else p.character,
+                cards=cards,
+            )
+
             agents[pid] = agent
 
 
@@ -784,7 +788,7 @@ class TestAgentFullGameE2E:
         assert len(cards1_msg) >= 1
         assert len(cards2_msg) >= 1
 
-        agents = {pid1: RandomAgent(), pid2: RandomAgent()}
+        agents = {pid1: RandomAgent(player_id=pid1), pid2: RandomAgent(player_id=pid2)}
         agents[pid1].observe_own_cards(cards1_msg[0]["your_cards"])
         agents[pid2].observe_own_cards(cards2_msg[0]["your_cards"])
 
@@ -874,7 +878,9 @@ class TestAgentFullGameE2E:
         for pid in pids:
             ws = ws_map[pid]
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
+                m
+                for m in ws.sent
+                if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
@@ -958,7 +964,9 @@ class TestAgentFullGameE2E:
         for pid in pids:
             ws = ws_map[pid]
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
+                m
+                for m in ws.sent
+                if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
             agents[pid] = RandomAgent()
@@ -1036,7 +1044,9 @@ class TestAgentFullGameE2E:
         agents = {pid1: RandomAgent(), pid2: RandomAgent()}
         for pid, ws in [(pid1, ws1), (pid2, ws2)]:
             cards_msg = [
-                m for m in ws.sent if m["type"] == "game_started" and m.get("your_cards")
+                m
+                for m in ws.sent
+                if m["type"] == "game_started" and m.get("your_cards")
             ]
             agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
 

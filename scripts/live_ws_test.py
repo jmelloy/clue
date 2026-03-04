@@ -60,7 +60,9 @@ MAX_TURNS = 500
 
 
 def _build_player_state(
-    game_state: GameState, player_id: str, cards: list[str],
+    game_state: GameState,
+    player_id: str,
+    cards: list[str],
 ) -> PlayerState:
     """Build a PlayerState from a GameState, player ID, and known cards.
 
@@ -97,7 +99,9 @@ async def run_live_test(base_url: str, num_agents: int = 3):
         print("[OK] Server is healthy")
     except Exception as e:
         print(f"[FAIL] Cannot reach server at {base_url}: {e}")
-        print("       Make sure the Docker environment is running: docker compose up -d")
+        print(
+            "       Make sure the Docker environment is running: docker compose up -d"
+        )
         await http.aclose()
         return False
 
@@ -164,12 +168,15 @@ async def run_live_test(base_url: str, num_agents: int = 3):
     agents: dict[str, RandomAgent] = {}
     agent_cards: dict[str, list[str]] = {}
     for pid in pids:
-        cards_msg = [m for m in ws_messages[pid]
-                     if m["type"] == "game_started" and "your_cards" in m]
+        cards_msg = [
+            m
+            for m in ws_messages[pid]
+            if m["type"] == "game_started" and "your_cards" in m
+        ]
         assert len(cards_msg) >= 1, f"Player {pid} missing game_started with cards"
         cards = cards_msg[0]["your_cards"]
         agent = RandomAgent()
-        agent.observe_own_cards(cards)
+
         agents[pid] = agent
         agent_cards[pid] = cards
         print(f"     {pid}: {len(cards)} cards dealt")
@@ -204,7 +211,8 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             assert resp.status_code == 200, f"show_card failed: {resp.text}"
             # The suggesting player learns which card was shown
             agents[pending.suggesting_player_id].observe_shown_card(
-                card, shown_by=pid,
+                card,
+                shown_by=pid,
             )
 
         elif game_state.whose_turn in agents:
@@ -212,20 +220,26 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             pid = game_state.whose_turn
             agent = agents[pid]
             player_state = _build_player_state(
-                game_state, pid, agent_cards[pid],
+                game_state,
+                pid,
+                agent_cards[pid],
             )
             action = await agent.decide_action(game_state, player_state)
             resp = await http.post(
                 f"/games/{game_id}/action",
                 json={"player_id": pid, "action": action},
             )
-            assert resp.status_code == 200, f"Action {action['type']} failed: {resp.text}"
+            assert (
+                resp.status_code == 200
+            ), f"Action {action['type']} failed: {resp.text}"
             result = resp.json()
 
             # If no one could show a card, the agent notes it
             if action["type"] == "suggest" and result.get("pending_show_by") is None:
                 agent.observe_suggestion_no_show(
-                    action["suspect"], action["weapon"], action["room"],
+                    action["suspect"],
+                    action["weapon"],
+                    action["room"],
                 )
 
         # Give WebSocket messages time to arrive
@@ -240,7 +254,9 @@ async def run_live_test(base_url: str, num_agents: int = 3):
 
     # Step 7: Verify result
     print()
-    assert game_state.status == "finished", f"Game did not finish in {MAX_TURNS} actions"
+    assert (
+        game_state.status == "finished"
+    ), f"Game did not finish in {MAX_TURNS} actions"
     print(f"[OK] Game finished in {actions_taken} actions ({elapsed:.1f}s)")
     print(f"     Winner: {game_state.winner}")
     print(f"     Turns: {game_state.turn_number}")
@@ -300,11 +316,15 @@ def main():
         description="Live WebSocket e2e test against a running Clue server"
     )
     parser.add_argument(
-        "--base-url", default="http://localhost:8000",
+        "--base-url",
+        default="http://localhost:8000",
         help="Base URL of the Clue backend (default: http://localhost:8000)",
     )
     parser.add_argument(
-        "--agents", type=int, default=3, choices=range(2, 7),
+        "--agents",
+        type=int,
+        default=3,
+        choices=range(2, 7),
         help="Number of agents to play (default: 3)",
     )
     args = parser.parse_args()
