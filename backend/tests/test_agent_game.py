@@ -5,6 +5,8 @@ loop directly through ClueGame, feeding each agent's decisions back as
 actions, and verifying the game reaches a valid conclusion.
 """
 
+import random
+
 import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
@@ -59,6 +61,18 @@ async def _setup_game(redis, num_agents=2):
             agents[p.id] = RandomAgent(
                 player_id=p.id, character=p.character, cards=cards
             )
+
+    # Simulate a real player showing one random card to each wanderer
+    real_agents = {
+        pid: a for pid, a in agents.items()
+        if a.agent_type != "wanderer" and a.own_cards
+    }
+    if real_agents:
+        for pid, a in agents.items():
+            if a.agent_type == "wanderer":
+                donor_pid, donor = random.choice(list(real_agents.items()))
+                card = random.choice(list(donor.own_cards))
+                a.observe_shown_card(card, shown_by=donor_pid)
 
     return game, agents, state
 
@@ -321,6 +335,17 @@ async def test_multiple_games_all_finish(redis):
                 agents[p.id] = RandomAgent(
                     player_id=p.id, character=p.character, cards=cards
                 )
+        # Show one random card to each wanderer
+        real_agents = {
+            pid: a for pid, a in agents.items()
+            if a.agent_type != "wanderer" and a.own_cards
+        }
+        if real_agents:
+            for pid, a in agents.items():
+                if a.agent_type == "wanderer":
+                    donor_pid, donor = random.choice(list(real_agents.items()))
+                    card = random.choice(list(donor.own_cards))
+                    a.observe_shown_card(card, shown_by=donor_pid)
 
         final_state, turns, log = await _run_game(game, agents, state)
         assert final_state.status == "finished", f"Game {i} did not finish"
@@ -331,3 +356,88 @@ async def test_multiple_games_all_finish(redis):
 
     print(f"\n10 games completed. Win distribution: {wins}")
     assert sum(wins.values()) == 10
+
+
+@pytest.mark.asyncio
+async def test_wanderer_receives_shown_card(redis):
+    """Wanderer agents start with one shown card in their seen_cards."""
+    game, agents, state = await _setup_game(redis, num_agents=2)
+
+    wanderers = {pid: a for pid, a in agents.items() if a.agent_type == "wanderer"}
+    assert len(wanderers) > 0, "Expected at least one wanderer agent"
+
+    for pid, agent in wanderers.items():
+        # Wanderers have no cards of their own but should have one shown card
+        assert len(agent.own_cards) == 0
+        assert len(agent.seen_cards) >= 1, (
+            f"Wanderer {pid} should have at least 1 seen card from being shown"
+        )
+        # Verify the shown card is in the dealt deck (not the solution)
+        solution = await game._load_solution()
+        for card in agent.seen_cards:
+            assert card not in (solution.suspect, solution.weapon, solution.room), (
+                f"Wanderer's shown card '{card}' should not be a solution card"
+            )
+
+
+@pytest.mark.asyncio
+async def test_wanderer_accuses_when_fully_deduced(redis):
+    """Wanderer accuses if it has deduced exactly 1 unknown per category."""
+    solution_suspect = SUSPECTS[0]
+    solution_weapon = WEAPONS[0]
+    solution_room = ROOMS[0]
+
+    # All cards except the solution
+    all_seen = (
+        [s for s in SUSPECTS if s != solution_suspect]
+        + [w for w in WEAPONS if w != solution_weapon]
+        + [r for r in ROOMS if r != solution_room]
+    )
+
+    agent = WandererAgent(
+        player_id="W_TEST",
+        character="Mrs. White",
+        cards=[],
+    )
+    # Simulate being shown a card, then manually add all non-solution cards
+    agent.observe_shown_card(all_seen[0], shown_by="SOMEONE")
+    agent.seen_cards = set(all_seen)
+
+    game_state = type("FakeGameState", (), {
+        "current_room": {"W_TEST": "Kitchen"},
+    })()
+    player_state = type("FakePlayerState", (), {
+        "your_player_id": "W_TEST",
+        "available_actions": ["accuse", "roll", "end_turn"],
+    })()
+
+    action = await agent.decide_action(game_state, player_state)
+    assert action.type == "accuse"
+    assert action.suspect == solution_suspect
+    assert action.weapon == solution_weapon
+    assert action.room == solution_room
+
+
+@pytest.mark.asyncio
+async def test_wanderer_does_not_accuse_when_uncertain(redis):
+    """Wanderer should NOT accuse if it hasn't narrowed to 1 per category."""
+    agent = WandererAgent(
+        player_id="W_TEST",
+        character="Mrs. White",
+        cards=[],
+    )
+    # Show just one card — not enough to deduce the solution
+    agent.observe_shown_card(SUSPECTS[0], shown_by="SOMEONE")
+
+    game_state = type("FakeGameState", (), {
+        "current_room": {"W_TEST": "Kitchen"},
+    })()
+    player_state = type("FakePlayerState", (), {
+        "your_player_id": "W_TEST",
+        "available_actions": ["accuse", "roll", "end_turn"],
+    })()
+
+    action = await agent.decide_action(game_state, player_state)
+    assert action.type != "accuse", (
+        "Wanderer should not accuse when multiple unknowns remain"
+    )
