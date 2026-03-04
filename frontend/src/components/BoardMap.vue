@@ -36,10 +36,13 @@
           v-for="token in playerTokens"
           :key="'tk-' + token.id"
           class="player-token"
-          :class="{ 'my-token': token.id === playerId, 'wanderer-token': token.type === 'wanderer', 'is-turn': token.id === gameState?.whose_turn }"
+          :class="{ 'my-token': token.id === playerId, 'wanderer-token': token.type === 'wanderer', 'is-turn': token.id === gameState?.whose_turn, 'has-image': !!SUSPECT_IMAGES[token.character] }"
           :style="tokenStyle(token)"
           :title="token.type === 'wanderer' ? `${token.character} (wandering)` : `${token.name} (${token.character})`"
-        >{{ abbr(token.character) }}</div>
+        >
+          <img v-if="SUSPECT_IMAGES[token.character]" :src="SUSPECT_IMAGES[token.character]" :alt="token.character" class="token-portrait" />
+          <span v-else>{{ abbr(token.character) }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -143,6 +146,15 @@ const CHARACTER_COLORS = {
 const CHARACTER_ABBR = {
   'Miss Scarlett': 'Sc', 'Colonel Mustard': 'Mu', 'Mrs. White': 'Wh',
   'Reverend Green': 'Gr', 'Mrs. Peacock': 'Pe', 'Professor Plum': 'Pl',
+}
+
+const SUSPECT_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
 }
 
 // ── Pre-compute room info from board layout ──
@@ -338,6 +350,7 @@ function tokenStyle(token) {
     transform: 'translate(-50%, -50%)',
     backgroundColor: colors.bg,
     color: colors.text,
+    '--token-border': colors.bg,
   }
   if (token.type === 'wanderer') {
     style.opacity = 0.5
@@ -585,6 +598,22 @@ function tokenStyle(token) {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(0, 0, 0, 0.3);
   z-index: 10;
   transition: left 0.4s ease, top 0.4s ease;
+  overflow: hidden;
+}
+
+.player-token.has-image {
+  background: none !important;
+  border: 1.5px solid;
+  border-color: var(--token-border, rgba(255, 255, 255, 0.5));
+}
+
+.token-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  border-radius: 50%;
+  display: block;
 }
 
 .player-token.my-token {
@@ -592,13 +621,27 @@ function tokenStyle(token) {
   z-index: 11;
 }
 
+.player-token.my-token.has-image {
+  border-color: #d4a849;
+  border-width: 2px;
+}
+
 .player-token.wanderer-token {
   border: 1.5px dashed rgba(255, 255, 255, 0.3);
   z-index: 9;
 }
 
+.player-token.wanderer-token.has-image {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
 .player-token.is-turn {
   animation: token-pulse 2s ease-in-out infinite;
+}
+
+.player-token.is-turn.has-image {
+  animation: token-pulse-img 2s ease-in-out infinite;
 }
 
 @keyframes token-pulse {
@@ -607,6 +650,17 @@ function tokenStyle(token) {
   }
   50% {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 8px 3px rgba(212, 168, 73, 0.5);
+  }
+}
+
+@keyframes token-pulse-img {
+  0%, 100% {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(212, 168, 73, 0.7);
+    border-color: rgba(212, 168, 73, 0.7);
+  }
+  50% {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 8px 3px rgba(212, 168, 73, 0.5);
+    border-color: #d4a849;
   }
 }
 </style>

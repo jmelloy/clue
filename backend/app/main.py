@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -1008,13 +1008,41 @@ async def get_player_state(game_id: str, player_id: str):
 @app.get("/games/{game_id}/agent_debug")
 async def get_agent_debug(game_id: str):
     """Return current debug info for all agents in a game."""
+    # Check in-memory agents first (inline mode)
     agents = _game_agents.get(game_id, {})
-    if not agents:
-        return {"agents": []}
-    result = []
-    for pid, agent in agents.items():
-        result.append(agent.get_debug_info(status="idle"))
-    return {"agents": result}
+    if agents:
+        result = []
+        for pid, agent in agents.items():
+            result.append(agent.get_debug_info(status="idle"))
+        return {"agents": result}
+
+    # Fall back to Redis-stored debug data (external mode)
+    raw = await redis_client.get(f"game:{game_id}:agent_debug")
+    if raw:
+        import json as _json
+        debug_map = _json.loads(raw)
+        return {"agents": list(debug_map.values())}
+    return {"agents": []}
+
+
+@app.post("/games/{game_id}/agent_debug")
+async def post_agent_debug(game_id: str, request: Request):
+    """Receive agent debug info from external agent runner, store and broadcast."""
+    data = await request.json()
+    player_id = data.get("player_id")
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id required")
+
+    # Store in Redis (merge into per-game debug map)
+    import json as _json
+    key = f"game:{game_id}:agent_debug"
+    raw = await redis_client.get(key)
+    debug_map = _json.loads(raw) if raw else {}
+    debug_map[player_id] = data
+    await redis_client.set(key, _json.dumps(debug_map), ex=86400)
+
+    # Broadcast to WebSocket clients
+    await manager.broadcast(game_id, AgentDebugMessage(**data))
 
 
 @app.post("/games/{game_id}/join")
@@ -1642,6 +1670,11 @@ async def spa_game_route(game_id: str):
 # ---------------------------------------------------------------------------
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
+
+# Serve game card images
+_images_dir = Path(__file__).parent / "games" / "clue" / "images"
+if _images_dir.exists():
+    app.mount("/images", StaticFiles(directory=str(_images_dir)), name="images")
 
 # NOTE: Static files must be mounted LAST — it acts as a catch-all and would
 # shadow any API routes defined after this point.

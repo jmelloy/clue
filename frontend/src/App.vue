@@ -34,9 +34,11 @@
       :reachable-positions="reachablePositions"
       :saved-notes="savedNotes"
       :agent-debug-data="agentDebugData"
+      :observer-player-state="observerPlayerState"
       @action="sendAction"
       @send-chat="sendChat"
       @dismiss-card-shown="cardShown = null"
+      @select-player="onObserverSelectPlayer"
     />
   </div>
 </template>
@@ -64,6 +66,7 @@ const reachablePositions = ref([])
 const savedNotes = ref(null)
 const boardData = ref(null)
 const agentDebugData = ref({})
+const observerPlayerState = ref(null)
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -343,6 +346,7 @@ function resetState() {
   reachablePositions.value = []
   savedNotes.value = null
   agentDebugData.value = {}
+  observerPlayerState.value = null
 }
 
 function leaveGame() {
@@ -417,6 +421,23 @@ function loadAgentDebug(gid) {
           debugMap[agent.player_id] = agent
         }
         agentDebugData.value = debugMap
+      }
+    })
+    .catch(() => {})
+}
+
+function onObserverSelectPlayer(pid) {
+  if (!isObserver.value || !gameId.value) return
+  fetch(`/games/${gameId.value}/player/${pid}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data) {
+        observerPlayerState.value = {
+          playerId: pid,
+          your_cards: data.your_cards || [],
+          available_actions: data.available_actions || [],
+          detective_notes: data.detective_notes || null,
+        }
       }
     })
     .catch(() => {})

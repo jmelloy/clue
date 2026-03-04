@@ -57,7 +57,10 @@
               eliminated: !p.active,
               'is-me': p.id === playerId,
               'wanderer-legend': p.type === 'wanderer',
+              'observer-clickable': isObserver,
+              'observer-selected': isObserver && observerPlayerState?.playerId === p.id,
             }"
+            @click="isObserver && emit('select-player', p.id)"
           >
             <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
@@ -84,8 +87,9 @@
               <div v-if="suspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect">
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -141,7 +145,11 @@
               class="show-card-btn"
               :class="cardCategory(card)"
               @click="doShowCard(card)"
-            ><span class="card-icon">{{ cardIcon(card) }}</span> {{ card }}</button>
+            >
+              <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="show-card-thumb" />
+              <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+              {{ card }}
+            </button>
           </div>
         </section>
 
@@ -256,8 +264,82 @@
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
           <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes" @notes-changed="onNotesChanged" />
         </section>
+
+        <!-- Observer: Selected Player Info -->
+        <template v-if="isObserver">
+          <section v-if="!observerPlayerState" class="sidebar-panel observer-hint-panel">
+            <div class="observer-hint">Click a player below the board to inspect their cards and debug info.</div>
+          </section>
+
+          <section v-if="observerPlayerState" class="sidebar-panel cards-panel">
+            <h2>{{ observerSelectedPlayerName }}'s Cards</h2>
+            <div v-if="!observerCards.length" class="no-cards">No cards</div>
+            <template v-else>
+              <div v-if="observerSuspectCards.length" class="card-group">
+                <h3 class="card-group-label card-group-suspect">Suspects</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="observerWeaponCards.length" class="card-group">
+                <h3 class="card-group-label card-group-weapon">Weapons</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="observerRoomCards.length" class="card-group">
+                <h3 class="card-group-label card-group-room">Rooms</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <section v-if="observerSelectedDebug" class="sidebar-panel">
+            <AgentDebugPanel
+              :agent-debug-data="{ [observerPlayerState.playerId]: observerSelectedDebug }"
+              :players="gameState?.players"
+            />
+          </section>
+
+          <section v-if="hasAnyAgentDebug" class="sidebar-panel">
+            <AgentDebugPanel
+              :agent-debug-data="agentDebugData"
+              :players="gameState?.players"
+            />
+          </section>
+        </template>
       </div>
     </div>
+
+    <!-- Card Preview Overlay -->
+    <Teleport to="body">
+      <div v-if="previewCard && hasCardImage(previewCard)" class="card-preview-overlay" @click="closePreview">
+        <div class="card-preview-frame" @click.stop>
+          <div class="card-preview-ornament top-left"></div>
+          <div class="card-preview-ornament top-right"></div>
+          <div class="card-preview-ornament bottom-left"></div>
+          <div class="card-preview-ornament bottom-right"></div>
+          <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+          <div class="card-preview-nameplate">
+            <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
+            <span class="card-preview-name">{{ previewCard }}</span>
+          </div>
+          <button class="card-preview-close" @click="closePreview">&times;</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Bottom: Chat -->
     <div class="chat-row">
@@ -277,6 +359,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
+import AgentDebugPanel from './AgentDebugPanel.vue'
 
 const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
 const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
@@ -314,9 +397,11 @@ const props = defineProps({
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
+  agentDebugData: { type: Object, default: () => ({}) },
+  observerPlayerState: { type: Object, default: null },
 })
 
-const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
+const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown', 'select-player'])
 
 const notesRef = ref(null)
 
@@ -395,6 +480,21 @@ const suspectCards = computed(() => props.yourCards.filter(c => SUSPECTS.include
 const weaponCards = computed(() => props.yourCards.filter(c => WEAPONS.includes(c)))
 const roomCards = computed(() => props.yourCards.filter(c => ROOMS.includes(c)))
 
+// Observer selected player computeds
+const observerCards = computed(() => props.observerPlayerState?.your_cards ?? [])
+const observerSuspectCards = computed(() => observerCards.value.filter(c => SUSPECTS.includes(c)))
+const observerWeaponCards = computed(() => observerCards.value.filter(c => WEAPONS.includes(c)))
+const observerRoomCards = computed(() => observerCards.value.filter(c => ROOMS.includes(c)))
+const observerSelectedPlayerName = computed(() => {
+  if (!props.observerPlayerState) return ''
+  return playerName(props.observerPlayerState.playerId)
+})
+const observerSelectedDebug = computed(() => {
+  if (!props.observerPlayerState) return null
+  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null
+})
+const hasAnyAgentDebug = computed(() => Object.keys(props.agentDebugData || {}).length > 0)
+
 const matchingCards = computed(() => {
   if (!props.showCardRequest) return []
   const suggestion = [props.showCardRequest.suspect, props.showCardRequest.weapon, props.showCardRequest.room]
@@ -425,11 +525,65 @@ function cardCategory(card) {
   return ''
 }
 
+// Per-card emoji icons
+const CARD_ICONS = {
+  // Suspects
+  'Miss Scarlett': '\u{1F48B}',     // 💋
+  'Colonel Mustard': '\u{1F396}',   // 🎖️
+  'Mrs. White': '\u{1F9F9}',        // 🧹
+  'Reverend Green': '\u{26EA}',     // ⛪
+  'Mrs. Peacock': '\u{1F99A}',      // 🦚
+  'Professor Plum': '\u{1F393}',    // 🎓
+  // Weapons
+  'Candlestick': '\u{1F56F}',       // 🕯️
+  'Knife': '\u{1F5E1}',             // 🗡️
+  'Lead Pipe': '\u{26CF}',         // 🪈
+  'Revolver': '\u{1F52B}',          // 🔫
+  'Rope': '\u{1FA62}',              // 🪢
+  'Wrench': '\u{1F527}',            // 🔧
+  // Rooms
+  'Kitchen': '\u{1F373}',           // 🍳
+  'Ballroom': '\u{1F483}',          // 💃
+  'Conservatory': '\u{1FAB4}',      // 🪴
+  'Billiard Room': '\u{1F3B1}',     // 🎱
+  'Library': '\u{1F4DA}',           // 📚
+  'Study': '\u{1F50D}',             // 🔍
+  'Hall': '\u{1F6AA}',              // 🚪
+  'Lounge': '\u{1F6CB}',            // 🛋️
+  'Dining Room': '\u{1F37D}',       // 🍽️
+}
+
+// Suspect card image filenames
+const SUSPECT_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
+}
+
 function cardIcon(card) {
-  if (SUSPECTS.includes(card)) return '\u{1F464}'
-  if (WEAPONS.includes(card)) return '\u{1F52A}'
-  if (ROOMS.includes(card)) return '\u{1F3E0}'
-  return '\u{1F0CF}'
+  return CARD_ICONS[card] || '\u{1F0CF}'
+}
+
+function hasCardImage(card) {
+  return !!SUSPECT_IMAGES[card]
+}
+
+function cardImageUrl(card) {
+  return SUSPECT_IMAGES[card] || ''
+}
+
+// Card preview state
+const previewCard = ref(null)
+
+function showCardPreview(card) {
+  previewCard.value = previewCard.value === card ? null : card
+}
+
+function closePreview() {
+  previewCard.value = null
 }
 
 // Actions
@@ -682,6 +836,28 @@ watch(
 
 .legend-item.is-me {
   border-color: rgba(212, 168, 73, 0.15);
+}
+
+.legend-item.observer-clickable {
+  cursor: pointer;
+}
+
+.legend-item.observer-clickable:hover {
+  border-color: rgba(142, 68, 173, 0.4);
+  background: rgba(142, 68, 173, 0.08);
+}
+
+.legend-item.observer-selected {
+  border-color: rgba(142, 68, 173, 0.6);
+  background: rgba(142, 68, 173, 0.12);
+}
+
+.observer-hint {
+  font-size: 0.8rem;
+  color: #778;
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
 }
 
 .legend-token {
@@ -1185,6 +1361,183 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
+}
+
+/* Card thumbnails in hand */
+.card-with-image {
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.card-with-image:hover {
+  background: rgba(155, 27, 48, 0.28);
+  border-color: rgba(212, 168, 73, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 8px rgba(212, 168, 73, 0.1);
+}
+
+.card-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  border: 1.5px solid rgba(212, 168, 73, 0.4);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.card-with-image:hover .card-thumb {
+  border-color: #d4a849;
+  box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
+}
+
+.show-card-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+/* Card Preview Overlay */
+.card-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card-preview-frame {
+  position: relative;
+  width: 280px;
+  background: linear-gradient(145deg, #2a2018, #1a1408);
+  border: 3px solid #d4a849;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow:
+    0 0 30px rgba(212, 168, 73, 0.15),
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(212, 168, 73, 0.1);
+  animation: cardReveal 0.3s ease;
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotateY(15deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotateY(0);
+  }
+}
+
+.card-preview-ornament {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #d4a849;
+  border-style: solid;
+  opacity: 0.5;
+}
+
+.card-preview-ornament.top-left {
+  top: 6px;
+  left: 6px;
+  border-width: 2px 0 0 2px;
+  border-radius: 4px 0 0 0;
+}
+
+.card-preview-ornament.top-right {
+  top: 6px;
+  right: 6px;
+  border-width: 2px 2px 0 0;
+  border-radius: 0 4px 0 0;
+}
+
+.card-preview-ornament.bottom-left {
+  bottom: 6px;
+  left: 6px;
+  border-width: 0 0 2px 2px;
+  border-radius: 0 0 0 4px;
+}
+
+.card-preview-ornament.bottom-right {
+  bottom: 6px;
+  right: 6px;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 4px 0;
+}
+
+.card-preview-image {
+  width: 100%;
+  border-radius: 6px;
+  display: block;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.card-preview-nameplate {
+  text-align: center;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
+  border: 1px solid rgba(212, 168, 73, 0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.card-preview-icon {
+  font-size: 1.1rem;
+}
+
+.card-preview-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.card-preview-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 168, 73, 0.3);
+  background: #1a1408;
+  color: #d4a849;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.card-preview-close:hover {
+  background: #d4a849;
+  color: #1a1408;
+  border-color: #d4a849;
 }
 
 /* Responsive */

@@ -43,8 +43,9 @@
             class="suspect-card"
             :class="{ 'is-you': p.id === playerId }"
           >
-            <div class="suspect-token" :style="tokenStyle(p)">
-              {{ abbr(p.character) }}
+            <div class="suspect-token" :class="{ 'has-portrait': SUSPECT_IMAGES[p.character] }" :style="tokenStyle(p)">
+              <img v-if="SUSPECT_IMAGES[p.character]" :src="SUSPECT_IMAGES[p.character]" :alt="p.character" class="suspect-portrait" />
+              <span v-else>{{ abbr(p.character) }}</span>
             </div>
             <div class="suspect-details">
               <span class="suspect-name">
@@ -121,6 +122,15 @@ const CHARACTER_ABBR = {
   'Professor Plum': 'Pl',
 }
 
+const SUSPECT_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
+}
+
 const props = defineProps({
   gameId: String,
   playerId: String,
@@ -138,7 +148,7 @@ function abbr(character) {
 
 function tokenStyle(player) {
   const colors = CHARACTER_COLORS[player.character] ?? { bg: '#444', text: '#fff' }
-  return { backgroundColor: colors.bg, color: colors.text }
+  return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.bg }
 }
 
 function typeLabel(type) {
@@ -467,6 +477,21 @@ async function startGame() {
   font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.suspect-token.has-portrait {
+  background: none !important;
+  border: 2px solid;
+}
+
+.suspect-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  border-radius: 50%;
+  display: block;
 }
 
 .empty-token {

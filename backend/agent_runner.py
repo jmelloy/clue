@@ -319,6 +319,9 @@ class AgentRunner:
         if isinstance(result, dict) and result.get("error"):
             return
 
+        # Post debug info to backend for observers
+        await self._send_debug(game_id, player_id, agent, action)
+
         # Broadcast personality chat after the action
         chat_context = ChatContext(
             dice=result.get("dice", ""),
@@ -401,6 +404,25 @@ class AgentRunner:
     # ------------------------------------------------------------------
     # HTTP helpers
     # ------------------------------------------------------------------
+
+    async def _send_debug(
+        self, game_id: str, player_id: str, agent: BaseAgent, action=None
+    ):
+        """Post agent debug info to the backend for observer visibility."""
+        try:
+            debug_info = agent.get_debug_info(
+                status="decided",
+                action_description=str(action.type) if action else "",
+                decided_action=action.model_dump() if action else None,
+            )
+            await self.http.post(
+                f"/games/{game_id}/agent_debug",
+                json=debug_info,
+            )
+        except Exception:
+            logger.debug(
+                "Failed to send debug for %s in game %s", player_id, game_id
+            )
 
     async def _send_action(self, game_id: str, player_id: str, action: dict) -> dict:
         """Send an action to the backend via the HTTP API."""

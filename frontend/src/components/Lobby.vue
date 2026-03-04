@@ -87,8 +87,9 @@
                   :class="{ eliminated: !p.active && urlGameState.status !== 'waiting' }"
                   @click="rejoinAs(p)"
                 >
-                  <div class="suspect-token" :style="tokenColor(p.character)">
-                    {{ charAbbr(p.character) }}
+                  <div class="suspect-token" :class="{ 'has-portrait': SUSPECT_IMAGES[p.character] }" :style="tokenColor(p.character)">
+                    <img v-if="SUSPECT_IMAGES[p.character]" :src="SUSPECT_IMAGES[p.character]" :alt="p.character" class="suspect-portrait" />
+                    <span v-else>{{ charAbbr(p.character) }}</span>
                   </div>
                   <div class="suspect-info">
                     <span class="suspect-name">{{ p.name }}</span>
@@ -285,9 +286,18 @@ const CHARACTER_ABBR = {
   'Professor Plum': 'PP',
 }
 
+const SUSPECT_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
+}
+
 function tokenColor(character) {
   const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
-  return { backgroundColor: c.bg, color: c.text }
+  return { backgroundColor: c.bg, color: c.text, borderColor: c.bg }
 }
 
 function charAbbr(character) {
@@ -976,6 +986,22 @@ async function observeGame() {
   font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.suspect-token.has-portrait {
+  background: none !important;
+  border: 2px solid;
+  border-color: inherit;
+}
+
+.suspect-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  border-radius: 50%;
+  display: block;
 }
 
 .suspect-info {
