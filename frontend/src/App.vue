@@ -467,6 +467,6 @@ setInterval(() => {
 
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Georgia', serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+body { font-family: 'Georgia', serif; background: #0a0908; color: #e8dcc8; min-height: 100vh; }
 #clue-app { max-width: 1280px; margin: 0 auto; padding: 0.75rem; }
 </style>
