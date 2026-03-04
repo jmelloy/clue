@@ -12,7 +12,13 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <img v-if="SUSPECT_IMAGES[card]" :src="SUSPECT_IMAGES[card]" :alt="card" class="note-thumb" :style="{ borderColor: SUSPECT_COLORS[card] || '#666' }" />
+        <img
+          v-if="SUSPECT_IMAGES[card]"
+          :src="SUSPECT_IMAGES[card]"
+          :alt="card"
+          class="note-thumb"
+          :style="{ borderColor: SUSPECT_COLORS[card] || '#666' }"
+        />
         <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -28,7 +34,7 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <span class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
+        <span class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -44,8 +50,13 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <img v-if="ROOM_IMAGES[card]" :src="ROOM_IMAGES[card]" :alt="card" class="note-thumb note-thumb-room" />
-        <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
+        <img
+          v-if="ROOM_IMAGES[card]"
+          :src="ROOM_IMAGES[card]"
+          :alt="card"
+          class="note-thumb note-thumb-room"
+        />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -54,189 +65,214 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, watch } from "vue";
 
-const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
-const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
-const ROOMS = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room', 'Library', 'Study', 'Hall', 'Lounge', 'Dining Room']
+const SUSPECTS = [
+  "Miss Scarlett",
+  "Colonel Mustard",
+  "Mrs. White",
+  "Reverend Green",
+  "Mrs. Peacock",
+  "Professor Plum",
+];
+const WEAPONS = [
+  "Candlestick",
+  "Knife",
+  "Lead Pipe",
+  "Revolver",
+  "Rope",
+  "Wrench",
+];
+const ROOMS = [
+  "Kitchen",
+  "Ballroom",
+  "Conservatory",
+  "Billiard Room",
+  "Library",
+  "Study",
+  "Hall",
+  "Lounge",
+  "Dining Room",
+];
 
 const SUSPECT_COLORS = {
-  'Miss Scarlett': '#e74c3c',
-  'Colonel Mustard': '#f39c12',
-  'Mrs. White': '#d8d0c8',
-  'Reverend Green': '#27ae60',
-  'Mrs. Peacock': '#2980b9',
-  'Professor Plum': '#8e44ad',
-}
+  "Miss Scarlett": "#e74c3c",
+  "Colonel Mustard": "#f39c12",
+  "Mrs. White": "#d8d0c8",
+  "Reverend Green": "#27ae60",
+  "Mrs. Peacock": "#2980b9",
+  "Professor Plum": "#8e44ad",
+};
 
 const SUSPECT_IMAGES = {
-  'Miss Scarlett': '/images/MissScarlett.jpg',
-  'Colonel Mustard': '/images/ColonelMustard.jpg',
-  'Mrs. White': '/images/MrsWhite.jpg',
-  'Reverend Green': '/images/MrGreen.jpg',
-  'Mrs. Peacock': '/images/MrsPeacock.jpg',
-  'Professor Plum': '/images/ProfessorPlum.jpg',
-}
+  "Miss Scarlett": "/images/MissScarlett.jpg",
+  "Colonel Mustard": "/images/ColonelMustard.jpg",
+  "Mrs. White": "/images/MrsWhite.jpg",
+  "Reverend Green": "/images/MrGreen.jpg",
+  "Mrs. Peacock": "/images/MrsPeacock.jpg",
+  "Professor Plum": "/images/ProfessorPlum.jpg",
+};
 
 const ROOM_IMAGES = {
-  'Kitchen': '/images/Kitchen.jpg',
-  'Ballroom': '/images/BallRoom.jpg',
-  'Conservatory': '/images/Conservatory.jpg',
-  'Billiard Room': '/images/BillardRoom.jpg',
-  'Library': '/images/Library.jpg',
-  'Study': '/images/Study.jpg',
-  'Hall': '/images/Hall.jpg',
-  'Lounge': '/images/Lounge.jpg',
-  'Dining Room': '/images/DiningRoom.jpg',
-}
+  Kitchen: "/images/Kitchen.jpg",
+  Ballroom: "/images/BallRoom.jpg",
+  Conservatory: "/images/Conservatory.jpg",
+  "Billiard Room": "/images/BilliardRoom.jpg",
+  Library: "/images/Library.jpg",
+  Study: "/images/Study.jpg",
+  Hall: "/images/Hall.jpg",
+  Lounge: "/images/Lounge.jpg",
+  "Dining Room": "/images/DiningRoom.jpg",
+};
 
 const CARD_ICONS = {
-  'Miss Scarlett': '\u{1F48B}',
-  'Colonel Mustard': '\u{1F396}',
-  'Mrs. White': '\u{1F9F9}',
-  'Reverend Green': '\u{26EA}',
-  'Mrs. Peacock': '\u{1F99A}',
-  'Professor Plum': '\u{1F393}',
-  'Candlestick': '\u{1F56F}',
-  'Knife': '\u{1F5E1}',
-  'Lead Pipe': '\u{26CF}',
-  'Revolver': '\u{1F52B}',
-  'Rope': '\u{1FA62}',
-  'Wrench': '\u{1F527}',
-  'Kitchen': '\u{1F373}',
-  'Ballroom': '\u{1F483}',
-  'Conservatory': '\u{1FAB4}',
-  'Billiard Room': '\u{1F3B1}',
-  'Library': '\u{1F4DA}',
-  'Study': '\u{1F50D}',
-  'Hall': '\u{1F6AA}',
-  'Lounge': '\u{1F6CB}',
-  'Dining Room': '\u{1F37D}',
-}
+  "Miss Scarlett": "\u{1F48B}",
+  "Colonel Mustard": "\u{1F396}",
+  "Mrs. White": "\u{1F9F9}",
+  "Reverend Green": "\u{26EA}",
+  "Mrs. Peacock": "\u{1F99A}",
+  "Professor Plum": "\u{1F393}",
+  Candlestick: "\u{1F56F}",
+  Knife: "\u{1F5E1}",
+  "Lead Pipe": "\u{26CF}",
+  Revolver: "\u{1F52B}",
+  Rope: "\u{1FA62}",
+  Wrench: "\u{1F527}",
+  Kitchen: "\u{1F373}",
+  Ballroom: "\u{1F483}",
+  Conservatory: "\u{1FAB4}",
+  "Billiard Room": "\u{1F3B1}",
+  Library: "\u{1F4DA}",
+  Study: "\u{1F50D}",
+  Hall: "\u{1F6AA}",
+  Lounge: "\u{1F6CB}",
+  "Dining Room": "\u{1F37D}",
+};
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
-const CYCLE = ['', 'no', 'maybe', '']
+const CYCLE = ["", "no", "maybe", ""];
 
 const props = defineProps({
   yourCards: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
-})
+});
 
-const emit = defineEmits(['notes-changed'])
+const emit = defineEmits(["notes-changed"]);
 
 // notes: card -> state string
-const notes = reactive({})
+const notes = reactive({});
 // Track who showed each card
-const shownByMap = reactive({})
+const shownByMap = reactive({});
 // Flag to prevent emitting during restoration
-let restoring = false
+let restoring = false;
 
 // Restore saved notes when they arrive (e.g. on rejoin)
 watch(
   () => props.savedNotes,
   (saved) => {
     if (saved) {
-      restoring = true
-      const noteStates = saved.notes || {}
-      const shownBy = saved.shownBy || {}
+      restoring = true;
+      const noteStates = saved.notes || {};
+      const shownBy = saved.shownBy || {};
       for (const [card, state] of Object.entries(noteStates)) {
-        notes[card] = state
+        notes[card] = state;
       }
       for (const [card, by] of Object.entries(shownBy)) {
-        shownByMap[card] = by
+        shownByMap[card] = by;
       }
-      restoring = false
+      restoring = false;
     }
   },
   { immediate: true }
-)
+);
 
 // Auto-mark cards in hand
 watch(
   () => props.yourCards,
   (cards) => {
     for (const card of cards) {
-      notes[card] = 'have'
+      notes[card] = "have";
     }
   },
   { immediate: true }
-)
+);
 
 function emitNotesChanged() {
-  if (restoring) return
-  emit('notes-changed', {
+  if (restoring) return;
+  emit("notes-changed", {
     notes: { ...notes },
     shownBy: { ...shownByMap },
-  })
+  });
 }
 
 // Watch for any notes changes and emit
-watch(notes, () => emitNotesChanged(), { deep: true })
+watch(notes, () => emitNotesChanged(), { deep: true });
 
 function suspectStyle(card) {
-  const state = notes[card] ?? ''
-  if (state === 'have' || state === 'no' || state === 'seen') return {}
-  const color = SUSPECT_COLORS[card]
-  if (!color) return {}
+  const state = notes[card] ?? "";
+  if (state === "have" || state === "no" || state === "seen") return {};
+  const color = SUSPECT_COLORS[card];
+  if (!color) return {};
   // Default and 'maybe' states show the suspect's color
-  return { color }
+  return { color };
 }
 
 function noteMark(card) {
-  const state = notes[card] ?? ''
-  if (state === 'have') return '\u2713'
-  if (state === 'seen') return '\u{1F441}'
-  if (state === 'no') return '\u2717'
-  if (state === 'maybe') return '\u{25C6}' // ◆ diamond — person of interest
-  return ''
+  const state = notes[card] ?? "";
+  if (state === "have") return "\u2713";
+  if (state === "seen") return "\u{1F441}";
+  if (state === "no") return "\u2717";
+  if (state === "maybe") return "\u{25C6}"; // ◆ diamond — person of interest
+  return "";
 }
 
 function noteClass(card) {
-  const state = notes[card] ?? ''
+  const state = notes[card] ?? "";
   return {
-    'note-have': state === 'have',
-    'note-seen': state === 'seen',
-    'note-no': state === 'no',
-    'note-maybe': state === 'maybe',
-  }
+    "note-have": state === "have",
+    "note-seen": state === "seen",
+    "note-no": state === "no",
+    "note-maybe": state === "maybe",
+  };
 }
 
 function cycleNote(card) {
   // Don't let users change cards they hold
-  if (notes[card] === 'have') return
-  const current = notes[card] ?? ''
-  const idx = CYCLE.indexOf(current)
-  const next = CYCLE[(idx + 1) % CYCLE.length]
-  notes[card] = next
+  if (notes[card] === "have") return;
+  const current = notes[card] ?? "";
+  const idx = CYCLE.indexOf(current);
+  const next = CYCLE[(idx + 1) % CYCLE.length];
+  notes[card] = next;
 }
 
 // Expose for parent to programmatically mark cards
 function markCard(card, state, shownBy) {
-  if (notes[card] !== 'have') {
-    notes[card] = state
-    if (shownBy) shownByMap[card] = shownBy
+  if (notes[card] !== "have") {
+    notes[card] = state;
+    if (shownBy) shownByMap[card] = shownBy;
   }
 }
 
 function noteTitle(card) {
-  const state = notes[card] ?? ''
-  if (state === 'seen' && shownByMap[card]) return `Shown by ${shownByMap[card]}`
-  return ''
+  const state = notes[card] ?? "";
+  if (state === "seen" && shownByMap[card])
+    return `Shown by ${shownByMap[card]}`;
+  return "";
 }
 
-defineExpose({ markCard })
+defineExpose({ markCard });
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
 
 .detective-notes {
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.8rem;
 }
 
 h3 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
   color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
