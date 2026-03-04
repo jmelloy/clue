@@ -12,7 +12,8 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <span class="note-card">{{ card }}</span>
+        <span class="suspect-dot" :style="{ background: SUSPECT_COLORS[card] || '#666' }"></span>
+        <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
     </div>
@@ -55,6 +56,15 @@ import { reactive, watch } from 'vue'
 const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
 const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
 const ROOMS = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room', 'Library', 'Study', 'Hall', 'Lounge', 'Dining Room']
+
+const SUSPECT_COLORS = {
+  'Miss Scarlett': '#e74c3c',
+  'Colonel Mustard': '#f39c12',
+  'Mrs. White': '#d8d0c8',
+  'Reverend Green': '#27ae60',
+  'Mrs. Peacock': '#2980b9',
+  'Professor Plum': '#8e44ad',
+}
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
 const CYCLE = ['', 'no', 'maybe', '']
@@ -115,12 +125,21 @@ function emitNotesChanged() {
 // Watch for any notes changes and emit
 watch(notes, () => emitNotesChanged(), { deep: true })
 
+function suspectStyle(card) {
+  const state = notes[card] ?? ''
+  if (state === 'have' || state === 'no' || state === 'seen') return {}
+  const color = SUSPECT_COLORS[card]
+  if (!color) return {}
+  // Default and 'maybe' states show the suspect's color
+  return { color }
+}
+
 function noteMark(card) {
   const state = notes[card] ?? ''
   if (state === 'have') return '\u2713'
   if (state === 'seen') return '\u{1F441}'
   if (state === 'no') return '\u2717'
-  if (state === 'maybe') return '?'
+  if (state === 'maybe') return '\u{25C6}' // ◆ diamond — person of interest
   return ''
 }
 
@@ -248,7 +267,36 @@ h4 {
   color: #c45050;
 }
 
+.note-maybe {
+  background: rgba(212, 168, 73, 0.04);
+}
+
+.note-maybe .note-card {
+  font-weight: 600;
+}
+
 .note-maybe .note-mark {
   color: #d4a849;
+  font-size: 0.7rem;
+}
+
+/* Suspect color dot */
+.suspect-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 0.3rem;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.note-no .suspect-dot {
+  opacity: 0.2;
+}
+
+.note-have .suspect-dot,
+.note-seen .suspect-dot {
+  opacity: 0.4;
 }
 </style>
