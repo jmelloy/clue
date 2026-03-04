@@ -788,9 +788,11 @@ class TestAgentFullGameE2E:
         assert len(cards1_msg) >= 1
         assert len(cards2_msg) >= 1
 
-        agents = {pid1: RandomAgent(player_id=pid1), pid2: RandomAgent(player_id=pid2)}
-        agents[pid1].observe_own_cards(cards1_msg[0]["your_cards"])
-        agents[pid2].observe_own_cards(cards2_msg[0]["your_cards"])
+        chars = {p["id"]: p["character"] for p in state["players"]}
+        agents = {
+            pid1: RandomAgent(player_id=pid1, character=chars[pid1], cards=cards1_msg[0]["your_cards"]),
+            pid2: RandomAgent(player_id=pid2, character=chars[pid2], cards=cards2_msg[0]["your_cards"]),
+        }
 
         ws1.drain()
         ws2.drain()
@@ -874,6 +876,7 @@ class TestAgentFullGameE2E:
 
         state = await _start_game(http, game_id)
 
+        chars = {p["id"]: p["character"] for p in state["players"]}
         agents = {}
         for pid in pids:
             ws = ws_map[pid]
@@ -883,8 +886,9 @@ class TestAgentFullGameE2E:
                 if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
-            agents[pid] = RandomAgent()
-            agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
+            agents[pid] = RandomAgent(
+                player_id=pid, character=chars[pid], cards=cards_msg[0]["your_cards"]
+            )
             ws.drain()
 
         game = ClueGame(game_id, redis)
@@ -960,6 +964,7 @@ class TestAgentFullGameE2E:
 
         state = await _start_game(http, game_id)
 
+        chars = {p["id"]: p["character"] for p in state["players"]}
         agents = {}
         for pid in pids:
             ws = ws_map[pid]
@@ -969,8 +974,9 @@ class TestAgentFullGameE2E:
                 if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
-            agents[pid] = RandomAgent()
-            agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
+            agents[pid] = RandomAgent(
+                player_id=pid, character=chars[pid], cards=cards_msg[0]["your_cards"]
+            )
             ws.drain()
 
         game = ClueGame(game_id, redis)
@@ -1041,14 +1047,17 @@ class TestAgentFullGameE2E:
 
         state = await _start_game(http, game_id)
 
-        agents = {pid1: RandomAgent(), pid2: RandomAgent()}
+        chars = {p["id"]: p["character"] for p in state["players"]}
+        agents = {}
         for pid, ws in [(pid1, ws1), (pid2, ws2)]:
             cards_msg = [
                 m
                 for m in ws.sent
                 if m["type"] == "game_started" and m.get("your_cards")
             ]
-            agents[pid].observe_own_cards(cards_msg[0]["your_cards"])
+            agents[pid] = RandomAgent(
+                player_id=pid, character=chars[pid], cards=cards_msg[0]["your_cards"]
+            )
 
         all_types = set()
         for ws in (ws1, ws2):

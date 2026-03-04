@@ -38,21 +38,26 @@ async def _setup_game(redis, num_agents=2):
     game = ClueGame("AGENTGAME", redis)
     await game.create()
 
-    agents: dict[str, RandomAgent] = {}
     player_ids = []
     for i in range(num_agents):
         pid = f"AGENT{i}"
         await game.add_player(pid, f"Bot-{i}", "agent")
-        agents[pid] = RandomAgent()
         player_ids.append(pid)
 
     state = await game.start()
 
-    # Give each agent its dealt cards (including auto-added wanderers)
+    # Create agent instances with dealt cards (including auto-added wanderers)
+    agents: dict[str, RandomAgent] = {}
     for p in state.players:
-        if p.id not in agents:
-            agents[p.id] = WandererAgent()
-        agents[p.id].player_id = p.id
+        cards = await game._load_player_cards(p.id)
+        if p.type == "wanderer":
+            agents[p.id] = WandererAgent(
+                player_id=p.id, character=p.character, cards=cards
+            )
+        else:
+            agents[p.id] = RandomAgent(
+                player_id=p.id, character=p.character, cards=cards
+            )
 
     return game, agents, state
 
@@ -299,19 +304,22 @@ async def test_multiple_games_all_finish(redis):
         game = ClueGame(f"MULTI{i}", r)
         await game.create()
 
-        agents = {}
         for j in range(3):
             pid = f"P{j}"
             await game.add_player(pid, f"Bot-{j}", "agent")
-            agents[pid] = RandomAgent()
 
         state = await game.start()
+        agents = {}
         for p in state.players:
-            if p.id not in agents:
-                agents[p.id] = WandererAgent()
-            agents[p.id].player_id = p.id
             cards = await game._load_player_cards(p.id)
-            agents[p.id].observe_own_cards(cards)
+            if p.type == "wanderer":
+                agents[p.id] = WandererAgent(
+                    player_id=p.id, character=p.character, cards=cards
+                )
+            else:
+                agents[p.id] = RandomAgent(
+                    player_id=p.id, character=p.character, cards=cards
+                )
 
         final_state, turns, log = await _run_game(game, agents, state)
         assert final_state.status == "finished", f"Game {i} did not finish"
