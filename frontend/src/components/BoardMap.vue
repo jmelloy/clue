@@ -354,11 +354,11 @@ function tokenStyle(token) {
   max-width: 576px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #1a4a2a;
+  background: #0a0908;
   border-radius: 4px;
   overflow: hidden;
-  border: 4px solid #2a1a0a;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(212, 168, 73, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Grid ── */
@@ -369,7 +369,7 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   gap: 0;
-  background: #1a4a2a;
+  background: #0a0908;
   /* Classic Clue board background image */
   background-image: url('/assets/board.jpg');
   background-size: 114% 112%;
@@ -425,35 +425,35 @@ function tokenStyle(token) {
 }
 
 .cell.clickable:hover {
-  background: rgba(255, 255, 200, 0.25);
-  outline: 2px solid rgba(255, 255, 200, 0.6);
+  background: rgba(212, 168, 73, 0.2);
+  outline: 2px solid rgba(212, 168, 73, 0.5);
   z-index: 1;
 }
 
 .cell.selected {
-  background: rgba(255, 255, 200, 0.35);
-  outline: 2px solid rgba(255, 255, 200, 0.8);
+  background: rgba(212, 168, 73, 0.3);
+  outline: 2px solid rgba(212, 168, 73, 0.7);
   z-index: 1;
 }
 
 .cell.my-room {
-  background: rgba(255, 255, 200, 0.15);
+  background: rgba(212, 168, 73, 0.12);
 }
 
 /* ── Reachable highlights ── */
 .cell.reachable {
-  outline: 1px solid rgba(46, 204, 113, 0.6);
+  outline: 1px solid rgba(212, 168, 73, 0.5);
   z-index: 1;
   animation: reachable-glow 2s ease-in-out infinite;
 }
 
 .cell-room.reachable {
-  background: rgba(46, 204, 113, 0.2);
+  background: rgba(212, 168, 73, 0.15);
 }
 
 .cell-hallway.reachable,
 .cell-start.reachable {
-  background: rgba(46, 204, 113, 0.25);
+  background: rgba(212, 168, 73, 0.2);
 }
 
 .cell.unreachable {
@@ -465,15 +465,15 @@ function tokenStyle(token) {
 }
 
 .cell.reachable-door {
-  background: rgba(46, 204, 113, 0.3);
-  outline: 1px solid rgba(46, 204, 113, 0.8);
+  background: rgba(212, 168, 73, 0.25);
+  outline: 1px solid rgba(212, 168, 73, 0.7);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
 }
 
 @keyframes reachable-glow {
-  0%, 100% { box-shadow: inset 0 0 0 0 rgba(46, 204, 113, 0); }
-  50% { box-shadow: inset 0 0 4px 1px rgba(46, 204, 113, 0.3); }
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(212, 168, 73, 0); }
+  50% { box-shadow: inset 0 0 4px 1px rgba(212, 168, 73, 0.25); }
 }
 
 /* ── Overlay ── */
