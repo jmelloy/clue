@@ -114,7 +114,6 @@ class AgentRunner:
     async def _run_game(self, game_id: str, config: dict):
         """Manage agents for a single game via WebSocket connections."""
         agents: dict[str, BaseAgent] = {}
-        agent_cards: dict[str, list[str]] = {}
 
         for pid, info in config.items():
             ptype = info["type"]
@@ -150,7 +149,7 @@ class AgentRunner:
             # Launch a WebSocket connection per agent
             tasks = [
                 asyncio.create_task(
-                    self._run_agent_ws(game_id, pid, agent, agent_cards[pid])
+                    self._run_agent_ws(game_id, pid, agent)
                 )
                 for pid, agent in agents.items()
             ]
@@ -176,7 +175,6 @@ class AgentRunner:
         game_id: str,
         player_id: str,
         agent: BaseAgent,
-        cards: list[str],
     ):
         """Drive a single agent via a WebSocket connection to the backend."""
         ws_url = f"{_WS_URL}/ws/{game_id}/{player_id}"
@@ -190,7 +188,7 @@ class AgentRunner:
                 async for raw_msg in ws:
                     msg = json.loads(raw_msg)
                     done = await self._handle_message(
-                        game_id, player_id, agent, cards, msg
+                        game_id, player_id, agent, msg
                     )
                     if done:
                         return
@@ -219,7 +217,6 @@ class AgentRunner:
         game_id: str,
         player_id: str,
         agent: BaseAgent,
-        cards: list[str],
         msg: dict,
     ) -> bool:
         """Process a WebSocket message. Returns True when the game is over."""
@@ -229,7 +226,7 @@ class AgentRunner:
             await self._handle_your_turn(game_id, player_id, agent)
 
         elif msg_type == "show_card_request":
-            await self._handle_show_card(game_id, player_id, agent, cards, msg)
+            await self._handle_show_card(game_id, player_id, agent, msg)
 
         elif msg_type == "suggestion_made":
             self._handle_suggestion_observation(player_id, agent, msg)
@@ -324,7 +321,6 @@ class AgentRunner:
         game_id: str,
         player_id: str,
         agent: BaseAgent,
-        cards: list[str],
         msg: dict,
     ):
         """React to a show_card_request: decide which card to show."""
@@ -334,7 +330,7 @@ class AgentRunner:
             # Fallback: compute from own hand
             matching = [
                 c
-                for c in cards
+                for c in agent.own_cards
                 if c
                 in [msg.get("suspect", ""), msg.get("weapon", ""), msg.get("room", "")]
             ]

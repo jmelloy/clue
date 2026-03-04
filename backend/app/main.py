@@ -1078,7 +1078,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
                     "Ignoring non-JSON WebSocket message from %s/%s", game_id, player_id
                 )
     except WebSocketDisconnect:
-        manager.disconnect(game_id, player_id)
+        manager.disconnect(game_id, player_id, websocket)
 
 
 # ---------------------------------------------------------------------------

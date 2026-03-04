@@ -187,7 +187,7 @@ class TestWebSocketConnection:
         ws = await _connect_mock_ws(game_id, pid)
         assert ws.accepted
         # Manager should know about this connection
-        assert manager._connections[game_id][pid] is ws
+        assert ws in manager._connections[game_id][pid]
 
     @pytest.mark.asyncio
     async def test_broadcast_reaches_all_players(self, http, redis):

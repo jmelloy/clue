@@ -113,13 +113,17 @@ async def run_live_test(base_url: str, num_agents: int = 3):
 
     # Step 3: Join agents
     pids = []
+    player_characters: dict[str, str] = {}
     for i in range(num_agents):
         resp = await http.post(
             f"/games/{game_id}/join",
             json={"player_name": f"Bot-{i}", "player_type": "agent"},
         )
         assert resp.status_code == 200
-        pids.append(resp.json()["player_id"])
+        data = resp.json()
+        pid = data["player_id"]
+        pids.append(pid)
+        player_characters[pid] = data["player"]["character"]
     print(f"[OK] Joined {num_agents} agents: {pids}")
 
     # Step 4: Connect WebSockets
@@ -175,7 +179,11 @@ async def run_live_test(base_url: str, num_agents: int = 3):
         ]
         assert len(cards_msg) >= 1, f"Player {pid} missing game_started with cards"
         cards = cards_msg[0]["your_cards"]
-        agent = RandomAgent()
+        agent = RandomAgent(
+            player_id=pid,
+            character=player_characters[pid],
+            cards=cards,
+        )
 
         agents[pid] = agent
         agent_cards[pid] = cards
@@ -214,6 +222,16 @@ async def run_live_test(base_url: str, num_agents: int = 3):
                 card,
                 shown_by=pid,
             )
+            # Other agents note that a card was shown (but not which one)
+            for other_pid, other_agent in agents.items():
+                if other_pid not in (pid, pending.suggesting_player_id):
+                    other_agent.observe_card_shown_to_other(
+                        shown_by=pid,
+                        shown_to=pending.suggesting_player_id,
+                        suspect=pending.suspect,
+                        weapon=pending.weapon,
+                        room=pending.room,
+                    )
 
         elif game_state.whose_turn in agents:
             # It's an agent's turn — build player state and decide
@@ -234,13 +252,24 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             ), f"Action {action['type']} failed: {resp.text}"
             result = resp.json()
 
-            # If no one could show a card, the agent notes it
-            if action["type"] == "suggest" and result.get("pending_show_by") is None:
-                agent.observe_suggestion_no_show(
-                    action["suspect"],
-                    action["weapon"],
-                    action["room"],
-                )
+            # All agents observe suggestions
+            if action["type"] == "suggest":
+                for other_pid, other_agent in agents.items():
+                    other_agent.observe_suggestion(
+                        suggesting_player_id=pid,
+                        suspect=action["suspect"],
+                        weapon=action["weapon"],
+                        room=action["room"],
+                        shown_by=result.get("pending_show_by"),
+                        players_without_match=result.get("players_without_match", []),
+                    )
+                # If no one could show a card, the suggesting agent notes it
+                if result.get("pending_show_by") is None:
+                    agent.observe_suggestion_no_show(
+                        action["suspect"],
+                        action["weapon"],
+                        action["room"],
+                    )
 
         # Give WebSocket messages time to arrive
         await asyncio.sleep(0.05)
