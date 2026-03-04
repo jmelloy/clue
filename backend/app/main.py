@@ -13,14 +13,14 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from .agents import (
+from .games.clue.agents import (
     BaseAgent,
     LLMAgent,
     RandomAgent,
     WandererAgent,
     generate_character_chat,
 )
-from .board import (
+from .games.clue.board import (
     DOORS,
     ROOM_BOUNDS,
     ROOM_CENTERS,
@@ -28,8 +28,8 @@ from .board import (
     START_POSITIONS,
     Room,
 )
-from .game import ClueGame
-from .models import (
+from .games.clue.game import ClueGame
+from .games.clue.models import (
     AccusationMadeMessage,
     AccuseAction,
     AccuseResult,
@@ -80,6 +80,34 @@ from .models import (
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
+from .games.holdem.game import HoldemGame
+from .games.holdem.models import (
+    HoldemActionMessage,
+    HoldemActionRequest,
+    HoldemChatBroadcastMessage,
+    HoldemChatMessage,
+    HoldemChatMessagesResponse,
+    HoldemChatRequest,
+    HoldemCommunityCardsMessage,
+    HoldemCreateGameResponse,
+    HoldemGameOverMessage,
+    HoldemGameStartedMessage,
+    HoldemGameStateMessage,
+    HoldemJoinGameResponse,
+    HoldemJoinRequest,
+    HoldemNewHandMessage,
+    HoldemPongMessage,
+    HoldemShowdownMessage,
+    HoldemYourTurnMessage,
+    AllInResult,
+    BetResult,
+    CallResult,
+    CheckResult,
+    FoldResult,
+    RaiseResult,
+    ShowdownResult,
+    OkResponse as HoldemOkResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1281,6 +1309,303 @@ async def send_chat(game_id: str, req: ChatRequest):
     name = _player_name(state, req.player_id)
     await _broadcast_chat(game_id, f"{name}: {text}", req.player_id)
     return OkResponse()
+
+
+# ===========================================================================
+# TEXAS HOLD'EM ENDPOINTS
+# ===========================================================================
+
+
+def _holdem_player_name(state, player_id: str) -> str:
+    player = next((p for p in state.players if p.id == player_id), None)
+    return player.name if player else player_id
+
+
+async def _holdem_broadcast_chat(
+    game_id: str, text: str, player_id: str | None = None
+):
+    """Broadcast a chat message for a Hold'em game."""
+    timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+    message = HoldemChatMessage(player_id=player_id, text=text, timestamp=timestamp)
+    game = HoldemGame(game_id, redis_client)
+    await game.add_chat_message(message)
+    await manager.broadcast(
+        game_id,
+        HoldemChatBroadcastMessage(player_id=player_id, text=text, timestamp=timestamp),
+    )
+
+
+@app.post("/holdem/games", status_code=201, response_model=HoldemCreateGameResponse)
+async def holdem_create_game():
+    game_id = _new_id(6)
+    game = HoldemGame(game_id, redis_client)
+    state = await game.create()
+    return HoldemCreateGameResponse(game_id=game_id, status=state.status)
+
+
+@app.get("/holdem/games/{game_id}")
+async def holdem_get_game(game_id: str):
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return state.model_dump()
+
+
+@app.get("/holdem/games/{game_id}/player/{player_id}")
+async def holdem_get_player_state(game_id: str, player_id: str):
+    game = HoldemGame(game_id, redis_client)
+    ps = await game.get_player_state(player_id)
+    if ps is None:
+        raise HTTPException(status_code=404, detail="Game or player not found")
+    return ps.model_dump()
+
+
+@app.post("/holdem/games/{game_id}/join")
+async def holdem_join_game(game_id: str, req: HoldemJoinRequest):
+    game = HoldemGame(game_id, redis_client)
+    player_id = _new_player_id()
+    try:
+        player = await game.add_player(player_id, req.player_name, req.buy_in)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    state = await game.get_state()
+    await manager.broadcast(
+        game_id,
+        HoldemPlayerJoinedMessage(player=player, players=list(state.players)),
+    )
+    await _holdem_broadcast_chat(game_id, f"{player.name} joined the table.")
+    return HoldemJoinGameResponse(player_id=player_id, player=player)
+
+
+@app.post("/holdem/games/{game_id}/start")
+async def holdem_start_game(game_id: str):
+    game = HoldemGame(game_id, redis_client)
+    try:
+        state = await game.start()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # Notify all players
+    for player in state.players:
+        pid = player.id
+        cards = await game._load_player_cards(pid)
+        await manager.send_to_player(
+            game_id,
+            pid,
+            HoldemGameStartedMessage(
+                your_cards=cards,
+                whose_turn=state.whose_turn,
+                available_actions=game.get_available_actions(pid, state),
+            ),
+        )
+
+    await manager.broadcast(game_id, HoldemGameStartedMessage(state=state))
+    await _holdem_broadcast_chat(game_id, "Game started! Shuffling and dealing...")
+
+    # Notify first player it's their turn
+    if state.whose_turn:
+        await manager.send_to_player(
+            game_id,
+            state.whose_turn,
+            HoldemYourTurnMessage(
+                available_actions=game.get_available_actions(state.whose_turn, state),
+            ),
+        )
+
+    return state.model_dump()
+
+
+async def _holdem_execute_action(game_id: str, player_id: str, action):
+    """Process a Hold'em action and broadcast results."""
+    game = HoldemGame(game_id, redis_client)
+    result = await game.process_action(player_id, action)
+    state = await game.get_state()
+
+    actor_name = _holdem_player_name(state, player_id)
+
+    # Broadcast the action to all players
+    amount = getattr(result, "amount", 0)
+    await manager.broadcast(
+        game_id,
+        HoldemActionMessage(
+            player_id=player_id,
+            action=result.type,
+            amount=amount,
+        ),
+    )
+
+    # Chat narration
+    if isinstance(result, FoldResult):
+        await _holdem_broadcast_chat(game_id, f"{actor_name} folds.", player_id)
+    elif isinstance(result, CheckResult):
+        await _holdem_broadcast_chat(game_id, f"{actor_name} checks.", player_id)
+    elif isinstance(result, CallResult):
+        await _holdem_broadcast_chat(
+            game_id, f"{actor_name} calls {result.amount}.", player_id
+        )
+    elif isinstance(result, BetResult):
+        await _holdem_broadcast_chat(
+            game_id, f"{actor_name} bets {result.amount}.", player_id
+        )
+    elif isinstance(result, RaiseResult):
+        await _holdem_broadcast_chat(
+            game_id, f"{actor_name} raises to {result.amount}.", player_id
+        )
+    elif isinstance(result, AllInResult):
+        await _holdem_broadcast_chat(
+            game_id, f"{actor_name} goes all-in for {result.amount}!", player_id
+        )
+
+    # Broadcast updated state and community cards if they changed
+    if state.community_cards:
+        await manager.broadcast(
+            game_id,
+            HoldemCommunityCardsMessage(
+                cards=state.community_cards,
+                betting_round=state.betting_round,
+            ),
+        )
+
+    if state.betting_round == "showdown" or state.status == "finished":
+        # Get the showdown log entry to retrieve hand info
+        log = await game.get_log()
+        showdown_entries = [e for e in log if e.type == "showdown_log"]
+        if showdown_entries:
+            sd = showdown_entries[-1]
+            # Load player hands for showdown display
+            player_hands = {}
+            for p in state.players:
+                if p.active:
+                    cards = await game._load_player_cards(p.id)
+                    if cards:
+                        player_hands[p.id] = cards
+
+            await manager.broadcast(
+                game_id,
+                HoldemShowdownMessage(
+                    winners=sd.winners,
+                    winning_hand=sd.winning_hand,
+                    pot=sd.pot,
+                    player_hands=player_hands,
+                ),
+            )
+            winner_names = ", ".join(
+                _holdem_player_name(state, w) for w in sd.winners
+            )
+            await _holdem_broadcast_chat(
+                game_id,
+                f"{winner_names} wins the pot ({sd.pot}) with {sd.winning_hand}!",
+            )
+
+    if state.status == "finished":
+        winner_name = _holdem_player_name(state, state.winner) if state.winner else "?"
+        await manager.broadcast(
+            game_id,
+            HoldemGameOverMessage(winner=state.winner or ""),
+        )
+        await _holdem_broadcast_chat(
+            game_id, f"Game over! {winner_name} wins the tournament!"
+        )
+    elif state.status == "playing" and state.whose_turn:
+        # Notify next player
+        await manager.send_to_player(
+            game_id,
+            state.whose_turn,
+            HoldemYourTurnMessage(
+                available_actions=game.get_available_actions(
+                    state.whose_turn, state
+                ),
+            ),
+        )
+
+    return result
+
+
+@app.post("/holdem/games/{game_id}/action")
+async def holdem_submit_action(game_id: str, req: HoldemActionRequest):
+    try:
+        result = await _holdem_execute_action(game_id, req.player_id, req.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    response = result.model_dump()
+    if state:
+        response["available_actions"] = game.get_available_actions(
+            req.player_id, state
+        )
+    return response
+
+
+@app.websocket("/ws/holdem/{game_id}/{player_id}")
+async def holdem_websocket_endpoint(
+    websocket: WebSocket, game_id: str, player_id: str
+):
+    await manager.connect(game_id, player_id, websocket)
+    game = HoldemGame(game_id, redis_client)
+    try:
+        ps = await game.get_player_state(player_id)
+        if ps:
+            await manager.send_to_player(
+                game_id, player_id, HoldemGameStateMessage(state=ps)
+            )
+            if ps.whose_turn == player_id and ps.available_actions:
+                await manager.send_to_player(
+                    game_id,
+                    player_id,
+                    HoldemYourTurnMessage(available_actions=ps.available_actions),
+                )
+        while True:
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await manager.send_to_player(
+                        game_id, player_id, HoldemPongMessage()
+                    )
+                elif msg.get("type") == "chat":
+                    text = str(msg.get("text", "")).strip()
+                    if text:
+                        g = HoldemGame(game_id, redis_client)
+                        s = await g.get_state()
+                        name = _holdem_player_name(s, player_id) if s else player_id
+                        await _holdem_broadcast_chat(
+                            game_id, f"{name}: {text}", player_id
+                        )
+            except Exception:
+                logger.debug(
+                    "Ignoring non-JSON WebSocket message from %s/%s",
+                    game_id,
+                    player_id,
+                )
+    except WebSocketDisconnect:
+        manager.disconnect(game_id, player_id, websocket)
+
+
+@app.get("/holdem/games/{game_id}/chat")
+async def holdem_get_chat(game_id: str):
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    messages = await game.get_chat_messages()
+    return HoldemChatMessagesResponse(messages=messages)
+
+
+@app.post("/holdem/games/{game_id}/chat")
+async def holdem_send_chat(game_id: str, req: HoldemChatRequest):
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    text = str(req.text).strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Message text cannot be empty")
+    name = _holdem_player_name(state, req.player_id)
+    await _holdem_broadcast_chat(game_id, f"{name}: {text}", req.player_id)
+    return HoldemOkResponse()
 
 
 # ---------------------------------------------------------------------------

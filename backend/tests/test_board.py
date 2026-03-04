@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.board import (
+from app.games.clue.board import (
     Room,
     Square,
     SquareType,

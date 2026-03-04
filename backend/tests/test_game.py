@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-from app.game import (
+from app.games.clue.game import (
     ClueGame,
     SUSPECTS,
     WEAPONS,
@@ -315,7 +315,7 @@ async def test_cannot_act_out_of_turn(game: ClueGame):
 async def test_chat_message_stored_and_retrieved(game: ClueGame):
     await _add_two_players(game)
 
-    from app.models import ChatMessage
+    from app.games.clue.models import ChatMessage
 
     await game.add_chat_message(
         ChatMessage(
