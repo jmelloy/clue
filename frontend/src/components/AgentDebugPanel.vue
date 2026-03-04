@@ -1,7 +1,7 @@
 <template>
   <div class="agent-debug-panel">
     <h2 class="collapsible-header" @click="collapsed = !collapsed">
-      <span>Agent Debug</span>
+      <span>Player Debug</span>
       <span class="collapse-indicator" :class="{ collapsed }">&#9660;</span>
     </h2>
     <div v-if="!collapsed">
@@ -26,6 +26,35 @@
           <span v-if="currentDebug.action_description" class="status-desc">{{
             currentDebug.action_description
           }}</span>
+        </div>
+
+        <!-- Position & Room -->
+        <div class="debug-section location-section">
+          <div class="location-row">
+            <span class="location-label">Room:</span>
+            <span class="location-value" :class="{ 'in-room': currentDebug.room }">{{
+              currentDebug.room || "Hallway"
+            }}</span>
+          </div>
+          <div class="location-row">
+            <span class="location-label">Position:</span>
+            <span class="location-value">{{
+              currentDebug.position
+                ? `[${currentDebug.position[0]}, ${currentDebug.position[1]}]`
+                : "—"
+            }}</span>
+          </div>
+          <div v-if="currentDebug.reachable_rooms?.length" class="location-row">
+            <span class="location-label">Reachable:</span>
+            <span class="reachable-chips">
+              <span
+                v-for="r in currentDebug.reachable_rooms"
+                :key="r"
+                class="unknown-chip room-chip"
+                >{{ r }}</span
+              >
+            </span>
+          </div>
         </div>
 
         <!-- Decided action -->
@@ -529,6 +558,43 @@ function playerName(pid) {
 .memory-text {
   color: #aab;
   word-break: break-word;
+}
+
+/* Location info */
+.location-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.location-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+}
+
+.location-label {
+  color: #8899aa;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  min-width: 60px;
+}
+
+.location-value {
+  color: #aab;
+}
+
+.location-value.in-room {
+  color: #8ed8ad;
+  font-weight: bold;
+}
+
+.reachable-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 .no-debug {

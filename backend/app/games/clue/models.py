@@ -364,6 +364,9 @@ class AgentDebugMessage(WSMessage):
     unrefuted_suggestions: list[dict] = Field(default_factory=list)
     player_has_cards: dict[str, list[str]] = Field(default_factory=dict)
     decided_action: Optional[dict] = None
+    position: Optional[list[int]] = None
+    room: Optional[str] = None
+    reachable_rooms: Optional[list[str]] = None
 
 
 # ---------------------------------------------------------------------------

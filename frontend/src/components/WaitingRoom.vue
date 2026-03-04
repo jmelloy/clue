@@ -50,12 +50,12 @@
           >
             <div
               class="suspect-token"
-              :class="{ 'has-portrait': SUSPECT_IMAGES[p.character] }"
+              :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
               :style="tokenStyle(p)"
             >
               <img
-                v-if="SUSPECT_IMAGES[p.character]"
-                :src="SUSPECT_IMAGES[p.character]"
+                v-if="CARD_IMAGES[p.character]"
+                :src="CARD_IMAGES[p.character]"
                 :alt="p.character"
                 class="suspect-portrait"
               />
@@ -131,33 +131,11 @@
 
 <script setup>
 import { ref } from "vue";
-
-const CHARACTER_COLORS = {
-  "Miss Scarlett": { bg: "#9b1b30", text: "#fff" },
-  "Colonel Mustard": { bg: "#c8a415", text: "#1a1008" },
-  "Mrs. White": { bg: "#d8d0c8", text: "#2a2520" },
-  "Reverend Green": { bg: "#1a6b3c", text: "#fff" },
-  "Mrs. Peacock": { bg: "#1a3a6b", text: "#fff" },
-  "Professor Plum": { bg: "#5c2d82", text: "#fff" },
-};
-
-const CHARACTER_ABBR = {
-  "Miss Scarlett": "Sc",
-  "Colonel Mustard": "Mu",
-  "Mrs. White": "Wh",
-  "Reverend Green": "Gr",
-  "Mrs. Peacock": "Pe",
-  "Professor Plum": "Pl",
-};
-
-const SUSPECT_IMAGES = {
-  "Miss Scarlett": "/images/MissScarlett.jpg",
-  "Colonel Mustard": "/images/ColonelMustard.jpg",
-  "Mrs. White": "/images/MrsWhite.jpg",
-  "Reverend Green": "/images/MrGreen.jpg",
-  "Mrs. Peacock": "/images/MrsPeacock.jpg",
-  "Professor Plum": "/images/ProfessorPlum.jpg",
-};
+import {
+  CHARACTER_COLORS,
+  CHARACTER_ABBR,
+  CARD_IMAGES,
+} from "../constants/clue.js";
 
 const props = defineProps({
   gameId: String,

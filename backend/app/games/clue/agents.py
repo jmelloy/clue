@@ -788,10 +788,11 @@ class BaseAgent(ABC):
         status: str = "",
         action_description: str = "",
         decided_action: dict | None = None,
+        game_state: "GameState | None" = None,
     ) -> dict:
         """Export agent state as a dict for debug display."""
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
-        return {
+        info: dict = {
             "player_id": self.player_id,
             "agent_type": self.agent_type,
             "character": self.character,
@@ -808,7 +809,14 @@ class BaseAgent(ABC):
                 pid: sorted(cards) for pid, cards in self.player_has_cards.items()
             },
             "decided_action": decided_action,
+            "position": None,
+            "room": None,
+            "reachable_rooms": None,
         }
+        if game_state is not None:
+            info["position"] = game_state.player_positions.get(self.player_id)
+            info["room"] = game_state.current_room.get(self.player_id)
+        return info
 
     # ------------------------------------------------------------------
     # Decision interface (async to support LLM calls)

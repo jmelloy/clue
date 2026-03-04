@@ -9,6 +9,7 @@
         :class="{ 'system-message': isSystemMsg(msg) }"
       >
         <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
+        <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{ msgTagLabel(msg) }}</span>
         <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
       </li>
       <li v-if="!messages.length" class="chat-empty">No messages yet.</li>
@@ -27,15 +28,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
-
-const CHARACTER_COLORS = {
-  "Miss Scarlett": "#e74c3c",
-  "Colonel Mustard": "#f39c12",
-  "Mrs. White": "#ecf0f1",
-  "Reverend Green": "#27ae60",
-  "Mrs. Peacock": "#2980b9",
-  "Professor Plum": "#8e44ad",
-};
+import { CHARACTER_COLORS } from "../constants/clue.js";
 
 const props = defineProps({
   messages: { type: Array, default: () => [] },
@@ -76,7 +69,8 @@ function colorizeNames(text) {
   const entries = Object.entries(CHARACTER_COLORS).sort(
     (a, b) => b[0].length - a[0].length
   );
-  for (const [name, color] of entries) {
+  for (const [name, charColor] of entries) {
+    const color = charColor?.bg || charColor;
     const esc = escapeHtml(name);
     if (text.includes(esc)) {
       text = text.replaceAll(
@@ -87,8 +81,9 @@ function colorizeNames(text) {
   }
   // Color player display names (may differ from character names)
   for (const p of props.players) {
-    const color = CHARACTER_COLORS[p.character];
-    if (!color) continue;
+    const charColor = CHARACTER_COLORS[p.character];
+    if (!charColor) continue;
+    const color = charColor?.bg || charColor;
     const esc = escapeHtml(p.name);
     if (text.includes(esc) && !text.includes(`">${esc}</span>`)) {
       text = text.replaceAll(
@@ -106,7 +101,8 @@ function formatMessageHtml(msg) {
   if (isPlayerChat(msg)) {
     // Player chat: "PlayerName: message text"
     const player = playerById.value[msg.player_id];
-    const color = CHARACTER_COLORS[player.character];
+    const charColor = CHARACTER_COLORS[player.character];
+    const color = charColor?.bg || charColor;
     if (color) {
       const nameLen = escapeHtml(player.name).length;
       const name = escaped.substring(0, nameLen);
@@ -119,6 +115,23 @@ function formatMessageHtml(msg) {
 
   // System / action message: color all known names
   return colorizeNames(escaped);
+}
+
+function msgTag(msg) {
+  const t = msg.text || "";
+  if (t.includes("suggests it was")) return "suggest";
+  if (t.includes("showed a card to") || t.includes("showed you:")) return "show";
+  if (t.includes("accuses")) return "accuse";
+  if (t.includes("No one could disprove")) return "suggest";
+  return null;
+}
+
+function msgTagLabel(msg) {
+  const tag = msgTag(msg);
+  if (tag === "suggest") return "suggest";
+  if (tag === "show") return "show";
+  if (tag === "accuse") return "accuse";
+  return "";
 }
 
 function formatTime(ts) {
@@ -198,6 +211,32 @@ h2 {
 
 .system-message .chat-text {
   color: #6a6050;
+}
+
+.chat-tag {
+  font-size: 0.6rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-tag-suggest {
+  background: rgba(122, 168, 212, 0.15);
+  color: #7aa8d4;
+}
+
+.chat-tag-show {
+  background: rgba(212, 168, 73, 0.15);
+  color: #d4a849;
+}
+
+.chat-tag-accuse {
+  background: rgba(196, 80, 80, 0.15);
+  color: #c45050;
 }
 
 .chat-time {

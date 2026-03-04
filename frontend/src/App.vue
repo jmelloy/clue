@@ -237,6 +237,18 @@ function handleMessage(msg) {
       autoShowCardTimer.value = null;
       reachableRooms.value = [];
       reachablePositions.value = [];
+      // Update position/room in debug data for all players
+      if (gameState.value) {
+        const updated = { ...agentDebugData.value };
+        for (const pid of Object.keys(updated)) {
+          updated[pid] = {
+            ...updated[pid],
+            position: gameState.value.player_positions?.[pid] ?? null,
+            room: gameState.value.current_room?.[pid] ?? null,
+          };
+        }
+        agentDebugData.value = updated;
+      }
       break;
 
     case "player_joined":
@@ -325,6 +337,17 @@ function handleMessage(msg) {
       // Clear reachable highlights after movement
       reachableRooms.value = [];
       reachablePositions.value = [];
+      // Update debug data for moved player
+      if (agentDebugData.value[msg.player_id]) {
+        agentDebugData.value = {
+          ...agentDebugData.value,
+          [msg.player_id]: {
+            ...agentDebugData.value[msg.player_id],
+            position: msg.position ?? null,
+            room: msg.room ?? null,
+          },
+        };
+      }
       break;
 
     case "suggestion_made":

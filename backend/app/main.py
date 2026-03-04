@@ -629,6 +629,17 @@ async def _execute_action(
             f"{shown_by_name} showed a card to {shown_to_name}.",
             player_id,
         )
+        # Send a private chat message to the recipient with the actual card name
+        timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+        await manager.send_to_player(
+            game_id,
+            result.suggesting_player_id,
+            ChatBroadcastMessage(
+                player_id=player_id,
+                text=f"{shown_by_name} showed you: {result.card}",
+                timestamp=timestamp,
+            ),
+        )
         # Notify the suggesting player it's still their turn so external
         # agents (WebSocket-driven) know to take their next action.
         suggesting_pid = result.suggesting_player_id
@@ -829,12 +840,14 @@ async def _broadcast_agent_debug(
     status: str,
     action_description: str = "",
     decided_action: dict | None = None,
+    game_state=None,
 ):
     """Broadcast agent debug info to all WebSocket clients (visible to observers/agents)."""
     debug_info = agent.get_debug_info(
         status=status,
         action_description=action_description,
         decided_action=decided_action,
+        game_state=game_state,
     )
     await manager.broadcast(game_id, AgentDebugMessage(**debug_info))
 
@@ -878,12 +891,14 @@ async def _run_agent_loop(game_id: str):
                 await _broadcast_agent_debug(
                     game_id, agent, "thinking",
                     f"Deciding which card to show from {matching}",
+                    game_state=state,
                 )
                 card = await agent.decide_show_card(matching, suggesting_pid)
                 await _broadcast_agent_debug(
                     game_id, agent, "decided",
                     f"Showing card to disprove suggestion",
                     decided_action={"type": "show_card", "card": card},
+                    game_state=state,
                 )
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
@@ -917,6 +932,7 @@ async def _run_agent_loop(game_id: str):
                 await _broadcast_agent_debug(
                     game_id, agent, "thinking",
                     f"Deciding next action (available: {', '.join(player_state.available_actions)})",
+                    game_state=state,
                 )
                 action = await agent.decide_action(state, player_state)
                 action_d = action.model_dump()
@@ -936,6 +952,7 @@ async def _run_agent_loop(game_id: str):
                 await _broadcast_agent_debug(
                     game_id, agent, "decided", action_desc,
                     decided_action=action_d,
+                    game_state=state,
                 )
 
                 logger.info(
@@ -1036,22 +1053,41 @@ async def get_player_state(game_id: str, player_id: str):
 
 @app.get("/games/{game_id}/agent_debug")
 async def get_agent_debug(game_id: str):
-    """Return current debug info for all agents in a game."""
-    # Check in-memory agents first (inline mode)
+    """Return current debug info for all players (agents and humans) in a game."""
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+
+    result = []
+    # Include in-memory agents with game state
     agents = _game_agents.get(game_id, {})
     if agents:
-        result = []
         for pid, agent in agents.items():
-            result.append(agent.get_debug_info(status="idle"))
-        return {"agents": result}
+            result.append(agent.get_debug_info(status="idle", game_state=state))
 
-    # Fall back to Redis-stored debug data (external mode)
-    raw = await redis_client.get(f"game:{game_id}:agent_debug")
-    if raw:
-        import json as _json
-        debug_map = _json.loads(raw)
-        return {"agents": list(debug_map.values())}
-    return {"agents": []}
+    # Fall back to Redis-stored debug data (external mode) if no in-memory agents
+    if not agents:
+        raw = await redis_client.get(f"game:{game_id}:agent_debug")
+        if raw:
+            import json as _json
+            debug_map = _json.loads(raw)
+            result.extend(debug_map.values())
+
+    # Add position/room info for human players
+    if state:
+        agent_pids = {r["player_id"] for r in result}
+        for player in state.players:
+            if player.id not in agent_pids:
+                result.append({
+                    "player_id": player.id,
+                    "agent_type": "human",
+                    "character": player.character,
+                    "status": "idle",
+                    "position": state.player_positions.get(player.id),
+                    "room": state.current_room.get(player.id),
+                    "reachable_rooms": None,
+                })
+
+    return {"agents": result}
 
 
 @app.post("/games/{game_id}/agent_debug")

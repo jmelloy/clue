@@ -44,22 +44,20 @@
             'my-token': token.id === playerId,
             'wanderer-token': token.type === 'wanderer',
             'is-turn': token.id === gameState?.whose_turn,
-            'has-image': !!SUSPECT_IMAGES[token.character],
+            'has-image': !!CARD_IMAGES[token.character],
           }"
           :style="tokenStyle(token)"
-          :title="
-            token.type === 'wanderer'
-              ? `${token.character} (wandering)`
-              : `${token.name} (${token.character})`
-          "
         >
           <img
-            v-if="SUSPECT_IMAGES[token.character]"
-            :src="SUSPECT_IMAGES[token.character]"
+            v-if="CARD_IMAGES[token.character]"
+            :src="CARD_IMAGES[token.character]"
             :alt="token.character"
             class="token-portrait"
           />
           <span v-else>{{ abbr(token.character) }}</span>
+          <span class="token-tooltip">
+            {{ token.type === 'wanderer' ? token.character : `${token.name} (${token.character})` }}
+          </span>
         </div>
       </div>
     </div>
@@ -68,6 +66,11 @@
 
 <script setup>
 import { computed } from "vue";
+import {
+  CHARACTER_COLORS,
+  CHARACTER_ABBR,
+  CARD_IMAGES,
+} from "../constants/clue.js";
 
 // ── Board layout data (matches backend board.py) ──
 
@@ -172,44 +175,6 @@ const ROOM_COLORS = {
   Kitchen: "#2a2218",
 };
 
-const CHARACTER_COLORS = {
-  "Miss Scarlett": { bg: "#e74c3c", text: "#fff" },
-  "Colonel Mustard": { bg: "#f39c12", text: "#1a1a2e" },
-  "Mrs. White": { bg: "#ecf0f1", text: "#1a1a2e" },
-  "Reverend Green": { bg: "#27ae60", text: "#fff" },
-  "Mrs. Peacock": { bg: "#2980b9", text: "#fff" },
-  "Professor Plum": { bg: "#8e44ad", text: "#fff" },
-};
-
-const CHARACTER_ABBR = {
-  "Miss Scarlett": "Sc",
-  "Colonel Mustard": "Mu",
-  "Mrs. White": "Wh",
-  "Reverend Green": "Gr",
-  "Mrs. Peacock": "Pe",
-  "Professor Plum": "Pl",
-};
-
-const SUSPECT_IMAGES = {
-  "Miss Scarlett": "/images/MissScarlett.jpg",
-  "Colonel Mustard": "/images/ColonelMustard.jpg",
-  "Mrs. White": "/images/MrsWhite.jpg",
-  "Reverend Green": "/images/MrGreen.jpg",
-  "Mrs. Peacock": "/images/MrsPeacock.jpg",
-  "Professor Plum": "/images/ProfessorPlum.jpg",
-};
-
-const ROOM_IMAGES = {
-  Study: "/images/Study.jpg",
-  Hall: "/images/Hall.jpg",
-  Lounge: "/images/Lounge.jpg",
-  Library: "/images/Library.jpg",
-  "Billiard Room": "/images/BilliardRoom.jpg",
-  "Dining Room": "/images/DiningRoom.jpg",
-  Conservatory: "/images/Conservatory.jpg",
-  Ballroom: "/images/BallRoom.jpg",
-  Kitchen: "/images/Kitchen.jpg",
-};
 
 // ── Pre-compute room info from board layout ──
 
@@ -428,7 +393,7 @@ function cellClasses(cell) {
 
 function cellStyle(cell) {
   if (cell.room) {
-    const img = ROOM_IMAGES[cell.room];
+    const img = CARD_IMAGES[cell.room];
     const info = ROOM_INFO[cell.room];
     if (img && info) {
       const roomCols = info.maxCol - info.minCol + 1;
@@ -480,7 +445,7 @@ function tokenStyle(token) {
     "--token-border": colors.bg,
   };
   if (token.type === "wanderer") {
-    style.opacity = 0.5;
+    style.opacity = 0.85;
   }
   return style;
 }
@@ -533,7 +498,6 @@ function tokenStyle(token) {
 
 .cell-door {
   position: relative;
-  filter: saturate(0.35) brightness(0.9);
   border: 0.5px solid rgba(255, 255, 255, 0.06);
   overflow: visible;
 }
@@ -747,16 +711,16 @@ function tokenStyle(token) {
 /* ── Player tokens ── */
 .player-token {
   position: absolute;
-  width: clamp(14px, 2.5vw, 22px);
-  height: clamp(14px, 2.5vw, 22px);
+  width: clamp(18px, 3vw, 28px);
+  height: clamp(18px, 3vw, 28px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(6px, 1vw, 9px);
+  font-size: clamp(7px, 1.1vw, 10px);
   font-weight: bold;
   font-family: "Crimson Text", Georgia, serif;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.5);
   z-index: 10;
   transition: left 0.4s ease, top 0.4s ease;
   overflow: hidden;
@@ -764,8 +728,9 @@ function tokenStyle(token) {
 
 .player-token.has-image {
   background: none !important;
-  border: 1.5px solid;
+  border: 2.5px solid;
   border-color: var(--token-border, rgba(255, 255, 255, 0.5));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 
 .token-portrait {
@@ -778,23 +743,21 @@ function tokenStyle(token) {
 }
 
 .player-token.my-token {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(212, 168, 73, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 6px 3px rgba(212, 168, 73, 0.6);
   z-index: 11;
 }
 
 .player-token.my-token.has-image {
-  border-color: #d4a849;
-  border-width: 2px;
+  border-width: 2.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 6px 3px rgba(212, 168, 73, 0.6);
 }
 
 .player-token.wanderer-token {
-  border: 1.5px dashed rgba(255, 255, 255, 0.3);
   z-index: 9;
 }
 
 .player-token.wanderer-token.has-image {
-  border-style: dashed;
-  opacity: 0.5;
+  z-index: 9;
 }
 
 .player-token.is-turn {
@@ -808,25 +771,51 @@ function tokenStyle(token) {
 @keyframes token-pulse {
   0%,
   100% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6),
-      0 0 0 1.5px rgba(212, 168, 73, 0.7);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8),
+      0 0 4px 1px rgba(212, 168, 73, 0.5);
   }
   50% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6),
-      0 0 8px 3px rgba(212, 168, 73, 0.5);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8),
+      0 0 10px 5px rgba(212, 168, 73, 0.7);
   }
 }
 
 @keyframes token-pulse-img {
   0%,
   100% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(212, 168, 73, 0.7);
-    border-color: rgba(212, 168, 73, 0.7);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9),
+      0 0 4px 1px rgba(212, 168, 73, 0.5);
   }
   50% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6),
-      0 0 8px 3px rgba(212, 168, 73, 0.5);
-    border-color: #d4a849;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9),
+      0 0 10px 5px rgba(212, 168, 73, 0.7);
   }
+}
+
+/* ── Token tooltip ── */
+.token-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #f0e0b0;
+  font-family: "Crimson Text", Georgia, serif;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.player-token {
+  pointer-events: auto;
+}
+
+.player-token:hover .token-tooltip {
+  display: block;
 }
 </style>

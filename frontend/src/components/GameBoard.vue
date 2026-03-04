@@ -81,7 +81,7 @@
               'observer-selected':
                 isObserver && observerPlayerState?.playerId === p.id,
             }"
-            @click="isObserver && emit('select-player', p.id)"
+            @click="onLegendClick(p)"
           >
             <span
               class="legend-token"
@@ -103,6 +103,24 @@
             <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn"
               >turn</span
             >
+            <!-- Shown cards popup -->
+            <div
+              v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length"
+              class="shown-cards-popup"
+              @click.stop
+            >
+              <div class="shown-cards-title">Cards shown to you:</div>
+              <div v-for="card in shownCardsForPlayer" :key="card" class="shown-cards-item">
+                {{ card }}
+              </div>
+            </div>
+            <div
+              v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length"
+              class="shown-cards-popup"
+              @click.stop
+            >
+              <div class="shown-cards-title">No cards shown to you</div>
+            </div>
           </div>
         </div>
       </div>
@@ -154,8 +172,16 @@
                     v-for="card in weaponCards"
                     :key="card"
                     class="hand-card card-weapon"
+                    :class="{ 'card-with-image': hasCardImage(card) }"
+                    @click="hasCardImage(card) && showCardPreview(card)"
                   >
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <img
+                      v-if="hasCardImage(card)"
+                      :src="cardImageUrl(card)"
+                      :alt="card"
+                      class="card-thumb card-thumb-weapon"
+                    />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -229,6 +255,7 @@
                 :src="cardImageUrl(card)"
                 :alt="card"
                 class="show-card-thumb"
+                :class="'show-card-thumb-' + cardCategory(card).replace('card-', '')"
               />
               <span v-else class="card-icon">{{ cardIcon(card) }}</span>
               {{ card }}
@@ -465,8 +492,16 @@
                     v-for="card in observerWeaponCards"
                     :key="card"
                     class="hand-card card-weapon"
+                    :class="{ 'card-with-image': hasCardImage(card) }"
+                    @click="hasCardImage(card) && showCardPreview(card)"
                   >
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <img
+                      v-if="hasCardImage(card)"
+                      :src="cardImageUrl(card)"
+                      :alt="card"
+                      class="card-thumb card-thumb-weapon"
+                    />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -548,57 +583,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import BoardMap from "./BoardMap.vue";
 import ChatPanel from "./ChatPanel.vue";
 import DetectiveNotes from "./DetectiveNotes.vue";
 import AgentDebugPanel from "./AgentDebugPanel.vue";
-
-const SUSPECTS = [
-  "Miss Scarlett",
-  "Colonel Mustard",
-  "Mrs. White",
-  "Reverend Green",
-  "Mrs. Peacock",
-  "Professor Plum",
-];
-const WEAPONS = [
-  "Candlestick",
-  "Knife",
-  "Lead Pipe",
-  "Revolver",
-  "Rope",
-  "Wrench",
-];
-const ROOMS = [
-  "Kitchen",
-  "Ballroom",
-  "Conservatory",
-  "Billiard Room",
-  "Library",
-  "Study",
-  "Hall",
-  "Lounge",
-  "Dining Room",
-];
-
-const CHARACTER_COLORS = {
-  "Miss Scarlett": { bg: "#e74c3c", text: "#fff" },
-  "Colonel Mustard": { bg: "#f39c12", text: "#1a1a2e" },
-  "Mrs. White": { bg: "#ecf0f1", text: "#1a1a2e" },
-  "Reverend Green": { bg: "#27ae60", text: "#fff" },
-  "Mrs. Peacock": { bg: "#2980b9", text: "#fff" },
-  "Professor Plum": { bg: "#8e44ad", text: "#fff" },
-};
-
-const CHARACTER_ABBR = {
-  "Miss Scarlett": "Sc",
-  "Colonel Mustard": "Mu",
-  "Mrs. White": "Wh",
-  "Reverend Green": "Gr",
-  "Mrs. Peacock": "Pe",
-  "Professor Plum": "Pl",
-};
+import {
+  SUSPECTS,
+  WEAPONS,
+  ROOMS,
+  CHARACTER_COLORS,
+  CHARACTER_ABBR,
+  CARD_ICONS,
+  CARD_IMAGES,
+  cardIcon,
+  hasCardImage,
+  cardImageUrl,
+} from "../constants/clue.js";
 
 const props = defineProps({
   gameId: String,
@@ -777,62 +778,26 @@ function cardCategory(card) {
 }
 
 // Per-card emoji icons
-const CARD_ICONS = {
-  // Suspects
-  "Miss Scarlett": "\u{1F48B}", // 💋
-  "Colonel Mustard": "\u{1F396}", // 🎖️
-  "Mrs. White": "\u{1F9F9}", // 🧹
-  "Reverend Green": "\u{26EA}", // ⛪
-  "Mrs. Peacock": "\u{1F99A}", // 🦚
-  "Professor Plum": "\u{1F393}", // 🎓
-  // Weapons
-  Candlestick: "\u{1F56F}", // 🕯️
-  Knife: "\u{1F5E1}", // 🗡️
-  "Lead Pipe": "\u{26CF}", // 🪈
-  Revolver: "\u{1F52B}", // 🔫
-  Rope: "\u{1FA62}", // 🪢
-  Wrench: "\u{1F527}", // 🔧
-  // Rooms
-  Kitchen: "\u{1F373}", // 🍳
-  Ballroom: "\u{1F483}", // 💃
-  Conservatory: "\u{1FAB4}", // 🪴
-  "Billiard Room": "\u{1F3B1}", // 🎱
-  Library: "\u{1F4DA}", // 📚
-  Study: "\u{1F50D}", // 🔍
-  Hall: "\u{1F6AA}", // 🚪
-  Lounge: "\u{1F6CB}", // 🛋️
-  "Dining Room": "\u{1F37D}", // 🍽️
-};
 
-// Card image filenames
-const CARD_IMAGES = {
-  "Miss Scarlett": "/images/MissScarlett.jpg",
-  "Colonel Mustard": "/images/ColonelMustard.jpg",
-  "Mrs. White": "/images/MrsWhite.jpg",
-  "Reverend Green": "/images/MrGreen.jpg",
-  "Mrs. Peacock": "/images/MrsPeacock.jpg",
-  "Professor Plum": "/images/ProfessorPlum.jpg",
-  Kitchen: "/images/Kitchen.jpg",
-  Ballroom: "/images/BallRoom.jpg",
-  Conservatory: "/images/Conservatory.jpg",
-  "Billiard Room": "/images/BilliardRoom.jpg",
-  Library: "/images/Library.jpg",
-  Study: "/images/Study.jpg",
-  Hall: "/images/Hall.jpg",
-  Lounge: "/images/Lounge.jpg",
-  "Dining Room": "/images/DiningRoom.jpg",
-};
+// Shown cards popup state
+const shownCardsPlayerId = ref(null);
+const shownCardsForPlayer = computed(() => {
+  if (!shownCardsPlayerId.value || !notesRef.value) return [];
+  const pName = playerName(shownCardsPlayerId.value);
+  return notesRef.value.getCardsShownBy(pName);
+});
 
-function cardIcon(card) {
-  return CARD_ICONS[card] || "\u{1F0CF}";
-}
-
-function hasCardImage(card) {
-  return !!CARD_IMAGES[card];
-}
-
-function cardImageUrl(card) {
-  return CARD_IMAGES[card] || "";
+function onLegendClick(player) {
+  if (props.isObserver) {
+    emit('select-player', player.id);
+    return;
+  }
+  // Toggle shown cards popup for this player
+  if (shownCardsPlayerId.value === player.id) {
+    shownCardsPlayerId.value = null;
+  } else {
+    shownCardsPlayerId.value = player.id;
+  }
 }
 
 // Card preview state
@@ -916,7 +881,13 @@ function onNotesChanged(notesData) {
   }, 500);
 }
 
+// Close shown cards popup when clicking outside
+function onDocClick() {
+  shownCardsPlayerId.value = null;
+}
+onMounted(() => document.addEventListener("click", onDocClick));
 onUnmounted(() => {
+  document.removeEventListener("click", onDocClick);
   if (saveNotesTimer) clearTimeout(saveNotesTimer);
 });
 
@@ -1101,6 +1072,8 @@ watch(
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid transparent;
   transition: border-color 0.2s;
+  position: relative;
+  cursor: pointer;
 }
 
 .legend-item.active {
@@ -1196,6 +1169,35 @@ watch(
   color: #4a4030;
   font-size: 0.6rem;
   font-style: italic;
+}
+
+/* Shown cards popup */
+.shown-cards-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  background: rgba(30, 24, 16, 0.97);
+  border: 1px solid rgba(212, 168, 73, 0.3);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.shown-cards-title {
+  color: #d4a849;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+
+.shown-cards-item {
+  color: #e8dcc8;
+  font-size: 0.75rem;
+  padding: 0.1rem 0;
 }
 
 /* Sidebar */
@@ -1716,6 +1718,12 @@ watch(
   object-position: center center;
 }
 
+.card-thumb-weapon {
+  border-radius: 4px;
+  object-position: center center;
+  border-color: rgba(204, 85, 0, 0.4);
+}
+
 .show-card-thumb {
   width: 24px;
   height: 24px;
@@ -1732,6 +1740,10 @@ watch(
   background: rgba(26, 107, 60, 0.28);
 }
 
+.card-with-image.card-weapon:hover {
+  background: rgba(204, 85, 0, 0.18);
+}
+
 .show-card-thumb.show-card-thumb-suspect {
   border-radius: 50%;
   object-position: center 15%;
@@ -1739,6 +1751,12 @@ watch(
 }
 
 .show-card-thumb.show-card-thumb-room {
+  border-radius: 4px;
+  object-position: center center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.show-card-thumb.show-card-thumb-weapon {
   border-radius: 4px;
   object-position: center center;
   border: 1px solid rgba(255, 255, 255, 0.3);

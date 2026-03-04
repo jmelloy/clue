@@ -434,6 +434,13 @@ class ClueGame:
         """
         start_sq = self._get_start_square(player_id, state)
         if not start_sq:
+            logger.warning(
+                "Could not resolve start square for player %s "
+                "(current_room=%s, position=%s)",
+                player_id,
+                state.current_room.get(player_id),
+                state.player_positions.get(player_id),
+            )
             return ReachableTargets(reachable_rooms=list(ROOMS))
 
         occupied = self._get_occupied_positions(state, player_id)
@@ -633,6 +640,15 @@ class ClueGame:
                     # Player couldn't actually move (all paths blocked)
                     final_room = current_room_name
                     final_position = state.player_positions.get(player_id)
+                elif dest.type == SquareType.ROOM and dest.room:
+                    # Player entered an intermediate room on the way
+                    entered_room = dest.room.value
+                    state.current_room[player_id] = entered_room
+                    final_room = entered_room
+                    center = ROOM_CENTERS.get(entered_room)
+                    if center:
+                        state.player_positions[player_id] = list(center)
+                        final_position = list(center)
                 else:
                     # Player ends up in the hallway partway there
                     final_room = None

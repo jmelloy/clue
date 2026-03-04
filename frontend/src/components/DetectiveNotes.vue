@@ -9,18 +9,20 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
-        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
         <img
-          v-if="SUSPECT_IMAGES[card]"
-          :src="SUSPECT_IMAGES[card]"
+          v-if="CARD_IMAGES[card]"
+          :src="CARD_IMAGES[card]"
           :alt="card"
           class="note-thumb"
-          :style="{ borderColor: SUSPECT_COLORS[card] || '#666' }"
+          :style="{ borderColor: CHARACTER_COLORS[card]?.bg || '#666' }"
         />
         <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
-        <span class="note-mark">{{ noteMark(card) }}</span>
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
+          {{ noteMark(card) }}
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card] }}</span>
+        </span>
       </div>
     </div>
 
@@ -31,12 +33,20 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
-        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <span class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
+        <img
+          v-if="CARD_IMAGES[card]"
+          :src="CARD_IMAGES[card]"
+          :alt="card"
+          class="note-thumb note-thumb-weapon"
+        />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
         <span class="note-card">{{ card }}</span>
-        <span class="note-mark">{{ noteMark(card) }}</span>
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
+          {{ noteMark(card) }}
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card] }}</span>
+        </span>
       </div>
     </div>
 
@@ -47,18 +57,20 @@
         :key="card"
         class="note-row"
         :class="noteClass(card)"
-        :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
         <img
-          v-if="ROOM_IMAGES[card]"
-          :src="ROOM_IMAGES[card]"
+          v-if="CARD_IMAGES[card]"
+          :src="CARD_IMAGES[card]"
           :alt="card"
           class="note-thumb note-thumb-room"
         />
         <span v-else class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
         <span class="note-card">{{ card }}</span>
-        <span class="note-mark">{{ noteMark(card) }}</span>
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
+          {{ noteMark(card) }}
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card] }}</span>
+        </span>
       </div>
     </div>
   </div>
@@ -66,88 +78,14 @@
 
 <script setup>
 import { reactive, watch } from "vue";
-
-const SUSPECTS = [
-  "Miss Scarlett",
-  "Colonel Mustard",
-  "Mrs. White",
-  "Reverend Green",
-  "Mrs. Peacock",
-  "Professor Plum",
-];
-const WEAPONS = [
-  "Candlestick",
-  "Knife",
-  "Lead Pipe",
-  "Revolver",
-  "Rope",
-  "Wrench",
-];
-const ROOMS = [
-  "Kitchen",
-  "Ballroom",
-  "Conservatory",
-  "Billiard Room",
-  "Library",
-  "Study",
-  "Hall",
-  "Lounge",
-  "Dining Room",
-];
-
-const SUSPECT_COLORS = {
-  "Miss Scarlett": "#e74c3c",
-  "Colonel Mustard": "#f39c12",
-  "Mrs. White": "#d8d0c8",
-  "Reverend Green": "#27ae60",
-  "Mrs. Peacock": "#2980b9",
-  "Professor Plum": "#8e44ad",
-};
-
-const SUSPECT_IMAGES = {
-  "Miss Scarlett": "/images/MissScarlett.jpg",
-  "Colonel Mustard": "/images/ColonelMustard.jpg",
-  "Mrs. White": "/images/MrsWhite.jpg",
-  "Reverend Green": "/images/MrGreen.jpg",
-  "Mrs. Peacock": "/images/MrsPeacock.jpg",
-  "Professor Plum": "/images/ProfessorPlum.jpg",
-};
-
-const ROOM_IMAGES = {
-  Kitchen: "/images/Kitchen.jpg",
-  Ballroom: "/images/BallRoom.jpg",
-  Conservatory: "/images/Conservatory.jpg",
-  "Billiard Room": "/images/BilliardRoom.jpg",
-  Library: "/images/Library.jpg",
-  Study: "/images/Study.jpg",
-  Hall: "/images/Hall.jpg",
-  Lounge: "/images/Lounge.jpg",
-  "Dining Room": "/images/DiningRoom.jpg",
-};
-
-const CARD_ICONS = {
-  "Miss Scarlett": "\u{1F48B}",
-  "Colonel Mustard": "\u{1F396}",
-  "Mrs. White": "\u{1F9F9}",
-  "Reverend Green": "\u{26EA}",
-  "Mrs. Peacock": "\u{1F99A}",
-  "Professor Plum": "\u{1F393}",
-  Candlestick: "\u{1F56F}",
-  Knife: "\u{1F5E1}",
-  "Lead Pipe": "\u{26CF}",
-  Revolver: "\u{1F52B}",
-  Rope: "\u{1FA62}",
-  Wrench: "\u{1F527}",
-  Kitchen: "\u{1F373}",
-  Ballroom: "\u{1F483}",
-  Conservatory: "\u{1FAB4}",
-  "Billiard Room": "\u{1F3B1}",
-  Library: "\u{1F4DA}",
-  Study: "\u{1F50D}",
-  Hall: "\u{1F6AA}",
-  Lounge: "\u{1F6CB}",
-  "Dining Room": "\u{1F37D}",
-};
+import {
+  SUSPECTS,
+  WEAPONS,
+  ROOMS,
+  CHARACTER_COLORS,
+  CARD_ICONS,
+  CARD_IMAGES,
+} from "../constants/clue.js";
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
 const CYCLE = ["", "no", "maybe", ""];
@@ -211,7 +149,7 @@ watch(notes, () => emitNotesChanged(), { deep: true });
 function suspectStyle(card) {
   const state = notes[card] ?? "";
   if (state === "have" || state === "no" || state === "seen") return {};
-  const color = SUSPECT_COLORS[card];
+  const color = CHARACTER_COLORS[card]?.bg;
   if (!color) return {};
   // Default and 'maybe' states show the suspect's color
   return { color };
@@ -260,7 +198,16 @@ function noteTitle(card) {
   return "";
 }
 
-defineExpose({ markCard });
+// Get all cards shown by a specific player name
+function getCardsShownBy(playerName) {
+  const cards = [];
+  for (const [card, by] of Object.entries(shownByMap)) {
+    if (by === playerName) cards.push(card);
+  }
+  return cards;
+}
+
+defineExpose({ markCard, getCardsShownBy });
 </script>
 
 <style scoped>
@@ -394,6 +341,12 @@ h4 {
   border-color: rgba(122, 200, 154, 0.4);
 }
 
+.note-thumb-weapon {
+  border-radius: 3px;
+  object-position: center center;
+  border-color: rgba(204, 85, 0, 0.4);
+}
+
 .note-row:hover .note-thumb {
   box-shadow: 0 1px 6px rgba(212, 168, 73, 0.2);
 }
@@ -416,5 +369,35 @@ h4 {
 .note-have .note-emoji,
 .note-seen .note-emoji {
   opacity: 0.5;
+}
+
+/* Tooltip for "shown by" on eye icon */
+.note-mark.has-tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.note-tooltip {
+  display: none;
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(30, 24, 16, 0.95);
+  border: 1px solid rgba(212, 168, 73, 0.3);
+  color: #d4a849;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: normal;
+  font-style: normal;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+  margin-right: 4px;
+}
+
+.note-mark.has-tooltip:hover .note-tooltip {
+  display: block;
 }
 </style>
