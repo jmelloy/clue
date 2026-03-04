@@ -14,7 +14,7 @@ export default defineConfig({
     proxy: {
       '/games': backendUrl,
       '/board': backendUrl,
-      '/holdem': backendUrl,
+      '/holdem/games': backendUrl,
       '/images': backendUrl,
       '/ws': { target: backendWsUrl, ws: true }
     }

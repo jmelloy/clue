@@ -98,6 +98,7 @@ from .games.holdem.models import (
     HoldemJoinGameResponse,
     HoldemJoinRequest,
     HoldemNewHandMessage,
+    HoldemPlayerJoinedMessage,
     HoldemPongMessage,
     HoldemShowdownMessage,
     HoldemYourTurnMessage,
