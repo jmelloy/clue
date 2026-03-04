@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from app.agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
 from app.game import ClueGame
 from app.logging import get_logging_config
-from app.models import GameState, PlayerState
+from app.models import ChatContext, GameState, PlayerState, ShowCardAction
 
 logger = logging.getLogger(__name__)
 
@@ -300,22 +300,23 @@ class AgentRunner:
         logger.info(
             "Agent %s taking action %s in game %s",
             player_id,
-            action.get("type"),
+            action.type,
             game_id,
         )
 
-        result = await self._send_action(game_id, player_id, action)
+        action_dict = action.model_dump()
+        result = await self._send_action(game_id, player_id, action_dict)
         if isinstance(result, dict) and result.get("error"):
             return
 
         # Broadcast personality chat after the action
-        chat_context = {
-            "dice": result.get("dice", ""),
-            "room": result.get("room") or action.get("room") or "",
-            "suspect": action.get("suspect", ""),
-            "weapon": action.get("weapon", ""),
-        }
-        chat_msg = agent.generate_chat(action.get("type", ""), chat_context)
+        chat_context = ChatContext(
+            dice=result.get("dice", ""),
+            room=result.get("room") or action_dict.get("room") or "",
+            suspect=action_dict.get("suspect", ""),
+            weapon=action_dict.get("weapon", ""),
+        )
+        chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
         if chat_msg:
             await self._send_chat(game_id, player_id, chat_msg)
 
@@ -358,7 +359,9 @@ class AgentRunner:
             card = matching[0]
 
         logger.info("Agent %s showing card in game %s", player_id, game_id)
-        await self._send_action(game_id, player_id, {"type": "show_card", "card": card})
+        await self._send_action(
+            game_id, player_id, ShowCardAction(card=card).model_dump()
+        )
 
         chat_msg = agent.generate_chat("show_card")
         if chat_msg:

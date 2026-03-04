@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -36,6 +37,13 @@ class PendingShowCard(BaseModel):
     weapon: str
     room: str
     matching_cards: list[str]
+
+
+class ReachableTargets(BaseModel):
+    """Rooms and hallway positions reachable with a given dice roll."""
+
+    reachable_rooms: list[str] = Field(default_factory=list)
+    reachable_positions: list[list[int]] = Field(default_factory=list)
 
 
 class GameState(BaseModel):
@@ -180,7 +188,7 @@ class AccuseResult(ActionResultBase):
     type: Literal["accuse"] = "accuse"
     correct: bool
     winner: Optional[str] = None
-    solution: Optional[dict] = None
+    solution: Optional[Solution] = None
 
 
 class EndTurnResult(ActionResultBase):
@@ -287,7 +295,7 @@ class GameOverMessage(WSMessage):
     player_id: str
     correct: bool
     winner: Optional[str] = None
-    solution: Optional[dict] = None
+    solution: Optional[Solution] = None
 
 
 class GameStateUpdateMessage(WSMessage):
@@ -297,10 +305,10 @@ class GameStateUpdateMessage(WSMessage):
     dice_rolled: Optional[bool] = None
     moved: Optional[bool] = None
     last_roll: Optional[list[int]] = None
-    suggestions_this_turn: Optional[list[dict]] = None
-    pending_show_card: Optional[dict] = None
+    suggestions_this_turn: Optional[list[Suggestion]] = None
+    pending_show_card: Optional[PendingShowCard] = None
     player_positions: Optional[dict[str, list[int]]] = None
-    state: Optional[dict] = None
+    state: Optional[PlayerState] = None
 
 
 class AutoEndTimerMessage(WSMessage):
@@ -364,6 +372,114 @@ class SuggestAgentEvent(AgentEvent):
 
 
 # ---------------------------------------------------------------------------
+# Game log entry types (stored in Redis)
+# ---------------------------------------------------------------------------
+
+
+class LogEntryBase(BaseModel):
+    type: str
+    timestamp: str = ""
+
+
+class GameStartedLogEntry(LogEntryBase):
+    type: Literal["game_started"] = "game_started"
+
+
+class RollLogEntry(LogEntryBase):
+    type: Literal["roll"] = "roll"
+    player_id: str
+    dice: int
+
+
+class SecretPassageLogEntry(LogEntryBase):
+    type: Literal["secret_passage"] = "secret_passage"
+    player_id: str
+    from_room: str
+    room: str
+
+
+class MoveLogEntry(LogEntryBase):
+    type: Literal["move"] = "move"
+    player_id: str
+    dice: int
+    room: Optional[str] = None
+
+
+class SuggestionLogEntry(LogEntryBase):
+    type: Literal["suggestion"] = "suggestion"
+    player_id: str
+    suspect: str
+    weapon: str
+    room: str
+    pending_show_by: Optional[str] = None
+
+
+class CardShownLogEntry(LogEntryBase):
+    type: Literal["card_shown"] = "card_shown"
+    player_id: str
+    to_player_id: str
+
+
+class AccusationLogEntry(LogEntryBase):
+    type: Literal["accusation"] = "accusation"
+    player_id: str
+    suspect: str
+    weapon: str
+    room: str
+    correct: bool
+
+
+class EndTurnLogEntry(LogEntryBase):
+    type: Literal["end_turn"] = "end_turn"
+    player_id: str
+    next_player_id: str
+
+
+LogEntry = Annotated[
+    Union[
+        GameStartedLogEntry,
+        RollLogEntry,
+        SecretPassageLogEntry,
+        MoveLogEntry,
+        SuggestionLogEntry,
+        CardShownLogEntry,
+        AccusationLogEntry,
+        EndTurnLogEntry,
+    ],
+    Field(discriminator="type"),
+]
+
+
+# ---------------------------------------------------------------------------
+# Miscellaneous typed models replacing plain dicts
+# ---------------------------------------------------------------------------
+
+
+class WandererTurnInfo(BaseModel):
+    """Accumulated turn info for wanderer agents, used for collapsed chat."""
+
+    dice: int
+    room: Optional[str] = None
+
+
+class AgentPlayerConfig(BaseModel):
+    """Per-player agent configuration stored in Redis."""
+
+    type: str
+    character: str
+    cards: list[str]
+
+
+class ChatContext(BaseModel):
+    """Context passed to agent chat generation after an action."""
+
+    dice: int | str = ""
+    room: str = ""
+    suspect: str = ""
+    weapon: str = ""
+
+
+# ---------------------------------------------------------------------------
 # API request models
 # ---------------------------------------------------------------------------
 
@@ -390,3 +506,26 @@ class ChatRequest(BaseModel):
 class SaveNotesRequest(BaseModel):
     player_id: str
     notes: dict
+
+
+# ---------------------------------------------------------------------------
+# API response models
+# ---------------------------------------------------------------------------
+
+
+class CreateGameResponse(BaseModel):
+    game_id: str
+    status: str
+
+
+class JoinGameResponse(BaseModel):
+    player_id: str
+    player: Player
+
+
+class OkResponse(BaseModel):
+    ok: bool = True
+
+
+class ChatMessagesResponse(BaseModel):
+    messages: list[ChatMessage]

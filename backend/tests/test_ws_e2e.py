@@ -115,15 +115,17 @@ async def _start_game(http: AsyncClient, game_id: str) -> dict:
 
 
 async def _submit_action(
-    http: AsyncClient, game_id: str, player_id: str, action: dict
+    http: AsyncClient, game_id: str, player_id: str, action
 ) -> dict:
+    # Convert Pydantic models to dicts for JSON serialization
+    action_data = action.model_dump() if hasattr(action, "model_dump") else action
     resp = await http.post(
         f"/games/{game_id}/action",
-        json={"player_id": player_id, "action": action},
+        json={"player_id": player_id, "action": action_data},
     )
     assert (
         resp.status_code == 200
-    ), f"Action {action} by {player_id} failed: {resp.text}"
+    ), f"Action {action_data} by {player_id} failed: {resp.text}"
     return resp.json()
 
 
@@ -833,13 +835,13 @@ class TestAgentFullGameE2E:
                 result = await _submit_action(http, game_id, pid, action)
 
                 if (
-                    action["type"] == "suggest"
+                    action.type == "suggest"
                     and result.get("pending_show_by") is None
                 ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"],
-                        action["weapon"],
-                        action["room"],
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
             # Count WS messages delivered this round
@@ -926,13 +928,13 @@ class TestAgentFullGameE2E:
                 result = await _submit_action(http, game_id, pid, action)
 
                 if (
-                    action["type"] == "suggest"
+                    action.type == "suggest"
                     and result.get("pending_show_by") is None
                 ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"],
-                        action["weapon"],
-                        action["room"],
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
             for p, ws in ws_map.items():
@@ -1012,13 +1014,13 @@ class TestAgentFullGameE2E:
                 result = await _submit_action(http, game_id, pid, action)
 
                 if (
-                    action["type"] == "suggest"
+                    action.type == "suggest"
                     and result.get("pending_show_by") is None
                 ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"],
-                        action["weapon"],
-                        action["room"],
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
             for ws in ws_map.values():
@@ -1100,13 +1102,13 @@ class TestAgentFullGameE2E:
                 result = await _submit_action(http, game_id, pid, action)
 
                 if (
-                    action["type"] == "suggest"
+                    action.type == "suggest"
                     and result.get("pending_show_by") is None
                 ):
                     agents[pid].observe_suggestion_no_show(
-                        action["suspect"],
-                        action["weapon"],
-                        action["room"],
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
             for ws in ws_map.values():

@@ -21,7 +21,19 @@ from .board import (
     build_graph,
     SquareType,
 )
-from .models import GameState, PlayerState
+from .models import (
+    AccuseAction,
+    EndTurnAction,
+    GameAction,
+    GameState,
+    MoveAction,
+    PlayerState,
+    RollAction,
+    SecretPassageAction,
+    SuggestAction,
+)
+
+from pydantic import TypeAdapter
 
 # Pre-build the board graph for agent pathfinding
 _GRID = build_grid()
@@ -31,6 +43,9 @@ _ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
 
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
+
+# TypeAdapter for parsing LLM response dicts into typed GameAction models
+_action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)
 
 
 def _compute_room_distances(
@@ -778,8 +793,8 @@ class BaseAgent(ABC):
     @abstractmethod
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState, errors: int = 0
-    ) -> dict:
-        """Return an action dict for the current turn phase."""
+    ) -> GameAction:
+        """Return a typed GameAction for the current turn phase."""
         ...
 
     @abstractmethod
@@ -817,7 +832,7 @@ class RandomAgent(BaseAgent):
 
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState, errors: int = 0
-    ) -> dict:
+    ) -> GameAction:
         player_id = player_state.your_player_id
         known_cards = player_state.your_cards
         current_room = game_state.current_room
@@ -847,12 +862,6 @@ class RandomAgent(BaseAgent):
             and len(unknown_rooms) == 1
             and "accuse" in available
         ):
-            action = {
-                "type": "accuse",
-                "suspect": unknown_suspects[0],
-                "weapon": unknown_weapons[0],
-                "room": unknown_rooms[0],
-            }
             logger.info(
                 "[%s:%s] ACCUSING — narrowed to: %s / %s / %s",
                 self.agent_type,
@@ -861,7 +870,11 @@ class RandomAgent(BaseAgent):
                 unknown_weapons[0],
                 unknown_rooms[0],
             )
-            return action
+            return AccuseAction(
+                suspect=unknown_suspects[0],
+                weapon=unknown_weapons[0],
+                room=unknown_rooms[0],
+            )
 
         # Phase 1: suggest first if already in a room (e.g. moved by suggestion)
         room = current_room.get(player_id)
@@ -877,12 +890,7 @@ class RandomAgent(BaseAgent):
                 weapon,
                 room,
             )
-            return {
-                "type": "suggest",
-                "suspect": suspect,
-                "weapon": weapon,
-                "room": room,
-            }
+            return SuggestAction(suspect=suspect, weapon=weapon, room=room)
 
         # Phase 2: secret passage — 50% chance if available
         if "secret_passage" in available and random.random() < 0.5:
@@ -896,12 +904,12 @@ class RandomAgent(BaseAgent):
                     my_room,
                     dest_room,
                 )
-                return {"type": "secret_passage"}
+                return SecretPassageAction()
 
         # Phase 3: roll dice
         if "roll" in available:
             logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
-            return {"type": "roll"}
+            return RollAction()
 
         # Phase 4: choose room to move toward (dice already rolled)
         if "move" in available:
@@ -963,11 +971,11 @@ class RandomAgent(BaseAgent):
                     player_id,
                     target_room,
                 )
-            return {"type": "move", "room": target_room}
+            return MoveAction(room=target_room)
 
         # Phase 5: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
-        return {"type": "end_turn"}
+        return EndTurnAction()
 
     async def decide_show_card(
         self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
@@ -1164,7 +1172,7 @@ class WandererAgent(BaseAgent):
 
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState, errors: int = 0
-    ) -> dict:
+    ) -> GameAction:
         player_id = player_state.your_player_id
         available = player_state.available_actions
         current_room = game_state.current_room.get(player_id)
@@ -1172,7 +1180,7 @@ class WandererAgent(BaseAgent):
         # Phase 1: roll dice first
         if "roll" in available:
             logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
-            return {"type": "roll"}
+            return RollAction()
 
         # Phase 2: move to a random room
         if "move" in available:
@@ -1181,11 +1189,11 @@ class WandererAgent(BaseAgent):
                 candidates = list(ROOMS)
             target = random.choice(candidates)
             logger.info("[%s:%s] Wandering to '%s'", self.agent_type, player_id, target)
-            return {"type": "move", "room": target}
+            return MoveAction(room=target)
 
         # Phase 3: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
-        return {"type": "end_turn"}
+        return EndTurnAction()
 
     async def decide_show_card(
         self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
@@ -1686,7 +1694,7 @@ class LLMAgent(BaseAgent):
 
     async def decide_action(
         self, game_state: GameState, player_state: PlayerState, errors: int = 0
-    ) -> dict:
+    ) -> GameAction:
         # Flush any inference notifications accumulated since last decision
         await self._flush_pending_inferences()
 
@@ -1736,7 +1744,7 @@ class LLMAgent(BaseAgent):
                 self.agent_type,
                 player_id,
             )
-            return {"type": "roll"}
+            return RollAction()
 
         if errors > 2:
             logger.warning(
@@ -1824,7 +1832,7 @@ class LLMAgent(BaseAgent):
                         room = parsed.get("room")
                         if room:
                             self.rooms_suggested_in.add(room)
-                    return parsed
+                    return _action_adapter.validate_python(parsed)
                 else:
                     llm_trace_logger.debug(
                         "[%s:%s] LLM response failed validation: %s",
