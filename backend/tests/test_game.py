@@ -57,7 +57,7 @@ async def _place_player_in_room(game: ClueGame, player_id: str, room: str):
     state.current_room[player_id] = room
     state.dice_rolled = True
     state.moved = True
-    state.last_roll = [6]
+    state.last_roll = [3, 3]
     center = ROOM_CENTERS.get(room)
     if center:
         state.player_positions[player_id] = list(center)
@@ -570,7 +570,7 @@ async def test_roll_then_move(game: ClueGame):
     # Roll dice
     result = await game.process_action(whose_turn, {"type": "roll"})
     assert result.type == "roll"
-    assert result.dice >= 1
+    assert 2 <= result.dice <= 12
 
     # After rolling: move is available, roll and end_turn are not
     state = await game.get_state()

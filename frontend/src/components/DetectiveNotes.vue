@@ -12,7 +12,8 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
-        <span class="note-card">{{ card }}</span>
+        <img v-if="SUSPECT_IMAGES[card]" :src="SUSPECT_IMAGES[card]" :alt="card" class="note-thumb" :style="{ borderColor: SUSPECT_COLORS[card] || '#666' }" />
+        <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
     </div>
@@ -27,6 +28,7 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
+        <span class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -42,6 +44,8 @@
         :title="noteTitle(card)"
         @click="cycleNote(card)"
       >
+        <img v-if="ROOM_IMAGES[card]" :src="ROOM_IMAGES[card]" :alt="card" class="note-thumb note-thumb-room" />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark">{{ noteMark(card) }}</span>
       </div>
@@ -55,6 +59,60 @@ import { reactive, watch } from 'vue'
 const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
 const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
 const ROOMS = ['Kitchen', 'Ballroom', 'Conservatory', 'Billiard Room', 'Library', 'Study', 'Hall', 'Lounge', 'Dining Room']
+
+const SUSPECT_COLORS = {
+  'Miss Scarlett': '#e74c3c',
+  'Colonel Mustard': '#f39c12',
+  'Mrs. White': '#d8d0c8',
+  'Reverend Green': '#27ae60',
+  'Mrs. Peacock': '#2980b9',
+  'Professor Plum': '#8e44ad',
+}
+
+const SUSPECT_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
+}
+
+const ROOM_IMAGES = {
+  'Kitchen': '/images/Kitchen.jpg',
+  'Ballroom': '/images/BallRoom.jpg',
+  'Conservatory': '/images/Conservatory.jpg',
+  'Billiard Room': '/images/BillardRoom.jpg',
+  'Library': '/images/Library.jpg',
+  'Study': '/images/Study.jpg',
+  'Hall': '/images/Hall.jpg',
+  'Lounge': '/images/Lounge.jpg',
+  'Dining Room': '/images/DiningRoom.jpg',
+}
+
+const CARD_ICONS = {
+  'Miss Scarlett': '\u{1F48B}',
+  'Colonel Mustard': '\u{1F396}',
+  'Mrs. White': '\u{1F9F9}',
+  'Reverend Green': '\u{26EA}',
+  'Mrs. Peacock': '\u{1F99A}',
+  'Professor Plum': '\u{1F393}',
+  'Candlestick': '\u{1F56F}',
+  'Knife': '\u{1F5E1}',
+  'Lead Pipe': '\u{26CF}',
+  'Revolver': '\u{1F52B}',
+  'Rope': '\u{1FA62}',
+  'Wrench': '\u{1F527}',
+  'Kitchen': '\u{1F373}',
+  'Ballroom': '\u{1F483}',
+  'Conservatory': '\u{1FAB4}',
+  'Billiard Room': '\u{1F3B1}',
+  'Library': '\u{1F4DA}',
+  'Study': '\u{1F50D}',
+  'Hall': '\u{1F6AA}',
+  'Lounge': '\u{1F6CB}',
+  'Dining Room': '\u{1F37D}',
+}
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
 const CYCLE = ['', 'no', 'maybe', '']
@@ -115,12 +173,21 @@ function emitNotesChanged() {
 // Watch for any notes changes and emit
 watch(notes, () => emitNotesChanged(), { deep: true })
 
+function suspectStyle(card) {
+  const state = notes[card] ?? ''
+  if (state === 'have' || state === 'no' || state === 'seen') return {}
+  const color = SUSPECT_COLORS[card]
+  if (!color) return {}
+  // Default and 'maybe' states show the suspect's color
+  return { color }
+}
+
 function noteMark(card) {
   const state = notes[card] ?? ''
   if (state === 'have') return '\u2713'
   if (state === 'seen') return '\u{1F441}'
   if (state === 'no') return '\u2717'
-  if (state === 'maybe') return '?'
+  if (state === 'maybe') return '\u{25C6}' // ◆ diamond — person of interest
   return ''
 }
 
@@ -161,24 +228,31 @@ defineExpose({ markCard })
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 .detective-notes {
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.8rem;
 }
 
 h3 {
-  color: #c9a84c;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 h4 {
-  color: #8899aa;
-  font-size: 0.75rem;
+  color: #8a7e6b;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   margin-bottom: 0.2rem;
   padding-bottom: 0.15rem;
-  border-bottom: 1px solid #2c3e50;
+  border-bottom: 1px solid rgba(212, 168, 73, 0.1);
+  font-weight: 600;
 }
 
 .notes-section {
@@ -193,10 +267,11 @@ h4 {
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.15s;
+  color: #e8dcc8;
 }
 
 .note-row:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(212, 168, 73, 0.04);
 }
 
 .note-card {
@@ -215,32 +290,95 @@ h4 {
 
 /* State colors */
 .note-have {
-  color: #2ecc71;
+  color: #4caf50;
   opacity: 0.7;
 }
 
 .note-have .note-mark {
-  color: #2ecc71;
+  color: #4caf50;
 }
 
 .note-seen {
-  color: #888;
+  color: #6a6050;
 }
 
 .note-seen .note-mark {
-  color: #3498db;
+  color: #7aa8d4;
 }
 
 .note-no {
-  color: #666;
+  color: #4a4030;
   text-decoration: line-through;
 }
 
 .note-no .note-mark {
-  color: #e74c3c;
+  color: #c45050;
+}
+
+.note-maybe {
+  background: rgba(212, 168, 73, 0.04);
+}
+
+.note-maybe .note-card {
+  font-weight: 600;
 }
 
 .note-maybe .note-mark {
-  color: #f39c12;
+  color: #d4a849;
+  font-size: 0.7rem;
+}
+
+/* Suspect thumbnail */
+.note-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  flex-shrink: 0;
+  margin-right: 0.25rem;
+  border: 1.5px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s;
+}
+
+.note-no .note-thumb {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.note-have .note-thumb,
+.note-seen .note-thumb {
+  opacity: 0.5;
+}
+
+.note-thumb-room {
+  border-radius: 3px;
+  object-position: center center;
+  border-color: rgba(122, 200, 154, 0.4);
+}
+
+.note-row:hover .note-thumb {
+  box-shadow: 0 1px 6px rgba(212, 168, 73, 0.2);
+}
+
+/* Card emoji for weapons */
+.note-emoji {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-right: 0.2rem;
+  width: 18px;
+  text-align: center;
+  line-height: 1;
+}
+
+.note-no .note-emoji {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.note-have .note-emoji,
+.note-seen .note-emoji {
+  opacity: 0.5;
 }
 </style>

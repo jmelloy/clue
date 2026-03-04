@@ -387,8 +387,8 @@ class ClueGame:
 
         return state
 
-    def roll_dice(self) -> int:
-        return random.randint(1, 6)
+    def roll_dice(self) -> tuple[int, int]:
+        return (random.randint(1, 6), random.randint(1, 6))
 
     @staticmethod
     def _get_start_square(player_id: str, state: "GameState"):
@@ -505,8 +505,9 @@ class ClueGame:
         if state.dice_rolled:
             raise ValueError("You already rolled this turn")
 
-        total = self.roll_dice()
-        state.last_roll = [total]
+        die1, die2 = self.roll_dice()
+        total = die1 + die2
+        state.last_roll = [die1, die2]
         state.dice_rolled = True
 
         await self._save_state(state)
@@ -563,7 +564,7 @@ class ClueGame:
         if state.moved:
             raise ValueError("You already moved this turn")
 
-        total = state.last_roll[0] if state.last_roll else 0
+        total = sum(state.last_roll) if state.last_roll else 0
 
         room_name = action.room
         target_pos = action.position

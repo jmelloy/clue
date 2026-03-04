@@ -15,6 +15,7 @@ export default defineConfig({
       '/games': backendUrl,
       '/board': backendUrl,
       '/holdem': backendUrl,
+      '/images': backendUrl,
       '/ws': { target: backendWsUrl, ws: true }
     }
   }

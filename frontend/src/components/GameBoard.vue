@@ -4,11 +4,11 @@
     <header class="game-header">
       <div class="header-left">
         <h1>CLUE</h1>
-        <span class="game-id-label">Game {{ gameId }}</span>
+        <span class="game-id-label">Case {{ gameId }}</span>
       </div>
       <div class="header-center">
         <div v-if="gameState?.status === 'finished'" class="status-banner winner">
-          Game Over! {{ winnerName }} wins!
+          Case Closed! {{ winnerName }} wins!
           <div v-if="gameState.solution" class="solution-detail">
             <span class="highlight-suspect">{{ gameState.solution.suspect }}</span> with the
             <span class="highlight-weapon">{{ gameState.solution.weapon }}</span> in the
@@ -26,7 +26,7 @@
       <div class="header-right">
         <div v-if="isObserver" class="observer-badge">Observer</div>
         <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
-          <span class="dice">{{ gameState.last_roll[0] }}</span>
+          <span class="dice" v-for="(die, idx) in gameState.last_roll" :key="idx">{{ die }}</span>
         </div>
       </div>
     </header>
@@ -42,7 +42,6 @@
           :selectable="canMove"
           :reachable-rooms="reachableRooms"
           :reachable-positions="reachablePositions"
-          :board-data="boardData"
           @select-room="onRoomSelected"
           @select-position="onPositionSelected"
         />
@@ -58,7 +57,10 @@
               eliminated: !p.active,
               'is-me': p.id === playerId,
               'wanderer-legend': p.type === 'wanderer',
+              'observer-clickable': isObserver,
+              'observer-selected': isObserver && observerPlayerState?.playerId === p.id,
             }"
+            @click="isObserver && emit('select-player', p.id)"
           >
             <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }" :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
@@ -85,8 +87,9 @@
               <div v-if="suspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect">
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -103,8 +106,9 @@
               <div v-if="roomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div v-for="card in roomCards" :key="card" class="hand-card card-room">
-                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                  <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb card-thumb-room" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
                 </div>
@@ -142,13 +146,11 @@
               class="show-card-btn"
               :class="cardCategory(card)"
               @click="doShowCard(card)"
-            ><span class="card-icon">{{ cardIcon(card) }}</span> {{ card }}</button>
-          </div>
-          <div v-if="showCardCountdown !== null && matchingCards.length === 1" class="auto-show-card-timer">
-            <div class="timer-bar">
-              <div class="timer-bar-fill" :style="{ width: (showCardCountdown / (props.autoShowCardTimer?.seconds || 7)) * 100 + '%' }"></div>
-            </div>
-            <span class="timer-text">Auto-showing in {{ showCardCountdown }}s</span>
+            >
+              <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="show-card-thumb" />
+              <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+              {{ card }}
+            </button>
           </div>
         </section>
 
@@ -175,7 +177,7 @@
 
           <!-- Move (choose room after rolling) -->
           <div v-if="canMove" class="action-group">
-            <h3>Move (rolled {{ gameState?.last_roll?.[0] }})</h3>
+            <h3>Move (rolled {{ gameState?.last_roll?.reduce((a, b) => a + b, 0) }})</h3>
             <p class="action-hint">
               Click a highlighted room on the board or select below:
               <span v-if="reachableRooms.length" class="reachable-count">{{ reachableRooms.length }} room{{ reachableRooms.length !== 1 ? 's' : '' }} reachable</span>
@@ -259,20 +261,81 @@
           </div>
         </section>
 
-        <!-- Agent Debug Panel (shown for observers and when agents are in game) -->
-        <section v-if="(isObserver || hasAgentDebug) && hasAgentDebug" class="sidebar-panel debug-panel-wrapper">
-          <AgentDebugPanel
-            :agent-debug-data="agentDebugData"
-            :players="gameState?.players"
-          />
-        </section>
-
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
           <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes" @notes-changed="onNotesChanged" />
         </section>
+
+        <!-- Observer: Selected Player Info -->
+        <template v-if="isObserver">
+          <section v-if="!observerPlayerState" class="sidebar-panel observer-hint-panel">
+            <div class="observer-hint">Click a player below the board to inspect their cards and debug info.</div>
+          </section>
+
+          <section v-if="observerPlayerState" class="sidebar-panel cards-panel">
+            <h2>{{ observerSelectedPlayerName }}'s Cards</h2>
+            <div v-if="!observerCards.length" class="no-cards">No cards</div>
+            <template v-else>
+              <div v-if="observerSuspectCards.length" class="card-group">
+                <h3 class="card-group-label card-group-suspect">Suspects</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="observerWeaponCards.length" class="card-group">
+                <h3 class="card-group-label card-group-weapon">Weapons</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon">
+                    <span class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="observerRoomCards.length" class="card-group">
+                <h3 class="card-group-label card-group-room">Rooms</h3>
+                <div class="card-hand">
+                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image" @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb card-thumb-room" />
+                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                    <span class="card-label">{{ card }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+
+          <section v-if="observerSelectedDebug" class="sidebar-panel">
+            <AgentDebugPanel
+              :agent-debug-data="{ [observerPlayerState.playerId]: observerSelectedDebug }"
+              :players="gameState?.players"
+            />
+          </section>
+
+        </template>
       </div>
     </div>
+
+    <!-- Card Preview Overlay -->
+    <Teleport to="body">
+      <div v-if="previewCard && hasCardImage(previewCard)" class="card-preview-overlay" @click="closePreview">
+        <div class="card-preview-frame" @click.stop>
+          <div class="card-preview-ornament top-left"></div>
+          <div class="card-preview-ornament top-right"></div>
+          <div class="card-preview-ornament bottom-left"></div>
+          <div class="card-preview-ornament bottom-right"></div>
+          <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+          <div class="card-preview-nameplate">
+            <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
+            <span class="card-preview-name">{{ previewCard }}</span>
+          </div>
+          <button class="card-preview-close" @click="closePreview">&times;</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Bottom: Chat -->
     <div class="chat-row">
@@ -289,10 +352,10 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import AgentDebugPanel from './AgentDebugPanel.vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
+import AgentDebugPanel from './AgentDebugPanel.vue'
 
 const SUSPECTS = ['Miss Scarlett', 'Colonel Mustard', 'Mrs. White', 'Reverend Green', 'Mrs. Peacock', 'Professor Plum']
 const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
@@ -327,15 +390,14 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
-  autoShowCardTimer: { type: Object, default: null },
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
-  boardData: { type: Object, default: null },
   agentDebugData: { type: Object, default: () => ({}) },
+  observerPlayerState: { type: Object, default: null },
 })
 
-const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
+const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown', 'select-player'])
 
 const notesRef = ref(null)
 
@@ -379,48 +441,13 @@ watch(
   { immediate: true }
 )
 
-// Auto-show-card timer countdown
-const showCardCountdown = ref(null)
-let showCardCountdownInterval = null
-
-function clearShowCardCountdown() {
-  if (showCardCountdownInterval) {
-    clearInterval(showCardCountdownInterval)
-    showCardCountdownInterval = null
-  }
-  showCardCountdown.value = null
-}
-
-watch(
-  () => props.autoShowCardTimer,
-  (timer) => {
-    clearShowCardCountdown()
-    if (timer && timer.seconds > 0) {
-      const updateCountdown = () => {
-        const elapsed = (Date.now() - timer.startedAt) / 1000
-        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed))
-        showCardCountdown.value = remaining
-        if (remaining <= 0) clearShowCardCountdown()
-      }
-      updateCountdown()
-      showCardCountdownInterval = setInterval(updateCountdown, 1000)
-    }
-  },
-  { immediate: true }
-)
-
-onUnmounted(() => {
-  clearCountdown()
-  clearShowCardCountdown()
-})
+onUnmounted(() => clearCountdown())
 
 const timerForMe = computed(() => countdown.value !== null && props.autoEndTimer?.playerId === props.playerId)
 
 // Computed
 const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
 const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
-
-const hasAgentDebug = computed(() => Object.keys(props.agentDebugData || {}).length > 0)
 
 const canSecretPassage = computed(() => props.availableActions.includes('secret_passage'))
 const canRoll = computed(() => props.availableActions.includes('roll'))
@@ -448,6 +475,20 @@ const winnerName = computed(() => {
 const suspectCards = computed(() => props.yourCards.filter(c => SUSPECTS.includes(c)))
 const weaponCards = computed(() => props.yourCards.filter(c => WEAPONS.includes(c)))
 const roomCards = computed(() => props.yourCards.filter(c => ROOMS.includes(c)))
+
+// Observer selected player computeds
+const observerCards = computed(() => props.observerPlayerState?.your_cards ?? [])
+const observerSuspectCards = computed(() => observerCards.value.filter(c => SUSPECTS.includes(c)))
+const observerWeaponCards = computed(() => observerCards.value.filter(c => WEAPONS.includes(c)))
+const observerRoomCards = computed(() => observerCards.value.filter(c => ROOMS.includes(c)))
+const observerSelectedPlayerName = computed(() => {
+  if (!props.observerPlayerState) return ''
+  return playerName(props.observerPlayerState.playerId)
+})
+const observerSelectedDebug = computed(() => {
+  if (!props.observerPlayerState) return null
+  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null
+})
 
 const matchingCards = computed(() => {
   if (!props.showCardRequest) return []
@@ -479,11 +520,74 @@ function cardCategory(card) {
   return ''
 }
 
+// Per-card emoji icons
+const CARD_ICONS = {
+  // Suspects
+  'Miss Scarlett': '\u{1F48B}',     // 💋
+  'Colonel Mustard': '\u{1F396}',   // 🎖️
+  'Mrs. White': '\u{1F9F9}',        // 🧹
+  'Reverend Green': '\u{26EA}',     // ⛪
+  'Mrs. Peacock': '\u{1F99A}',      // 🦚
+  'Professor Plum': '\u{1F393}',    // 🎓
+  // Weapons
+  'Candlestick': '\u{1F56F}',       // 🕯️
+  'Knife': '\u{1F5E1}',             // 🗡️
+  'Lead Pipe': '\u{26CF}',         // 🪈
+  'Revolver': '\u{1F52B}',          // 🔫
+  'Rope': '\u{1FA62}',              // 🪢
+  'Wrench': '\u{1F527}',            // 🔧
+  // Rooms
+  'Kitchen': '\u{1F373}',           // 🍳
+  'Ballroom': '\u{1F483}',          // 💃
+  'Conservatory': '\u{1FAB4}',      // 🪴
+  'Billiard Room': '\u{1F3B1}',     // 🎱
+  'Library': '\u{1F4DA}',           // 📚
+  'Study': '\u{1F50D}',             // 🔍
+  'Hall': '\u{1F6AA}',              // 🚪
+  'Lounge': '\u{1F6CB}',            // 🛋️
+  'Dining Room': '\u{1F37D}',       // 🍽️
+}
+
+// Card image filenames
+const CARD_IMAGES = {
+  'Miss Scarlett': '/images/MissScarlett.jpg',
+  'Colonel Mustard': '/images/ColonelMustard.jpg',
+  'Mrs. White': '/images/MrsWhite.jpg',
+  'Reverend Green': '/images/MrGreen.jpg',
+  'Mrs. Peacock': '/images/MrsPeacock.jpg',
+  'Professor Plum': '/images/ProfessorPlum.jpg',
+  'Kitchen': '/images/Kitchen.jpg',
+  'Ballroom': '/images/BallRoom.jpg',
+  'Conservatory': '/images/Conservatory.jpg',
+  'Billiard Room': '/images/BillardRoom.jpg',
+  'Library': '/images/Library.jpg',
+  'Study': '/images/Study.jpg',
+  'Hall': '/images/Hall.jpg',
+  'Lounge': '/images/Lounge.jpg',
+  'Dining Room': '/images/DiningRoom.jpg',
+}
+
 function cardIcon(card) {
-  if (SUSPECTS.includes(card)) return '\u{1F464}'
-  if (WEAPONS.includes(card)) return '\u{1F52A}'
-  if (ROOMS.includes(card)) return '\u{1F3E0}'
-  return '\u{1F0CF}'
+  return CARD_ICONS[card] || '\u{1F0CF}'
+}
+
+function hasCardImage(card) {
+  return !!CARD_IMAGES[card]
+}
+
+function cardImageUrl(card) {
+  return CARD_IMAGES[card] || ''
+}
+
+// Card preview state
+const previewCard = ref(null)
+
+function showCardPreview(card) {
+  previewCard.value = previewCard.value === card ? null : card
+}
+
+function closePreview() {
+  previewCard.value = null
 }
 
 // Actions
@@ -570,10 +674,13 @@ watch(
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 .game-board {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  font-family: 'Crimson Text', Georgia, serif;
 }
 
 /* Header */
@@ -581,8 +688,9 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #16213e;
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
+  border: 1px solid rgba(212, 168, 73, 0.1);
+  border-radius: 8px;
   padding: 0.6rem 1.2rem;
   gap: 1rem;
 }
@@ -594,16 +702,19 @@ watch(
 }
 
 .header-left h1 {
-  font-size: 1.6rem;
-  color: #c9a84c;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #d4a849;
   letter-spacing: 0.15em;
   margin: 0;
+  text-shadow: 0 0 20px rgba(212, 168, 73, 0.15);
 }
 
 .game-id-label {
-  font-size: 0.75rem;
-  color: #667;
-  font-family: monospace;
+  font-size: 0.7rem;
+  color: #5a5040;
+  letter-spacing: 0.08em;
 }
 
 .header-center {
@@ -612,27 +723,28 @@ watch(
 }
 
 .status-banner {
-  font-size: 1rem;
-  font-weight: bold;
+  font-size: 0.95rem;
+  font-weight: 600;
   padding: 0.3rem 1rem;
   border-radius: 20px;
   display: inline-block;
+  letter-spacing: 0.02em;
 }
 
 .status-banner.my-turn {
-  background: rgba(241, 196, 15, 0.2);
-  color: #f1c40f;
-  border: 1px solid rgba(241, 196, 15, 0.3);
+  background: rgba(212, 168, 73, 0.15);
+  color: #d4a849;
+  border: 1px solid rgba(212, 168, 73, 0.25);
 }
 
 .status-banner.waiting {
-  color: #8899aa;
+  color: #6a6050;
 }
 
 .status-banner.winner {
-  background: rgba(46, 204, 113, 0.2);
-  color: #2ecc71;
-  border: 1px solid rgba(46, 204, 113, 0.3);
+  background: rgba(46, 160, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(46, 160, 80, 0.25);
 }
 
 .solution-detail {
@@ -648,46 +760,35 @@ watch(
 }
 
 .observer-badge {
-  background: #3498db;
-  color: #fff;
-  font-size: 0.7rem;
+  background: rgba(212, 168, 73, 0.12);
+  color: #d4a849;
+  font-size: 0.65rem;
   padding: 0.2rem 0.6rem;
-  border-radius: 10px;
-  font-weight: bold;
+  border-radius: 3px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
 }
 
 .dice-display {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.9rem;
 }
 
 .dice {
-  background: #fff;
-  color: #1a1a2e;
+  background: #d4a849;
+  color: #1a1008;
   width: 28px;
   height: 28px;
-  border-radius: 5px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 0.95rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-}
-
-.dice-plus, .dice-eq {
-  color: #667;
-  font-size: 0.8rem;
-}
-
-.dice-total {
-  color: #f1c40f;
-  font-weight: bold;
-  font-size: 1.1rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 /* Main layout */
@@ -707,8 +808,9 @@ watch(
 
 /* Player legend */
 .player-legend {
-  background: #16213e;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.9), rgba(18, 14, 10, 0.95));
+  border: 1px solid rgba(212, 168, 73, 0.08);
+  border-radius: 6px;
   padding: 0.5rem 0.75rem;
   display: flex;
   flex-wrap: wrap;
@@ -720,23 +822,46 @@ watch(
   align-items: center;
   gap: 0.35rem;
   padding: 0.2rem 0.5rem;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.75rem;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid transparent;
+  transition: border-color 0.2s;
 }
 
 .legend-item.active {
-  border-color: rgba(241, 196, 15, 0.4);
-  background: rgba(241, 196, 15, 0.1);
+  border-color: rgba(212, 168, 73, 0.3);
+  background: rgba(212, 168, 73, 0.06);
 }
 
 .legend-item.eliminated {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .legend-item.is-me {
-  border-color: rgba(52, 152, 219, 0.4);
+  border-color: rgba(212, 168, 73, 0.15);
+}
+
+.legend-item.observer-clickable {
+  cursor: pointer;
+}
+
+.legend-item.observer-clickable:hover {
+  border-color: rgba(142, 68, 173, 0.4);
+  background: rgba(142, 68, 173, 0.08);
+}
+
+.legend-item.observer-selected {
+  border-color: rgba(142, 68, 173, 0.6);
+  background: rgba(142, 68, 173, 0.12);
+}
+
+.observer-hint {
+  font-size: 0.8rem;
+  color: #778;
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
 }
 
 .legend-token {
@@ -749,50 +874,52 @@ watch(
   font-size: 0.55rem;
   font-weight: bold;
   flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .legend-name {
-  font-weight: bold;
-  color: #ddd;
+  font-weight: 600;
+  color: #e8dcc8;
 }
 
 .legend-character {
-  color: #778;
+  color: #5a5040;
   font-style: italic;
 }
 
 .legend-room {
-  color: #c9a84c;
+  color: #d4a849;
   font-size: 0.7rem;
 }
 
 .legend-status {
-  color: #e74c3c;
+  color: #c45050;
   font-size: 0.65rem;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .legend-turn {
-  background: #f1c40f;
-  color: #1a1a2e;
+  background: #d4a849;
+  color: #1a1008;
   font-size: 0.6rem;
   padding: 0.05rem 0.3rem;
-  border-radius: 6px;
-  font-weight: bold;
+  border-radius: 3px;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .wanderer-legend {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .wanderer-token-legend {
-  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
 }
 
 .legend-wanderer-label {
-  color: #667;
+  color: #4a4030;
   font-size: 0.6rem;
   font-style: italic;
 }
@@ -807,15 +934,19 @@ watch(
 }
 
 .sidebar-panel {
-  background: #16213e;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
+  border: 1px solid rgba(212, 168, 73, 0.08);
+  border-radius: 6px;
   padding: 0.8rem;
 }
 
 .sidebar-panel h2 {
-  color: #c9a84c;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
   font-size: 0.9rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
+  letter-spacing: 0.03em;
 }
 
 /* Collapsible header */
@@ -832,9 +963,9 @@ watch(
 }
 
 .collapse-indicator {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   transition: transform 0.2s ease;
-  color: #667;
+  color: #5a5040;
 }
 
 .collapse-indicator.collapsed {
@@ -853,28 +984,28 @@ watch(
   align-items: center;
   gap: 0.3rem;
   padding: 0.3rem 0.55rem;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 0.78rem;
   font-weight: 500;
   border: 1px solid;
 }
 
 .card-suspect {
-  background: rgba(231, 76, 60, 0.15);
-  border-color: rgba(231, 76, 60, 0.3);
-  color: #e8a49c;
+  background: rgba(155, 27, 48, 0.15);
+  border-color: rgba(155, 27, 48, 0.3);
+  color: #d4888a;
 }
 
 .card-weapon {
-  background: rgba(52, 152, 219, 0.15);
-  border-color: rgba(52, 152, 219, 0.3);
-  color: #94c6e8;
+  background: rgba(26, 58, 107, 0.2);
+  border-color: rgba(26, 58, 107, 0.4);
+  color: #7aa8d4;
 }
 
 .card-room {
-  background: rgba(46, 204, 113, 0.15);
-  border-color: rgba(46, 204, 113, 0.3);
-  color: #8ed8ad;
+  background: rgba(26, 107, 60, 0.15);
+  border-color: rgba(26, 107, 60, 0.3);
+  color: #7ac89a;
 }
 
 .card-group {
@@ -886,24 +1017,16 @@ watch(
 }
 
 .card-group-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   margin-bottom: 0.25rem;
   font-weight: 600;
 }
 
-.card-group-suspect {
-  color: #e8a49c;
-}
-
-.card-group-weapon {
-  color: #94c6e8;
-}
-
-.card-group-room {
-  color: #8ed8ad;
-}
+.card-group-suspect { color: #d4888a; }
+.card-group-weapon { color: #7aa8d4; }
+.card-group-room { color: #7ac89a; }
 
 .card-icon {
   font-size: 0.85rem;
@@ -914,15 +1037,15 @@ watch(
 }
 
 .no-cards {
-  color: #556;
+  color: #4a4030;
   font-style: italic;
   font-size: 0.85rem;
 }
 
 /* Card shown notification */
 .shown-card-panel {
-  border: 1px solid rgba(52, 152, 219, 0.4);
-  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(26, 58, 107, 0.4);
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), rgba(18, 14, 10, 0.95));
 }
 
 .shown-card-notice {
@@ -930,6 +1053,7 @@ watch(
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
+  color: #e8dcc8;
 }
 
 .shown-card-icon {
@@ -938,61 +1062,52 @@ watch(
 }
 
 .shown-card-name {
-  color: #3498db;
+  color: #7aa8d4;
   font-weight: bold;
 }
 
 .dismiss-btn {
   background: none;
   border: none;
-  color: #888;
+  color: #5a5040;
   font-size: 1.2rem;
   cursor: pointer;
   padding: 0;
   margin-left: auto;
+  transition: color 0.2s;
 }
 
 .dismiss-btn:hover {
-  color: #fff;
+  color: #e8dcc8;
 }
 
 /* Show card request */
 .show-card-request-panel {
-  border: 2px solid #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+  border: 1.5px solid rgba(155, 27, 48, 0.6);
+  background: linear-gradient(135deg, rgba(155, 27, 48, 0.1), rgba(18, 14, 10, 0.95));
   animation: pulse-border 2s ease-in-out infinite;
 }
 
 @keyframes pulse-border {
-  0%, 100% { border-color: #e74c3c; }
-  50% { border-color: #c0392b; box-shadow: 0 0 12px rgba(231, 76, 60, 0.3); }
+  0%, 100% { border-color: rgba(155, 27, 48, 0.6); }
+  50% { border-color: rgba(155, 27, 48, 0.9); box-shadow: 0 0 12px rgba(155, 27, 48, 0.15); }
 }
 
 .show-card-desc {
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   line-height: 1.4;
+  color: #e8dcc8;
 }
 
 /* Card type color highlights */
-.highlight-suspect {
-  color: #e8a49c;
-  font-weight: bold;
-}
-
-.highlight-weapon {
-  color: #94c6e8;
-  font-weight: bold;
-}
-
-.highlight-room {
-  color: #8ed8ad;
-  font-weight: bold;
-}
+.highlight-suspect { color: #d4888a; font-weight: bold; }
+.highlight-weapon { color: #7aa8d4; font-weight: bold; }
+.highlight-room { color: #7ac89a; font-weight: bold; }
 
 .show-card-prompt {
   font-size: 0.8rem;
-  color: #aaa;
+  color: #6a6050;
   margin-bottom: 0.4rem;
 }
 
@@ -1003,35 +1118,29 @@ watch(
 }
 
 .show-card-btn {
-  color: #fff;
+  color: #e8dcc8;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 0.85rem;
-  transition: background 0.2s;
+  font-family: 'Crimson Text', Georgia, serif;
+  transition: all 0.2s;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: #e74c3c;
+  background: #9b1b30;
 }
 
 .show-card-btn:hover {
-  filter: brightness(0.85);
+  filter: brightness(1.15);
+  transform: translateY(-1px);
 }
 
-.show-card-btn.card-suspect {
-  background: #c0392b;
-}
-
-.show-card-btn.card-weapon {
-  background: #2471a3;
-}
-
-.show-card-btn.card-room {
-  background: #1e8449;
-}
+.show-card-btn.card-suspect { background: #9b1b30; }
+.show-card-btn.card-weapon { background: #1a3a6b; }
+.show-card-btn.card-room { background: #1a6b3c; }
 
 /* Actions */
 .action-group {
@@ -1040,19 +1149,20 @@ watch(
 
 .action-group h3 {
   font-size: 0.8rem;
-  color: #8899aa;
+  color: #8a7e6b;
   margin-bottom: 0.3rem;
+  font-weight: 600;
 }
 
 .action-hint {
   font-size: 0.75rem;
-  color: #667;
+  color: #5a5040;
   margin-bottom: 0.3rem;
 }
 
 .reachable-count {
   display: inline-block;
-  color: #2ecc71;
+  color: #4caf50;
   font-weight: bold;
   margin-left: 0.3rem;
 }
@@ -1061,82 +1171,98 @@ watch(
   display: block;
   width: 100%;
   margin-bottom: 0.35rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: 5px;
-  border: 1px solid #334;
-  background: #0f3460;
-  color: #eee;
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 168, 73, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8dcc8;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.action-select:focus {
+  border-color: rgba(212, 168, 73, 0.3);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
 }
 
 .action-btn {
   display: block;
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 4px;
   border: none;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 0.85rem;
-  transition: all 0.2s;
+  font-family: 'Crimson Text', Georgia, serif;
+  transition: all 0.25s;
+  letter-spacing: 0.02em;
 }
 
 .action-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .passage-btn {
-  background: #8e44ad;
-  color: #fff;
+  background: linear-gradient(135deg, #5c2d82, #4a2268);
+  color: #e8dcc8;
 }
 
 .passage-btn:hover {
-  background: #7d3c98;
+  box-shadow: 0 3px 12px rgba(92, 45, 130, 0.2);
+  transform: translateY(-1px);
 }
 
 .roll-btn {
-  background: #c9a84c;
-  color: #1a1a2e;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
 }
 
 .roll-btn:hover {
-  background: #d4b85c;
+  box-shadow: 0 3px 12px rgba(212, 168, 73, 0.25);
+  transform: translateY(-1px);
 }
 
 .move-btn {
-  background: #c9a84c;
-  color: #1a1a2e;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
 }
 
 .move-btn:not(:disabled):hover {
-  background: #d4b85c;
+  box-shadow: 0 3px 12px rgba(212, 168, 73, 0.25);
+  transform: translateY(-1px);
 }
 
 .suggest-btn {
-  background: #3498db;
-  color: #fff;
+  background: linear-gradient(135deg, #1a3a6b, #153058);
+  color: #e8dcc8;
 }
 
 .suggest-btn:not(:disabled):hover {
-  background: #2980b9;
+  box-shadow: 0 3px 12px rgba(26, 58, 107, 0.3);
+  transform: translateY(-1px);
 }
 
 .toggle-accuse-btn {
   background: transparent;
-  border: 1px solid #555;
-  color: #888;
+  border: 1px solid rgba(155, 27, 48, 0.2);
+  color: #6a6050;
   font-weight: normal;
 }
 
 .toggle-accuse-btn:hover {
-  border-color: #e74c3c;
-  color: #e74c3c;
+  border-color: rgba(155, 27, 48, 0.5);
+  color: #c45050;
 }
 
 .action-warning {
   font-size: 0.75rem;
-  color: #e74c3c;
+  color: #c45050;
   margin-bottom: 0.4rem;
   font-style: italic;
 }
@@ -1147,37 +1273,36 @@ watch(
 }
 
 .accuse-btn {
-  background: #e74c3c;
-  color: #fff;
+  background: linear-gradient(135deg, #9b1b30, #7a1525);
+  color: #e8dcc8;
   flex: 1;
 }
 
 .accuse-btn:not(:disabled):hover {
-  background: #c0392b;
+  box-shadow: 0 3px 12px rgba(155, 27, 48, 0.25);
+  transform: translateY(-1px);
 }
 
 .cancel-btn {
-  background: #444;
-  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+  color: #6a6050;
   flex: 0;
   white-space: nowrap;
 }
 
 .cancel-btn:hover {
-  background: #555;
+  background: rgba(255, 255, 255, 0.08);
+  color: #8a7e6b;
 }
 
 .end-turn-btn {
-  background: #27ae60;
-  color: #fff;
+  background: linear-gradient(135deg, #1a6b3c, #14562e);
+  color: #e8dcc8;
 }
 
 .end-turn-btn:hover {
-  background: #229954;
-}
-
-.auto-show-card-timer {
-  margin-top: 0.6rem;
+  box-shadow: 0 3px 12px rgba(26, 107, 60, 0.2);
+  transform: translateY(-1px);
 }
 
 .auto-end-timer {
@@ -1185,8 +1310,8 @@ watch(
 }
 
 .timer-bar {
-  height: 4px;
-  background: #334;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 0.25rem;
@@ -1194,20 +1319,20 @@ watch(
 
 .timer-bar-fill {
   height: 100%;
-  background: #e67e22;
+  background: #d4a849;
   border-radius: 2px;
   transition: width 1s linear;
 }
 
 .timer-text {
   font-size: 0.75rem;
-  color: #e67e22;
-  font-weight: bold;
+  color: #d4a849;
+  font-weight: 600;
 }
 
 .header-timer {
   font-size: 0.85rem;
-  color: #e67e22;
+  color: #d4a849;
 }
 
 /* Waiting message */
@@ -1217,15 +1342,9 @@ watch(
 
 .waiting-message {
   padding: 0.5rem;
-  color: #8899aa;
+  color: #6a6050;
   font-size: 0.9rem;
-}
-
-/* Agent debug panel */
-.debug-panel-wrapper {
-  max-height: 400px;
-  overflow-y: auto;
-  border-color: rgba(142, 68, 173, 0.2);
+  font-style: italic;
 }
 
 /* Notes panel */
@@ -1242,9 +1361,196 @@ watch(
 
 .chat-panel-wrapper {
   flex: 1;
-  background: #16213e;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
+  border: 1px solid rgba(212, 168, 73, 0.08);
+  border-radius: 6px;
   padding: 0.8rem;
+}
+
+/* Card thumbnails in hand */
+.card-with-image {
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.card-with-image:hover {
+  background: rgba(155, 27, 48, 0.28);
+  border-color: rgba(212, 168, 73, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 8px rgba(212, 168, 73, 0.1);
+}
+
+.card-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  border: 1.5px solid rgba(212, 168, 73, 0.4);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.card-thumb-room {
+  border-radius: 4px;
+  object-position: center center;
+}
+
+.card-with-image:hover .card-thumb {
+  border-color: #d4a849;
+  box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
+}
+
+.card-with-image.card-room:hover {
+  background: rgba(26, 107, 60, 0.28);
+}
+
+.show-card-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+/* Card Preview Overlay */
+.card-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card-preview-frame {
+  position: relative;
+  width: 280px;
+  background: linear-gradient(145deg, #2a2018, #1a1408);
+  border: 3px solid #d4a849;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow:
+    0 0 30px rgba(212, 168, 73, 0.15),
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(212, 168, 73, 0.1);
+  animation: cardReveal 0.3s ease;
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotateY(15deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotateY(0);
+  }
+}
+
+.card-preview-ornament {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #d4a849;
+  border-style: solid;
+  opacity: 0.5;
+}
+
+.card-preview-ornament.top-left {
+  top: 6px;
+  left: 6px;
+  border-width: 2px 0 0 2px;
+  border-radius: 4px 0 0 0;
+}
+
+.card-preview-ornament.top-right {
+  top: 6px;
+  right: 6px;
+  border-width: 2px 2px 0 0;
+  border-radius: 0 4px 0 0;
+}
+
+.card-preview-ornament.bottom-left {
+  bottom: 6px;
+  left: 6px;
+  border-width: 0 0 2px 2px;
+  border-radius: 0 0 0 4px;
+}
+
+.card-preview-ornament.bottom-right {
+  bottom: 6px;
+  right: 6px;
+  border-width: 0 2px 2px 0;
+  border-radius: 0 0 4px 0;
+}
+
+.card-preview-image {
+  width: 100%;
+  border-radius: 6px;
+  display: block;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.card-preview-nameplate {
+  text-align: center;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
+  border: 1px solid rgba(212, 168, 73, 0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.card-preview-icon {
+  font-size: 1.1rem;
+}
+
+.card-preview-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.card-preview-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 168, 73, 0.3);
+  background: #1a1408;
+  color: #d4a849;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.card-preview-close:hover {
+  background: #d4a849;
+  color: #1a1408;
+  border-color: #d4a849;
 }
 
 /* Responsive */

@@ -38,9 +38,11 @@
         :reachable-positions="reachablePositions"
         :saved-notes="savedNotes"
         :agent-debug-data="agentDebugData"
+        :observer-player-state="observerPlayerState"
         @action="sendAction"
         @send-chat="sendChat"
         @dismiss-card-shown="cardShown = null"
+        @select-player="onObserverSelectPlayer"
       />
     </template>
 
@@ -96,6 +98,7 @@ const reachablePositions = ref([])
 const savedNotes = ref(null)
 const boardData = ref(null)
 const agentDebugData = ref({})
+const observerPlayerState = ref(null)
 const currentGameType = ref('clue')  // 'clue' or 'holdem'
 const pokerTableRef = ref(null)
 
@@ -289,7 +292,6 @@ function handleMessage(msg) {
         const positions = { ...(gameState.value.player_positions || {}) }
         if (msg.position) positions[msg.player_id] = msg.position
         const updates = { current_room: rooms, player_positions: positions, moved: true }
-        if (msg.dice) updates.last_roll = [msg.dice]
         gameState.value = { ...gameState.value, ...updates }
       }
       // Clear reachable highlights after movement
@@ -390,6 +392,7 @@ function resetState() {
   reachablePositions.value = []
   savedNotes.value = null
   agentDebugData.value = {}
+  observerPlayerState.value = null
   currentGameType.value = 'clue'
 }
 
@@ -483,6 +486,23 @@ function loadAgentDebug(gid) {
     .catch(() => {})
 }
 
+function onObserverSelectPlayer(pid) {
+  if (!isObserver.value || !gameId.value) return
+  fetch(`/games/${gameId.value}/player/${pid}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (data) {
+        observerPlayerState.value = {
+          playerId: pid,
+          your_cards: data.your_cards || [],
+          available_actions: data.available_actions || [],
+          detective_notes: data.detective_notes || null,
+        }
+      }
+    })
+    .catch(() => {})
+}
+
 function onGameStarted(state) {
   gameState.value = { ...gameState.value, ...state, status: 'playing' }
 }
@@ -550,7 +570,6 @@ function handleHoldemMessage(msg) {
       break
 
     case 'player_action':
-      // Re-fetch full state to stay in sync after any action
       refreshHoldemState()
       break
 
@@ -565,7 +584,6 @@ function handleHoldemMessage(msg) {
       break
 
     case 'showdown':
-      // Show showdown overlay in PokerTable
       if (pokerTableRef.value) {
         pokerTableRef.value.onShowdown(msg)
       }
@@ -643,6 +661,6 @@ setInterval(() => {
 
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Georgia', serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+body { font-family: 'Georgia', serif; background: #0a0908; color: #e8dcc8; min-height: 100vh; }
 #clue-app { max-width: 1280px; margin: 0 auto; padding: 0.75rem; }
 </style>

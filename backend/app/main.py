@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,10 +80,12 @@ from .games.clue.models import (
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
+from .games.holdem.agents import HoldemAgent
 from .games.holdem.game import HoldemGame
 from .games.holdem.models import (
     HoldemActionMessage,
     HoldemActionRequest,
+    HoldemAddAgentRequest,
     HoldemChatBroadcastMessage,
     HoldemChatMessage,
     HoldemChatMessagesResponse,
@@ -137,6 +139,11 @@ async def lifespan(app: FastAPI):
     for task in _auto_show_card_timers.values():
         task.cancel()
     _auto_show_card_timers.clear()
+    # Cancel any holdem agent loops
+    for task in _holdem_agent_tasks.values():
+        task.cancel()
+    _holdem_agent_tasks.clear()
+    _holdem_agents.clear()
     await redis_client.aclose()
 
 
@@ -178,6 +185,15 @@ _AGENT_MODE = os.getenv("AGENT_MODE", "inline")
 
 # Accumulate wanderer turn info so we can emit one collapsed chat line
 _wanderer_turn_info: dict[tuple[str, str], WandererTurnInfo] = {}
+
+# Track holdem agent instances and background tasks per game
+_holdem_agents: dict[str, dict[str, HoldemAgent]] = {}
+_holdem_agent_tasks: dict[str, asyncio.Task] = {}
+
+_HOLDEM_AGENT_NAMES = [
+    "Ace", "Bluff", "Chip", "Dealer", "Edge",
+    "Flop", "Gambit", "High Card", "Jackpot", "Kicker",
+]
 
 
 def _new_id(length: int = 6) -> str:
@@ -402,9 +418,11 @@ async def _execute_action(
                 dice=result.dice,
             )
         else:
+            roll_parts = state.last_roll or []
+            roll_text = f"{result.dice} ({'+'.join(str(d) for d in roll_parts)})" if len(roll_parts) > 1 else str(result.dice)
             await _broadcast_chat(
                 game_id,
-                f"{actor_name} rolled {result.dice}.",
+                f"{actor_name} rolled {roll_text}.",
                 player_id,
             )
         await manager.send_to_player(
@@ -1006,13 +1024,41 @@ async def get_player_state(game_id: str, player_id: str):
 @app.get("/games/{game_id}/agent_debug")
 async def get_agent_debug(game_id: str):
     """Return current debug info for all agents in a game."""
+    # Check in-memory agents first (inline mode)
     agents = _game_agents.get(game_id, {})
-    if not agents:
-        return {"agents": []}
-    result = []
-    for pid, agent in agents.items():
-        result.append(agent.get_debug_info(status="idle"))
-    return {"agents": result}
+    if agents:
+        result = []
+        for pid, agent in agents.items():
+            result.append(agent.get_debug_info(status="idle"))
+        return {"agents": result}
+
+    # Fall back to Redis-stored debug data (external mode)
+    raw = await redis_client.get(f"game:{game_id}:agent_debug")
+    if raw:
+        import json as _json
+        debug_map = _json.loads(raw)
+        return {"agents": list(debug_map.values())}
+    return {"agents": []}
+
+
+@app.post("/games/{game_id}/agent_debug")
+async def post_agent_debug(game_id: str, request: Request):
+    """Receive agent debug info from external agent runner, store and broadcast."""
+    data = await request.json()
+    player_id = data.get("player_id")
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id required")
+
+    # Store in Redis (merge into per-game debug map)
+    import json as _json
+    key = f"game:{game_id}:agent_debug"
+    raw = await redis_client.get(key)
+    debug_map = _json.loads(raw) if raw else {}
+    debug_map[player_id] = data
+    await redis_client.set(key, _json.dumps(debug_map), ex=86400)
+
+    # Broadcast to WebSocket clients
+    await manager.broadcast(game_id, AgentDebugMessage(**data))
 
 
 @app.post("/games/{game_id}/join")
@@ -1172,6 +1218,18 @@ async def start_game(game_id: str):
                     player.character,
                     game_id,
                 )
+            # Show one random card from a real player's hand to each wanderer
+            real_agents = {
+                pid: a for pid, a in agents.items()
+                if a.agent_type != "wanderer" and a.own_cards
+            }
+            if real_agents:
+                for pid, a in agents.items():
+                    if a.agent_type == "wanderer":
+                        donor_pid, donor = random.choice(list(real_agents.items()))
+                        card = random.choice(list(donor.own_cards))
+                        a.observe_shown_card(card, shown_by=donor_pid)
+
             _game_agents[game_id] = agents
             _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
         else:
@@ -1414,6 +1472,25 @@ async def holdem_start_game(game_id: str):
             ),
         )
 
+    # Create agent instances and launch loop for agent players
+    agent_players = [p for p in state.players if p.player_type == "holdem_agent"]
+    if agent_players:
+        agents: dict[str, HoldemAgent] = {}
+        for player in agent_players:
+            agents[player.id] = HoldemAgent(
+                player_id=player.id,
+                name=player.name,
+                aggression=0.5,
+            )
+            logger.info(
+                "Created holdem agent for player %s (%s) in game %s",
+                player.id, player.name, game_id,
+            )
+        _holdem_agents[game_id] = agents
+        _holdem_agent_tasks[game_id] = asyncio.create_task(
+            _run_holdem_agent_loop(game_id)
+        )
+
     return state.model_dump()
 
 
@@ -1609,6 +1686,129 @@ async def holdem_send_chat(game_id: str, req: HoldemChatRequest):
 
 
 # ---------------------------------------------------------------------------
+# Hold'em agent support
+# ---------------------------------------------------------------------------
+
+
+async def _run_holdem_agent_loop(game_id: str):
+    """Background task that drives holdem agent players."""
+    agents = _holdem_agents.get(game_id)
+    if not agents:
+        return
+
+    logger.info(
+        "Holdem agent loop started for game %s with %d agent(s)",
+        game_id, len(agents),
+    )
+
+    try:
+        while True:
+            game = HoldemGame(game_id, redis_client)
+            state = await game.get_state()
+            if state is None or state.status != "playing":
+                break
+
+            whose_turn = state.whose_turn
+            if whose_turn and whose_turn in agents:
+                agent = agents[whose_turn]
+                # Pace actions for human observers
+                await asyncio.sleep(1.5)
+
+                # Re-check state after sleep
+                state = await game.get_state()
+                if not state or state.status != "playing":
+                    break
+                if state.whose_turn != whose_turn:
+                    continue
+
+                player_state = await game.get_player_state(whose_turn)
+                if not player_state or not player_state.available_actions:
+                    await asyncio.sleep(0.5)
+                    continue
+
+                action = agent.decide_action(state, player_state)
+                logger.info(
+                    "Holdem agent %s taking action %s in game %s",
+                    whose_turn, action.type, game_id,
+                )
+
+                try:
+                    await _holdem_execute_action(game_id, whose_turn, action)
+                except ValueError as exc:
+                    logger.warning(
+                        "Holdem agent %s action failed: %s", whose_turn, exc
+                    )
+                    # Fallback: check or fold
+                    if "check" in player_state.available_actions:
+                        await _holdem_execute_action(
+                            game_id, whose_turn, CheckAction()
+                        )
+                    elif "fold" in player_state.available_actions:
+                        await _holdem_execute_action(
+                            game_id, whose_turn, FoldAction()
+                        )
+
+                # Chat
+                chat_msg = agent.generate_chat(action.type)
+                if chat_msg:
+                    await _holdem_broadcast_chat(
+                        game_id, f"{agent.name}: {chat_msg}", whose_turn
+                    )
+            else:
+                # Human player's turn or no turn — poll
+                await asyncio.sleep(0.5)
+
+    except asyncio.CancelledError:
+        logger.info("Holdem agent loop cancelled for game %s", game_id)
+    except Exception:
+        logger.exception("Holdem agent loop error in game %s", game_id)
+    finally:
+        _holdem_agents.pop(game_id, None)
+        _holdem_agent_tasks.pop(game_id, None)
+        logger.info("Holdem agent loop ended for game %s", game_id)
+
+
+@app.post("/holdem/games/{game_id}/add_agent")
+async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = None):
+    """Add an AI agent to a Hold'em game in the waiting room."""
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    buy_in = req.buy_in if req else 1000
+    aggression = req.aggression if req else 0.5
+
+    # Pick a name
+    taken_names = {p.name for p in state.players}
+    name = req.name if req and req.name else ""
+    if not name:
+        for candidate in _HOLDEM_AGENT_NAMES:
+            if candidate not in taken_names:
+                name = candidate
+                break
+        if not name:
+            name = f"Bot {len(state.players) + 1}"
+
+    player_id = _new_player_id()
+    try:
+        player = await game.add_player(
+            player_id, name, buy_in, player_type="holdem_agent"
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    state = await game.get_state()
+    await manager.broadcast(
+        game_id,
+        HoldemPlayerJoinedMessage(player=player, players=list(state.players)),
+    )
+    await _holdem_broadcast_chat(game_id, f"{name} joined the table.")
+
+    return HoldemJoinGameResponse(player_id=player_id, player=player)
+
+
+# ---------------------------------------------------------------------------
 # SPA fallback for /game/{id} routes
 # ---------------------------------------------------------------------------
 
@@ -1637,6 +1837,11 @@ async def spa_holdem_route(game_id: str):
 # ---------------------------------------------------------------------------
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
+
+# Serve game card images
+_images_dir = Path(__file__).parent / "games" / "clue" / "images"
+if _images_dir.exists():
+    app.mount("/images", StaticFiles(directory=str(_images_dir)), name="images")
 
 # NOTE: Static files must be mounted LAST — it acts as a catch-all and would
 # shadow any API routes defined after this point.
