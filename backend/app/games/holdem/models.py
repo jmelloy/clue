@@ -47,6 +47,7 @@ class HoldemPlayer(BaseModel):
     folded: bool = False  # folded this hand
     current_bet: int = 0  # amount bet this round
     all_in: bool = False
+    player_type: str = "human"  # "human" or "holdem_agent"
 
 
 class HoldemGameState(BaseModel):
@@ -342,6 +343,12 @@ class HoldemChatRequest(BaseModel):
 
 class HoldemChatMessagesResponse(BaseModel):
     messages: list[HoldemChatMessage]
+
+
+class HoldemAddAgentRequest(BaseModel):
+    name: str = ""
+    buy_in: int = 1000
+    aggression: float = 0.5
 
 
 class OkResponse(BaseModel):
