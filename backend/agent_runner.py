@@ -286,6 +286,19 @@ class AgentRunner:
         if game_state.status != "playing":
             return
 
+        # LLM agents with only accuse+end_turn: let the backend's auto-end
+        # timer handle it instead of immediately deciding.
+        if agent.agent_type == "llm":
+            actions = set(player_state.available_actions)
+            if actions == {"accuse", "end_turn"}:
+                logger.info(
+                    "LLM agent %s in game %s has only accuse+end_turn — "
+                    "deferring to auto-end timer",
+                    player_id,
+                    game_id,
+                )
+                return
+
         try:
             action = await agent.decide_action(game_state, player_state)
         except Exception:

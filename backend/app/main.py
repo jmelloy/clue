@@ -236,7 +236,8 @@ async def _auto_end_turn_task(game_id: str, player_id: str, turn_number: int):
 async def _maybe_start_auto_end_timer(game_id: str):
     """Check if the current player should get an auto-end-turn timer.
 
-    Starts a timer if the player is human and their only actions are accuse + end_turn.
+    Starts a timer if the player is human or LLM agent and their only actions
+    are accuse + end_turn.
     """
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -244,9 +245,9 @@ async def _maybe_start_auto_end_timer(game_id: str):
         return
 
     pid = state.whose_turn
-    # Only apply to human players
+    # Apply to human players and LLM agents (not random agents or wanderers)
     player = next((p for p in state.players if p.id == pid), None)
-    if not player or player.type in _AGENT_PLAYER_TYPES:
+    if not player or player.type in {"agent", "wanderer"}:
         return
 
     actions = set(game.get_available_actions(pid, state))
@@ -823,6 +824,16 @@ async def _run_agent_loop(game_id: str):
                     continue
 
                 agent = agents[pid]
+
+                # LLM agents with only accuse+end_turn: let the auto-end
+                # timer handle it instead of immediately deciding (gives
+                # human observers a visible countdown).
+                if agent.agent_type == "llm":
+                    actions = set(game.get_available_actions(pid, state))
+                    if actions == {"accuse", "end_turn"}:
+                        await asyncio.sleep(0.5)
+                        continue
+
                 player_state = await game.get_player_state(pid)
                 action = await agent.decide_action(state, player_state)
 
