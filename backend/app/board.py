@@ -100,35 +100,37 @@ ROOM_KEYS = {
     Room.KITCHEN: "k",
 }
 
-# Doors: (row, col) ON the room perimeter (inset 1 from hallway)
-# Each connects to the room node + adjacent hallway square outside the room
+# Doors: (row, col) ON the room perimeter.
+# Value is (Room, direction) where direction points toward the hallway outside.
+# The direction restricts which hallway square the door connects to.
+DOOR_DIRECTIONS = {"north": (-1, 0), "south": (1, 0), "east": (0, 1), "west": (0, -1)}
 DOORS = {
-    # Study (0,0)-(3,6): south side
-    (3, 4): Room.STUDY,
+    # Study (0,0)-(3,6): south
+    (3, 6): (Room.STUDY, "south"),
     # Hall (1,9)-(6,14): 2 south, 1 west
-    (6, 11): Room.HALL,
-    (6, 12): Room.HALL,
-    (4, 9): Room.HALL,
-    # Lounge (0,17)-(5,23): south-west
-    (5, 17): Room.LOUNGE,
+    (6, 11): (Room.HALL, "south"),
+    (6, 12): (Room.HALL, "south"),
+    (4, 9): (Room.HALL, "west"),
+    # Lounge (0,17)-(5,23): south
+    (5, 17): (Room.LOUNGE, "south"),
     # Library (7,0)-(10,6): east, south
-    (8, 6): Room.LIBRARY,
-    (10, 3): Room.LIBRARY,
-    # Billiard Room (12,0)-(16,5): north-east, south-east
-    (12, 1): Room.BILLIARD_ROOM,
-    (15, 5): Room.BILLIARD_ROOM,
-    # Dining Room (9,16)-(15,23): west, south-west
-    (12, 16): Room.DINING_ROOM,
-    (9, 17): Room.DINING_ROOM,
-    # Conservatory (20,0)-(24,5): north-east
-    (19, 4): Room.CONSERVATORY,
+    (8, 6): (Room.LIBRARY, "east"),
+    (10, 3): (Room.LIBRARY, "south"),
+    # Billiard Room (12,0)-(16,5): north, east
+    (12, 1): (Room.BILLIARD_ROOM, "north"),
+    (15, 5): (Room.BILLIARD_ROOM, "east"),
+    # Dining Room (9,16)-(15,23): west, north
+    (12, 16): (Room.DINING_ROOM, "west"),
+    (9, 17): (Room.DINING_ROOM, "north"),
+    # Conservatory (20,0)-(24,5): north
+    (19, 4): (Room.CONSERVATORY, "north"),
     # Ballroom (18,8)-(24,15): 2 north, west, east
-    (17, 9): Room.BALLROOM,
-    (17, 14): Room.BALLROOM,
-    (19, 8): Room.BALLROOM,
-    (19, 15): Room.BALLROOM,
-    # Kitchen (18,18)-(24,23): north-west
-    (18, 19): Room.KITCHEN,
+    (17, 9): (Room.BALLROOM, "north"),
+    (17, 14): (Room.BALLROOM, "north"),
+    (19, 8): (Room.BALLROOM, "west"),
+    (19, 15): (Room.BALLROOM, "east"),
+    # Kitchen (18,18)-(24,23): north
+    (18, 19): (Room.KITCHEN, "north"),
 }
 
 # Start positions (row, col)
@@ -221,28 +223,29 @@ def validate_grid(grid: list[list[str]]):
     errors = []
 
     # Doors must be inside their room bounds
-    for (r, c), room in DOORS.items():
+    for (r, c), (room, direction) in DOORS.items():
         c1, r1, c2, r2 = ROOM_BOUNDS[room]
         if not (r1 <= r <= r2 and c1 <= c <= c2):
             errors.append(
                 f"Door ({r},{c}) not inside {room.value} ({c1},{r1})-({c2},{r2})"
             )
 
-    # Doors must have at least one hallway neighbor OUTSIDE the room
-    for (r, c), room in DOORS.items():
+    # Door's directional neighbor must be a hallway square OUTSIDE the room
+    for (r, c), (room, direction) in DOORS.items():
         c1, r1, c2, r2 = ROOM_BOUNDS[room]
-        has_outside_neighbor = False
-        for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < ROWS and 0 <= nc < COLS:
-                inside_room = r1 <= nr <= r2 and c1 <= nc <= c2
-                if not inside_room and grid[nr][nc] in (".", "S", "D"):
-                    has_outside_neighbor = True
-                    break
-        if not has_outside_neighbor:
+        dr, dc = DOOR_DIRECTIONS[direction]
+        nr, nc = r + dr, c + dc
+        if not (0 <= nr < ROWS and 0 <= nc < COLS):
             errors.append(
-                f"Door ({r},{c}) for {room.value} has no hallway neighbor outside room!"
+                f"Door ({r},{c}) for {room.value} direction {direction} leads off grid!"
             )
+        else:
+            inside_room = r1 <= nr <= r2 and c1 <= nc <= c2
+            if inside_room or grid[nr][nc] not in (".", "S", "D"):
+                errors.append(
+                    f"Door ({r},{c}) for {room.value} direction {direction} "
+                    f"does not lead to hallway (found {grid[nr][nc]!r})!"
+                )
 
     # Starts must not be inside rooms
     room_cells = set()
@@ -300,15 +303,28 @@ def build_graph(
         node = Square((r1 + r2) // 2, (c1 + c2) // 2, SquareType.ROOM, room=room)
         room_nodes[room] = node
 
-    # Hallway adjacency
+    # Build door direction lookup for restricting hallway connections
+    door_exit = {}
+    for (r, c), (room, direction) in DOORS.items():
+        door_exit[(r, c)] = DOOR_DIRECTIONS[direction]
+
+    # Hallway adjacency (doors only connect in their specified direction)
     for (r, c), sq in squares.items():
         for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            nb = squares.get((r + dr, c + dc))
-            if nb:
-                sq.neighbors.append(nb)
+            nr, nc = r + dr, c + dc
+            nb = squares.get((nr, nc))
+            if not nb:
+                continue
+            # If this square is a door, only connect in the door's direction
+            if (r, c) in door_exit and (dr, dc) != door_exit[(r, c)]:
+                continue
+            # If neighbor is a door, only connect if door faces toward us
+            if (nr, nc) in door_exit and door_exit[(nr, nc)] != (-dr, -dc):
+                continue
+            sq.neighbors.append(nb)
 
     # Door <-> Room
-    for (r, c), room in DOORS.items():
+    for (r, c), (room, _direction) in DOORS.items():
         if (r, c) in squares:
             door = squares[(r, c)]
             rn = room_nodes[room]
@@ -456,7 +472,7 @@ def print_room_info():
     print("\n=== Room Sizes ===")
     for room, (c1, r1, c2, r2) in ROOM_BOUNDS.items():
         h, w = r2 - r1 + 1, c2 - c1 + 1
-        doors = [(r, c) for (r, c), rm in DOORS.items() if rm == room]
+        doors = [(r, c) for (r, c), (rm, _d) in DOORS.items() if rm == room]
         passage = SECRET_PASSAGES.get(room)
         parts = [f"{h}x{w}", f"({r1},{c1})-({r2},{c2})", f"doors={doors}"]
         if passage:

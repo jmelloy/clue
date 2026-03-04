@@ -85,7 +85,7 @@ const ROOM_KEY_MAP = {
 }
 
 const DOORS = {
-  '3,4': 'Study', '6,11': 'Hall', '6,12': 'Hall', '4,9': 'Hall',
+  '3,6': 'Study', '6,11': 'Hall', '6,12': 'Hall', '4,9': 'Hall',
   '5,17': 'Lounge', '8,6': 'Library', '10,3': 'Library',
   '12,1': 'Billiard Room', '15,5': 'Billiard Room',
   '12,16': 'Dining Room', '9,17': 'Dining Room',
@@ -95,7 +95,7 @@ const DOORS = {
 }
 
 const DOOR_DIRECTIONS = {
-  '3,4': 'south',     // Study → hallway below
+  '3,6': 'south',     // Study → hallway below
   '4,9': 'west',      // Hall → hallway left
   '6,11': 'south',    // Hall → hallway below
   '6,12': 'south',    // Hall → hallway below
