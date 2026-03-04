@@ -42,6 +42,7 @@
           :selectable="canMove"
           :reachable-rooms="reachableRooms"
           :reachable-positions="reachablePositions"
+          :board-data="boardData"
           @select-room="onRoomSelected"
           @select-position="onPositionSelected"
         />
@@ -314,6 +315,7 @@ const props = defineProps({
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
+  boardData: { type: Object, default: null },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
