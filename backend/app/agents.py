@@ -863,49 +863,14 @@ class RandomAgent(BaseAgent):
             )
             return action
 
-        # Phase 1a: use secret passage if available and destination is useful
-        if "secret_passage" in available:
-            my_room = current_room.get(player_id)
-            dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
-            if dest_room and dest_room in unknown_rooms:
-                logger.info(
-                    "[%s:%s] Using secret passage from %s to %s",
-                    self.agent_type,
-                    player_id,
-                    my_room,
-                    dest_room,
-                )
-                return {"type": "secret_passage"}
-
-        # Phase 1b: roll dice
-        if "roll" in available:
-            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
-            return {"type": "roll"}
-
-        # Phase 2: choose room to move toward (dice already rolled)
-        if "move" in available:
-            player_pos = game_state.player_positions.get(player_id)
-            target_room = self._pick_target_room(
-                unknown_rooms, current_room.get(player_id), player_pos
-            )
-            logger.info(
-                "[%s:%s] Moving to '%s' (current=%s, unknown_rooms=%s)",
-                self.agent_type,
-                player_id,
-                target_room,
-                current_room.get(player_id),
-                unknown_rooms,
-            )
-            return {"type": "move", "room": target_room}
-
-        # Phase 3: suggest if in a room
+        # Phase 1: suggest first if already in a room (e.g. moved by suggestion)
         room = current_room.get(player_id)
         if room and "suggest" in available:
             suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
             weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
             self.rooms_suggested_in.add(room)
             logger.info(
-                "[%s:%s] Suggesting %s / %s / %s",
+                "[%s:%s] Suggesting %s / %s / %s (prioritized)",
                 self.agent_type,
                 player_id,
                 suspect,
@@ -919,7 +884,88 @@ class RandomAgent(BaseAgent):
                 "room": room,
             }
 
-        # Phase 4: end turn
+        # Phase 2: secret passage — 50% chance if available
+        if "secret_passage" in available and random.random() < 0.5:
+            my_room = current_room.get(player_id)
+            dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
+            if dest_room:
+                logger.info(
+                    "[%s:%s] Using secret passage from %s to %s (coin flip)",
+                    self.agent_type,
+                    player_id,
+                    my_room,
+                    dest_room,
+                )
+                return {"type": "secret_passage"}
+
+        # Phase 3: roll dice
+        if "roll" in available:
+            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            return {"type": "roll"}
+
+        # Phase 4: choose room to move toward (dice already rolled)
+        if "move" in available:
+            player_pos = game_state.player_positions.get(player_id)
+            my_room = current_room.get(player_id)
+            dice_value = game_state.last_roll[0] if game_state.last_roll else 12
+
+            # Compute which rooms are reachable within the dice roll
+            room_dists = _compute_room_distances(my_room, player_pos)
+            reachable_rooms = [
+                name
+                for name, dist in room_dists
+                if dist <= dice_value and name != my_room
+            ]
+
+            # Split reachable rooms into unknown vs known
+            unknown_reachable = [r for r in reachable_rooms if r in unknown_rooms]
+
+            if unknown_reachable:
+                # Prioritize reachable rooms that are still unknown
+                target_room = random.choice(unknown_reachable)
+                logger.info(
+                    "[%s:%s] Moving to '%s' (unknown & reachable, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            elif reachable_rooms and unknown_rooms and random.random() < 0.5:
+                # 50% chance: move toward a distant unknown room
+                target_room = self._pick_target_room(
+                    unknown_rooms, my_room, player_pos
+                )
+                logger.info(
+                    "[%s:%s] Moving toward '%s' (unreachable unknown, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            elif reachable_rooms:
+                # 50% chance (or no unknowns left): go to a random reachable room
+                target_room = random.choice(reachable_rooms)
+                logger.info(
+                    "[%s:%s] Moving to '%s' (random reachable, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            else:
+                # No reachable rooms — fall back to proximity-weighted pick
+                target_room = self._pick_target_room(
+                    unknown_rooms, my_room, player_pos
+                )
+                logger.info(
+                    "[%s:%s] Moving to '%s' (fallback, no reachable rooms)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                )
+            return {"type": "move", "room": target_room}
+
+        # Phase 5: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
         return {"type": "end_turn"}
 
