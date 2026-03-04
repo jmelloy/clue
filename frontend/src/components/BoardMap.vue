@@ -161,15 +161,15 @@ const STARTS = {
 };
 
 const ROOM_COLORS = {
-  Study: "#1a2a3a",
-  Hall: "#2a3340",
-  Lounge: "#3a1a22",
-  Library: "#1a3030",
-  "Billiard Room": "#1a3020",
-  "Dining Room": "#3a3018",
-  Conservatory: "#283018",
-  Ballroom: "#281830",
-  Kitchen: "#3a2818",
+  Study: "#2a2218",
+  Hall: "#2a2218",
+  Lounge: "#2a2218",
+  Library: "#2a2218",
+  "Billiard Room": "#2a2218",
+  "Dining Room": "#2a2218",
+  Conservatory: "#2a2218",
+  Ballroom: "#2a2218",
+  Kitchen: "#2a2218",
 };
 
 const CHARACTER_COLORS = {
@@ -197,6 +197,18 @@ const SUSPECT_IMAGES = {
   "Reverend Green": "/images/MrGreen.jpg",
   "Mrs. Peacock": "/images/MrsPeacock.jpg",
   "Professor Plum": "/images/ProfessorPlum.jpg",
+};
+
+const ROOM_IMAGES = {
+  Study: "/images/Study.jpg",
+  Hall: "/images/Hall.jpg",
+  Lounge: "/images/Lounge.jpg",
+  Library: "/images/Library.jpg",
+  "Billiard Room": "/images/BilliardRoom.jpg",
+  "Dining Room": "/images/DiningRoom.jpg",
+  Conservatory: "/images/Conservatory.jpg",
+  Ballroom: "/images/BallRoom.jpg",
+  Kitchen: "/images/Kitchen.jpg",
 };
 
 // ── Pre-compute room info from board layout ──
@@ -413,8 +425,24 @@ function cellClasses(cell) {
 }
 
 function cellStyle(cell) {
-  if (cell.room && ROOM_COLORS[cell.room]) {
-    return { backgroundColor: ROOM_COLORS[cell.room] };
+  if (cell.room) {
+    const img = ROOM_IMAGES[cell.room];
+    const info = ROOM_INFO[cell.room];
+    if (img && info) {
+      const roomCols = info.maxCol - info.minCol + 1;
+      const roomRows = info.maxRow - info.minRow + 1;
+      const dc = cell.col - info.minCol;
+      const dr = cell.row - info.minRow;
+      const posX = roomCols > 1 ? (dc / (roomCols - 1)) * 100 : 50;
+      const posY = roomRows > 1 ? (dr / (roomRows - 1)) * 100 : 50;
+      return {
+        backgroundImage: `url(${img})`,
+        backgroundSize: `${roomCols * 100}% ${roomRows * 100}%`,
+        backgroundPosition: `${posX}% ${posY}%`,
+        backgroundColor: '#1a1610',
+      };
+    }
+    return { backgroundColor: '#1a1610' };
   }
   return {};
 }
@@ -469,7 +497,7 @@ function tokenStyle(token) {
   max-width: 576px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #080706;
+  background: #1a1510;
   border-radius: 6px;
   overflow: hidden;
   border: 1.5px solid rgba(212, 168, 73, 0.15);
@@ -484,9 +512,9 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   gap: 0;
-  background: #080706;
-  background-image: linear-gradient(to right, #050404 1px, transparent 1px),
-    linear-gradient(to bottom, #050404 1px, transparent 1px);
+  background: #1a1510;
+  background-image: linear-gradient(to right, #15110c 1px, transparent 1px),
+    linear-gradient(to bottom, #15110c 1px, transparent 1px);
   background-size: calc(100% / 24) 100%, 100% calc(100% / 25);
 }
 
@@ -498,11 +526,12 @@ function tokenStyle(token) {
 
 .cell-room {
   border: 0.5px solid rgba(255, 255, 255, 0.03);
+  filter: saturate(0.35) brightness(0.9);
 }
 
 .cell-door {
   position: relative;
-  filter: brightness(1.4);
+  filter: saturate(0.35) brightness(0.9);
   border: 0.5px solid rgba(255, 255, 255, 0.06);
   overflow: visible;
 }
@@ -545,13 +574,13 @@ function tokenStyle(token) {
 }
 
 .cell-hallway {
-  background: #1a1810;
-  border: 0.5px solid rgba(255, 255, 255, 0.02);
+  background: #c8b88a;
+  border: 0.5px solid rgba(160, 140, 100, 0.4);
 }
 
 .cell-start {
-  background: #1a1810;
-  border: 0.5px solid rgba(255, 255, 255, 0.02);
+  background: #c8b88a;
+  border: 0.5px solid rgba(160, 140, 100, 0.4);
   position: relative;
 }
 
@@ -560,7 +589,7 @@ function tokenStyle(token) {
   position: absolute;
   inset: 30%;
   border-radius: 50%;
-  background: rgba(212, 168, 73, 0.12);
+  background: rgba(120, 100, 60, 0.2);
 }
 
 .cell-wall {
@@ -573,13 +602,22 @@ function tokenStyle(token) {
 }
 
 .cell.clickable:hover {
-  filter: brightness(1.3);
   outline: 1px solid rgba(212, 168, 73, 0.4);
   z-index: 1;
 }
 
+.cell-room.clickable:hover,
+.cell-door.clickable:hover {
+  filter: saturate(0.45) brightness(1.0);
+}
+
+.cell-hallway.clickable:hover,
+.cell-start.clickable:hover {
+  filter: brightness(1.3);
+}
+
 .cell.selected {
-  filter: brightness(1.4);
+  filter: saturate(0.5) brightness(1.2);
   outline: 1px solid rgba(212, 168, 73, 0.7);
   z-index: 1;
 }
@@ -596,26 +634,26 @@ function tokenStyle(token) {
 }
 
 .cell-room.reachable {
-  filter: brightness(1.3);
+  filter: saturate(0.45) brightness(1.05);
 }
 
 .cell-hallway.reachable,
 .cell-start.reachable {
-  background: #2a2a18;
+  background: #d8cca0;
 }
 
 .cell.unreachable {
-  filter: brightness(0.6);
-  opacity: 0.7;
+  filter: saturate(0.2) brightness(0.5);
+  opacity: 0.8;
 }
 
 .cell-door.unreachable {
-  filter: brightness(1.1);
-  opacity: 0.9;
+  filter: saturate(0.2) brightness(0.5);
+  opacity: 0.8;
 }
 
 .cell.reachable-door {
-  filter: brightness(1.6);
+  filter: saturate(0.4) brightness(1.0);
   outline: 1px solid rgba(76, 175, 80, 0.7);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
@@ -644,14 +682,17 @@ function tokenStyle(token) {
 /* ── Room labels ── */
 .room-label {
   position: absolute;
-  color: #d4a849;
+  color: #f0e0b0;
   font-family: "Crimson Text", Georgia, serif;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: 600;
   white-space: nowrap;
   text-align: center;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 1), 0 0 12px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 1);
   letter-spacing: 0.05em;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 /* ── Center label ── */

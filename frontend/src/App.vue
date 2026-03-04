@@ -541,7 +541,7 @@ setInterval(() => {
 }
 body {
   font-family: "Georgia", serif;
-  background: #0a0908;
+  background: #1c1812;
   color: #e8dcc8;
   min-height: 100vh;
 }
