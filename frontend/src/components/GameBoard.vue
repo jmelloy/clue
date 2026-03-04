@@ -259,6 +259,14 @@
           </div>
         </section>
 
+        <!-- Agent Debug Panel (shown for observers and when agents are in game) -->
+        <section v-if="(isObserver || hasAgentDebug) && hasAgentDebug" class="sidebar-panel debug-panel-wrapper">
+          <AgentDebugPanel
+            :agent-debug-data="agentDebugData"
+            :players="gameState?.players"
+          />
+        </section>
+
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
           <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes" @notes-changed="onNotesChanged" />
@@ -281,6 +289,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import AgentDebugPanel from './AgentDebugPanel.vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
@@ -323,6 +332,7 @@ const props = defineProps({
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
   boardData: { type: Object, default: null },
+  agentDebugData: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown'])
@@ -409,6 +419,8 @@ const timerForMe = computed(() => countdown.value !== null && props.autoEndTimer
 // Computed
 const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
 const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
+
+const hasAgentDebug = computed(() => Object.keys(props.agentDebugData || {}).length > 0)
 
 const canSecretPassage = computed(() => props.availableActions.includes('secret_passage'))
 const canRoll = computed(() => props.availableActions.includes('roll'))
@@ -1207,6 +1219,13 @@ watch(
   padding: 0.5rem;
   color: #8899aa;
   font-size: 0.9rem;
+}
+
+/* Agent debug panel */
+.debug-panel-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border-color: rgba(142, 68, 173, 0.2);
 }
 
 /* Notes panel */

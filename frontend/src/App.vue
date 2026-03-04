@@ -33,6 +33,7 @@
       :reachable-rooms="reachableRooms"
       :reachable-positions="reachablePositions"
       :saved-notes="savedNotes"
+      :agent-debug-data="agentDebugData"
       @action="sendAction"
       @send-chat="sendChat"
       @dismiss-card-shown="cardShown = null"
@@ -62,6 +63,7 @@ const reachableRooms = ref([])
 const reachablePositions = ref([])
 const savedNotes = ref(null)
 const boardData = ref(null)
+const agentDebugData = ref({})
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -300,6 +302,15 @@ function handleMessage(msg) {
       chatMessages.value = [...chatMessages.value, msg]
       break
 
+    case 'agent_debug':
+      if (msg.player_id) {
+        agentDebugData.value = {
+          ...agentDebugData.value,
+          [msg.player_id]: msg,
+        }
+      }
+      break
+
     case 'pong':
       // keep-alive response, no action needed
       break
@@ -332,6 +343,7 @@ function resetState() {
   reachableRooms.value = []
   reachablePositions.value = []
   savedNotes.value = null
+  agentDebugData.value = {}
 }
 
 function leaveGame() {
@@ -364,6 +376,9 @@ function onObserve({ gameId: gid }) {
     .then(state => { gameState.value = state })
     .catch(() => {})
 
+  // Fetch initial agent debug data
+  loadAgentDebug(gid)
+
   pushGameUrl(gid)
   connectWS()
   loadChat(gid)
@@ -390,6 +405,21 @@ function loadChat(gid) {
   fetch(`/games/${gid}/chat`)
     .then(r => r.json())
     .then(data => { chatMessages.value = data.messages ?? [] })
+    .catch(() => {})
+}
+
+function loadAgentDebug(gid) {
+  fetch(`/games/${gid}/agent_debug`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.agents) {
+        const debugMap = {}
+        for (const agent of data.agents) {
+          debugMap[agent.player_id] = agent
+        }
+        agentDebugData.value = debugMap
+      }
+    })
     .catch(() => {})
 }
 

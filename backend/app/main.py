@@ -36,6 +36,7 @@ from .games.clue.models import (
     ActionRequest,
     ActionResult,
     AddAgentRequest,
+    AgentDebugMessage,
     AgentPlayerConfig,
     AutoEndTimerMessage,
     AutoShowCardTimerMessage,
@@ -787,6 +788,27 @@ async def _publish_agent_event(
 
 
 # ---------------------------------------------------------------------------
+# Agent debug broadcast
+# ---------------------------------------------------------------------------
+
+
+async def _broadcast_agent_debug(
+    game_id: str,
+    agent: "BaseAgent",
+    status: str,
+    action_description: str = "",
+    decided_action: dict | None = None,
+):
+    """Broadcast agent debug info to all WebSocket clients (visible to observers/agents)."""
+    debug_info = agent.get_debug_info(
+        status=status,
+        action_description=action_description,
+        decided_action=decided_action,
+    )
+    await manager.broadcast(game_id, AgentDebugMessage(**debug_info))
+
+
+# ---------------------------------------------------------------------------
 # Agent background loop
 # ---------------------------------------------------------------------------
 
@@ -822,7 +844,16 @@ async def _run_agent_loop(game_id: str):
                 agent = agents[pid]
                 matching = pending.matching_cards
                 suggesting_pid = pending.suggesting_player_id
+                await _broadcast_agent_debug(
+                    game_id, agent, "thinking",
+                    f"Deciding which card to show from {matching}",
+                )
                 card = await agent.decide_show_card(matching, suggesting_pid)
+                await _broadcast_agent_debug(
+                    game_id, agent, "decided",
+                    f"Showing card to disprove suggestion",
+                    decided_action={"type": "show_card", "card": card},
+                )
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
                 await _execute_action(game_id, pid, ShowCardAction(card=card))
@@ -852,7 +883,29 @@ async def _run_agent_loop(game_id: str):
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
+                await _broadcast_agent_debug(
+                    game_id, agent, "thinking",
+                    f"Deciding next action (available: {', '.join(player_state.available_actions)})",
+                )
                 action = await agent.decide_action(state, player_state)
+                action_d = action.model_dump()
+                action_desc = action.type
+                if action.type == "move":
+                    action_desc = f"Moving to {action_d.get('room', '?')}"
+                elif action.type == "suggest":
+                    action_desc = f"Suggesting {action_d.get('suspect', '?')} with {action_d.get('weapon', '?')}"
+                elif action.type == "accuse":
+                    action_desc = f"Accusing {action_d.get('suspect', '?')} with {action_d.get('weapon', '?')} in {action_d.get('room', '?')}"
+                elif action.type == "roll":
+                    action_desc = "Rolling dice"
+                elif action.type == "end_turn":
+                    action_desc = "Ending turn"
+                elif action.type == "secret_passage":
+                    action_desc = "Using secret passage"
+                await _broadcast_agent_debug(
+                    game_id, agent, "decided", action_desc,
+                    decided_action=action_d,
+                )
 
                 logger.info(
                     "Agent %s taking action %s in game %s",
@@ -948,6 +1001,18 @@ async def get_player_state(game_id: str, player_id: str):
     if player_state is None:
         raise HTTPException(status_code=404, detail="Game or player not found")
     return player_state.model_dump()
+
+
+@app.get("/games/{game_id}/agent_debug")
+async def get_agent_debug(game_id: str):
+    """Return current debug info for all agents in a game."""
+    agents = _game_agents.get(game_id, {})
+    if not agents:
+        return {"agents": []}
+    result = []
+    for pid, agent in agents.items():
+        result.append(agent.get_debug_info(status="idle"))
+    return {"agents": result}
 
 
 @app.post("/games/{game_id}/join")
