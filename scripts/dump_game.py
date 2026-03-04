@@ -11,6 +11,7 @@ Examples:
     python scripts/dump_game.py ABC123
     python scripts/dump_game.py --list-games --json
     python scripts/dump_game.py ABC123 --show-chat --show-cards
+    python scripts/dump_game.py ABC123 --show-memory
     REDIS_URL=redis://localhost:6379 python scripts/dump_game.py ABC123 --show-solution
 """
 
@@ -56,6 +57,11 @@ def _parse_args() -> argparse.Namespace:
         "--show-cards",
         action="store_true",
         help="Include each player's dealt cards (if game state is present)",
+    )
+    parser.add_argument(
+        "--show-memory",
+        action="store_true",
+        help="Include LLM agent memory entries from game:{id}:memory:{player_id}",
     )
     parser.add_argument(
         "--json",
@@ -135,6 +141,16 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
                 f"  - {player_id}: ttl={data.get('ttl')} cards={_pretty_json(data.get('cards'))}"
             )
 
+    if "memory_by_player" in output:
+        memory = output["memory_by_player"]
+        print("Agent memory by player:")
+        if not memory:
+            print("  (none)")
+        for player_id, data in memory.items():
+            print(f"  - {player_id}: ttl={data.get('ttl')} entries={data.get('count')}")
+            for index, entry in enumerate(data.get("entries", []), start=1):
+                print(f"      {index:>3}. {entry}")
+
 
 def _print_list_games_text(redis_url: str, games: list[dict[str, Any]]) -> None:
     print(f"Redis: {redis_url}")
@@ -177,6 +193,7 @@ async def dump_game(
     show_chat: bool,
     show_solution: bool,
     show_cards: bool,
+    show_memory: bool,
     as_json: bool,
 ) -> int:
     try:
@@ -247,6 +264,33 @@ async def dump_game(
                     "cards": await _get_json(redis_client, cards_key),
                 }
             output["cards_by_player"] = cards_by_player
+
+        if show_memory:
+            memory_by_player: dict[str, Any] = {}
+            llm_player_ids: set[str] = set()
+            if isinstance(state, dict):
+                players = state.get("players", [])
+                for player in players:
+                    player_id = player.get("id")
+                    if player_id and player.get("type") == "llm_agent":
+                        llm_player_ids.add(player_id)
+
+            async for key in redis_client.scan_iter(match=f"game:{game_id}:memory:*"):
+                parts = key.split(":")
+                if len(parts) >= 4:
+                    llm_player_ids.add(parts[-1])
+
+            for player_id in sorted(llm_player_ids):
+                memory_key = f"game:{game_id}:memory:{player_id}"
+                entries = await redis_client.lrange(memory_key, 0, -1)
+                memory_by_player[player_id] = {
+                    "key": memory_key,
+                    "ttl": await redis_client.ttl(memory_key),
+                    "count": len(entries),
+                    "entries": entries,
+                }
+
+            output["memory_by_player"] = memory_by_player
 
         if as_json:
             print(json.dumps(output, indent=2, sort_keys=True))
@@ -323,6 +367,7 @@ async def _main() -> int:
         show_chat=args.show_chat,
         show_solution=args.show_solution,
         show_cards=args.show_cards,
+        show_memory=args.show_memory,
         as_json=args.json,
     )
 

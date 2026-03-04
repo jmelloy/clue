@@ -468,16 +468,18 @@ class BaseAgent(ABC):
 
     agent_type: str = "base"
 
-    def __init__(self):
-        self.seen_cards: set[str] = set()
+    def __init__(self, player_id: str, character: str, cards: list[str]):
+        self.own_cards: set[str] = set(cards)
+        self.seen_cards: set[str] = set(cards)
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
         self.character: str = ""
         self._pending_chat: str | None = None
+
+        self.player_id: str = player_id
+
         # Inference tracking
-        self.player_id: str = ""  # set externally after creation
-        self.own_cards: list[str] = []
         self.player_has_cards: dict[str, set[str]] = {}
         self.player_not_has_cards: dict[str, set[str]] = {}
         self.suggestion_log: list[dict] = []
@@ -488,14 +490,6 @@ class BaseAgent(ABC):
     # ------------------------------------------------------------------
     # Observations (shared by all agent types)
     # ------------------------------------------------------------------
-
-    def observe_own_cards(self, cards: list[str]):
-        """Called once at game start with the agent's dealt hand."""
-        self.seen_cards.update(cards)
-        self.own_cards = list(cards)
-        logger.info(
-            "[%s] Received hand: %s (%d cards)", self.agent_type, cards, len(cards)
-        )
 
     def observe_shown_card(self, card: str, shown_by: str | None = None):
         """Called when another player shows us a card."""
@@ -513,10 +507,10 @@ class BaseAgent(ABC):
         )
         if is_new:
             by_text = f" by {shown_by}" if shown_by else ""
-            self._pending_inferences.append(
-                f"CARD SHOWN: '{card}' was shown to me{by_text}. "
-                f"This card is NOT the solution."
-            )
+            # self._pending_inferences.append(
+            #     f"CARD SHOWN: '{card}' was shown to me{by_text}. "
+            #     f"This card is NOT the solution."
+            # )
             self._run_inference()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
@@ -551,8 +545,9 @@ class BaseAgent(ABC):
         inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
         if inferred:
             logger.info(
-                "[%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
+                "[%s:%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
                 self.agent_type,
+                self.player_id,
                 shown_by,
                 inferred,
                 suspect,
@@ -564,14 +559,16 @@ class BaseAgent(ABC):
                 f"{suspect}/{weapon}/{room}. By elimination I deduced the "
                 f"card was '{inferred}' — it is NOT the solution."
             )
+            self.seen_cards.add(inferred)
             self._run_inference()
         else:
             suggested_cards = {suspect, weapon, room}
             possible = self._possible_cards_for_player(shown_by, suggested_cards)
             logger.debug(
-                "[%s] Observed: %s showed a card to %s for %s/%s/%s "
+                "[%s:%s] Observed: %s showed a card to %s for %s/%s/%s "
                 "(%d possible cards, cannot deduce)",
                 self.agent_type,
+                self.player_id,
                 shown_by,
                 shown_to,
                 suspect,
@@ -711,8 +708,9 @@ class BaseAgent(ABC):
                 inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
                 if inferred:
                     logger.info(
-                        "[%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
+                        "[%s:%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
                         self.agent_type,
+                        self.player_id,
                         shown_by,
                         inferred,
                         suspect,
@@ -724,6 +722,7 @@ class BaseAgent(ABC):
                         f"{suspect}/{weapon}/{room}, I now deduce {shown_by} "
                         f"has '{inferred}' — it is NOT the solution."
                     )
+                    self.seen_cards.add(inferred)
                     changed = True
 
     # ------------------------------------------------------------------
@@ -769,9 +768,7 @@ class BaseAgent(ABC):
             return None
 
         template = random.choice(templates)
-        logger.info(
-            f"Selected chat template for {self.character}: '{template}' with context {context}"
-        )
+
         return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
@@ -866,49 +863,14 @@ class RandomAgent(BaseAgent):
             )
             return action
 
-        # Phase 1a: use secret passage if available and destination is useful
-        if "secret_passage" in available:
-            my_room = current_room.get(player_id)
-            dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
-            if dest_room and dest_room in unknown_rooms:
-                logger.info(
-                    "[%s:%s] Using secret passage from %s to %s",
-                    self.agent_type,
-                    player_id,
-                    my_room,
-                    dest_room,
-                )
-                return {"type": "secret_passage"}
-
-        # Phase 1b: roll dice
-        if "roll" in available:
-            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
-            return {"type": "roll"}
-
-        # Phase 2: choose room to move toward (dice already rolled)
-        if "move" in available:
-            player_pos = game_state.player_positions.get(player_id)
-            target_room = self._pick_target_room(
-                unknown_rooms, current_room.get(player_id), player_pos
-            )
-            logger.info(
-                "[%s:%s] Moving to '%s' (current=%s, unknown_rooms=%s)",
-                self.agent_type,
-                player_id,
-                target_room,
-                current_room.get(player_id),
-                unknown_rooms,
-            )
-            return {"type": "move", "room": target_room}
-
-        # Phase 3: suggest if in a room
+        # Phase 1: suggest first if already in a room (e.g. moved by suggestion)
         room = current_room.get(player_id)
         if room and "suggest" in available:
             suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
             weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
             self.rooms_suggested_in.add(room)
             logger.info(
-                "[%s:%s] Suggesting %s / %s / %s",
+                "[%s:%s] Suggesting %s / %s / %s (prioritized)",
                 self.agent_type,
                 player_id,
                 suspect,
@@ -922,7 +884,88 @@ class RandomAgent(BaseAgent):
                 "room": room,
             }
 
-        # Phase 4: end turn
+        # Phase 2: secret passage — 50% chance if available
+        if "secret_passage" in available and random.random() < 0.5:
+            my_room = current_room.get(player_id)
+            dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
+            if dest_room:
+                logger.info(
+                    "[%s:%s] Using secret passage from %s to %s (coin flip)",
+                    self.agent_type,
+                    player_id,
+                    my_room,
+                    dest_room,
+                )
+                return {"type": "secret_passage"}
+
+        # Phase 3: roll dice
+        if "roll" in available:
+            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            return {"type": "roll"}
+
+        # Phase 4: choose room to move toward (dice already rolled)
+        if "move" in available:
+            player_pos = game_state.player_positions.get(player_id)
+            my_room = current_room.get(player_id)
+            dice_value = game_state.last_roll[0] if game_state.last_roll else 12
+
+            # Compute which rooms are reachable within the dice roll
+            room_dists = _compute_room_distances(my_room, player_pos)
+            reachable_rooms = [
+                name
+                for name, dist in room_dists
+                if dist <= dice_value and name != my_room
+            ]
+
+            # Split reachable rooms into unknown vs known
+            unknown_reachable = [r for r in reachable_rooms if r in unknown_rooms]
+
+            if unknown_reachable:
+                # Prioritize reachable rooms that are still unknown
+                target_room = random.choice(unknown_reachable)
+                logger.info(
+                    "[%s:%s] Moving to '%s' (unknown & reachable, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            elif reachable_rooms and unknown_rooms and random.random() < 0.5:
+                # 50% chance: move toward a distant unknown room
+                target_room = self._pick_target_room(
+                    unknown_rooms, my_room, player_pos
+                )
+                logger.info(
+                    "[%s:%s] Moving toward '%s' (unreachable unknown, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            elif reachable_rooms:
+                # 50% chance (or no unknowns left): go to a random reachable room
+                target_room = random.choice(reachable_rooms)
+                logger.info(
+                    "[%s:%s] Moving to '%s' (random reachable, dice=%d)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                    dice_value,
+                )
+            else:
+                # No reachable rooms — fall back to proximity-weighted pick
+                target_room = self._pick_target_room(
+                    unknown_rooms, my_room, player_pos
+                )
+                logger.info(
+                    "[%s:%s] Moving to '%s' (fallback, no reachable rooms)",
+                    self.agent_type,
+                    player_id,
+                    target_room,
+                )
+            return {"type": "move", "room": target_room}
+
+        # Phase 5: end turn
         logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
         return {"type": "end_turn"}
 
@@ -987,8 +1030,9 @@ class RandomAgent(BaseAgent):
                 fresh_unknown, current_room, player_position
             )
             logger.debug(
-                "[%s] Target room '%s' (fresh unknown, proximity-weighted)",
+                "[%s:%s] Target room '%s' (fresh unknown, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -999,8 +1043,9 @@ class RandomAgent(BaseAgent):
                 other_unknown, current_room, player_position
             )
             logger.debug(
-                "[%s] Target room '%s' (other unknown, proximity-weighted)",
+                "[%s:%s] Target room '%s' (other unknown, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -1011,8 +1056,9 @@ class RandomAgent(BaseAgent):
         if unseen:
             choice = self._pick_nearest_room(unseen, current_room, player_position)
             logger.debug(
-                "[%s] Target room '%s' (unvisited, proximity-weighted)",
+                "[%s:%s] Target room '%s' (unvisited, proximity-weighted)",
                 self.agent_type,
+                self.player_id,
                 choice,
             )
             return choice
@@ -1022,8 +1068,9 @@ class RandomAgent(BaseAgent):
             choices = list(ROOMS)
         choice = self._pick_nearest_room(choices, current_room, player_position)
         logger.debug(
-            "[%s] Target room '%s' (fallback, proximity-weighted)",
+            "[%s:%s] Target room '%s' (fallback, proximity-weighted)",
             self.agent_type,
+            self.player_id,
             choice,
         )
         return choice
@@ -1179,7 +1226,7 @@ RULES:
 
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
 with a short in-character comment about what you're doing (one sentence, stay in \
-character as {character}).
+character as {character}).  Be coy and lie in the chat; the chat is for flavor and misdirection, not a factual report of your reasoning. \
 
 When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
 suspicions, which cards you've eliminated, your strategy for next turns. These \
@@ -1256,8 +1303,15 @@ class LLMAgent(BaseAgent):
 
     agent_type = "llm"
 
-    def __init__(self, redis_client=None, game_id: str = ""):
-        super().__init__()
+    def __init__(
+        self,
+        player_id: str,
+        character: str,
+        cards: list[str],
+        redis_client=None,
+        game_id: str = "",
+    ):
+        super().__init__(player_id=player_id, character=character, cards=cards)
         self.api_url = os.getenv(
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
@@ -1268,13 +1322,15 @@ class LLMAgent(BaseAgent):
         self._game_id = game_id
 
         # Fallback agent shares our observation state
-        self._fallback = RandomAgent()
+        self._fallback = RandomAgent(
+            player_id=player_id, character=character, cards=cards
+        )
         self._fallback.player_id = self.player_id
         self._fallback.seen_cards = self.seen_cards
         self._fallback.shown_to = self.shown_to
         self._fallback.rooms_suggested_in = self.rooms_suggested_in
         self._fallback.unrefuted_suggestions = self.unrefuted_suggestions
-        self._fallback.own_cards = self.own_cards
+
         self._fallback.player_has_cards = self.player_has_cards
         self._fallback.player_not_has_cards = self.player_not_has_cards
         self._fallback.suggestion_log = self.suggestion_log
@@ -1509,7 +1565,7 @@ class LLMAgent(BaseAgent):
         if self.memory:
             lines.append("")
             lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
-            recent = self.memory[-10:]  # last 10 entries
+            recent = self.memory[-1:]  # last 1 entry
             start_idx = len(self.memory) - len(recent) + 1
             for i, entry in enumerate(recent):
                 lines.append(f"  [{start_idx + i}] {entry}")

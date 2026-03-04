@@ -119,16 +119,22 @@ class AgentRunner:
         for pid, info in config.items():
             ptype = info["type"]
             if ptype == "llm_agent":
-                agent: BaseAgent = LLMAgent(redis_client=self.redis, game_id=game_id)
+                agent: BaseAgent = LLMAgent(
+                    player_id=pid,
+                    character=info["character"],
+                    cards=info["cards"],
+                    redis_client=self.redis,
+                    game_id=game_id,
+                )
             elif ptype == "wanderer":
-                agent = WandererAgent()
+                agent = WandererAgent(
+                    player_id=pid, character=info["character"], cards=info["cards"]
+                )
             else:
-                agent = RandomAgent()
+                agent = RandomAgent(
+                    player_id=pid, character=info["character"], cards=info["cards"]
+                )
 
-            agent.character = info["character"]
-            agent.player_id = pid
-            agent.observe_own_cards(info["cards"])
-            agent_cards[pid] = info["cards"]
             if ptype == "llm_agent":
                 await agent.load_memory()
             agents[pid] = agent
@@ -425,7 +431,10 @@ if __name__ == "__main__":
 
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     log_format = os.getenv("LOG_FORMAT", "colored")
+    trace_level = os.getenv("LLM_TRACE_LOG_LEVEL", "").strip().upper()
     logging.config.dictConfig(
-        get_logging_config(log_level=log_level, log_format=log_format)
+        get_logging_config(
+            log_level=log_level, trace_level=trace_level, log_format=log_format
+        )
     )
     asyncio.run(main())
