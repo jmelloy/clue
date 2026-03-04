@@ -137,16 +137,22 @@ watch(
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 .chat-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
+  font-family: 'Crimson Text', Georgia, serif;
 }
 
 h2 {
-  color: #c9a84c;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .chat-messages {
@@ -160,7 +166,7 @@ h2 {
 
 .chat-message {
   padding: 0.2rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(212, 168, 73, 0.04);
   font-size: 0.8rem;
   display: flex;
   justify-content: space-between;
@@ -169,7 +175,7 @@ h2 {
 }
 
 .system-message {
-  color: #8899aa;
+  color: #6a6050;
   font-style: italic;
 }
 
@@ -177,17 +183,22 @@ h2 {
   flex: 1;
   word-break: break-word;
   line-height: 1.3;
+  color: #e8dcc8;
+}
+
+.system-message .chat-text {
+  color: #6a6050;
 }
 
 .chat-time {
-  color: #556;
+  color: #3a3528;
   font-size: 0.7rem;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .chat-empty {
-  color: #556;
+  color: #3a3528;
   font-style: italic;
   font-size: 0.8rem;
   padding: 0.5rem 0;
@@ -200,36 +211,47 @@ h2 {
 
 .chat-input input {
   flex: 1;
-  padding: 0.4rem 0.6rem;
-  border-radius: 5px;
-  border: 1px solid #334;
-  background: #0f3460;
-  color: #eee;
+  padding: 0.45rem 0.7rem;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 168, 73, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8dcc8;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
+  transition: border-color 0.2s;
+  outline: none;
 }
 
 .chat-input input::placeholder {
-  color: #557;
+  color: #3a3528;
+  font-style: italic;
+}
+
+.chat-input input:focus {
+  border-color: rgba(212, 168, 73, 0.3);
+  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
 }
 
 .chat-input button {
-  background: #c9a84c;
-  color: #1a1a2e;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
   border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 5px;
+  padding: 0.45rem 0.8rem;
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   font-size: 0.85rem;
-  transition: background 0.2s;
+  font-family: 'Crimson Text', Georgia, serif;
+  transition: all 0.2s;
 }
 
 .chat-input button:hover:not(:disabled) {
-  background: #d4b85c;
+  box-shadow: 0 2px 8px rgba(212, 168, 73, 0.2);
+  transform: translateY(-1px);
 }
 
 .chat-input button:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 </style>
