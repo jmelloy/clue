@@ -20,6 +20,14 @@ from .agents import (
     WandererAgent,
     generate_character_chat,
 )
+from .board import (
+    DOORS,
+    ROOM_BOUNDS,
+    ROOM_CENTERS,
+    SECRET_PASSAGES,
+    START_POSITIONS,
+    Room,
+)
 from .game import ClueGame
 from .models import (
     AccusationMadeMessage,
@@ -870,6 +878,30 @@ async def create_game():
 @app.get("/healthz")
 async def healthz():
     return OkResponse()
+
+
+@app.get("/board")
+async def get_board():
+    """Return static board layout data (doors, rooms, starts, passages)."""
+    return {
+        "doors": {
+            f"{r},{c}": {"room": room.value, "direction": direction}
+            for (r, c), (room, direction) in DOORS.items()
+        },
+        "rooms": {
+            room.value: {
+                "bounds": {"c1": c1, "r1": r1, "c2": c2, "r2": r2},
+                "center": ROOM_CENTERS[room.value],
+            }
+            for room, (c1, r1, c2, r2) in ROOM_BOUNDS.items()
+        },
+        "starts": {
+            f"{r},{c}": name for name, (r, c) in START_POSITIONS.items()
+        },
+        "secret_passages": {
+            src.value: dst.value for src, dst in SECRET_PASSAGES.items()
+        },
+    }
 
 
 @app.get("/games/{game_id}")

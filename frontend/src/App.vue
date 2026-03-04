@@ -21,6 +21,7 @@
       :game-id="gameId"
       :player-id="playerId"
       :game-state="gameState"
+      :board-data="boardData"
       :your-cards="yourCards"
       :available-actions="availableActions"
       :show-card-request="showCardRequest"
@@ -60,6 +61,7 @@ const autoShowCardTimer = ref(null)
 const reachableRooms = ref([])
 const reachablePositions = ref([])
 const savedNotes = ref(null)
+const boardData = ref(null)
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -103,12 +105,16 @@ function onPopState() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('popstate', onPopState)
   const gid = parseGameIdFromUrl()
   if (gid) {
     urlGameId.value = gid
   }
+  try {
+    const res = await fetch('/board')
+    if (res.ok) boardData.value = await res.json()
+  } catch (_) { /* fall back to hardcoded board data */ }
 })
 
 onUnmounted(() => {

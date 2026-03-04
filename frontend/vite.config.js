@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/games': backendUrl,
+      '/board': backendUrl,
       '/ws': { target: backendWsUrl, ws: true }
     }
   }

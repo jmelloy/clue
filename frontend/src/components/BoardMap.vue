@@ -84,37 +84,28 @@ const ROOM_KEY_MAP = {
   'c': 'Conservatory', 'a': 'Ballroom', 'k': 'Kitchen',
 }
 
-const DOORS = {
-  '3,6': 'Study', '6,11': 'Hall', '6,12': 'Hall', '4,9': 'Hall',
-  '5,17': 'Lounge', '8,6': 'Library', '10,3': 'Library',
-  '12,1': 'Billiard Room', '15,5': 'Billiard Room',
-  '12,16': 'Dining Room', '9,17': 'Dining Room',
-  '19,4': 'Conservatory',
-  '17,9': 'Ballroom', '17,14': 'Ballroom', '19,8': 'Ballroom', '19,15': 'Ballroom',
-  '18,19': 'Kitchen',
+// Fallback door/start data (used when boardData prop is not available)
+const DEFAULT_DOORS = {
+  '3,6': { room: 'Study', direction: 'south' },
+  '6,11': { room: 'Hall', direction: 'south' },
+  '6,12': { room: 'Hall', direction: 'south' },
+  '4,9': { room: 'Hall', direction: 'west' },
+  '5,17': { room: 'Lounge', direction: 'south' },
+  '8,6': { room: 'Library', direction: 'east' },
+  '10,3': { room: 'Library', direction: 'south' },
+  '12,1': { room: 'Billiard Room', direction: 'north' },
+  '15,5': { room: 'Billiard Room', direction: 'east' },
+  '12,16': { room: 'Dining Room', direction: 'west' },
+  '9,17': { room: 'Dining Room', direction: 'north' },
+  '19,4': { room: 'Conservatory', direction: 'north' },
+  '17,9': { room: 'Ballroom', direction: 'north' },
+  '17,14': { room: 'Ballroom', direction: 'north' },
+  '19,8': { room: 'Ballroom', direction: 'west' },
+  '19,15': { room: 'Ballroom', direction: 'east' },
+  '18,19': { room: 'Kitchen', direction: 'north' },
 }
 
-const DOOR_DIRECTIONS = {
-  '3,6': 'south',     // Study → hallway below
-  '4,9': 'west',      // Hall → hallway left
-  '6,11': 'south',    // Hall → hallway below
-  '6,12': 'south',    // Hall → hallway below
-  '5,17': 'south',    // Lounge → hallway below
-  '8,6': 'east',      // Library → hallway right
-  '10,3': 'south',    // Library → hallway below
-  '12,1': 'north',    // Billiard Room → hallway above
-  '15,5': 'east',     // Billiard Room → hallway right
-  '12,16': 'west',    // Dining Room → hallway left
-  '9,17': 'north',    // Dining Room → hallway above
-  '19,4': 'north',    // Conservatory → hallway above
-  '17,9': 'north',    // Ballroom → hallway above
-  '17,14': 'north',   // Ballroom → hallway above
-  '19,8': 'west',     // Ballroom → hallway left
-  '19,15': 'east',    // Ballroom → hallway right
-  '18,19': 'north',   // Kitchen → hallway above
-}
-
-const STARTS = {
+const DEFAULT_STARTS = {
   '24,9': 'Scarlet', '7,23': 'Mustard', '24,14': 'White',
   '0,16': 'Green', '5,0': 'Plum', '18,0': 'Peacock',
 }
@@ -169,29 +160,6 @@ for (const room of Object.values(ROOM_INFO)) {
   room.centerCol = (room.minCol + room.maxCol) / 2
 }
 
-// ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
-
-const CELL_DATA = []
-for (let r = 0; r < 25; r++) {
-  const line = (BOARD_ROWS[r] || '').padEnd(24)
-  for (let c = 0; c < 24; c++) {
-    const key = `${r},${c}`
-    const ch = line[c]
-    const doorRoom = DOORS[key]
-    const startChar = STARTS[key]
-
-    if (doorRoom) {
-      CELL_DATA.push({ row: r, col: c, type: 'door', room: doorRoom, doorDir: DOOR_DIRECTIONS[key] })
-    } else if (ROOM_KEY_MAP[ch]) {
-      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
-    } else if (ch === '.') {
-      CELL_DATA.push({ row: r, col: c, type: startChar ? 'start' : 'hallway', room: null, startChar })
-    } else {
-      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null })
-    }
-  }
-}
-
 // ── Component ──
 
 const props = defineProps({
@@ -201,11 +169,42 @@ const props = defineProps({
   selectable: Boolean,
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
+  boardData: { type: Object, default: null },
 })
 
 const emit = defineEmits(['select-room', 'select-position'])
 
-const cells = CELL_DATA
+// Use backend board data when available, fall back to hardcoded defaults
+const doors = computed(() => props.boardData?.doors ?? DEFAULT_DOORS)
+const starts = computed(() => props.boardData?.starts ?? DEFAULT_STARTS)
+
+// ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
+
+const cells = computed(() => {
+  const d = doors.value
+  const s = starts.value
+  const result = []
+  for (let r = 0; r < 25; r++) {
+    const line = (BOARD_ROWS[r] || '').padEnd(24)
+    for (let c = 0; c < 24; c++) {
+      const key = `${r},${c}`
+      const ch = line[c]
+      const doorInfo = d[key]
+      const startChar = s[key]
+
+      if (doorInfo) {
+        result.push({ row: r, col: c, type: 'door', room: doorInfo.room, doorDir: doorInfo.direction })
+      } else if (ROOM_KEY_MAP[ch]) {
+        result.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
+      } else if (ch === '.') {
+        result.push({ row: r, col: c, type: startChar ? 'start' : 'hallway', room: null, startChar })
+      } else {
+        result.push({ row: r, col: c, type: 'wall', room: null })
+      }
+    }
+  }
+  return result
+})
 
 const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
