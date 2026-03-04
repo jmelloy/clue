@@ -368,10 +368,16 @@ async def _execute_action(
                 player_positions=(
                     dict(state.player_positions) if moved_suspect_player else None
                 ),
+                players_without_match=result.players_without_match,
             ),
         )
         if pending_show_by:
             pending_by_name = _player_name(state, pending_show_by)
+            pending_matching = (
+                state.pending_show_card.matching_cards
+                if state.pending_show_card
+                else []
+            )
             await manager.send_to_player(
                 game_id,
                 pending_show_by,
@@ -380,6 +386,7 @@ async def _execute_action(
                     suspect=result.suspect,
                     weapon=result.weapon,
                     room=result.room,
+                    matching_cards=pending_matching,
                     available_actions=game.get_available_actions(
                         pending_show_by, state
                     ),
@@ -471,6 +478,9 @@ async def _execute_action(
             CardShownPublicMessage(
                 shown_by=player_id,
                 shown_to=result.suggesting_player_id,
+                suspect=result.suspect,
+                weapon=result.weapon,
+                room=result.room,
             ),
         )
         await _broadcast_chat(
@@ -795,6 +805,15 @@ async def get_game(game_id: str):
     return state.model_dump()
 
 
+@app.get("/games/{game_id}/player/{player_id}")
+async def get_player_state(game_id: str, player_id: str):
+    game = ClueGame(game_id, redis_client)
+    player_state = await game.get_player_state(player_id)
+    if player_state is None:
+        raise HTTPException(status_code=404, detail="Game or player not found")
+    return player_state.model_dump()
+
+
 @app.post("/games/{game_id}/join")
 async def join_game(game_id: str, req: JoinRequest):
     game = ClueGame(game_id, redis_client)
@@ -1023,6 +1042,20 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
                         suspect=pending.suspect,
                         weapon=pending.weapon,
                         room=pending.room,
+                        matching_cards=pending.matching_cards,
+                        available_actions=player_state.available_actions,
+                    ),
+                )
+            # Notify the player if it's their turn (helps agents and reconnecting humans)
+            if (
+                player_state.whose_turn == player_id
+                and player_state.available_actions
+                and not (pending and pending.player_id == player_id)
+            ):
+                await manager.send_to_player(
+                    game_id,
+                    player_id,
+                    YourTurnMessage(
                         available_actions=player_state.available_actions,
                     ),
                 )

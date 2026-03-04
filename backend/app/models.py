@@ -247,6 +247,7 @@ class SuggestionMadeMessage(WSMessage):
     pending_show_by: Optional[str] = None
     moved_suspect_player: Optional[str] = None
     player_positions: Optional[dict[str, list[int]]] = None
+    players_without_match: list[str] = Field(default_factory=list)
 
 
 class ShowCardRequestMessage(WSMessage):
@@ -255,6 +256,7 @@ class ShowCardRequestMessage(WSMessage):
     suspect: str
     weapon: str
     room: str
+    matching_cards: list[str] = Field(default_factory=list)
     available_actions: list[str] = Field(default_factory=list)
 
 
@@ -269,6 +271,9 @@ class CardShownPublicMessage(WSMessage):
     type: Literal["card_shown_public"] = "card_shown_public"
     shown_by: str
     shown_to: str
+    suspect: str = ""
+    weapon: str = ""
+    room: str = ""
 
 
 class AccusationMadeMessage(WSMessage):
