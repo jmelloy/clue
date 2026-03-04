@@ -848,9 +848,52 @@ class RandomAgent(BaseAgent):
     3. **Accuse** only when it has narrowed each category to exactly one
        remaining candidate.
     4. **Show cards** strategically (prefer cards the requester already knows).
+
+    Style parameters (``secret_passage_chance``, ``explore_chance``,
+    ``chat_frequency``) are randomly chosen from {0.25, 0.50, 0.75} at
+    creation time to give each agent a slightly different personality.
+    Pass explicit values to override the random selection.
     """
 
     agent_type = "random"
+
+    # The three style tiers agents are randomly assigned from
+    _STYLE_TIERS = [0.25, 0.50, 0.75]
+
+    def __init__(
+        self,
+        player_id: str,
+        character: str,
+        cards: list[str],
+        *,
+        secret_passage_chance: float | None = None,
+        explore_chance: float | None = None,
+        chat_frequency: float | None = None,
+    ):
+        super().__init__(player_id=player_id, character=character, cards=cards)
+        self.secret_passage_chance = (
+            secret_passage_chance
+            if secret_passage_chance is not None
+            else random.choice(self._STYLE_TIERS)
+        )
+        self.explore_chance = (
+            explore_chance
+            if explore_chance is not None
+            else random.choice(self._STYLE_TIERS)
+        )
+        self.chat_frequency = (
+            chat_frequency
+            if chat_frequency is not None
+            else random.choice(self._STYLE_TIERS)
+        )
+        logger.info(
+            "[%s:%s] Style params | secret_passage=%.2f | explore=%.2f | chat=%.2f",
+            self.agent_type,
+            player_id,
+            self.secret_passage_chance,
+            self.explore_chance,
+            self.chat_frequency,
+        )
 
     # ------------------------------------------------------------------
     # Decisions
@@ -918,8 +961,8 @@ class RandomAgent(BaseAgent):
             )
             return SuggestAction(suspect=suspect, weapon=weapon, room=room)
 
-        # Phase 2: secret passage — 50% chance if available
-        if "secret_passage" in available and random.random() < 0.5:
+        # Phase 2: secret passage — chance varies by agent style
+        if "secret_passage" in available and random.random() < self.secret_passage_chance:
             my_room = current_room.get(player_id)
             dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
             if dest_room:
@@ -964,7 +1007,7 @@ class RandomAgent(BaseAgent):
                     target_room,
                     dice_value,
                 )
-            elif reachable_rooms and unknown_rooms and random.random() < 0.5:
+            elif reachable_rooms and unknown_rooms and random.random() < self.explore_chance:
                 # 50% chance: move toward a distant unknown room
                 target_room = self._pick_target_room(
                     unknown_rooms, my_room, player_pos
@@ -1035,6 +1078,35 @@ class RandomAgent(BaseAgent):
             suggesting_player_id,
         )
         return card
+
+    # ------------------------------------------------------------------
+    # Chat (scaled by style)
+    # ------------------------------------------------------------------
+
+    def generate_chat(
+        self, action_type: str, context: dict | None = None
+    ) -> str | None:
+        """Generate chat with probability scaled by ``chat_frequency`` style."""
+        if self._pending_chat:
+            msg = self._pending_chat
+            self._pending_chat = None
+            if self.character and msg.startswith(self.character + ": "):
+                msg = msg[len(self.character) + 2 :]
+            return msg
+
+        base_prob = _CHAT_PROBABILITY.get(action_type, 0.5)
+        # Scale by chat_frequency: 0.25 → quieter, 0.75 → chattier
+        scaled_prob = min(1.0, base_prob * (self.chat_frequency / 0.5))
+        if random.random() > scaled_prob:
+            return None
+
+        char_msgs = CHARACTER_CHAT.get(self.character, {})
+        templates = char_msgs.get(action_type) or _GENERIC_CHAT.get(action_type)
+        if not templates:
+            return None
+
+        template = random.choice(templates)
+        return _format_chat(template, context or {})
 
     # ------------------------------------------------------------------
     # Internals
@@ -1378,9 +1450,15 @@ class LLMAgent(BaseAgent):
         self._redis = redis_client
         self._game_id = game_id
 
-        # Fallback agent shares our observation state
+        # Fallback agent shares our observation state — LLM agents always
+        # use 50/50 style for consistent behavior.
         self._fallback = RandomAgent(
-            player_id=player_id, character=character, cards=cards
+            player_id=player_id,
+            character=character,
+            cards=cards,
+            secret_passage_chance=0.50,
+            explore_chance=0.50,
+            chat_frequency=0.50,
         )
         self._fallback.player_id = self.player_id
         self._fallback.seen_cards = self.seen_cards
