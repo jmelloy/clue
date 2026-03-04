@@ -26,128 +26,138 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from "vue";
 
 const CHARACTER_COLORS = {
-  'Miss Scarlett':    '#e74c3c',
-  'Colonel Mustard':  '#f39c12',
-  'Mrs. White':       '#ecf0f1',
-  'Reverend Green':   '#27ae60',
-  'Mrs. Peacock':     '#2980b9',
-  'Professor Plum':   '#8e44ad',
-}
+  "Miss Scarlett": "#e74c3c",
+  "Colonel Mustard": "#f39c12",
+  "Mrs. White": "#ecf0f1",
+  "Reverend Green": "#27ae60",
+  "Mrs. Peacock": "#2980b9",
+  "Professor Plum": "#8e44ad",
+};
 
 const props = defineProps({
   messages: { type: Array, default: () => [] },
   players: { type: Array, default: () => [] },
-})
-const emit = defineEmits(['send-message'])
+});
+const emit = defineEmits(["send-message"]);
 
-const inputText = ref('')
-const chatContainer = ref(null)
+const inputText = ref("");
+const chatContainer = ref(null);
 
 const playerById = computed(() => {
-  const map = {}
-  for (const p of props.players) map[p.id] = p
-  return map
-})
+  const map = {};
+  for (const p of props.players) map[p.id] = p;
+  return map;
+});
 
 function escapeHtml(str) {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function isPlayerChat(msg) {
-  if (!msg.player_id) return false
-  const player = playerById.value[msg.player_id]
-  if (!player) return false
-  return msg.text.startsWith(player.name + ': ')
+  if (!msg.player_id) return false;
+  const player = playerById.value[msg.player_id];
+  if (!player) return false;
+  return msg.text.startsWith(player.name + ": ");
 }
 
 function isSystemMsg(msg) {
-  return !isPlayerChat(msg)
+  return !isPlayerChat(msg);
 }
 
 function colorizeNames(text) {
   // Color character names — sort longest first to avoid partial matches
-  const entries = Object.entries(CHARACTER_COLORS).sort((a, b) => b[0].length - a[0].length)
+  const entries = Object.entries(CHARACTER_COLORS).sort(
+    (a, b) => b[0].length - a[0].length
+  );
   for (const [name, color] of entries) {
-    const esc = escapeHtml(name)
+    const esc = escapeHtml(name);
     if (text.includes(esc)) {
-      text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
+      text = text.replaceAll(
+        esc,
+        `<span style="color:${color};font-weight:bold">${esc}</span>`
+      );
     }
   }
   // Color player display names (may differ from character names)
   for (const p of props.players) {
-    const color = CHARACTER_COLORS[p.character]
-    if (!color) continue
-    const esc = escapeHtml(p.name)
+    const color = CHARACTER_COLORS[p.character];
+    if (!color) continue;
+    const esc = escapeHtml(p.name);
     if (text.includes(esc) && !text.includes(`">${esc}</span>`)) {
-      text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
+      text = text.replaceAll(
+        esc,
+        `<span style="color:${color};font-weight:bold">${esc}</span>`
+      );
     }
   }
-  return text
+  return text;
 }
 
 function formatMessageHtml(msg) {
-  const escaped = escapeHtml(msg.text)
+  const escaped = escapeHtml(msg.text);
 
   if (isPlayerChat(msg)) {
     // Player chat: "PlayerName: message text"
-    const player = playerById.value[msg.player_id]
-    const color = CHARACTER_COLORS[player.character]
+    const player = playerById.value[msg.player_id];
+    const color = CHARACTER_COLORS[player.character];
     if (color) {
-      const nameLen = escapeHtml(player.name).length
-      const name = escaped.substring(0, nameLen)
-      const rest = escaped.substring(nameLen)
-      return `<span style="color:${color};font-weight:bold">${name}</span>${colorizeNames(rest)}`
+      const nameLen = escapeHtml(player.name).length;
+      const name = escaped.substring(0, nameLen);
+      const rest = escaped.substring(nameLen);
+      return `<span style="color:${color};font-weight:bold">${name}</span>${colorizeNames(
+        rest
+      )}`;
     }
   }
 
   // System / action message: color all known names
-  return colorizeNames(escaped)
+  return colorizeNames(escaped);
 }
 
 function formatTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function sendMessage() {
-  const text = inputText.value.trim()
-  if (!text) return
-  emit('send-message', text)
-  inputText.value = ''
+  const text = inputText.value.trim();
+  if (!text) return;
+  emit("send-message", text);
+  inputText.value = "";
 }
 
 // Auto-scroll to bottom when new messages arrive
 watch(
   () => props.messages.length,
   async () => {
-    await nextTick()
+    await nextTick();
     if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
   }
-)
+);
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
 
 .chat-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
 }
 
 h2 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
   color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
@@ -216,7 +226,7 @@ h2 {
   border: 1px solid rgba(212, 168, 73, 0.12);
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.85rem;
   transition: border-color 0.2s;
   outline: none;
@@ -241,7 +251,7 @@ h2 {
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   transition: all 0.2s;
 }
 

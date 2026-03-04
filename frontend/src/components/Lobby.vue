@@ -9,7 +9,12 @@
 
     <!-- Floating dust particles -->
     <div class="particles">
-      <span v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)"></span>
+      <span
+        v-for="n in 20"
+        :key="n"
+        class="particle"
+        :style="particleStyle(n)"
+      ></span>
     </div>
 
     <div class="lobby-content">
@@ -58,7 +63,9 @@
         <section class="card" v-else-if="urlGameError">
           <div class="card-inner">
             <p class="error-text">{{ urlGameError }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">
+              Return to Foyer
+            </button>
           </div>
         </section>
 
@@ -68,7 +75,11 @@
               <span class="card-label">Case File</span>
               <h2>Game {{ urlGameId }}</h2>
             </div>
-            <p class="status-badge" :class="urlGameState?.status" v-if="urlGameState">
+            <p
+              class="status-badge"
+              :class="urlGameState?.status"
+              v-if="urlGameState"
+            >
               <span class="status-dot"></span>
               {{ urlGameStatusText }}
               <span v-if="urlGameState.players" class="player-count">
@@ -84,19 +95,38 @@
                   v-for="p in urlGameState.players"
                   :key="p.id"
                   class="suspect-item"
-                  :class="{ eliminated: !p.active && urlGameState.status !== 'waiting' }"
+                  :class="{
+                    eliminated: !p.active && urlGameState.status !== 'waiting',
+                  }"
                   @click="rejoinAs(p)"
                 >
-                  <div class="suspect-token" :class="{ 'has-portrait': SUSPECT_IMAGES[p.character] }" :style="tokenColor(p.character)">
-                    <img v-if="SUSPECT_IMAGES[p.character]" :src="SUSPECT_IMAGES[p.character]" :alt="p.character" class="suspect-portrait" />
+                  <div
+                    class="suspect-token"
+                    :class="{ 'has-portrait': SUSPECT_IMAGES[p.character] }"
+                    :style="tokenColor(p.character)"
+                  >
+                    <img
+                      v-if="SUSPECT_IMAGES[p.character]"
+                      :src="SUSPECT_IMAGES[p.character]"
+                      :alt="p.character"
+                      class="suspect-portrait"
+                    />
                     <span v-else>{{ charAbbr(p.character) }}</span>
                   </div>
                   <div class="suspect-info">
                     <span class="suspect-name">{{ p.name }}</span>
                     <span class="suspect-character">{{ p.character }}</span>
                   </div>
-                  <span v-if="!p.active && urlGameState.status !== 'waiting'" class="badge badge-eliminated">Eliminated</span>
-                  <span v-else-if="p.type !== 'human'" class="badge badge-agent">{{ agentLabel(p.type) }}</span>
+                  <span
+                    v-if="!p.active && urlGameState.status !== 'waiting'"
+                    class="badge badge-eliminated"
+                    >Eliminated</span
+                  >
+                  <span
+                    v-else-if="p.type !== 'human'"
+                    class="badge badge-agent"
+                    >{{ agentLabel(p.type) }}</span
+                  >
                   <span v-else class="badge badge-human">Human</span>
                 </li>
               </ul>
@@ -108,7 +138,11 @@
                 <summary>Enter as a new suspect...</summary>
                 <div class="form-group">
                   <div class="input-wrapper">
-                    <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+                    <input
+                      v-model="playerName"
+                      placeholder="Your alias"
+                      @keyup.enter="joinUrlGame"
+                    />
                   </div>
                   <div class="select-wrapper">
                     <select v-model="playerType">
@@ -117,7 +151,11 @@
                       <option value="llm_agent">LLM Agent</option>
                     </select>
                   </div>
-                  <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
+                  <button
+                    class="btn-primary"
+                    :disabled="!playerName"
+                    @click="joinUrlGame"
+                  >
                     Enter the Mansion
                   </button>
                 </div>
@@ -127,7 +165,11 @@
             <!-- No players yet -->
             <div v-else-if="urlGameCanJoin" class="form-group">
               <div class="input-wrapper">
-                <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+                <input
+                  v-model="playerName"
+                  placeholder="Your alias"
+                  @keyup.enter="joinUrlGame"
+                />
               </div>
               <div class="select-wrapper">
                 <select v-model="playerType">
@@ -137,7 +179,13 @@
                 </select>
               </div>
               <div class="btn-row">
-                <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">Enter the Mansion</button>
+                <button
+                  class="btn-primary"
+                  :disabled="!playerName"
+                  @click="joinUrlGame"
+                >
+                  Enter the Mansion
+                </button>
                 <button class="btn-secondary" @click="observeUrlGame">
                   <span class="btn-icon">&#x1F441;</span> Observe
                 </button>
@@ -151,7 +199,9 @@
             </div>
 
             <p v-if="error" class="error-text">{{ error }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">
+              Return to Foyer
+            </button>
           </div>
         </section>
       </template>
@@ -166,10 +216,17 @@
                 <span class="card-label">New Investigation</span>
                 <h2>Host a Game</h2>
               </div>
-              <p class="card-desc">Gather your suspects and uncover the truth. As host, you'll set the stage for murder.</p>
+              <p class="card-desc">
+                Gather your suspects and uncover the truth. As host, you'll set
+                the stage for murder.
+              </p>
               <div class="form-group">
                 <div class="input-wrapper">
-                  <input v-model="playerName" placeholder="Your alias" @keyup.enter="createGame" />
+                  <input
+                    v-model="playerName"
+                    placeholder="Your alias"
+                    @keyup.enter="createGame"
+                  />
                 </div>
                 <div class="select-wrapper">
                   <select v-model="playerType">
@@ -178,15 +235,36 @@
                     <option value="llm_agent">LLM Agent</option>
                   </select>
                 </div>
-                <button class="btn-primary" :disabled="!playerName" @click="createGame">
+                <button
+                  class="btn-primary"
+                  :disabled="!playerName"
+                  @click="createGame"
+                >
                   Open the Case
                 </button>
               </div>
             </div>
             <div class="card-decoration">
               <svg viewBox="0 0 120 120" class="deco-magnifier">
-                <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.15"/>
-                <line x1="75" y1="75" x2="110" y2="110" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.15"/>
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  opacity="0.15"
+                />
+                <line
+                  x1="75"
+                  y1="75"
+                  x2="110"
+                  y2="110"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  opacity="0.15"
+                />
               </svg>
             </div>
           </section>
@@ -198,14 +276,17 @@
                 <span class="card-label">Active Case</span>
                 <h2>Join a Game</h2>
               </div>
-              <p class="card-desc">You've received an invitation to Tudor Mansion. Enter the case number to join.</p>
+              <p class="card-desc">
+                You've received an invitation to Tudor Mansion. Enter the case
+                number to join.
+              </p>
               <div class="form-group">
                 <div class="input-wrapper input-code">
                   <input
                     v-model="joinGameId"
                     placeholder="Case No. (e.g. ABC123)"
                     @keyup.enter="joinGame"
-                    style="text-transform: uppercase; letter-spacing: 0.15em;"
+                    style="text-transform: uppercase; letter-spacing: 0.15em"
                   />
                 </div>
                 <div class="input-wrapper">
@@ -219,10 +300,18 @@
                   </select>
                 </div>
                 <div class="btn-row">
-                  <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
+                  <button
+                    class="btn-primary"
+                    :disabled="!joinGameId || !playerName"
+                    @click="joinGame"
+                  >
                     Enter the Mansion
                   </button>
-                  <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
+                  <button
+                    class="btn-secondary"
+                    :disabled="!joinGameId"
+                    @click="observeGame"
+                  >
                     <span class="btn-icon">&#x1F441;</span> Observe
                   </button>
                 </div>
@@ -230,8 +319,24 @@
             </div>
             <div class="card-decoration">
               <svg viewBox="0 0 120 120" class="deco-envelope">
-                <rect x="10" y="30" width="100" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="2" opacity="0.12"/>
-                <polyline points="10,30 60,72 110,30" fill="none" stroke="currentColor" stroke-width="2" opacity="0.12"/>
+                <rect
+                  x="10"
+                  y="30"
+                  width="100"
+                  height="70"
+                  rx="4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  opacity="0.12"
+                />
+                <polyline
+                  points="10,30 60,72 110,30"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  opacity="0.12"
+                />
               </svg>
             </div>
           </section>
@@ -250,195 +355,207 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch } from "vue";
 
 const props = defineProps({
   urlGameId: { type: String, default: null },
-})
+});
 
-const emit = defineEmits(['game-joined', 'observe', 'rejoin', 'clear-url-game'])
+const emit = defineEmits([
+  "game-joined",
+  "observe",
+  "rejoin",
+  "clear-url-game",
+]);
 
-const playerName = ref('')
-const playerType = ref('human')
-const joinGameId = ref('')
-const error = ref('')
+const playerName = ref("");
+const playerType = ref("human");
+const joinGameId = ref("");
+const error = ref("");
 
 // URL game state
-const urlGameState = ref(null)
-const urlGameLoading = ref(false)
-const urlGameError = ref('')
+const urlGameState = ref(null);
+const urlGameLoading = ref(false);
+const urlGameError = ref("");
 
 const CHARACTER_COLORS = {
-  'Miss Scarlett': { bg: '#9b1b30', text: '#fff' },
-  'Colonel Mustard': { bg: '#c8a415', text: '#1a1008' },
-  'Mrs. White': { bg: '#d8d0c8', text: '#2a2520' },
-  'Reverend Green': { bg: '#1a6b3c', text: '#fff' },
-  'Mrs. Peacock': { bg: '#1a3a6b', text: '#fff' },
-  'Professor Plum': { bg: '#5c2d82', text: '#fff' },
-}
+  "Miss Scarlett": { bg: "#9b1b30", text: "#fff" },
+  "Colonel Mustard": { bg: "#c8a415", text: "#1a1008" },
+  "Mrs. White": { bg: "#d8d0c8", text: "#2a2520" },
+  "Reverend Green": { bg: "#1a6b3c", text: "#fff" },
+  "Mrs. Peacock": { bg: "#1a3a6b", text: "#fff" },
+  "Professor Plum": { bg: "#5c2d82", text: "#fff" },
+};
 
 const CHARACTER_ABBR = {
-  'Miss Scarlett': 'MS',
-  'Colonel Mustard': 'CM',
-  'Mrs. White': 'MW',
-  'Reverend Green': 'RG',
-  'Mrs. Peacock': 'MP',
-  'Professor Plum': 'PP',
-}
+  "Miss Scarlett": "MS",
+  "Colonel Mustard": "CM",
+  "Mrs. White": "MW",
+  "Reverend Green": "RG",
+  "Mrs. Peacock": "MP",
+  "Professor Plum": "PP",
+};
 
 const SUSPECT_IMAGES = {
-  'Miss Scarlett': '/images/MissScarlett.jpg',
-  'Colonel Mustard': '/images/ColonelMustard.jpg',
-  'Mrs. White': '/images/MrsWhite.jpg',
-  'Reverend Green': '/images/MrGreen.jpg',
-  'Mrs. Peacock': '/images/MrsPeacock.jpg',
-  'Professor Plum': '/images/ProfessorPlum.jpg',
-}
+  "Miss Scarlett": "/images/MissScarlett.jpg",
+  "Colonel Mustard": "/images/ColonelMustard.jpg",
+  "Mrs. White": "/images/MrsWhite.jpg",
+  "Reverend Green": "/images/MrGreen.jpg",
+  "Mrs. Peacock": "/images/MrsPeacock.jpg",
+  "Professor Plum": "/images/ProfessorPlum.jpg",
+};
 
 function tokenColor(character) {
-  const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
-  return { backgroundColor: c.bg, color: c.text, borderColor: c.bg }
+  const c = CHARACTER_COLORS[character] || { bg: "#444", text: "#fff" };
+  return { backgroundColor: c.bg, color: c.text, borderColor: c.bg };
 }
 
 function charAbbr(character) {
-  return CHARACTER_ABBR[character] || '??'
+  return CHARACTER_ABBR[character] || "??";
 }
 
 function agentLabel(type) {
-  if (type === 'agent') return 'AI'
-  if (type === 'llm_agent') return 'LLM'
-  if (type === 'wanderer') return 'NPC'
-  return type
+  if (type === "agent") return "AI";
+  if (type === "llm_agent") return "LLM";
+  if (type === "wanderer") return "NPC";
+  return type;
 }
 
 function particleStyle(n) {
-  const x = Math.sin(n * 7.3) * 50 + 50
-  const delay = (n * 1.7) % 12
-  const duration = 8 + (n % 5) * 2
-  const size = 1 + (n % 3)
+  const x = Math.sin(n * 7.3) * 50 + 50;
+  const delay = (n * 1.7) % 12;
+  const duration = 8 + (n % 5) * 2;
+  const size = 1 + (n % 3);
   return {
     left: `${x}%`,
     animationDelay: `${delay}s`,
     animationDuration: `${duration}s`,
     width: `${size}px`,
     height: `${size}px`,
-  }
+  };
 }
 
 const urlGameCanJoin = computed(() => {
-  return urlGameState.value?.status === 'waiting'
-})
+  return urlGameState.value?.status === "waiting";
+});
 
 const urlGameStatusText = computed(() => {
-  const status = urlGameState.value?.status
-  if (status === 'waiting') return 'Awaiting suspects'
-  if (status === 'playing') return 'Investigation in progress'
-  if (status === 'finished') return 'Case closed'
-  return ''
-})
+  const status = urlGameState.value?.status;
+  if (status === "waiting") return "Awaiting suspects";
+  if (status === "playing") return "Investigation in progress";
+  if (status === "finished") return "Case closed";
+  return "";
+});
 
-watch(() => props.urlGameId, (gid) => {
-  if (gid) {
-    fetchUrlGame(gid)
-  } else {
-    urlGameState.value = null
-    urlGameLoading.value = false
-    urlGameError.value = ''
-  }
-}, { immediate: true })
+watch(
+  () => props.urlGameId,
+  (gid) => {
+    if (gid) {
+      fetchUrlGame(gid);
+    } else {
+      urlGameState.value = null;
+      urlGameLoading.value = false;
+      urlGameError.value = "";
+    }
+  },
+  { immediate: true }
+);
 
 async function fetchUrlGame(gid) {
-  urlGameLoading.value = true
-  urlGameError.value = ''
-  urlGameState.value = null
+  urlGameLoading.value = true;
+  urlGameError.value = "";
+  urlGameState.value = null;
   try {
-    const res = await fetch(`/games/${gid}`)
+    const res = await fetch(`/games/${gid}`);
     if (!res.ok) {
-      urlGameError.value = 'Case file not found'
-      return
+      urlGameError.value = "Case file not found";
+      return;
     }
-    urlGameState.value = await res.json()
+    urlGameState.value = await res.json();
   } catch (e) {
-    urlGameError.value = 'Failed to retrieve case: ' + e.message
+    urlGameError.value = "Failed to retrieve case: " + e.message;
   } finally {
-    urlGameLoading.value = false
+    urlGameLoading.value = false;
   }
 }
 
 async function joinUrlGame() {
-  error.value = ''
-  await doJoin(props.urlGameId)
+  error.value = "";
+  await doJoin(props.urlGameId);
 }
 
 function observeUrlGame() {
-  emit('observe', { gameId: props.urlGameId })
+  emit("observe", { gameId: props.urlGameId });
 }
 
 function rejoinAs(player) {
-  emit('rejoin', { gameId: props.urlGameId, playerId: player.id })
+  emit("rejoin", { gameId: props.urlGameId, playerId: player.id });
 }
 
 async function createGame() {
-  error.value = ''
+  error.value = "";
   try {
-    const res = await fetch('/games', { method: 'POST' })
-    const { game_id } = await res.json()
-    await doJoin(game_id)
+    const res = await fetch("/games", { method: "POST" });
+    const { game_id } = await res.json();
+    await doJoin(game_id);
   } catch (e) {
-    error.value = 'Failed to open case: ' + e.message
+    error.value = "Failed to open case: " + e.message;
   }
 }
 
 async function joinGame() {
-  error.value = ''
-  await doJoin(joinGameId.value.trim().toUpperCase())
+  error.value = "";
+  await doJoin(joinGameId.value.trim().toUpperCase());
 }
 
 async function doJoin(gameId) {
   try {
     const res = await fetch(`/games/${gameId}/join`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ player_name: playerName.value, player_type: playerType.value })
-    })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        player_name: playerName.value,
+        player_type: playerType.value,
+      }),
+    });
     if (!res.ok) {
-      const data = await res.json()
-      error.value = data.detail ?? 'Failed to join'
-      return
+      const data = await res.json();
+      error.value = data.detail ?? "Failed to join";
+      return;
     }
-    const { player_id } = await res.json()
-    const stateRes = await fetch(`/games/${gameId}`)
-    const state = await stateRes.json()
-    emit('game-joined', { gameId, playerId: player_id, state })
+    const { player_id } = await res.json();
+    const stateRes = await fetch(`/games/${gameId}`);
+    const state = await stateRes.json();
+    emit("game-joined", { gameId, playerId: player_id, state });
   } catch (e) {
-    error.value = 'Error: ' + e.message
+    error.value = "Error: " + e.message;
   }
 }
 
 async function observeGame() {
-  error.value = ''
-  const gid = joinGameId.value.trim().toUpperCase()
+  error.value = "";
+  const gid = joinGameId.value.trim().toUpperCase();
   try {
-    const res = await fetch(`/games/${gid}`)
+    const res = await fetch(`/games/${gid}`);
     if (!res.ok) {
-      error.value = 'Case file not found'
-      return
+      error.value = "Case file not found";
+      return;
     }
-    emit('observe', { gameId: gid })
+    emit("observe", { gameId: gid });
   } catch (e) {
-    error.value = 'Error: ' + e.message
+    error.value = "Error: " + e.message;
   }
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
 
 .lobby {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   background: #0a0908;
 }
 
@@ -455,21 +572,25 @@ async function observeGame() {
   inset: 0;
   opacity: 0.035;
   background: radial-gradient(ellipse at 30% 20%, #d4a849 0%, transparent 60%),
-              radial-gradient(ellipse at 70% 80%, #8b2a2a 0%, transparent 50%);
+    radial-gradient(ellipse at 70% 80%, #8b2a2a 0%, transparent 50%);
   animation: fog-drift 20s ease-in-out infinite alternate;
 }
 
 .fog-2 {
   opacity: 0.025;
   background: radial-gradient(ellipse at 60% 40%, #d4a849 0%, transparent 55%),
-              radial-gradient(ellipse at 20% 70%, #4a1a2a 0%, transparent 45%);
+    radial-gradient(ellipse at 20% 70%, #4a1a2a 0%, transparent 45%);
   animation-delay: -10s;
   animation-direction: alternate-reverse;
 }
 
 @keyframes fog-drift {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(40px, -20px) scale(1.1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(40px, -20px) scale(1.1);
+  }
 }
 
 .vignette {
@@ -496,10 +617,20 @@ async function observeGame() {
 }
 
 @keyframes float-up {
-  0% { transform: translateY(0) translateX(0); opacity: 0; }
-  10% { opacity: 0.6; }
-  90% { opacity: 0.2; }
-  100% { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(30px);
+    opacity: 0;
+  }
 }
 
 /* === Content === */
@@ -541,13 +672,24 @@ async function observeGame() {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 168, 73, 0.15), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(212, 168, 73, 0.15),
+    transparent 70%
+  );
   animation: pulse-glow 4s ease-in-out infinite;
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
 }
 
 /* === Hero === */
@@ -570,32 +712,58 @@ async function observeGame() {
   opacity: 0.4;
 }
 
-.frame-corner.tl { top: 0; left: 0; border-top: 1.5px solid; border-left: 1.5px solid; }
-.frame-corner.tr { top: 0; right: 0; border-top: 1.5px solid; border-right: 1.5px solid; }
-.frame-corner.bl { bottom: 0; left: 0; border-bottom: 1.5px solid; border-left: 1.5px solid; }
-.frame-corner.br { bottom: 0; right: 0; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+.frame-corner.tl {
+  top: 0;
+  left: 0;
+  border-top: 1.5px solid;
+  border-left: 1.5px solid;
+}
+.frame-corner.tr {
+  top: 0;
+  right: 0;
+  border-top: 1.5px solid;
+  border-right: 1.5px solid;
+}
+.frame-corner.bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 1.5px solid;
+  border-left: 1.5px solid;
+}
+.frame-corner.br {
+  bottom: 0;
+  right: 0;
+  border-bottom: 1.5px solid;
+  border-right: 1.5px solid;
+}
 
 .title {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 4.5rem;
   font-weight: 900;
   letter-spacing: 0.35em;
   color: #d4a849;
-  text-shadow:
-    0 0 40px rgba(212, 168, 73, 0.2),
-    0 2px 0 #a07830;
+  text-shadow: 0 0 40px rgba(212, 168, 73, 0.2), 0 2px 0 #a07830;
   line-height: 1;
   margin-right: -0.35em; /* compensate letter-spacing */
   animation: title-appear 1.2s ease-out;
 }
 
 @keyframes title-appear {
-  0% { opacity: 0; transform: translateY(-10px); letter-spacing: 0.6em; }
-  100% { opacity: 1; transform: translateY(0); letter-spacing: 0.35em; }
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+    letter-spacing: 0.6em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 0.35em;
+  }
 }
 
 .tagline {
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-style: italic;
   font-size: 1.05rem;
   color: #8a7e6b;
@@ -605,8 +773,12 @@ async function observeGame() {
 }
 
 @keyframes fade-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .weapon-icons {
@@ -651,8 +823,11 @@ async function observeGame() {
 .card {
   position: relative;
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(30, 24, 16, 0.95) 0%,
+    rgba(18, 14, 10, 0.97) 100%
+  );
   border: 1px solid rgba(212, 168, 73, 0.12);
   overflow: hidden;
   transition: border-color 0.4s, box-shadow 0.4s;
@@ -664,8 +839,14 @@ async function observeGame() {
 }
 
 @keyframes card-appear {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card:hover {
@@ -695,7 +876,7 @@ async function observeGame() {
 
 .card-label {
   display: inline-block;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -706,7 +887,7 @@ async function observeGame() {
 }
 
 .card-header h2 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 1.35rem;
   font-weight: 700;
   color: #e8dcc8;
@@ -756,8 +937,13 @@ async function observeGame() {
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .player-count {
@@ -786,7 +972,7 @@ async function observeGame() {
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.95rem;
   transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
   outline: none;
@@ -815,7 +1001,7 @@ async function observeGame() {
 }
 
 .select-wrapper::after {
-  content: '\25BE';
+  content: "\25BE";
   position: absolute;
   right: 0.9rem;
   top: 50%;
@@ -836,7 +1022,7 @@ async function observeGame() {
   border-radius: 5px;
   background: linear-gradient(135deg, #d4a849, #b8912e);
   color: #1a1008;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -847,10 +1033,10 @@ async function observeGame() {
 }
 
 .btn-primary::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -883,7 +1069,7 @@ async function observeGame() {
   border-radius: 5px;
   background: transparent;
   color: #8a7e6b;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s;
@@ -915,7 +1101,7 @@ async function observeGame() {
   background: none;
   border: none;
   color: #5a5040;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.85rem;
   cursor: pointer;
   transition: color 0.2s;
@@ -938,7 +1124,7 @@ async function observeGame() {
 
 /* === Suspect list === */
 .section-label {
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -983,7 +1169,7 @@ async function observeGame() {
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
   overflow: hidden;
@@ -1091,7 +1277,9 @@ async function observeGame() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* === Error === */
@@ -1121,7 +1309,12 @@ async function observeGame() {
 .footer-line {
   width: 60px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 168, 73, 0.2), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 168, 73, 0.2),
+    transparent
+  );
   margin: 0 auto 1rem;
 }
 
