@@ -271,7 +271,8 @@ for (let r = 0; r < 25; r++) {
         startChar,
       });
     } else {
-      CELL_DATA.push({ row: r, col: c, type: "wall", room: null });
+      const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14;
+      CELL_DATA.push({ row: r, col: c, type: "wall", room: null, isCenter });
     }
   }
 }
@@ -387,6 +388,7 @@ function abbr(character) {
 
 function cellClasses(cell) {
   const cls = ["cell", `cell-${cell.type}`];
+  if (cell.isCenter) cls.push("cell-center");
   if (cell.room) {
     if (props.selectable) cls.push("clickable");
     if (props.selectedRoom === cell.room) cls.push("selected");
@@ -500,8 +502,8 @@ function tokenStyle(token) {
   background: #1a1510;
   border-radius: 6px;
   overflow: hidden;
-  border: 1.5px solid rgba(212, 168, 73, 0.15);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  border: 4px solid #8b1a1a;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
 
 /* ── Grid ── */
@@ -593,7 +595,13 @@ function tokenStyle(token) {
 }
 
 .cell-wall {
-  background: transparent;
+  background: #2a2a1e;
+}
+
+/* Center dead space (staircase area) */
+.cell-wall.cell-center {
+  background: #3a2e1e;
+  border: 0.5px solid rgba(80, 65, 40, 0.3);
 }
 
 /* ── Interactive states ── */
@@ -643,13 +651,13 @@ function tokenStyle(token) {
 }
 
 .cell.unreachable {
-  filter: saturate(0.2) brightness(0.5);
-  opacity: 0.8;
+  filter: saturate(0.25) brightness(0.7);
+  opacity: 0.85;
 }
 
 .cell-door.unreachable {
-  filter: saturate(0.2) brightness(0.5);
-  opacity: 0.8;
+  filter: saturate(0.25) brightness(0.7);
+  opacity: 0.85;
 }
 
 .cell.reachable-door {
