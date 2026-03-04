@@ -1,22 +1,22 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
 
-const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-const backendWsUrl = backendUrl.replace(/^http/, 'ws')
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+const backendWsUrl = backendUrl.replace(/^http/, "ws");
 
 export default defineConfig({
   plugins: [vue()],
   build: {
-    outDir: '../backend/static',
-    emptyOutDir: true
+    outDir: "../backend/static",
+    emptyOutDir: true,
   },
   server: {
     proxy: {
-      '/games': backendUrl,
-      '/board': backendUrl,
-      '/holdem/games': backendUrl,
-      '/images': backendUrl,
-      '/ws': { target: backendWsUrl, ws: true }
-    }
-  }
-})
+      "/games": backendUrl,
+      "/board": backendUrl,
+      "/holdem/games": backendUrl,
+      "/images": backendUrl,
+      "/ws": { target: backendWsUrl, ws: true },
+    },
+  },
+});

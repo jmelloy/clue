@@ -1043,8 +1043,18 @@ class RandomAgent(BaseAgent):
                 )
             return MoveAction(room=target_room)
 
-        # Phase 5: end turn
-        logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
+        # Phase 5: end turn (only if available — may not be if waiting for show_card)
+        if "end_turn" in available:
+            logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
+            return EndTurnAction()
+
+        # No valid action available (e.g. pending show_card from another player)
+        logger.warning(
+            "[%s:%s] No valid action found (available=%s), defaulting to end_turn",
+            self.agent_type,
+            player_id,
+            available,
+        )
         return EndTurnAction()
 
     async def decide_show_card(

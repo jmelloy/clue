@@ -299,6 +299,17 @@ class AgentRunner:
         if game_state.status != "playing":
             return
 
+        # If no actions are available (e.g. waiting for another player to
+        # show a card), skip this turn notification — we'll act when the
+        # next relevant message arrives.
+        if not player_state.available_actions:
+            logger.debug(
+                "No available actions for %s in game %s, skipping",
+                player_id,
+                game_id,
+            )
+            return
+
         try:
             action = await agent.decide_action(game_state, player_state)
         except Exception:

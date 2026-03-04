@@ -2,14 +2,15 @@
 
 ## Project Overview
 
-Clue is a real-time multiplayer board game server implementing the classic "Clue" (Cluedo) detective game. Players (human or LLM-powered agents) create/join games, move around a board, make suggestions and accusations, and chat — all via WebSockets for live updates.
+A real-time multiplayer board game server supporting multiple games — currently **Clue** (Cluedo) and **Texas Hold'em** poker. Players (human or AI agents) create/join games, play through game-specific mechanics, and chat — all via WebSockets for live updates. Games are pluggable via a registry system (`app/games/__init__.py`).
 
 ## Tech Stack
 
 - **Backend**: Python 3.12, FastAPI, Redis (async via `redis.asyncio`), WebSockets
 - **Frontend**: Vue 3 (Composition API with `<script setup>`), Vite 7
-- **Agents**: Pluggable agent system (RandomAgent, WandererAgent, LLMAgent) with OpenAI-compatible LLM integration
+- **Agents**: Pluggable agent system — Clue agents (RandomAgent, WandererAgent, LLMAgent) and Hold'em agents (HoldemAgent) with OpenAI-compatible LLM integration
 - **Infrastructure**: Docker Compose (dev), Kubernetes (prod), nginx (prod serving)
+- **Testing**: pytest + fakeredis (backend), Playwright (E2E browser tests)
 - **Tooling**: uv (Python package manager), Mise (tool version management)
 
 ## Repository Structure
@@ -17,22 +18,35 @@ Clue is a real-time multiplayer board game server implementing the classic "Clue
 ```
 backend/
   app/
-    main.py          # FastAPI app, HTTP routes, WebSocket handler
-    game.py          # ClueGame class — core game logic and state machine
-    board.py         # 25x24 grid, room graph, BFS pathfinding
-    board.txt        # ASCII diagram of the board layout
-    agents.py        # Agent system: BaseAgent, RandomAgent, WandererAgent, LLMAgent
-    llm_agent.py     # Legacy LLM agent (superseded by agents.py)
-    models.py        # Pydantic models for API requests and game state
+    main.py          # FastAPI app, HTTP routes, WebSocket handler (Clue + Hold'em)
+    llm_agent.py     # Legacy LLM agent (superseded by games/clue/agents.py)
     ws_manager.py    # WebSocket ConnectionManager
     logging.py       # Structured logging (colored, JSON, access formats)
+    games/
+      __init__.py    # Game registry — maps game type slugs to modules
+      clue/
+        __init__.py  # Package exports for ClueGame, agents, board constants
+        game.py      # ClueGame class — core game logic and state machine
+        board.py     # 25x24 grid, room graph, BFS pathfinding
+        board.txt    # ASCII diagram of the board layout
+        agents.py    # Agent system: BaseAgent, RandomAgent, WandererAgent, LLMAgent
+        models.py    # Pydantic models for Clue API requests and game state
+        images/      # Room and character artwork (JPG)
+      holdem/
+        __init__.py  # Package exports for HoldemGame
+        game.py      # HoldemGame class — poker state machine backed by Redis
+        models.py    # Pydantic models for Hold'em state, actions, and API
+        agents.py    # HoldemAgent — rule-based poker player with hand evaluation
+        hand_eval.py # Hand evaluation: best 5-card hand from 7 cards
   agent_runner.py    # Standalone agent process (polls Redis, submits actions via HTTP)
   main.py            # Uvicorn entry point with logging config
   tests/
-    test_game.py     # Game logic tests (pytest + fakeredis)
-    test_board.py    # Board and pathfinding tests
-    test_agent_game.py  # Agent integration tests (full game simulations)
-    test_ws_e2e.py   # End-to-end WebSocket tests (HTTP + WS stack)
+    test_game.py          # Clue game logic tests (pytest + fakeredis)
+    test_board.py         # Board and pathfinding tests
+    test_agent_game.py    # Clue agent integration tests (full game simulations)
+    test_ws_e2e.py        # End-to-end WebSocket tests (HTTP + WS stack)
+    test_holdem.py        # Hold'em game logic tests (pytest + fakeredis)
+    test_holdem_agent.py  # Hold'em agent tests
   pyproject.toml     # Python project config (dependencies, build)
   pytest.ini         # pytest-asyncio config (asyncio_mode = auto)
   uv.lock            # Locked dependency versions
@@ -49,6 +63,7 @@ frontend/
       BoardMap.vue             # Interactive 25x24 grid board with player tokens
       DetectiveNotes.vue       # Card tracking notepad (auto-marks shown cards)
       ChatPanel.vue            # In-game chat
+      AgentDebugPanel.vue      # Live agent decision/status debugging panel
     composables/
       useWebSocket.js          # WebSocket composable
   vite.config.js               # Build to ../backend/static, dev proxy
@@ -61,6 +76,10 @@ scripts/
   dump_game.py       # Debug tool: inspect game state in Redis
   live_ws_test.py    # Live end-to-end test against running Docker environment
 
+tests/
+  playwright/
+    test_game_flow.spec.js     # Playwright E2E browser tests
+
 k8s/                           # Kubernetes manifests
   namespace.yaml               # "clue" namespace
   backend.yaml                 # Backend Deployment + Service
@@ -70,6 +89,8 @@ k8s/                           # Kubernetes manifests
   clusterissuer.yaml           # Optional cert-manager for HTTPS
 
 docker-compose.yml             # Local dev: redis + backend + agent-runner + frontend
+package.json                   # Root package — Playwright E2E test runner
+playwright.config.js           # Playwright configuration
 .github/
   workflows/
     ci.yml                     # CI: frontend build + backend pytest
@@ -97,13 +118,25 @@ cd backend
 pip install .              # or: uv sync
 pytest                     # runs all tests
 pytest tests/ -v           # verbose output
-pytest tests/test_game.py  # game logic only
+pytest tests/test_game.py  # Clue game logic only
 pytest tests/test_board.py # board/pathfinding only
-pytest tests/test_agent_game.py  # agent integration tests
-pytest tests/test_ws_e2e.py      # end-to-end WebSocket tests
+pytest tests/test_agent_game.py    # Clue agent integration tests
+pytest tests/test_ws_e2e.py        # end-to-end WebSocket tests
+pytest tests/test_holdem.py        # Hold'em game logic
+pytest tests/test_holdem_agent.py  # Hold'em agent tests
 ```
 
 Tests use `fakeredis` — no running Redis instance needed.
+
+### Running Playwright E2E tests
+
+```bash
+# From the repo root (requires a running frontend + backend)
+npm install
+npx playwright install
+npm test                   # runs Playwright tests
+npm run test:headed        # runs with visible browser
+```
 
 ### Running backend manually
 
@@ -135,10 +168,19 @@ python scripts/live_ws_test.py --base-url http://localhost:8000 --agents 3
 
 ## Architecture & Key Patterns
 
-### Game State in Redis
+### Game Registry (backend/app/games/__init__.py)
 
-All state lives in Redis with 24-hour TTL. Key schema:
+Games are registered by slug in `GAME_TYPES`:
+- `"clue"` → `app.games.clue` (default)
+- `"holdem"` → `app.games.holdem`
 
+Each game package exports its own game class, models, and agents.
+
+### Redis Key Schema
+
+All state lives in Redis with 24-hour TTL.
+
+**Clue keys:**
 - `game:{id}` — primary game state (JSON)
 - `game:{id}:solution` — the hidden solution cards (JSON)
 - `game:{id}:cards:{player_id}` — a player's hand (JSON)
@@ -147,10 +189,15 @@ All state lives in Redis with 24-hour TTL. Key schema:
 - `game:{id}:agent_config` — agent configuration for agent runner (JSON)
 - `game:{id}:agent_events` — observation events for agents (Redis list)
 - `game:{id}:memory:{player_id}` — LLM agent memory entries (Redis list)
+- `game:{id}:agent_debug` — agent debug state (JSON)
+
+**Hold'em keys:**
+- `holdem:{id}` — primary game state (JSON)
+- `holdem:{id}:chat` — chat messages (Redis list)
 
 The backend is stateless — every request fetches fresh state from Redis.
 
-### Game Logic (backend/app/game.py)
+### Clue Game Logic (backend/app/games/clue/game.py)
 
 `ClueGame` is the core class. It manages:
 
@@ -164,7 +211,7 @@ The backend is stateless — every request fetches fresh state from Redis.
 
 Constants: `SUSPECTS`, `WEAPONS`, `ROOMS`, `ALL_CARDS`, `SECRET_PASSAGE_MAP`
 
-### Board (backend/app/board.py)
+### Clue Board (backend/app/games/clue/board.py)
 
 - 25x24 grid with rooms, hallways, doors
 - Graph-based BFS pathfinding for reachability
@@ -172,7 +219,7 @@ Constants: `SUSPECTS`, `WEAPONS`, `ROOMS`, `ALL_CARDS`, `SECRET_PASSAGE_MAP`
 - `get_reachable()` — squares reachable within N steps
 - `move_towards()` — optimal path toward a target room
 
-### Agent System (backend/app/agents.py)
+### Clue Agent System (backend/app/games/clue/agents.py)
 
 Three agent types, all inheriting from `BaseAgent`:
 
@@ -188,7 +235,22 @@ All agents share:
 
 Player types: `"human"`, `"agent"` (RandomAgent), `"llm_agent"` (LLMAgent), `"wanderer"` (WandererAgent)
 
-### Agent Runner (backend/agent_runner.py)
+### Hold'em Game Logic (backend/app/games/holdem/)
+
+`HoldemGame` manages Texas Hold'em poker:
+
+- Player join with configurable buy-in, dealer rotation, blind management
+- Full betting rounds: preflop, flop, turn, river, showdown
+- Actions: `fold`, `check`, `call`, `bet`, `raise`, `all_in`
+- Hand evaluation engine (`hand_eval.py`) — best 5-card hand from 7 cards
+- Pot splitting and side pots for all-in scenarios
+- `HoldemAgent` — rule-based poker player that evaluates hand strength and adjusts betting
+
+Player types: `"human"`, `"holdem_agent"`
+
+Hold'em agents run inline as a background asyncio task (no external agent runner).
+
+### Clue Agent Runner (backend/agent_runner.py)
 
 Runs as a separate process/container (when `AGENT_MODE=external`):
 - Polls Redis for `game:*:agent_config` keys to discover active games
@@ -197,18 +259,26 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 - Submits actions back to the backend via HTTP POST
 - Broadcasts personality chat messages via HTTP
 
-### Pydantic Models (backend/app/models.py)
+### Pydantic Models
 
-API contracts and game state:
+**Clue** (`backend/app/games/clue/models.py`):
 - `GameState` — full game snapshot (status, players, positions, turn state)
 - `PlayerState` — extends GameState with player-specific info (cards, available_actions)
 - `Player` — id, name, type, character, active
 - Request models: `JoinRequest`, `AddAgentRequest`, `ActionRequest`, `ChatRequest`
 - `Solution`, `Suggestion`, `PendingShowCard`
+- `AgentDebugMessage` — WebSocket message for agent debug panel
+
+**Hold'em** (`backend/app/games/holdem/models.py`):
+- `HoldemGameState` — game snapshot (players, community cards, pot, betting round)
+- `HoldemPlayerState` — player-specific view with hole cards
+- `HoldemPlayer` — id, name, chips, bet, folded, all_in
+- Action types: `FoldAction`, `CheckAction`, `CallAction`, `BetAction`, `RaiseAction`, `AllInAction`
+- Result types mirror actions with outcome details
 
 ### WebSocket Communication (backend/app/main.py, ws_manager.py)
 
-Message types broadcast to clients:
+**Clue message types** broadcast to clients:
 - `game_state`, `player_joined`, `game_started`, `player_moved`
 - `suggestion_made`, `card_shown`, `card_shown_public`
 - `accusation_made`, `game_over`
@@ -216,8 +286,29 @@ Message types broadcast to clients:
 - `show_card_request` — sent to a player who must reveal a card
 - `auto_end_timer` — countdown timer for auto-ending idle turns (7s)
 - `dice_rolled` — dice result with reachable rooms/positions
-- `chat_message`
+- `chat_message`, `agent_debug`
 - `ping`/`pong` — keep-alive
+
+**Hold'em WebSocket** (`/ws/holdem/{game_id}/{player_id}`):
+- `game_state` — full state broadcast after each action
+- `chat_message` — table chat
+
+### API Routes
+
+**Clue** — `/games/{game_id}/...`:
+- `GET /games/{game_id}` — game state
+- `GET /games/{game_id}/player/{player_id}` — player-specific state
+- `POST /games/{game_id}/join`, `/start`, `/action`, `/chat`
+- `POST /games/{game_id}/add_agent` — add AI player
+- `PUT /games/{game_id}/notes` — save detective notes
+- `GET/POST /games/{game_id}/agent_debug` — agent debug state
+
+**Hold'em** — `/holdem/games/{game_id}/...`:
+- `POST /holdem/games` — create game
+- `GET /holdem/games/{game_id}` — game state
+- `GET /holdem/games/{game_id}/player/{player_id}` — player state
+- `POST /holdem/games/{game_id}/join`, `/start`, `/action`, `/chat`
+- `POST /holdem/games/{game_id}/add_agent` — add AI player
 
 ### Frontend (Vue 3)
 
@@ -233,6 +324,7 @@ Key components:
 - **BoardMap.vue** — Interactive CSS Grid board (24 cols x 25 rows) with player tokens, reachability highlighting, room/position selection
 - **DetectiveNotes.vue** — Card tracking notepad with auto-marking of shown cards, state cycling (unknown/eliminated/maybe)
 - **GameBoard.vue** — Main gameplay UI: action panel, player legend, auto-end timer display, suggestion/accusation forms
+- **AgentDebugPanel.vue** — Real-time agent decision visualization: status, last action, card knowledge, deductions
 
 ### Logging (backend/app/logging.py)
 
@@ -292,6 +384,7 @@ Automated dependency updates for npm (frontend), pip (backend), and GitHub Actio
 
 ### General
 - Keep dependencies minimal; no unnecessary abstractions
-- Game constants (SUSPECTS, WEAPONS, ROOMS) are defined in `game.py`
+- Each game type lives in its own package under `backend/app/games/`
+- Clue constants (SUSPECTS, WEAPONS, ROOMS) are in `games/clue/game.py`; Hold'em constants (RANKS, SUITS) are in `games/holdem/models.py`
 - All game data expires from Redis after 24 hours
-- Board layout is defined in both `board.py` (backend) and `BoardMap.vue` (frontend) — keep in sync
+- Clue board layout is defined in both `games/clue/board.py` (backend) and `BoardMap.vue` (frontend) — keep in sync
