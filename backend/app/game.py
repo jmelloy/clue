@@ -20,20 +20,30 @@ from .board import (
 from .models import (
     AccuseAction,
     AccuseResult,
+    AccusationLogEntry,
     ActionResult,
+    CardShownLogEntry,
     ChatMessage,
     EndTurnAction,
+    EndTurnLogEntry,
     EndTurnResult,
     GameAction,
+    GameStartedLogEntry,
     GameState,
+    LogEntry,
+    LogEntryBase,
     MoveAction,
+    MoveLogEntry,
     MoveResult,
     PendingShowCard,
     Player,
     PlayerState,
+    ReachableTargets,
     RollAction,
+    RollLogEntry,
     RollResult,
     SecretPassageAction,
+    SecretPassageLogEntry,
     SecretPassageResult,
     ShowCardAction,
     ShowCardResult,
@@ -41,6 +51,7 @@ from .models import (
     SuggestAction,
     SuggestResult,
     Suggestion,
+    SuggestionLogEntry,
 )
 
 logger = logging.getLogger(__name__)
@@ -152,8 +163,8 @@ class ClueGame:
             return []
         return json.loads(raw)
 
-    async def _append_log(self, entry: dict):
-        await self.redis.rpush(self._log_key, json.dumps(entry))
+    async def _append_log(self, entry: LogEntryBase):
+        await self.redis.rpush(self._log_key, entry.model_dump_json())
         await self.redis.expire(self._log_key, EXPIRY)
 
     async def append_memory(self, player_id: str, entry: str):
@@ -369,10 +380,9 @@ class ClueGame:
         await self._save_state(state)
 
         await self._append_log(
-            {
-                "type": "game_started",
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            GameStartedLogEntry(
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return state
@@ -411,10 +421,10 @@ class ClueGame:
 
     def get_reachable_targets(
         self, player_id: str, state: "GameState", dice: int
-    ) -> dict:
+    ) -> ReachableTargets:
         """Compute which rooms and hallway squares are reachable with the given dice roll.
 
-        Returns a dict with:
+        Returns a ReachableTargets with:
           - reachable_rooms: list of room names the player can enter
           - reachable_positions: list of [row, col] hallway positions reachable
 
@@ -424,7 +434,7 @@ class ClueGame:
         """
         start_sq = self._get_start_square(player_id, state)
         if not start_sq:
-            return {"reachable_rooms": list(ROOMS), "reachable_positions": []}
+            return ReachableTargets(reachable_rooms=list(ROOMS))
 
         occupied = self._get_occupied_positions(state, player_id)
         reached = reachable(
@@ -443,7 +453,7 @@ class ClueGame:
             ):
                 positions.append([sq.row, sq.col])
 
-        return {"reachable_rooms": rooms, "reachable_positions": positions}
+        return ReachableTargets(reachable_rooms=rooms, reachable_positions=positions)
 
     async def process_action(
         self, player_id: str, action: GameAction | dict
@@ -501,12 +511,11 @@ class ClueGame:
 
         await self._save_state(state)
         await self._append_log(
-            {
-                "type": "roll",
-                "player_id": player_id,
-                "dice": total,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            RollLogEntry(
+                player_id=player_id,
+                dice=total,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return RollResult(player_id=player_id, dice=total, total=total)
@@ -530,13 +539,12 @@ class ClueGame:
 
         await self._save_state(state)
         await self._append_log(
-            {
-                "type": "secret_passage",
-                "player_id": player_id,
-                "from_room": current_room,
-                "room": dest_room,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            SecretPassageLogEntry(
+                player_id=player_id,
+                from_room=current_room,
+                room=dest_room,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return SecretPassageResult(
@@ -643,13 +651,12 @@ class ClueGame:
 
         await self._save_state(state)
         await self._append_log(
-            {
-                "type": "move",
-                "player_id": player_id,
-                "dice": total,
-                "room": final_room,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            MoveLogEntry(
+                player_id=player_id,
+                dice=total,
+                room=final_room,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return MoveResult(
@@ -729,15 +736,14 @@ class ClueGame:
         await self._save_state(state)
 
         await self._append_log(
-            {
-                "type": "suggestion",
-                "player_id": player_id,
-                "suspect": suspect,
-                "weapon": weapon,
-                "room": room,
-                "pending_show_by": pending_player_id,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            SuggestionLogEntry(
+                player_id=player_id,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+                pending_show_by=pending_player_id,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return SuggestResult(
@@ -768,12 +774,11 @@ class ClueGame:
         await self._save_state(state)
 
         await self._append_log(
-            {
-                "type": "card_shown",
-                "player_id": player_id,
-                "to_player_id": suggesting_player_id,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            CardShownLogEntry(
+                player_id=player_id,
+                to_player_id=suggesting_player_id,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return ShowCardResult(
@@ -800,15 +805,14 @@ class ClueGame:
         )
 
         await self._append_log(
-            {
-                "type": "accusation",
-                "player_id": player_id,
-                "suspect": suspect,
-                "weapon": weapon,
-                "room": room,
-                "correct": correct,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            AccusationLogEntry(
+                player_id=player_id,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+                correct=correct,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         if correct:
@@ -819,7 +823,7 @@ class ClueGame:
                 player_id=player_id,
                 correct=True,
                 winner=player_id,
-                solution=solution.model_dump(),
+                solution=solution,
             )
         else:
             # Player is eliminated but game continues
@@ -841,7 +845,7 @@ class ClueGame:
                 player_id=player_id,
                 correct=False,
                 solution=(
-                    solution.model_dump() if state.status == "finished" else None
+                    solution if state.status == "finished" else None
                 ),
             )
 
@@ -869,16 +873,23 @@ class ClueGame:
         await self._save_state(state)
 
         await self._append_log(
-            {
-                "type": "end_turn",
-                "player_id": player_id,
-                "next_player_id": next_player.id,
-                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
-            }
+            EndTurnLogEntry(
+                player_id=player_id,
+                next_player_id=next_player.id,
+                timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
+            )
         )
 
         return EndTurnResult(player_id=player_id, next_player_id=next_player.id)
 
-    async def get_log(self) -> list[dict]:
+    async def get_log(self) -> list[LogEntryBase]:
+        _log_adapter: TypeAdapter[LogEntry] = TypeAdapter(LogEntry)
         entries = await self.redis.lrange(self._log_key, 0, -1)
-        return [json.loads(e) for e in entries]
+        result = []
+        for e in entries:
+            try:
+                result.append(_log_adapter.validate_json(e))
+            except ValidationError:
+                # Fallback for entries written before typed log models
+                result.append(LogEntryBase.model_validate_json(e))
+        return result

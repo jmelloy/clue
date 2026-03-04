@@ -11,6 +11,7 @@ import fakeredis.aioredis as fakeredis
 
 from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
 from app.agents import RandomAgent, WandererAgent
+from app.models import ShowCardAction
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -73,7 +74,7 @@ async def _run_game(
     Returns (final_state, turn_count, log) where log is a list of
     (player_id, action_dict, result_dict) triples.
     """
-    action_log: list[tuple[str, dict, dict]] = []
+    action_log: list[tuple] = []
     state = initial_state
     actions_taken = 0
 
@@ -88,7 +89,7 @@ async def _run_game(
             matching = pending.matching_cards
 
             card = await agent.decide_show_card(matching, suggesting_pid)
-            action = {"type": "show_card", "card": card}
+            action = ShowCardAction(card=card)
             result = await game.process_action(pid, action)
             action_log.append((pid, action, result))
 
@@ -119,7 +120,7 @@ async def _run_game(
             action_log.append((pid, action, result))
 
             # Post-action observations
-            if action["type"] == "suggest":
+            if action.type == "suggest":
                 shown_by = getattr(result, "pending_show_by", None)
                 players_without = getattr(result, "players_without_match", [])
 
@@ -127,9 +128,9 @@ async def _run_game(
                 for aid, a in agents.items():
                     a.observe_suggestion(
                         suggesting_player_id=pid,
-                        suspect=action["suspect"],
-                        weapon=action["weapon"],
-                        room=action["room"],
+                        suspect=action.suspect,
+                        weapon=action.weapon,
+                        room=action.room,
                         shown_by=shown_by,
                         players_without_match=players_without,
                     )
@@ -137,9 +138,9 @@ async def _run_game(
                 if shown_by is None:
                     # No one could show a card
                     agent.observe_suggestion_no_show(
-                        action["suspect"],
-                        action["weapon"],
-                        action["room"],
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
         state = await game.get_state()
@@ -171,7 +172,7 @@ async def test_two_agents_complete_game(redis):
 
     # Check: either the winner accused correctly, or the other player was
     # eliminated by a wrong accusation.
-    accusations = [(pid, a, r) for pid, a, r in log if a["type"] == "accuse"]
+    accusations = [(pid, a, r) for pid, a, r in log if a.type == "accuse"]
     assert len(accusations) > 0, "Game finished but no accusations were made"
 
     print(f"\nGame finished in {turns} actions, {final_state.turn_number} turns")
@@ -216,8 +217,8 @@ async def test_agent_tracks_seen_cards(redis):
     )
     # This is very likely but not guaranteed (could win before any suggestion)
     # so we don't assert — just log
-    suggestions = [(pid, a) for pid, a, _ in log if a["type"] == "suggest"]
-    shows = [(pid, a) for pid, a, _ in log if a["type"] == "show_card"]
+    suggestions = [(pid, a) for pid, a, _ in log if a.type == "suggest"]
+    shows = [(pid, a) for pid, a, _ in log if a.type == "show_card"]
     print(f"\nSuggestions made: {len(suggestions)}, Cards shown: {len(shows)}")
     print(f"Agents learned new cards: {any_learned}")
 
@@ -233,7 +234,7 @@ async def test_agent_accuses_only_when_certain(redis):
     # Check every accusation: the accusing agent should have had exactly
     # one unknown left in each category
     for pid, action, result in log:
-        if action["type"] == "accuse":
+        if action.type == "accuse":
             agent = agents[pid]
             unknown_s = [s for s in SUSPECTS if s not in agent.seen_cards]
             unknown_w = [w for w in WEAPONS if w not in agent.seen_cards]
@@ -249,9 +250,9 @@ async def test_agent_accuses_only_when_certain(redis):
                 len(unknown_r) == 1
             ), f"Agent {pid} accused with {len(unknown_r)} unknown rooms"
             # And the accusation should match the unknowns
-            assert action["suspect"] == unknown_s[0]
-            assert action["weapon"] == unknown_w[0]
-            assert action["room"] == unknown_r[0]
+            assert action.suspect == unknown_s[0]
+            assert action.weapon == unknown_w[0]
+            assert action.room == unknown_r[0]
 
 
 @pytest.mark.asyncio
@@ -261,7 +262,7 @@ async def test_agent_never_suggests_own_cards(redis):
     final_state, turns, log = await _run_game(game, agents, state)
 
     for pid, action, result in log:
-        if action["type"] == "suggest":
+        if action.type == "suggest":
             agent = agents[pid]
             cards = await game._load_player_cards(pid)
             # Suspect and weapon should NOT be in the agent's hand
@@ -270,14 +271,14 @@ async def test_agent_never_suggests_own_cards(redis):
             unknown_weapons = [w for w in WEAPONS if w not in agent.seen_cards]
 
             if unknown_suspects:
-                assert action["suspect"] not in cards, (
+                assert action.suspect not in cards, (
                     f"Agent {pid} suggested a suspect from its own hand "
-                    f"when unknowns existed: {action['suspect']}"
+                    f"when unknowns existed: {action.suspect}"
                 )
             if unknown_weapons:
-                assert action["weapon"] not in cards, (
+                assert action.weapon not in cards, (
                     f"Agent {pid} suggested a weapon from its own hand "
-                    f"when unknowns existed: {action['weapon']}"
+                    f"when unknowns existed: {action.weapon}"
                 )
 
 

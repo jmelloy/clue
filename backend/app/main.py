@@ -13,8 +13,6 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import TypeAdapter
-
 from .agents import (
     BaseAgent,
     LLMAgent,
@@ -30,13 +28,17 @@ from .models import (
     ActionRequest,
     ActionResult,
     AddAgentRequest,
+    AgentPlayerConfig,
     AutoEndTimerMessage,
     AutoShowCardTimerMessage,
     CardShownMessage,
     CardShownPublicMessage,
     ChatBroadcastMessage,
+    ChatContext,
     ChatMessage,
+    ChatMessagesResponse,
     ChatRequest,
+    CreateGameResponse,
     DiceRolledMessage,
     EndTurnAction,
     EndTurnResult,
@@ -45,8 +47,10 @@ from .models import (
     GameStartedMessage,
     GameState,
     GameStateUpdateMessage,
+    JoinGameResponse,
     JoinRequest,
     MoveResult,
+    OkResponse,
     Player,
     PlayerJoinedMessage,
     PlayerMovedMessage,
@@ -63,14 +67,12 @@ from .models import (
     SuggestAction,
     SuggestResult,
     SuggestionMadeMessage,
+    WandererTurnInfo,
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
 
 logger = logging.getLogger(__name__)
-
-# TypeAdapter for parsing agent action dicts into typed GameAction models
-_action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)
 
 # ---------------------------------------------------------------------------
 # Redis
@@ -138,8 +140,7 @@ _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
 _AGENT_MODE = os.getenv("AGENT_MODE", "inline")
 
 # Accumulate wanderer turn info so we can emit one collapsed chat line
-# Key: (game_id, player_id) -> {"dice": int, "room": str|None}
-_wanderer_turn_info: dict[tuple[str, str], dict] = {}
+_wanderer_turn_info: dict[tuple[str, str], WandererTurnInfo] = {}
 
 
 def _new_id(length: int = 6) -> str:
@@ -356,14 +357,13 @@ async def _execute_action(
                 player_id=player_id,
                 dice=result.dice,
                 last_roll=state.last_roll,
-                reachable_rooms=reachable_targets["reachable_rooms"],
+                reachable_rooms=reachable_targets.reachable_rooms,
             ),
         )
         if wanderer:
-            _wanderer_turn_info[(game_id, player_id)] = {
-                "dice": result.dice,
-                "room": None,
-            }
+            _wanderer_turn_info[(game_id, player_id)] = WandererTurnInfo(
+                dice=result.dice,
+            )
         else:
             await _broadcast_chat(
                 game_id,
@@ -375,8 +375,8 @@ async def _execute_action(
             player_id,
             YourTurnMessage(
                 available_actions=game.get_available_actions(player_id, state),
-                reachable_rooms=reachable_targets["reachable_rooms"],
-                reachable_positions=reachable_targets["reachable_positions"],
+                reachable_rooms=reachable_targets.reachable_rooms,
+                reachable_positions=reachable_targets.reachable_positions,
             ),
         )
 
@@ -419,7 +419,7 @@ async def _execute_action(
         if wanderer:
             info = _wanderer_turn_info.get((game_id, player_id))
             if info is not None:
-                info["room"] = result.room
+                info.room = result.room
         else:
             room_text = f" to {result.room}" if result.room else ""
             await _broadcast_chat(
@@ -619,14 +619,8 @@ async def _execute_action(
                 dice_rolled=state.dice_rolled,
                 moved=state.moved,
                 last_roll=state.last_roll,
-                suggestions_this_turn=[
-                    s.model_dump() for s in state.suggestions_this_turn
-                ],
-                pending_show_card=(
-                    state.pending_show_card.model_dump()
-                    if state.pending_show_card
-                    else None
-                ),
+                suggestions_this_turn=list(state.suggestions_this_turn),
+                pending_show_card=state.pending_show_card,
                 player_positions=state.player_positions,
             ),
         )
@@ -640,8 +634,8 @@ async def _execute_action(
         if wanderer:
             # Emit one collapsed line for the wanderer's entire turn
             info = _wanderer_turn_info.pop((game_id, player_id), None)
-            dice = info["dice"] if info else "?"
-            room = info["room"] if info else None
+            dice = info.dice if info else "?"
+            room = info.room if info else None
             room_text = f" to the {room}" if room else ""
             await _broadcast_chat(
                 game_id,
@@ -822,10 +816,7 @@ async def _run_agent_loop(game_id: str):
 
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
-                action_dict = await agent.decide_action(state, player_state)
-
-                # Parse agent's dict action into a typed GameAction
-                action = _action_adapter.validate_python(action_dict)
+                action = await agent.decide_action(state, player_state)
 
                 logger.info(
                     "Agent %s taking action %s in game %s",
@@ -837,13 +828,13 @@ async def _run_agent_loop(game_id: str):
                 # Broadcast personality chat after the action
                 result_d = result.model_dump()
                 action_d = action.model_dump()
-                chat_context = {
-                    "dice": result_d.get("dice", ""),
-                    "room": result_d.get("room") or action_d.get("room") or "",
-                    "suspect": action_d.get("suspect", ""),
-                    "weapon": action_d.get("weapon", ""),
-                }
-                chat_msg = agent.generate_chat(action.type, chat_context)
+                chat_context = ChatContext(
+                    dice=result_d.get("dice", ""),
+                    room=result_d.get("room") or action_d.get("room") or "",
+                    suspect=action_d.get("suspect", ""),
+                    weapon=action_d.get("weapon", ""),
+                )
+                chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
                 if chat_msg:
                     s = await game.get_state()
                     name = _player_name(s, pid) if s else pid
@@ -868,17 +859,17 @@ async def _run_agent_loop(game_id: str):
 # ---------------------------------------------------------------------------
 
 
-@app.post("/games", status_code=201)
+@app.post("/games", status_code=201, response_model=CreateGameResponse)
 async def create_game():
     game_id = _new_id(6)
     game = ClueGame(game_id, redis_client)
     state = await game.create()
-    return {"game_id": game_id, "status": state.status}
+    return CreateGameResponse(game_id=game_id, status=state.status)
 
 
 @app.get("/healthz")
 async def healthz():
-    return {"status": "ok"}
+    return OkResponse()
 
 
 @app.get("/games/{game_id}")
@@ -914,7 +905,7 @@ async def join_game(game_id: str, req: JoinRequest):
         PlayerJoinedMessage(player=player, players=list(state.players)),
     )
     await _broadcast_chat(game_id, f"{player.name} joined the game.")
-    return {"player_id": player_id, "player": player.model_dump()}
+    return JoinGameResponse(player_id=player_id, player=player)
 
 
 _AGENT_NAMES = [
@@ -970,7 +961,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
         PlayerJoinedMessage(player=player, players=list(state.players)),
     )
     await _broadcast_chat(game_id, f"{player.name} joined the game.")
-    return {"player_id": player_id, "player": player.model_dump()}
+    return JoinGameResponse(player_id=player_id, player=player)
 
 
 @app.post("/games/{game_id}/start")
@@ -1003,18 +994,18 @@ async def start_game(game_id: str):
     agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
         # Always store agent config in Redis so external runners can pick it up
-        agent_config = {}
+        agent_config: dict[str, AgentPlayerConfig] = {}
         for player in agent_players:
             pid = player.id
             cards = await game._load_player_cards(pid)
-            agent_config[pid] = {
-                "type": player.type,
-                "character": player.character,
-                "cards": cards,
-            }
+            agent_config[pid] = AgentPlayerConfig(
+                type=player.type,
+                character=player.character,
+                cards=cards,
+            )
         await redis_client.set(
             f"game:{game_id}:agent_config",
-            json.dumps(agent_config),
+            json.dumps({k: v.model_dump() for k, v in agent_config.items()}),
             ex=86400,
         )
 
@@ -1096,7 +1087,7 @@ async def save_notes(game_id: str, req: SaveNotesRequest):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
     await game.save_detective_notes(req.player_id, req.notes)
-    return {"ok": True}
+    return OkResponse()
 
 
 # ---------------------------------------------------------------------------
@@ -1114,7 +1105,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
             await manager.send_to_player(
                 game_id,
                 player_id,
-                GameStateUpdateMessage(state=player_state.model_dump()),
+                GameStateUpdateMessage(state=player_state),
             )
             # Resend show_card_request if there's a pending one for this player
             pending = player_state.pending_show_card
@@ -1178,7 +1169,7 @@ async def get_chat(game_id: str):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
     messages = await game.get_chat_messages()
-    return {"messages": [m.model_dump() for m in messages]}
+    return ChatMessagesResponse(messages=messages)
 
 
 @app.post("/games/{game_id}/chat")
@@ -1192,7 +1183,7 @@ async def send_chat(game_id: str, req: ChatRequest):
         raise HTTPException(status_code=400, detail="Message text cannot be empty")
     name = _player_name(state, req.player_id)
     await _broadcast_chat(game_id, f"{name}: {text}", req.player_id)
-    return {"ok": True}
+    return OkResponse()
 
 
 # ---------------------------------------------------------------------------

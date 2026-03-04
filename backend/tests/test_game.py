@@ -265,12 +265,12 @@ async def test_move_logging(game: ClueGame):
     await game.process_action(whose_turn, {"type": "move", "room": room})
 
     log = await game.get_log()
-    assert any(entry["type"] == "roll" for entry in log)
-    assert any(entry["type"] == "move" for entry in log)
-    move_entry = next(e for e in log if e["type"] == "move")
-    assert move_entry["player_id"] == whose_turn
+    assert any(entry.type == "roll" for entry in log)
+    assert any(entry.type == "move" for entry in log)
+    move_entry = next(e for e in log if e.type == "move")
+    assert move_entry.player_id == whose_turn
     # Room may be None if the dice roll wasn't enough to reach it
-    assert move_entry["room"] == room or move_entry["room"] is None
+    assert move_entry.room == room or move_entry.room is None
 
 
 @pytest.mark.asyncio
@@ -981,7 +981,7 @@ async def test_current_room_excluded_from_reachable(game: ClueGame):
 
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
-    assert "Study" not in targets["reachable_rooms"]
+    assert "Study" not in targets.reachable_rooms
 
 
 @pytest.mark.asyncio
@@ -1003,7 +1003,7 @@ async def test_occupied_hallway_blocks_movement(game: ClueGame):
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 1)
     # The occupied square (7, 18) must not be reachable
-    assert [7, 18] not in targets["reachable_positions"]
+    assert [7, 18] not in targets.reachable_positions
 
 
 @pytest.mark.asyncio
@@ -1028,10 +1028,10 @@ async def test_door_blocking_prevents_exit(game: ClueGame):
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # No hallway positions reachable
-    assert len(targets["reachable_positions"]) == 0
+    assert len(targets.reachable_positions) == 0
     # Secret passage rooms should NOT appear in dice-based reachability
     # (secret passages are used instead of rolling, not after rolling)
-    assert "Lounge" not in targets["reachable_rooms"]
+    assert "Lounge" not in targets.reachable_rooms
 
 
 @pytest.mark.asyncio
@@ -1056,9 +1056,9 @@ async def test_secret_passage_rooms_excluded_from_dice_reachability(game: ClueGa
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Kitchen (secret passage from Study) must NOT be in reachable rooms
-    assert "Kitchen" not in targets["reachable_rooms"]
+    assert "Kitchen" not in targets.reachable_rooms
     # Study (current room) also excluded
-    assert "Study" not in targets["reachable_rooms"]
+    assert "Study" not in targets.reachable_rooms
 
 
 @pytest.mark.asyncio
@@ -1083,5 +1083,5 @@ async def test_room_players_do_not_block(game: ClueGame):
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Should still be able to reach hallway/rooms (door is not blocked)
     assert (
-        len(targets["reachable_positions"]) > 0 or len(targets["reachable_rooms"]) > 0
+        len(targets.reachable_positions) > 0 or len(targets.reachable_rooms) > 0
     )
