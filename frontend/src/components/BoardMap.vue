@@ -538,41 +538,42 @@ function tokenStyle(token) {
   overflow: visible;
 }
 
-/* Door direction indicators */
+/* Door direction indicators — bright gold bar on top of room image */
 .cell-door[data-door-dir]::after {
   content: "";
   position: absolute;
-  background: rgba(212, 168, 73, 0.8);
+  background: #e8be4a;
   border-radius: 1px;
   z-index: 3;
+  box-shadow: 0 0 5px rgba(232, 190, 74, 0.9), 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
 .cell-door[data-door-dir="north"]::after {
   top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  left: 15%;
+  right: 15%;
+  height: 3px;
 }
 
 .cell-door[data-door-dir="south"]::after {
   bottom: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  left: 15%;
+  right: 15%;
+  height: 3px;
 }
 
 .cell-door[data-door-dir="east"]::after {
   right: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
 }
 
 .cell-door[data-door-dir="west"]::after {
   left: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
+  top: 15%;
+  bottom: 15%;
+  width: 3px;
 }
 
 .cell-hallway {
