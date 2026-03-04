@@ -1,116 +1,250 @@
 <template>
   <div class="lobby">
-    <div class="lobby-header">
-      <h1>CLUE</h1>
-      <p class="subtitle">The Classic Mystery Game</p>
+    <!-- Atmospheric background layers -->
+    <div class="atmosphere">
+      <div class="fog fog-1"></div>
+      <div class="fog fog-2"></div>
+      <div class="vignette"></div>
     </div>
 
-    <!-- URL-based game join: show focused view for a specific game -->
-    <template v-if="urlGameId">
-      <section class="panel" v-if="urlGameLoading">
-        <p class="loading">Loading game {{ urlGameId }}...</p>
-      </section>
+    <!-- Floating dust particles -->
+    <div class="particles">
+      <span v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)"></span>
+    </div>
 
-      <section class="panel" v-else-if="urlGameError">
-        <p class="error">{{ urlGameError }}</p>
-        <button class="back-btn" @click="$emit('clear-url-game')">Back to Lobby</button>
-      </section>
-
-      <section class="panel" v-else>
-        <h2>Game {{ urlGameId }}</h2>
-        <p class="game-status-info" v-if="urlGameState">
-          {{ urlGameStatusText }}
-          <span v-if="urlGameState.players">
-            &mdash; {{ urlGameState.players.length }} player{{ urlGameState.players.length !== 1 ? 's' : '' }}
-          </span>
-        </p>
-
-        <!-- Rejoin as existing player -->
-        <div v-if="urlGameState?.players?.length" class="rejoin-section">
-          <h3>Join as:</h3>
-          <ul class="player-list">
-            <li
-              v-for="p in urlGameState.players"
-              :key="p.id"
-              class="player-item"
-              :class="{ eliminated: !p.active && urlGameState.status !== 'waiting' }"
-              @click="rejoinAs(p)"
-            >
-              <span class="player-character">{{ p.character }}</span>
-              <span class="player-name">{{ p.name }}</span>
-              <span v-if="!p.active && urlGameState.status !== 'waiting'" class="player-tag eliminated-tag">Eliminated</span>
-              <span v-else-if="p.type !== 'human'" class="player-tag agent-tag">{{ p.type }}</span>
-            </li>
-          </ul>
-          <button class="observe-btn full-width" @click="observeUrlGame">Watch as Observer</button>
-
-          <details v-if="urlGameCanJoin" class="join-new-details">
-            <summary>Join as a new player</summary>
-            <div class="join-section">
-              <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
-              <select v-model="playerType">
-                <option value="human">Human</option>
-                <option value="agent">Random Agent</option>
-                <option value="llm_agent">LLM Agent</option>
-              </select>
-              <button :disabled="!playerName" @click="joinUrlGame">Join Game</button>
-            </div>
-          </details>
-        </div>
-
-        <!-- No players yet -->
-        <div v-else-if="urlGameCanJoin" class="join-section">
-          <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
-          <select v-model="playerType">
-            <option value="human">Human</option>
-            <option value="agent">Random Agent</option>
-            <option value="llm_agent">LLM Agent</option>
-          </select>
-          <div class="join-buttons">
-            <button :disabled="!playerName" @click="joinUrlGame">Join Game</button>
-            <button class="observe-btn" @click="observeUrlGame">Watch as Observer</button>
+    <div class="lobby-content">
+      <!-- Hero title -->
+      <header class="hero">
+        <div class="chandelier">
+          <div class="chain"></div>
+          <div class="light-fixture">
+            <div class="glow"></div>
           </div>
         </div>
+        <div class="title-frame">
+          <div class="frame-corner tl"></div>
+          <div class="frame-corner tr"></div>
+          <div class="frame-corner bl"></div>
+          <div class="frame-corner br"></div>
+          <h1 class="title">CLUE</h1>
+          <p class="tagline">A Mystery Awaits at Tudor Mansion</p>
+        </div>
+        <div class="weapon-icons">
+          <span class="weapon-icon" title="Candlestick">&#x1F56F;</span>
+          <span class="divider-dot"></span>
+          <span class="weapon-icon" title="Knife">&#x1F5E1;</span>
+          <span class="divider-dot"></span>
+          <span class="weapon-icon" title="Revolver">&#x1F52B;</span>
+          <span class="divider-dot"></span>
+          <span class="weapon-icon" title="Rope">&#x1FA62;</span>
+          <span class="divider-dot"></span>
+          <span class="weapon-icon" title="Wrench">&#x1F527;</span>
+          <span class="divider-dot"></span>
+          <span class="weapon-icon" title="Lead Pipe">&#x26CF;</span>
+        </div>
+      </header>
 
-        <div v-else class="join-section">
-          <button class="observe-btn full-width" @click="observeUrlGame">Watch as Observer</button>
+      <!-- URL-based game join view -->
+      <template v-if="urlGameId">
+        <section class="card" v-if="urlGameLoading">
+          <div class="card-inner">
+            <p class="loading-text">
+              <span class="loading-spinner"></span>
+              Investigating game {{ urlGameId }}...
+            </p>
+          </div>
+        </section>
+
+        <section class="card" v-else-if="urlGameError">
+          <div class="card-inner">
+            <p class="error-text">{{ urlGameError }}</p>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+          </div>
+        </section>
+
+        <section class="card" v-else>
+          <div class="card-inner">
+            <div class="card-header">
+              <span class="card-label">Case File</span>
+              <h2>Game {{ urlGameId }}</h2>
+            </div>
+            <p class="status-badge" :class="urlGameState?.status" v-if="urlGameState">
+              <span class="status-dot"></span>
+              {{ urlGameStatusText }}
+              <span v-if="urlGameState.players" class="player-count">
+                {{ urlGameState.players.length }}/6 suspects
+              </span>
+            </p>
+
+            <!-- Rejoin as existing player -->
+            <div v-if="urlGameState?.players?.length" class="suspects-section">
+              <h3 class="section-label">Choose Your Identity</h3>
+              <ul class="suspect-list">
+                <li
+                  v-for="p in urlGameState.players"
+                  :key="p.id"
+                  class="suspect-item"
+                  :class="{ eliminated: !p.active && urlGameState.status !== 'waiting' }"
+                  @click="rejoinAs(p)"
+                >
+                  <div class="suspect-token" :style="tokenColor(p.character)">
+                    {{ charAbbr(p.character) }}
+                  </div>
+                  <div class="suspect-info">
+                    <span class="suspect-name">{{ p.name }}</span>
+                    <span class="suspect-character">{{ p.character }}</span>
+                  </div>
+                  <span v-if="!p.active && urlGameState.status !== 'waiting'" class="badge badge-eliminated">Eliminated</span>
+                  <span v-else-if="p.type !== 'human'" class="badge badge-agent">{{ agentLabel(p.type) }}</span>
+                  <span v-else class="badge badge-human">Human</span>
+                </li>
+              </ul>
+              <button class="btn-secondary full-width" @click="observeUrlGame">
+                <span class="btn-icon">&#x1F441;</span> Observe as Spectator
+              </button>
+
+              <details v-if="urlGameCanJoin" class="new-player-details">
+                <summary>Enter as a new suspect...</summary>
+                <div class="form-group">
+                  <div class="input-wrapper">
+                    <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+                  </div>
+                  <div class="select-wrapper">
+                    <select v-model="playerType">
+                      <option value="human">Human Player</option>
+                      <option value="agent">Random Agent</option>
+                      <option value="llm_agent">LLM Agent</option>
+                    </select>
+                  </div>
+                  <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
+                    Enter the Mansion
+                  </button>
+                </div>
+              </details>
+            </div>
+
+            <!-- No players yet -->
+            <div v-else-if="urlGameCanJoin" class="form-group">
+              <div class="input-wrapper">
+                <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+              </div>
+              <div class="select-wrapper">
+                <select v-model="playerType">
+                  <option value="human">Human Player</option>
+                  <option value="agent">Random Agent</option>
+                  <option value="llm_agent">LLM Agent</option>
+                </select>
+              </div>
+              <div class="btn-row">
+                <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">Enter the Mansion</button>
+                <button class="btn-secondary" @click="observeUrlGame">
+                  <span class="btn-icon">&#x1F441;</span> Observe
+                </button>
+              </div>
+            </div>
+
+            <div v-else class="form-group">
+              <button class="btn-secondary full-width" @click="observeUrlGame">
+                <span class="btn-icon">&#x1F441;</span> Observe as Spectator
+              </button>
+            </div>
+
+            <p v-if="error" class="error-text">{{ error }}</p>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+          </div>
+        </section>
+      </template>
+
+      <!-- Normal lobby -->
+      <template v-else>
+        <div class="lobby-grid">
+          <!-- Create Game -->
+          <section class="card card-create">
+            <div class="card-inner">
+              <div class="card-header">
+                <span class="card-label">New Investigation</span>
+                <h2>Host a Game</h2>
+              </div>
+              <p class="card-desc">Gather your suspects and uncover the truth. As host, you'll set the stage for murder.</p>
+              <div class="form-group">
+                <div class="input-wrapper">
+                  <input v-model="playerName" placeholder="Your alias" @keyup.enter="createGame" />
+                </div>
+                <div class="select-wrapper">
+                  <select v-model="playerType">
+                    <option value="human">Human Player</option>
+                    <option value="agent">Random Agent</option>
+                    <option value="llm_agent">LLM Agent</option>
+                  </select>
+                </div>
+                <button class="btn-primary" :disabled="!playerName" @click="createGame">
+                  Open the Case
+                </button>
+              </div>
+            </div>
+            <div class="card-decoration">
+              <svg viewBox="0 0 120 120" class="deco-magnifier">
+                <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.15"/>
+                <line x1="75" y1="75" x2="110" y2="110" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity="0.15"/>
+              </svg>
+            </div>
+          </section>
+
+          <!-- Join Game -->
+          <section class="card card-join">
+            <div class="card-inner">
+              <div class="card-header">
+                <span class="card-label">Active Case</span>
+                <h2>Join a Game</h2>
+              </div>
+              <p class="card-desc">You've received an invitation to Tudor Mansion. Enter the case number to join.</p>
+              <div class="form-group">
+                <div class="input-wrapper input-code">
+                  <input
+                    v-model="joinGameId"
+                    placeholder="Case No. (e.g. ABC123)"
+                    @keyup.enter="joinGame"
+                    style="text-transform: uppercase; letter-spacing: 0.15em;"
+                  />
+                </div>
+                <div class="input-wrapper">
+                  <input v-model="playerName" placeholder="Your alias" />
+                </div>
+                <div class="select-wrapper">
+                  <select v-model="playerType">
+                    <option value="human">Human Player</option>
+                    <option value="agent">Random Agent</option>
+                    <option value="llm_agent">LLM Agent</option>
+                  </select>
+                </div>
+                <div class="btn-row">
+                  <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
+                    Enter the Mansion
+                  </button>
+                  <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
+                    <span class="btn-icon">&#x1F441;</span> Observe
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-decoration">
+              <svg viewBox="0 0 120 120" class="deco-envelope">
+                <rect x="10" y="30" width="100" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="2" opacity="0.12"/>
+                <polyline points="10,30 60,72 110,30" fill="none" stroke="currentColor" stroke-width="2" opacity="0.12"/>
+              </svg>
+            </div>
+          </section>
         </div>
 
-        <p v-if="error" class="error">{{ error }}</p>
-        <button class="back-btn" @click="$emit('clear-url-game')">Back to Lobby</button>
-      </section>
-    </template>
+        <p v-if="error" class="error-text error-global">{{ error }}</p>
+      </template>
 
-    <!-- Normal lobby view -->
-    <template v-else>
-      <section class="panel">
-        <h2>Create a New Game</h2>
-        <input v-model="playerName" placeholder="Your name" />
-        <select v-model="playerType">
-          <option value="human">Human</option>
-          <option value="agent">Random Agent</option>
-          <option value="llm_agent">LLM Agent</option>
-        </select>
-        <button :disabled="!playerName" @click="createGame">Create Game</button>
-      </section>
-
-      <section class="panel">
-        <h2>Join Existing Game</h2>
-        <input v-model="joinGameId" placeholder="Game ID (e.g. ABC123)" />
-        <input v-model="playerName" placeholder="Your name" />
-        <select v-model="playerType">
-          <option value="human">Human</option>
-          <option value="agent">Random Agent</option>
-          <option value="llm_agent">LLM Agent</option>
-        </select>
-        <div class="join-buttons">
-          <button :disabled="!joinGameId || !playerName" @click="joinGame">Join Game</button>
-          <button class="observe-btn" :disabled="!joinGameId" @click="observeGame">Watch as Observer</button>
-        </div>
-      </section>
-
-      <p v-if="error" class="error">{{ error }}</p>
-    </template>
+      <!-- Footer -->
+      <footer class="lobby-footer">
+        <div class="footer-line"></div>
+        <p>&ldquo;The truth is rarely pure and never simple.&rdquo;</p>
+      </footer>
+    </div>
   </div>
 </template>
 
@@ -133,15 +267,63 @@ const urlGameState = ref(null)
 const urlGameLoading = ref(false)
 const urlGameError = ref('')
 
+const CHARACTER_COLORS = {
+  'Miss Scarlett': { bg: '#9b1b30', text: '#fff' },
+  'Colonel Mustard': { bg: '#c8a415', text: '#1a1008' },
+  'Mrs. White': { bg: '#d8d0c8', text: '#2a2520' },
+  'Reverend Green': { bg: '#1a6b3c', text: '#fff' },
+  'Mrs. Peacock': { bg: '#1a3a6b', text: '#fff' },
+  'Professor Plum': { bg: '#5c2d82', text: '#fff' },
+}
+
+const CHARACTER_ABBR = {
+  'Miss Scarlett': 'MS',
+  'Colonel Mustard': 'CM',
+  'Mrs. White': 'MW',
+  'Reverend Green': 'RG',
+  'Mrs. Peacock': 'MP',
+  'Professor Plum': 'PP',
+}
+
+function tokenColor(character) {
+  const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
+  return { backgroundColor: c.bg, color: c.text }
+}
+
+function charAbbr(character) {
+  return CHARACTER_ABBR[character] || '??'
+}
+
+function agentLabel(type) {
+  if (type === 'agent') return 'AI'
+  if (type === 'llm_agent') return 'LLM'
+  if (type === 'wanderer') return 'NPC'
+  return type
+}
+
+function particleStyle(n) {
+  const x = Math.sin(n * 7.3) * 50 + 50
+  const delay = (n * 1.7) % 12
+  const duration = 8 + (n % 5) * 2
+  const size = 1 + (n % 3)
+  return {
+    left: `${x}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`,
+    width: `${size}px`,
+    height: `${size}px`,
+  }
+}
+
 const urlGameCanJoin = computed(() => {
   return urlGameState.value?.status === 'waiting'
 })
 
 const urlGameStatusText = computed(() => {
   const status = urlGameState.value?.status
-  if (status === 'waiting') return 'Waiting for players'
-  if (status === 'playing') return 'Game in progress'
-  if (status === 'finished') return 'Game finished'
+  if (status === 'waiting') return 'Awaiting suspects'
+  if (status === 'playing') return 'Investigation in progress'
+  if (status === 'finished') return 'Case closed'
   return ''
 })
 
@@ -162,12 +344,12 @@ async function fetchUrlGame(gid) {
   try {
     const res = await fetch(`/games/${gid}`)
     if (!res.ok) {
-      urlGameError.value = 'Game not found'
+      urlGameError.value = 'Case file not found'
       return
     }
     urlGameState.value = await res.json()
   } catch (e) {
-    urlGameError.value = 'Failed to load game: ' + e.message
+    urlGameError.value = 'Failed to retrieve case: ' + e.message
   } finally {
     urlGameLoading.value = false
   }
@@ -193,7 +375,7 @@ async function createGame() {
     const { game_id } = await res.json()
     await doJoin(game_id)
   } catch (e) {
-    error.value = 'Failed to create game: ' + e.message
+    error.value = 'Failed to open case: ' + e.message
   }
 }
 
@@ -229,7 +411,7 @@ async function observeGame() {
   try {
     const res = await fetch(`/games/${gid}`)
     if (!res.ok) {
-      error.value = 'Game not found'
+      error.value = 'Case file not found'
       return
     }
     emit('observe', { gameId: gid })
@@ -240,220 +422,702 @@ async function observeGame() {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 .lobby {
-  max-width: 480px;
-  margin: 3rem auto;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Crimson Text', Georgia, serif;
+  background: #0a0908;
+}
+
+/* === Atmosphere === */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.fog {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background: radial-gradient(ellipse at 30% 20%, #d4a849 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 80%, #8b2a2a 0%, transparent 50%);
+  animation: fog-drift 20s ease-in-out infinite alternate;
+}
+
+.fog-2 {
+  opacity: 0.025;
+  background: radial-gradient(ellipse at 60% 40%, #d4a849 0%, transparent 55%),
+              radial-gradient(ellipse at 20% 70%, #4a1a2a 0%, transparent 45%);
+  animation-delay: -10s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes fog-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, -20px) scale(1.1); }
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, #0a0908 85%);
+}
+
+/* === Particles === */
+.particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 50%;
+  background: rgba(212, 168, 73, 0.25);
+  animation: float-up linear infinite;
+  opacity: 0;
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.2; }
+  100% { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+}
+
+/* === Content === */
+.lobby-content {
+  position: relative;
+  z-index: 2;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+/* === Chandelier === */
+.chandelier {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.chain {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #d4a849);
+}
+
+.light-fixture {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d4a849;
+}
+
+.glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 168, 73, 0.15), transparent 70%);
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* === Hero === */
+.hero {
   text-align: center;
+  margin-bottom: 2.5rem;
 }
 
-.lobby-header {
-  margin-bottom: 2rem;
+.title-frame {
+  position: relative;
+  display: inline-block;
+  padding: 1.5rem 3rem 1.2rem;
 }
 
-.lobby-header h1 {
-  font-size: 3rem;
-  color: #c9a84c;
-  letter-spacing: 0.3em;
-  margin-bottom: 0.25rem;
-  text-shadow: 0 0 20px rgba(201, 168, 76, 0.3);
+.frame-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #d4a849;
+  opacity: 0.4;
 }
 
-.subtitle {
-  color: #667;
+.frame-corner.tl { top: 0; left: 0; border-top: 1.5px solid; border-left: 1.5px solid; }
+.frame-corner.tr { top: 0; right: 0; border-top: 1.5px solid; border-right: 1.5px solid; }
+.frame-corner.bl { bottom: 0; left: 0; border-bottom: 1.5px solid; border-left: 1.5px solid; }
+.frame-corner.br { bottom: 0; right: 0; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+
+.title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 4.5rem;
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  color: #d4a849;
+  text-shadow:
+    0 0 40px rgba(212, 168, 73, 0.2),
+    0 2px 0 #a07830;
+  line-height: 1;
+  margin-right: -0.35em; /* compensate letter-spacing */
+  animation: title-appear 1.2s ease-out;
+}
+
+@keyframes title-appear {
+  0% { opacity: 0; transform: translateY(-10px); letter-spacing: 0.6em; }
+  100% { opacity: 1; transform: translateY(0); letter-spacing: 0.35em; }
+}
+
+.tagline {
+  font-family: 'Crimson Text', Georgia, serif;
   font-style: italic;
-  font-size: 1rem;
+  font-size: 1.05rem;
+  color: #8a7e6b;
+  margin-top: 0.6rem;
+  letter-spacing: 0.08em;
+  animation: fade-in 1.5s ease-out 0.3s both;
 }
 
-.panel {
-  background: #16213e;
-  border-radius: 10px;
-  padding: 1.5rem;
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.weapon-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  animation: fade-in 2s ease-out 0.6s both;
+}
+
+.weapon-icon {
+  font-size: 1.1rem;
+  filter: grayscale(0.8) brightness(0.5);
+  transition: filter 0.3s;
+}
+
+.weapon-icon:hover {
+  filter: grayscale(0) brightness(1);
+}
+
+.divider-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #4a3f2e;
+}
+
+/* === Cards (panels) === */
+.lobby-grid {
+  display: grid;
+  gap: 1.25rem;
+  animation: fade-in 1s ease-out 0.4s both;
+}
+
+@media (min-width: 580px) {
+  .lobby-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  position: relative;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
+  border: 1px solid rgba(212, 168, 73, 0.12);
+  overflow: hidden;
+  transition: border-color 0.4s, box-shadow 0.4s;
+  animation: card-appear 0.6s ease-out both;
+}
+
+.card:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+@keyframes card-appear {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.card:hover {
+  border-color: rgba(212, 168, 73, 0.25);
+  box-shadow: 0 8px 40px rgba(212, 168, 73, 0.06);
+}
+
+.card-inner {
+  position: relative;
+  z-index: 1;
+  padding: 1.75rem 1.5rem 1.5rem;
+}
+
+.card-decoration {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 120px;
+  height: 120px;
+  color: #d4a849;
+  pointer-events: none;
+}
+
+.card-header {
+  margin-bottom: 0.75rem;
+}
+
+.card-label {
+  display: inline-block;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #d4a849;
+  opacity: 0.7;
+  margin-bottom: 0.3rem;
+}
+
+.card-header h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #e8dcc8;
+  letter-spacing: 0.03em;
+}
+
+.card-desc {
+  color: #7a7060;
+  font-size: 0.9rem;
+  line-height: 1.55;
   margin-bottom: 1.25rem;
 }
 
-h2 {
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  color: #ddd;
+/* === Status badge === */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #8a7e6b;
+  margin-bottom: 1.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.game-status-info {
-  color: #8899aa;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.join-section {
-  margin-top: 0.5rem;
+.status-badge.waiting .status-dot {
+  background: #d4a849;
+  box-shadow: 0 0 8px rgba(212, 168, 73, 0.5);
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
-.loading {
-  color: #8899aa;
+.status-badge.playing .status-dot {
+  background: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.status-badge.finished .status-dot {
+  background: #666;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.player-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* === Forms === */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper input,
+.select-wrapper select {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(212, 168, 73, 0.15);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8dcc8;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.95rem;
+  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+  outline: none;
+}
+
+.input-wrapper input::placeholder {
+  color: #5a5040;
   font-style: italic;
 }
 
-input, select {
-  display: block;
-  width: 100%;
-  margin-bottom: 0.75rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #334;
-  background: #0f3460;
-  color: #eee;
-  font-size: 0.95rem;
+.input-wrapper input:focus,
+.select-wrapper select:focus {
+  border-color: rgba(212, 168, 73, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(212, 168, 73, 0.06);
 }
 
-input::placeholder {
-  color: #557;
+.select-wrapper {
+  position: relative;
 }
 
-button {
-  background: #c9a84c;
-  color: #1a1a2e;
-  border: none;
-  padding: 0.6rem 1.5rem;
-  border-radius: 6px;
+.select-wrapper select {
+  appearance: none;
   cursor: pointer;
-  font-weight: bold;
+  padding-right: 2rem;
+}
+
+.select-wrapper::after {
+  content: '\25BE';
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #5a5040;
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+/* === Buttons === */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
-  transition: background 0.2s;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
 }
 
-button:hover:not(:disabled) {
-  background: #d4b85c;
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
-button:disabled {
-  opacity: 0.4;
+.btn-primary:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
-.join-buttons {
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid rgba(212, 168, 73, 0.2);
+  border-radius: 5px;
+  background: transparent;
+  color: #8a7e6b;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: rgba(212, 168, 73, 0.4);
+  color: #d4a849;
+  background: rgba(212, 168, 73, 0.05);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-secondary.full-width {
+  width: 100%;
+}
+
+.btn-icon {
+  font-size: 0.85rem;
+}
+
+.btn-ghost {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  color: #5a5040;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-ghost:hover {
+  color: #8a7e6b;
+}
+
+.btn-row {
   display: flex;
   gap: 0.5rem;
 }
 
-.join-buttons button {
+.btn-row .btn-primary {
   flex: 1;
 }
 
-.observe-btn {
-  background: transparent;
-  border: 1px solid #556;
-  color: #aab;
-  font-weight: normal;
-}
-
-.observe-btn:hover:not(:disabled) {
-  border-color: #3498db;
-  color: #3498db;
-  background: rgba(52, 152, 219, 0.1);
-}
-
-.observe-btn.full-width {
-  width: 100%;
-}
-
-.back-btn {
-  background: transparent;
-  border: none;
-  color: #667;
-  font-weight: normal;
-  font-size: 0.85rem;
-  margin-top: 1rem;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.back-btn:hover {
-  color: #aab;
-}
-
-.error {
-  color: #e74c3c;
-  margin-top: 1rem;
-  font-size: 0.9rem;
-}
-
-.rejoin-section h3 {
-  font-size: 0.95rem;
-  color: #aab;
+/* === Suspect list === */
+.section-label {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #8a7e6b;
   margin-bottom: 0.75rem;
-  text-align: left;
 }
 
-.player-list {
+.suspect-list {
   list-style: none;
   margin-bottom: 1rem;
 }
 
-.player-item {
+.suspect-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.2s;
   border: 1px solid transparent;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
 }
 
-.player-item:hover {
-  background: #0f3460;
-  border-color: #c9a84c;
+.suspect-item:hover {
+  background: rgba(212, 168, 73, 0.04);
+  border-color: rgba(212, 168, 73, 0.2);
 }
 
-.player-item.eliminated {
-  opacity: 0.5;
+.suspect-item.eliminated {
+  opacity: 0.4;
 }
 
-.player-character {
-  font-weight: bold;
-  color: #c9a84c;
-  min-width: 0;
+.suspect-token {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-family: 'Crimson Text', Georgia, serif;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
 }
 
-.player-name {
+.suspect-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   text-align: left;
-  color: #ddd;
+  min-width: 0;
 }
 
-.player-tag {
+.suspect-name {
+  color: #e8dcc8;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.suspect-character {
+  color: #6a6050;
   font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  font-style: italic;
 }
 
-.eliminated-tag {
-  background: rgba(231, 76, 60, 0.2);
-  color: #e74c3c;
+.badge {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
-.agent-tag {
-  background: rgba(52, 152, 219, 0.2);
-  color: #3498db;
+.badge-eliminated {
+  background: rgba(139, 42, 42, 0.2);
+  color: #c45050;
 }
 
-.join-new-details {
+.badge-agent {
+  background: rgba(212, 168, 73, 0.12);
+  color: #d4a849;
+}
+
+.badge-human {
+  background: rgba(255, 255, 255, 0.05);
+  color: #6a6050;
+}
+
+/* === Details/accordion === */
+.new-player-details {
   margin-top: 0.75rem;
 }
 
-.join-new-details summary {
-  color: #667;
+.new-player-details summary {
+  color: #5a5040;
   font-size: 0.85rem;
+  font-style: italic;
   cursor: pointer;
   text-align: left;
+  transition: color 0.2s;
 }
 
-.join-new-details summary:hover {
-  color: #aab;
+.new-player-details summary:hover {
+  color: #8a7e6b;
 }
 
-.join-new-details .join-section {
+.new-player-details .form-group {
   margin-top: 0.75rem;
+}
+
+/* === Loading === */
+.loading-text {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #8a7e6b;
+  font-style: italic;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(212, 168, 73, 0.2);
+  border-top-color: #d4a849;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === Error === */
+.error-text {
+  color: #c45050;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 5px;
+  background: rgba(139, 42, 42, 0.1);
+  border: 1px solid rgba(139, 42, 42, 0.2);
+}
+
+.error-global {
+  text-align: center;
+  margin-top: 1.25rem;
+  animation: fade-in 0.3s ease-out;
+}
+
+/* === Footer === */
+.lobby-footer {
+  margin-top: 3rem;
+  text-align: center;
+  animation: fade-in 2s ease-out 1s both;
+}
+
+.footer-line {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 73, 0.2), transparent);
+  margin: 0 auto 1rem;
+}
+
+.lobby-footer p {
+  color: #3a3528;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+}
+
+/* === Responsive === */
+@media (max-width: 579px) {
+  .title {
+    font-size: 3rem;
+  }
+
+  .title-frame {
+    padding: 1rem 2rem 0.8rem;
+  }
+
+  .card-inner {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
 }
 </style>
