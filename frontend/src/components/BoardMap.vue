@@ -111,15 +111,15 @@ const DEFAULT_STARTS = {
 }
 
 const ROOM_COLORS = {
-  'Study':           '#1e3d5c',
-  'Hall':            '#2d4a5a',
-  'Lounge':          '#5c1e2e',
-  'Library':         '#1e4d4d',
-  'Billiard Room':   '#1e4d2d',
-  'Dining Room':     '#5a4a1e',
-  'Conservatory':    '#3d4d1e',
-  'Ballroom':        '#3d1e4d',
-  'Kitchen':         '#5a3a1e',
+  'Study':           '#5c3a1e',
+  'Hall':            '#c4a265',
+  'Lounge':          '#8b3a3a',
+  'Library':         '#3a6b4a',
+  'Billiard Room':   '#2d6b4a',
+  'Dining Room':     '#b8726b',
+  'Conservatory':    '#5a8a5a',
+  'Ballroom':        '#7a8aaa',
+  'Kitchen':         '#c4a870',
 }
 
 const CHARACTER_COLORS = {
@@ -356,10 +356,11 @@ function tokenStyle(token) {
   max-width: 576px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #0d1117;
-  border-radius: 8px;
+  background: #1a4a2a;
+  border-radius: 4px;
   overflow: hidden;
-  border: 2px solid #2c3e50;
+  border: 4px solid #2a1a0a;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Grid ── */
@@ -370,14 +371,7 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   gap: 0;
-  background: #0d1117;
-  /* Draw 1px grid lines without affecting layout, so overlay % math stays aligned */
-  background-image:
-    linear-gradient(to right, #020409 1px, transparent 1px),
-    linear-gradient(to bottom, #020409 1px, transparent 1px);
-  background-size:
-    calc(100% / 24) 100%,
-    100% calc(100% / 25);
+  background: #1a4a2a;
 }
 
 /* ── Cell types ── */
@@ -387,21 +381,21 @@ function tokenStyle(token) {
 }
 
 .cell-room {
-  border: 0.5px solid rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(0, 0, 0, 0.15);
 }
 
 .cell-door {
   position: relative;
-  filter: brightness(1.4);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  filter: brightness(1.2);
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
   overflow: visible;
 }
 
-/* Door direction indicators — golden bar on the exit side */
+/* Door direction indicators — dark bar on the exit side */
 .cell-door[data-door-dir]::after {
   content: '';
   position: absolute;
-  background: rgba(201, 168, 76, 0.85);
+  background: rgba(60, 30, 10, 0.85);
   border-radius: 1px;
   z-index: 3;
 }
@@ -435,26 +429,27 @@ function tokenStyle(token) {
 }
 
 .cell-hallway {
-  background: #2a2a3e;
-  border: 0.5px solid rgba(255, 255, 255, 0.03);
+  background: #d4b85a;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
 }
 
 .cell-start {
-  background: #2a2a3e;
-  border: 0.5px solid rgba(255, 255, 255, 0.03);
+  background: #d4b85a;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
   position: relative;
 }
 
 .cell-start::after {
   content: '';
   position: absolute;
-  inset: 30%;
+  inset: 25%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(139, 90, 43, 0.4);
+  border: 1px solid rgba(139, 90, 43, 0.5);
 }
 
 .cell-wall {
-  background: transparent;
+  background: #1a4a2a;
 }
 
 /* ── Interactive states ── */
@@ -463,19 +458,19 @@ function tokenStyle(token) {
 }
 
 .cell.clickable:hover {
-  filter: brightness(1.3);
-  outline: 1px solid rgba(201, 168, 76, 0.5);
+  filter: brightness(1.15);
+  outline: 2px solid rgba(255, 255, 200, 0.6);
   z-index: 1;
 }
 
 .cell.selected {
-  filter: brightness(1.4);
-  outline: 1px solid rgba(201, 168, 76, 0.8);
+  filter: brightness(1.2);
+  outline: 2px solid rgba(255, 255, 200, 0.8);
   z-index: 1;
 }
 
 .cell.my-room {
-  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 200, 0.3);
 }
 
 /* ── Reachable highlights ── */
@@ -486,26 +481,26 @@ function tokenStyle(token) {
 }
 
 .cell-room.reachable {
-  filter: brightness(1.3);
+  filter: brightness(1.2);
 }
 
 .cell-hallway.reachable,
 .cell-start.reachable {
-  background: #3a4a4e;
+  background: #b8d468;
 }
 
 .cell.unreachable {
-  filter: brightness(0.6);
+  filter: brightness(0.7);
   opacity: 0.7;
 }
 
 .cell-door.unreachable {
-  filter: brightness(1.1);
+  filter: brightness(1.0);
   opacity: 0.9;
 }
 
 .cell.reachable-door {
-  filter: brightness(1.6);
+  filter: brightness(1.4);
   outline: 1px solid rgba(46, 204, 113, 0.8);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
@@ -529,37 +524,38 @@ function tokenStyle(token) {
 /* ── Room labels ── */
 .room-label {
   position: absolute;
-  color: #c9a84c;
+  color: #2a1a0a;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: bold;
   white-space: nowrap;
   text-align: center;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  letter-spacing: 0.03em;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* ── Center label ── */
 .center-label {
   position: absolute;
-  color: #c9a84c;
+  color: #2a1a0a;
   font-size: clamp(12px, 2.5vw, 22px);
   font-weight: bold;
   letter-spacing: 0.3em;
-  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
 /* ── Secret passage ── */
 .secret-passage {
   position: absolute;
-  color: #e67e22;
+  color: #5a2a0a;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: 600;
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
   padding: 1px 4px;
-  border: 1px dashed rgba(230, 126, 34, 0.45);
+  border: 1px dashed rgba(90, 42, 10, 0.5);
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.15);
   letter-spacing: 0.02em;
 }
 
