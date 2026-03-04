@@ -315,12 +315,6 @@
             />
           </section>
 
-          <section v-if="hasAnyAgentDebug" class="sidebar-panel">
-            <AgentDebugPanel
-              :agent-debug-data="agentDebugData"
-              :players="gameState?.players"
-            />
-          </section>
         </template>
       </div>
     </div>
@@ -495,7 +489,6 @@ const observerSelectedDebug = computed(() => {
   if (!props.observerPlayerState) return null
   return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null
 })
-const hasAnyAgentDebug = computed(() => Object.keys(props.agentDebugData || {}).length > 0)
 
 const matchingCards = computed(() => {
   if (!props.showCardRequest) return []
