@@ -88,30 +88,69 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
     state = output.get("state")
     if isinstance(state, dict):
         players = state.get("players", [])
+        positions = state.get("player_positions", {})
+        current_rooms = state.get("current_room", {})
+        was_moved = state.get("was_moved_by_suggestion", {})
         print("State summary:")
         print(
-            f"  status={state.get('status')} turn={state.get('turn_number')} whose_turn={state.get('whose_turn')} players={len(players)}"
+            f"  status={state.get('status')} turn={state.get('turn_number')} "
+            f"whose_turn={state.get('whose_turn')} players={len(players)}"
         )
+        print(
+            f"  dice_rolled={state.get('dice_rolled')} moved={state.get('moved')} "
+            f"last_roll={state.get('last_roll')}"
+        )
+        if state.get("pending_show_card"):
+            print(f"  pending_show_card={_pretty_json(state['pending_show_card'])}")
+        if state.get("suggestions_this_turn"):
+            print(f"  suggestions_this_turn={len(state['suggestions_this_turn'])}")
         if players:
             print("Players:")
             for player in players:
-                print(
-                    "  - "
-                    f"{player.get('id')} name={player.get('name')} type={player.get('type')} "
-                    f"character={player.get('character')} active={player.get('active')}"
-                )
+                pid = player.get("id")
+                pos = positions.get(pid)
+                room = current_rooms.get(pid)
+                moved_by = was_moved.get(pid)
+                turn_marker = " <-- TURN" if pid == state.get("whose_turn") else ""
+                parts = [
+                    f"{pid} name={player.get('name')} type={player.get('type')}",
+                    f"character={player.get('character')} active={player.get('active')}",
+                ]
+                if room:
+                    parts.append(f"room={room}")
+                if pos:
+                    parts.append(f"pos=({pos[0]},{pos[1]})")
+                if moved_by:
+                    parts.append("moved_by_suggestion=True")
+                print(f"  - {' '.join(parts)}{turn_marker}")
     else:
         print(f"State: {_pretty_json(state)}")
+
+    # Build player_id -> character lookup from state
+    player_characters: dict[str, str] = {}
+    if isinstance(state, dict):
+        for player in state.get("players", []):
+            pid = player.get("id")
+            if pid:
+                player_characters[pid] = player.get("character") or player.get("name") or pid
 
     log_entries = output.get("log", [])
     print(f"Log entries: {len(log_entries)}")
     for index, entry in enumerate(log_entries, start=1):
         if isinstance(entry, dict):
-            timestamp = entry.get("timestamp", "-")
+            raw_ts = entry.get("timestamp", "-")
+            try:
+                timestamp = raw_ts.split("T")[1].split("+")[0].split(".")[0]
+            except (IndexError, AttributeError):
+                timestamp = raw_ts
             entry_type = entry.get("type", "-")
-            rest = {k: v for k, v in entry.items() if k not in {"timestamp", "type"}}
+            player_id = entry.get("player_id", "")
+            character = player_characters.get(player_id, player_id)
+            rest = {k: v for k, v in entry.items() if k not in {"timestamp", "type", "player_id"}}
+            rest_str = f" {_pretty_json(rest)}" if rest else ""
+            actor_str = f"{player_id}:{character} - " if player_id else ""
             print(
-                f"  {index:>3}. [{timestamp}] {entry_type} {_pretty_json(rest) if rest else ''}".rstrip()
+                f"  {index:>3}. [{timestamp}] {actor_str}{entry_type}{rest_str}".rstrip()
             )
         else:
             print(f"  {index:>3}. {entry}")
