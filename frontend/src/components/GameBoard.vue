@@ -1266,6 +1266,8 @@ watch(
   font-size: 0.78rem;
   font-weight: 500;
   border: 1px solid;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .card-suspect {
@@ -1699,8 +1701,8 @@ watch(
 }
 
 .card-thumb {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center 15%;
@@ -1714,6 +1716,13 @@ watch(
   object-position: center center;
 }
 
+.show-card-thumb {
+  width: 24px;
+  height: 24px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .card-with-image:hover .card-thumb {
   border-color: #d4a849;
   box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
@@ -1723,14 +1732,16 @@ watch(
   background: rgba(26, 107, 60, 0.28);
 }
 
-.show-card-thumb {
-  width: 20px;
-  height: 20px;
+.show-card-thumb.show-card-thumb-suspect {
   border-radius: 50%;
-  object-fit: cover;
   object-position: center 15%;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  flex-shrink: 0;
+}
+
+.show-card-thumb.show-card-thumb-room {
+  border-radius: 4px;
+  object-position: center center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Card Preview Overlay */

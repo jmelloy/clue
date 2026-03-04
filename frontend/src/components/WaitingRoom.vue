@@ -262,7 +262,7 @@ async function startGame() {
   min-height: 100vh;
   overflow: hidden;
   font-family: "Crimson Text", Georgia, serif;
-  background: #0a0908;
+  background: #1c1812;
 }
 
 /* === Atmosphere === */
@@ -302,7 +302,7 @@ async function startGame() {
 .vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 35%, #0a0908 85%);
+  background: radial-gradient(ellipse at center, transparent 35%, #1c1812 85%);
 }
 
 /* === Particles === */
