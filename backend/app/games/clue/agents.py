@@ -984,7 +984,7 @@ class RandomAgent(BaseAgent):
         if "move" in available:
             player_pos = game_state.player_positions.get(player_id)
             my_room = current_room.get(player_id)
-            dice_value = game_state.last_roll[0] if game_state.last_roll else 12
+            dice_value = sum(game_state.last_roll) if game_state.last_roll else 12
 
             # Compute which rooms are reachable within the dice roll
             room_dists = _compute_room_distances(my_room, player_pos)
@@ -1692,7 +1692,7 @@ class LLMAgent(BaseAgent):
             f"- Unknown weapons (could be solution): {unknown_weapons}",
             f"- Unknown rooms (could be solution): {unknown_rooms}",
             f"- Your current room: {current_room.get(player_id, 'none')}",
-            f"- Dice roll: {game_state.last_roll[0] if game_state.last_roll else 'not rolled yet'}",
+            f"- Dice roll: {'+'.join(str(d) for d in game_state.last_roll) + '=' + str(sum(game_state.last_roll)) if game_state.last_roll else 'not rolled yet'}",
             f"- Available actions: {available}",
         ]
 
