@@ -420,13 +420,6 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
 
 # Fallback messages for characters not in CHARACTER_CHAT
 _GENERIC_CHAT: dict[str, list[str]] = {
-    "roll": ["Let's see...", "Here goes nothing."],
-    "move": ["Heading to the {room}.", "On my way."],
-    "suggest": ["I think it was {suspect} with the {weapon}.", "Interesting theory..."],
-    "accuse": ["I've solved it!", "This is it!"],
-    "end_turn": ["Next player.", "Your turn."],
-    "show_card": ["Take a look.", "Here you go."],
-    "secret_passage": ["A shortcut!", "Through the passage!"],
     "suspected": [
         "Me?! You've got the wrong person, {accuser}!",
         "That's a bold claim, {accuser}. Bold and wrong.",
@@ -790,7 +783,12 @@ class BaseAgent(ABC):
     # Debug info export
     # ------------------------------------------------------------------
 
-    def get_debug_info(self, status: str = "", action_description: str = "", decided_action: dict | None = None) -> dict:
+    def get_debug_info(
+        self,
+        status: str = "",
+        action_description: str = "",
+        decided_action: dict | None = None,
+    ) -> dict:
         """Export agent state as a dict for debug display."""
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
         return {
@@ -962,7 +960,10 @@ class RandomAgent(BaseAgent):
             return SuggestAction(suspect=suspect, weapon=weapon, room=room)
 
         # Phase 2: secret passage — chance varies by agent style
-        if "secret_passage" in available and random.random() < self.secret_passage_chance:
+        if (
+            "secret_passage" in available
+            and random.random() < self.secret_passage_chance
+        ):
             my_room = current_room.get(player_id)
             dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
             if dest_room:
@@ -1007,11 +1008,13 @@ class RandomAgent(BaseAgent):
                     target_room,
                     dice_value,
                 )
-            elif reachable_rooms and unknown_rooms and random.random() < self.explore_chance:
+            elif (
+                reachable_rooms
+                and unknown_rooms
+                and random.random() < self.explore_chance
+            ):
                 # 50% chance: move toward a distant unknown room
-                target_room = self._pick_target_room(
-                    unknown_rooms, my_room, player_pos
-                )
+                target_room = self._pick_target_room(unknown_rooms, my_room, player_pos)
                 logger.info(
                     "[%s:%s] Moving toward '%s' (unreachable unknown, dice=%d)",
                     self.agent_type,
@@ -1031,9 +1034,7 @@ class RandomAgent(BaseAgent):
                 )
             else:
                 # No reachable rooms — fall back to proximity-weighted pick
-                target_room = self._pick_target_room(
-                    unknown_rooms, my_room, player_pos
-                )
+                target_room = self._pick_target_room(unknown_rooms, my_room, player_pos)
                 logger.info(
                     "[%s:%s] Moving to '%s' (fallback, no reachable rooms)",
                     self.agent_type,
