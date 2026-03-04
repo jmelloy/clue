@@ -31,6 +31,7 @@ from .models import (
     ActionResult,
     AddAgentRequest,
     AutoEndTimerMessage,
+    AutoShowCardTimerMessage,
     CardShownMessage,
     CardShownPublicMessage,
     ChatBroadcastMessage,
@@ -93,6 +94,10 @@ async def lifespan(app: FastAPI):
     for task in _auto_end_timers.values():
         task.cancel()
     _auto_end_timers.clear()
+    # Cancel any auto-show-card timers
+    for task in _auto_show_card_timers.values():
+        task.cancel()
+    _auto_show_card_timers.clear()
     await redis_client.aclose()
 
 
@@ -121,6 +126,10 @@ _agent_tasks: dict[str, asyncio.Task] = {}
 # Auto-end-turn timers: game_id -> asyncio.Task
 _auto_end_timers: dict[str, asyncio.Task] = {}
 AUTO_END_TURN_SECONDS = 7
+
+# Auto-show-card timers: game_id -> asyncio.Task
+_auto_show_card_timers: dict[str, asyncio.Task] = {}
+AUTO_SHOW_CARD_SECONDS = 7
 
 # Player types that trigger the automated agent loop
 _AGENT_PLAYER_TYPES = {"agent", "llm_agent", "wanderer"}
@@ -244,6 +253,79 @@ async def _maybe_start_auto_end_timer(game_id: str):
 
 
 # ---------------------------------------------------------------------------
+# Auto-show-card timer helpers
+# ---------------------------------------------------------------------------
+
+
+def _cancel_auto_show_card_timer(game_id: str):
+    """Cancel any pending auto-show-card timer for a game."""
+    task = _auto_show_card_timers.pop(game_id, None)
+    if task and not task.done():
+        task.cancel()
+
+
+async def _auto_show_card_task(
+    game_id: str, player_id: str, card: str, turn_number: int
+):
+    """Wait AUTO_SHOW_CARD_SECONDS then auto-show the only matching card."""
+    try:
+        await asyncio.sleep(AUTO_SHOW_CARD_SECONDS)
+        _auto_show_card_timers.pop(game_id, None)
+        game = ClueGame(game_id, redis_client)
+        state = await game.get_state()
+        if (
+            state
+            and state.status == "playing"
+            and state.pending_show_card
+            and state.pending_show_card.player_id == player_id
+            and state.turn_number == turn_number
+        ):
+            logger.info(
+                "Auto-showing card for player %s in game %s (turn %d)",
+                player_id,
+                game_id,
+                turn_number,
+            )
+            await _execute_action(game_id, player_id, ShowCardAction(card=card))
+    except asyncio.CancelledError:
+        pass
+    except Exception:
+        logger.exception("Auto-show-card error in game %s", game_id)
+    finally:
+        _auto_show_card_timers.pop(game_id, None)
+
+
+async def _maybe_start_auto_show_card_timer(game_id: str):
+    """Start an auto-show timer if a human player has exactly one matching card."""
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if not state or state.status != "playing":
+        return
+    pending = state.pending_show_card
+    if not pending:
+        return
+    # Only apply to human players
+    player = next((p for p in state.players if p.id == pending.player_id), None)
+    if not player or player.type in _AGENT_PLAYER_TYPES:
+        return
+    if len(pending.matching_cards) == 1:
+        _cancel_auto_show_card_timer(game_id)
+        task = asyncio.create_task(
+            _auto_show_card_task(
+                game_id, pending.player_id, pending.matching_cards[0], state.turn_number
+            )
+        )
+        _auto_show_card_timers[game_id] = task
+        await manager.send_to_player(
+            game_id,
+            pending.player_id,
+            AutoShowCardTimerMessage(
+                player_id=pending.player_id, seconds=AUTO_SHOW_CARD_SECONDS
+            ),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Action execution (shared by HTTP endpoint and agent loop)
 # ---------------------------------------------------------------------------
 
@@ -255,8 +337,9 @@ async def _execute_action(
 
     Returns the typed action result. Raises ValueError on invalid actions.
     """
-    # Cancel any pending auto-end timer when a player takes an action
+    # Cancel any pending auto-end / auto-show-card timer when a player takes an action
     _cancel_auto_end_timer(game_id)
+    _cancel_auto_show_card_timer(game_id)
 
     game = ClueGame(game_id, redis_client)
     result = await game.process_action(player_id, action)
@@ -400,6 +483,8 @@ async def _execute_action(
                     available_actions=game.get_available_actions(player_id, state),
                 ),
             )
+            # Auto-show if the player has exactly one matching card
+            await _maybe_start_auto_show_card_timer(game_id)
             chat_text = (
                 f"{actor_name} suggests {result.suspect} with the {result.weapon}"
                 f" in the {result.room}. {pending_by_name} must show a card."

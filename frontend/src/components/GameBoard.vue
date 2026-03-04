@@ -143,6 +143,12 @@
               @click="doShowCard(card)"
             ><span class="card-icon">{{ cardIcon(card) }}</span> {{ card }}</button>
           </div>
+          <div v-if="showCardCountdown !== null && matchingCards.length === 1" class="auto-show-card-timer">
+            <div class="timer-bar">
+              <div class="timer-bar-fill" :style="{ width: (showCardCountdown / (props.autoShowCardTimer?.seconds || 7)) * 100 + '%' }"></div>
+            </div>
+            <span class="timer-text">Auto-showing in {{ showCardCountdown }}s</span>
+          </div>
         </section>
 
         <!-- Actions -->
@@ -311,6 +317,7 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
+  autoShowCardTimer: { type: Object, default: null },
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
@@ -360,7 +367,40 @@ watch(
   { immediate: true }
 )
 
-onUnmounted(() => clearCountdown())
+// Auto-show-card timer countdown
+const showCardCountdown = ref(null)
+let showCardCountdownInterval = null
+
+function clearShowCardCountdown() {
+  if (showCardCountdownInterval) {
+    clearInterval(showCardCountdownInterval)
+    showCardCountdownInterval = null
+  }
+  showCardCountdown.value = null
+}
+
+watch(
+  () => props.autoShowCardTimer,
+  (timer) => {
+    clearShowCardCountdown()
+    if (timer && timer.seconds > 0) {
+      const updateCountdown = () => {
+        const elapsed = (Date.now() - timer.startedAt) / 1000
+        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed))
+        showCardCountdown.value = remaining
+        if (remaining <= 0) clearShowCardCountdown()
+      }
+      updateCountdown()
+      showCardCountdownInterval = setInterval(updateCountdown, 1000)
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  clearCountdown()
+  clearShowCardCountdown()
+})
 
 const timerForMe = computed(() => countdown.value !== null && props.autoEndTimer?.playerId === props.playerId)
 
@@ -1120,6 +1160,10 @@ watch(
 
 .end-turn-btn:hover {
   background: #229954;
+}
+
+.auto-show-card-timer {
+  margin-top: 0.6rem;
 }
 
 .auto-end-timer {

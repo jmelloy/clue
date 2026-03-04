@@ -28,6 +28,7 @@
       :chat-messages="chatMessages"
       :is-observer="isObserver"
       :auto-end-timer="autoEndTimer"
+      :auto-show-card-timer="autoShowCardTimer"
       :reachable-rooms="reachableRooms"
       :reachable-positions="reachablePositions"
       :saved-notes="savedNotes"
@@ -55,6 +56,7 @@ const chatMessages = ref([])
 const isObserver = ref(false)
 const urlGameId = ref(null)
 const autoEndTimer = ref(null)
+const autoShowCardTimer = ref(null)
 const reachableRooms = ref([])
 const reachablePositions = ref([])
 const savedNotes = ref(null)
@@ -171,6 +173,7 @@ function handleMessage(msg) {
         gameState.value = { ...gameState.value, ...fields }
       }
       autoEndTimer.value = null
+      autoShowCardTimer.value = null
       reachableRooms.value = []
       reachablePositions.value = []
       break
@@ -203,6 +206,10 @@ function handleMessage(msg) {
 
     case 'auto_end_timer':
       autoEndTimer.value = { playerId: msg.player_id, seconds: msg.seconds, startedAt: Date.now() }
+      break
+
+    case 'auto_show_card_timer':
+      autoShowCardTimer.value = { playerId: msg.player_id, seconds: msg.seconds, startedAt: Date.now() }
       break
 
     case 'show_card_request':
@@ -254,12 +261,14 @@ function handleMessage(msg) {
       cardShown.value = { card: msg.card, by: msg.shown_by }
       if (msg.available_actions) availableActions.value = msg.available_actions
       showCardRequest.value = null
+      autoShowCardTimer.value = null
       break
 
     case 'card_shown_public':
       // A card was shown between two players (we don't see which card)
       // Clear any pending show card state
       showCardRequest.value = null
+      autoShowCardTimer.value = null
       break
 
     case 'accusation_made':
@@ -278,6 +287,7 @@ function handleMessage(msg) {
       }
       availableActions.value = []
       autoEndTimer.value = null
+      autoShowCardTimer.value = null
       break
 
     case 'chat_message':
@@ -312,6 +322,7 @@ function resetState() {
   chatMessages.value = []
   isObserver.value = false
   autoEndTimer.value = null
+  autoShowCardTimer.value = null
   reachableRooms.value = []
   reachablePositions.value = []
   savedNotes.value = null
