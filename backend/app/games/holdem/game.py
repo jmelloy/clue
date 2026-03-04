@@ -130,7 +130,8 @@ class HoldemGame:
         return await self._load_state()
 
     async def add_player(
-        self, player_id: str, player_name: str, buy_in: int = 1000
+        self, player_id: str, player_name: str, buy_in: int = 1000,
+        player_type: str = "human",
     ) -> HoldemPlayer:
         state = await self._load_state()
         if state is None:
@@ -142,7 +143,10 @@ class HoldemGame:
         if any(p.id == player_id for p in state.players):
             raise ValueError("Already joined")
 
-        player = HoldemPlayer(id=player_id, name=player_name, chips=buy_in)
+        player = HoldemPlayer(
+            id=player_id, name=player_name, chips=buy_in,
+            player_type=player_type,
+        )
         state.players.append(player)
         await self._save_state(state)
         return player
