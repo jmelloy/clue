@@ -232,10 +232,10 @@ def test_occupied_square_blocks_passage(board):
 def test_door_blocked_traps_player_in_room(board):
     """Blocking the only door of a room prevents hallway exit."""
     squares, room_nodes = board
-    # Conservatory has exactly 1 door at (19, 4)
+    # Conservatory has exactly 1 door at (21, 5)
     conservatory = room_nodes[Room.CONSERVATORY]
 
-    reached = reachable(conservatory, 6, squares, room_nodes, occupied={(19, 4)})
+    reached = reachable(conservatory, 6, squares, room_nodes, occupied={(21, 5)})
 
     hallway_squares = [sq for sq in reached if sq.type != SquareType.ROOM]
     assert (

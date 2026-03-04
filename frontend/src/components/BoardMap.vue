@@ -92,7 +92,7 @@ const DOORS = {
   '5,17': 'Lounge', '8,6': 'Library', '10,3': 'Library',
   '12,1': 'Billiard Room', '15,5': 'Billiard Room',
   '12,16': 'Dining Room', '9,17': 'Dining Room',
-  '19,4': 'Conservatory',
+  '21,5': 'Conservatory',
   '17,9': 'Ballroom', '17,14': 'Ballroom', '19,8': 'Ballroom', '19,15': 'Ballroom',
   '18,19': 'Kitchen',
 }
@@ -109,7 +109,7 @@ const DOOR_DIRECTIONS = {
   '15,5': 'east',
   '12,16': 'west',
   '9,17': 'north',
-  '19,4': 'north',
+  '21,5': 'east',
   '17,9': 'north',
   '17,14': 'north',
   '19,8': 'west',

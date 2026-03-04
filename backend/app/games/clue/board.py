@@ -122,8 +122,8 @@ DOORS = {
     # Dining Room (9,16)-(15,23): west, north
     (12, 16): (Room.DINING_ROOM, "west"),
     (9, 17): (Room.DINING_ROOM, "north"),
-    # Conservatory (20,0)-(24,5): north
-    (19, 4): (Room.CONSERVATORY, "north"),
+    # Conservatory (20,0)-(24,5): east
+    (21, 5): (Room.CONSERVATORY, "east"),
     # Ballroom (18,8)-(24,15): 2 north, west, east
     (17, 9): (Room.BALLROOM, "north"),
     (17, 14): (Room.BALLROOM, "north"),

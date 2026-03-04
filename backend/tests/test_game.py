@@ -1014,14 +1014,14 @@ async def test_door_blocking_prevents_exit(game: ClueGame):
     whose_turn = state.whose_turn
     other_id = "P2" if whose_turn == "P1" else "P1"
 
-    # Place current player in Conservatory (1 door at (19,4))
+    # Place current player in Conservatory (1 door at (21,5))
     # Place other player on that door square
     st = await game._load_state()
     st.current_room[whose_turn] = "Conservatory"
     center = ROOM_CENTERS.get("Conservatory")
     if center:
         st.player_positions[whose_turn] = list(center)
-    st.player_positions[other_id] = [19, 4]
+    st.player_positions[other_id] = [21, 5]
     st.current_room.pop(other_id, None)
     await game._save_state(st)
 

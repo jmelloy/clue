@@ -5,7 +5,7 @@
  3 ssssssD..hhhhhh..ooooooo
  4  ........Dhhhhh..ooooooo
  5 S........hhhhhh..Doooooo
- 6  lllll...hhDDhh........ 
+ 6  lllll...hhDDhh........
  7 lllllll................S
  8 llllllD..     .........
  9 lllllll..     ..nDnnnnnn
@@ -18,9 +18,9 @@
 16 bbbbbb.................
 17  .......aDaaaaDa........
 18 S.......aaaaaaaa..kDkkk
-19  cccD...DaaaaaaD..kkkkkk
+19  cccc...DaaaaaaD..kkkkkk
 20 cccccc..aaaaaaaa..kkkkkk
-21 cccccc..aaaaaaaa..kkkkkk
+21 cccccD..aaaaaaaa..kkkkkk
 22 cccccc..aaaaaaaa..kkkkkk
 23 cccccc ...aaaa... kkkkkk
 24          S    S
