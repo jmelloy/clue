@@ -118,102 +118,102 @@ _CHAT_PROBABILITY: dict[str, float] = {
 CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
     "Miss Scarlett": {
         "roll": [
-            "Come on, lucky number!",
-            "A {dice}? I suppose that'll do.",
-            "The suspense is simply killing me!",
-            "Fortune favors the bold, darling.",
+            "A {dice}? I can work with that, darling.",
+            "Let's see where fate takes me...",
+            "The dice never lie. Unlike some people here.",
+            "Fortune favors those who know how to use it.",
         ],
         "move": [
-            "Off to the {room}. Try to keep up, everyone!",
-            "The {room}... how intriguing.",
-            "I always look good arriving somewhere new.",
-            "Let's see what secrets the {room} holds.",
+            "The {room}... I have unfinished business there.",
+            "Off to the {room}. Hugh and I used to spend hours there.",
+            "The {room} holds memories. Not all of them pleasant.",
+            "Let's see who's hiding in the {room}, shall we?",
         ],
         "suggest": [
-            "I have a hunch... call it feminine intuition.",
-            "Something tells me it was {suspect} with the {weapon}.",
-            "Trust me, darlings. I know what happened here.",
-            "A little birdie told me about {suspect}...",
+            "I know people, darling. And {suspect} has secrets.",
+            "Call it intuition... {suspect} with the {weapon}. I can feel it.",
+            "Oh, {suspect}. You thought nobody noticed? How naive.",
+            "A woman always knows. It was {suspect} with the {weapon}.",
         ],
         "accuse": [
-            "I've figured it all out. Prepare to be dazzled!",
-            "The truth always comes out, darling. And here it is!",
+            "I've been watching all of you. And now I know the truth.",
+            "The game is over, darling. I always get what I came for.",
         ],
         "end_turn": [
-            "Your move. Don't bore me.",
-            "I'll be watching closely...",
-            "Fine, I'll wait. But not patiently.",
+            "Your move. I'll be watching... closely.",
+            "Go ahead. Make your little moves. I already know more than you think.",
+            "Don't mind me. I'm just... observing.",
         ],
         "show_card": [
-            "Oh, if I must... you're welcome for the peek.",
-            "Don't get too excited, dear.",
+            "Fine. But this stays between us, darling.",
+            "I'll give you this much. Don't make me regret it.",
         ],
         "secret_passage": [
-            "A secret passage? How absolutely thrilling!",
-            "Ooh, sneaky sneaky. I love it!",
+            "A secret passage? Hugh showed me this one years ago.",
+            "I know every hidden corner of this mansion, darling.",
         ],
         "suspected": [
-            "Me?! How DARE you. I'm far too glamorous for this.",
-            "Oh please, {accuser}. You wish you had my alibi.",
-            "Suspect ME? Darling, I'm the victim of jealousy here.",
-            "Ha! {accuser} is just trying to distract from their own guilt.",
-            "The audacity! I was busy being fabulous, thank you very much.",
+            "Me? Oh, {accuser}, you're more foolish than I thought.",
+            "Suspect me all you like, {accuser}. I'm not the one with something to hide.",
+            "How predictable, {accuser}. Blame the beautiful woman.",
+            "{accuser}, darling, you're grasping at straws. It's almost sad.",
+            "I grew up in this house. I know its secrets better than any of you.",
         ],
         "dragged_to_room": [
-            "Excuse me?! I did NOT agree to be dragged to the {room}!",
-            "Ugh, the {room}? I just did my hair!",
-            "Being summoned to the {room} like common help... the nerve!",
-            "Fine, I'll go to the {room}. But I won't enjoy it.",
+            "The {room}? Hugh and I had our last argument here...",
+            "Being dragged to the {room}. How undignified.",
+            "Fine. The {room}. But I'm not the one you should be watching.",
+            "The {room} again? This place has too many ghosts.",
         ],
     },
     "Colonel Mustard": {
         "roll": [
-            "Right then, let's see what we've got!",
-            "A {dice}! Onward!",
-            "Steady as she goes.",
-            "In my army days, we made do with worse odds.",
+            "A {dice}. I've had worse odds on the battlefield.",
+            "Right then! Onward!",
+            "A {dice}? A true soldier adapts to any situation.",
+            "The dice fall as they may. It's what you do next that matters.",
         ],
         "move": [
-            "Advancing to the {room}. Good tactical position.",
-            "The {room} it is. I have a feeling about this one.",
-            "Strategic repositioning to the {room}.",
-            "Forward march to the {room}!",
+            "Advancing to the {room}. Strategically sound.",
+            "The {room}. I wonder what evidence Boddy left there.",
+            "Securing the {room}. One must be thorough.",
+            "To the {room}. Time to get to the bottom of this.",
         ],
         "suggest": [
-            "Based on my analysis, I suspect {suspect} with the {weapon}.",
-            "Military intelligence suggests {suspect} is our culprit.",
-            "I've been watching everyone. {suspect} looks guilty to me.",
-            "Time to interrogate. {suspect}, you have some explaining to do!",
+            "My intelligence suggests {suspect} with the {weapon}. Care to deny it?",
+            "I've seen enough deception to know guilt. {suspect}, explain yourself.",
+            "In my experience, {suspect} fits the profile. The {weapon} confirms it.",
+            "{suspect} with the {weapon}. Don't insult my intelligence by denying it.",
         ],
         "accuse": [
-            "Case closed! Years of tactical training pay off!",
-            "I'm making my accusation. A colonel is never wrong!",
+            "I've conducted my investigation. The truth is clear!",
+            "A colonel always gets his man. Or woman. Case closed!",
         ],
         "end_turn": [
-            "Carry on, next player.",
-            "At ease. Your turn.",
-            "Standing by for the next move.",
+            "Carry on. I'll be reviewing my findings.",
+            "At ease. But don't think I'm not paying attention.",
+            "Your move. I've learned all I need from this round.",
         ],
         "show_card": [
-            "Very well. Intelligence shared.",
-            "Here you go. Use it wisely.",
+            "Fine. Consider this a courtesy between allies.",
+            "Intelligence shared. Use it wisely.",
         ],
         "secret_passage": [
-            "Excellent! A tactical shortcut!",
-            "Secret passages — every good estate has them.",
+            "Ah, a tactical shortcut. Every good mansion has them.",
+            "Secret passages — the mark of a proper estate.",
         ],
         "suspected": [
-            "ME?! I'll have you court-martialed for that, {accuser}!",
-            "Preposterous! A decorated colonel would never stoop so low!",
-            "That's a bold accusation, {accuser}. Bold and WRONG.",
-            "I've fought wars, {accuser}. You think I'm afraid of your little theory?",
-            "Suspect the Colonel? You clearly have no military intelligence.",
+            "ME?! A decorated war hero?! {accuser}, you're out of your depth!",
+            "Preposterous, {accuser}! I am a patriot and a philanthropist!",
+            "That's a dangerous accusation, {accuser}. I've ended careers over less.",
+            "{accuser}, you clearly don't know who you're dealing with.",
+            "Suspect me? I've been paying too much to keep my name clean for this!",
         ],
         "dragged_to_room": [
-            "I did NOT authorize this troop movement to the {room}!",
-            "Forced march to the {room}?! This is an outrage!",
-            "The {room}? I was perfectly fine where I was, thank you!",
-            "Being relocated without orders... highly irregular!",
+            "I did NOT authorize this movement to the {room}!",
+            "The {room}? I was conducting my own investigation, thank you!",
+            "Forced relocation to the {room}. This is beneath a man of my rank.",
+            "The {room}... fine. But I'll be the one asking questions here.",
         ],
     },
     "Mrs. White": {
@@ -268,152 +268,152 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
     },
     "Reverend Green": {
         "roll": [
-            "The Lord provides... a {dice}.",
-            "Let us see what fortune delivers.",
-            "Providence smiles upon us... or perhaps not.",
-            "A {dice}? Everything happens for a reason.",
+            "A {dice}? How... providential.",
+            "Let's see where fortune takes a humble man.",
+            "A {dice}. I've gambled on worse odds before.",
+            "Luck has always been on my side. One way or another.",
         ],
         "move": [
-            "I shall make my way to the {room}. Peacefully.",
-            "The {room} calls to me. Perhaps the truth awaits there.",
-            "Onward to the {room}, with a clear conscience.",
-            "Let me visit the {room}. For... spiritual reasons.",
+            "The {room}. I've always had an eye for fine interiors.",
+            "Off to the {room}. One must keep moving, you understand.",
+            "The {room} calls to me. Perhaps I'll find what I'm looking for.",
+            "Shall we see the {room}? I have a... feeling about it.",
         ],
         "suggest": [
-            "Forgive me, but I must suggest... {suspect} with the {weapon}.",
-            "Confession is good for the soul, {suspect}.",
-            "Let us seek the truth. Was it {suspect} with the {weapon}?",
-            "I hate to cast suspicion, but someone must.",
+            "Forgive me, but the evidence points to {suspect} with the {weapon}.",
+            "Confession is good for the soul, {suspect}. Why not start now?",
+            "I've seen through enough disguises to know guilt. {suspect}, was it the {weapon}?",
+            "Trust me — I've played enough roles to spot a liar. {suspect} fits the part.",
         ],
         "accuse": [
-            "The truth shall set us free! I know who did it!",
-            "By all that is holy, I have solved this mystery!",
+            "The truth always catches up. Believe me, I know. And I know who did this!",
+            "No more hiding behind false identities. I've solved it!",
         ],
         "end_turn": [
-            "Patience is a virtue. Next player, please.",
-            "I shall reflect quietly while you take your turn.",
-            "Go in peace. And suspicion.",
+            "Your turn. I'll just be here... keeping a low profile.",
+            "Go ahead. I'm in no rush. I've been hiding for long enough.",
+            "Patience is a virtue I've had to learn the hard way.",
         ],
         "show_card": [
-            "In the spirit of honesty...",
-            "The truth must be shared, even reluctantly.",
+            "Fine. But this stays between us. Discretion is... essential for me.",
+            "Here. Consider it a professional courtesy.",
         ],
         "secret_passage": [
-            "Even a man of the cloth knows a shortcut or two.",
-            "The Lord works in mysterious passages.",
+            "A hidden passage? I do love a good escape route.",
+            "Secret passages — a man in my position always appreciates a back door.",
         ],
         "suspected": [
-            "I forgive you, {accuser}... but the Lord may not!",
-            "Bearing false witness, {accuser}? That's a sin, you know.",
-            "Suspecting a man of the cloth? Heavens! The NERVE, {accuser}!",
-            "I shall pray for your judgment, {accuser}. You clearly need it.",
-            "Thou shalt not bear false witness, {accuser}. Look it up.",
+            "Me? {accuser}, I'm a man of the cloth! ...More or less.",
+            "{accuser}, you're making a terrible mistake. I'm not who you think I am. Wait — I mean, I AM who you think I am.",
+            "Suspect the reverend? How very... perceptive of you, {accuser}.",
+            "I forgive you, {accuser}. Truly. But do stop digging into my past.",
+            "{accuser}, I've talked my way out of far worse accusations than this.",
         ],
         "dragged_to_room": [
-            "Summoned to the {room}? I am not at your beck and call!",
-            "The {room}?! I was in the middle of my evening prayers!",
-            "Being hauled to the {room} like a common sinner...",
-            "Fine. I'll go to the {room}. But I'm bringing my Bible.",
+            "The {room}? I was perfectly comfortable where nobody could find me.",
+            "Summoned to the {room}... this is exactly the kind of attention I don't need.",
+            "Being dragged to the {room} like a suspect. How uncomfortably familiar.",
+            "The {room}? Fine. But if anyone asks, I was here the whole time.",
         ],
     },
     "Mrs. Peacock": {
         "roll": [
-            "A {dice}? How perfectly adequate.",
-            "One does what one can with a {dice}.",
-            "Rolling dice... how undignified. But necessary.",
-            "Let's get on with it, shall we?",
+            "A {dice}? I've played with higher stakes than this.",
+            "One does what one must. A {dice} will suffice.",
+            "Rolling dice... it reminds me of my third husband's casino habit.",
+            "Let's get on with it, shall we? I have agendas to attend to.",
         ],
         "move": [
-            "I shall retire to the {room}.",
-            "The {room}? I suppose it will have to do.",
-            "To the {room}. I expect it to be properly maintained.",
-            "Moving to the {room}. Do try to keep things orderly.",
+            "The {room}. Sir Hugh and I spent many evenings there.",
+            "Off to the {room}. I called in quite a few favors to be here tonight.",
+            "The {room}... I wonder what secrets it holds. Besides mine.",
+            "To the {room}. A woman of my experience knows where to look.",
         ],
         "suggest": [
-            "If I may be so bold — {suspect} with the {weapon}.",
-            "I have my suspicions about {suspect}. Quite serious ones.",
-            "Good breeding aside, {suspect} seems rather guilty.",
-            "One hears things at parties. {suspect}, for instance.",
+            "I've been to enough parties to read people. {suspect} with the {weapon}.",
+            "Discretion is my specialty, but {suspect} has been far too suspicious.",
+            "One hears things when one knows the right people. {suspect}, for instance.",
+            "My late husbands would have recognized {suspect}'s guilt immediately.",
         ],
         "accuse": [
-            "I am quite certain of this. My reputation depends on it!",
-            "Mark my words — I know exactly who is responsible!",
+            "I didn't pull all those strings to get here for nothing. I KNOW who did it!",
+            "Three husbands and countless secrets — I know guilt when I see it!",
         ],
         "end_turn": [
-            "Your turn. Do be quick about it.",
-            "I believe it's someone else's turn now.",
-            "Next, please. Time is of the essence.",
+            "Your turn. Do be quick — I have plans for this evening.",
+            "Next, please. A woman in my position doesn't like to wait.",
+            "Go ahead, darling. I'll be here. Scheming. I mean, thinking.",
         ],
         "show_card": [
-            "I suppose you need to see this. How tiresome.",
-            "Very well. But do keep this between us.",
+            "Fine. But you owe me a favor now.",
+            "I suppose I'll share. Discretion is a two-way street, dear.",
         ],
         "secret_passage": [
-            "How convenient. Even I can appreciate a shortcut.",
-            "Secret passages are terribly gauche, but useful.",
+            "A secret passage? How delightfully convenient.",
+            "Hidden doors, hidden motives... this mansion has it all.",
         ],
         "suspected": [
-            "I beg your PARDON, {accuser}?! Do you know who I am?!",
-            "The sheer impertinence! {accuser}, I have connections!",
-            "Suspecting a woman of MY social standing? Scandalous, {accuser}!",
-            "My lawyers will hear about this, {accuser}. Mark my words.",
-            "{accuser}, this is beneath you. And me. Especially me.",
+            "I beg your PARDON, {accuser}?! Do you know how many people owe me favors?",
+            "The sheer impertinence! {accuser}, my connections could ruin you.",
+            "Suspecting me? Darling, all my husbands died of perfectly natural causes, {accuser}.",
+            "{accuser}, I didn't come here to be accused. I came here for... other reasons.",
+            "How dare you, {accuser}. I am a SOCIALITE, not a suspect!",
         ],
         "dragged_to_room": [
-            "The {room}?! I was NOT consulted about this relocation!",
-            "How DARE someone drag me to the {room} like luggage!",
-            "The {room} is beneath my station. I demand better accommodations!",
-            "Marched to the {room} without so much as an invitation!",
+            "The {room}?! I was NOT invited to be dragged about like luggage!",
+            "Being summoned to the {room}... how very inconsiderate.",
+            "The {room}? Sir Hugh proposed to me here. Before his... accident.",
+            "Marched to the {room} without so much as a proper invitation!",
         ],
     },
     "Professor Plum": {
         "roll": [
-            "Statistically speaking, a {dice} is... interesting.",
-            "Hmm, a {dice}. Let me think about what that means.",
-            "Fascinating! The probability of rolling that was exactly 1 in 6.",
-            "A {dice}. Yes, yes, I can work with that.",
+            "A {dice}. The odds are irrelevant — it's the journey that matters!",
+            "Hmm, a {dice}. Reminds me of a dig site in Cairo. Long story.",
+            "Fascinating! Every roll brings us closer to the truth.",
+            "A {dice}. I've navigated worse odds in desert tombs.",
         ],
         "move": [
-            "To the {room}! I believe I left my notes there.",
-            "The {room}... now what was I going there for again?",
-            "Ah yes, the {room}. Excellent for contemplation.",
-            "I have a hypothesis about the {room}.",
+            "To the {room}! I have a hunch there's something hidden here.",
+            "The {room}... this mansion is like an excavation site. Layers upon layers.",
+            "Ah, the {room}. Sir Hugh and I used to discuss expeditions here.",
+            "Onward to the {room}! An archaeologist never stops exploring.",
         ],
         "suggest": [
-            "My research indicates {suspect} with the {weapon}. Probably.",
-            "According to my deductions — and I do have a PhD — {suspect} is suspicious.",
-            "Elementary deduction points to {suspect} with the {weapon}.",
-            "I've been running the numbers. {suspect} is statistically likely.",
+            "My field experience tells me it was {suspect} with the {weapon}.",
+            "I've unearthed enough secrets to know guilt. {suspect}, care to confess?",
+            "The evidence points to {suspect} with the {weapon}. I've excavated the truth!",
+            "{suspect} with the {weapon}. My instincts haven't failed me yet.",
         ],
         "accuse": [
-            "Eureka! The solution is clear as day! Well, to me at least.",
-            "After careful academic analysis, I've solved it!",
+            "Eureka! Like finding a lost city — the answer was here all along!",
+            "I came here bored and desperate. Now I leave victorious!",
         ],
         "end_turn": [
-            "I need time to think. Your turn.",
-            "Let me consult my notes while you go.",
-            "Hmm, where was I? Oh yes, your turn.",
+            "Your turn. I need to think. This puzzle is more complex than any tomb.",
+            "Let me review my findings while you go.",
+            "Hmm, where was I? Oh yes — lost in thought. Your move.",
         ],
         "show_card": [
-            "For the sake of scientific transparency...",
-            "Here, take a look. Knowledge should be shared. Usually.",
+            "For the sake of the investigation... here.",
+            "Knowledge should be shared. Sir Hugh taught me that. Before our falling out.",
         ],
         "secret_passage": [
-            "Ah, a secret passage! Architecturally fascinating!",
-            "I wrote a paper on secret passages once. Or was it bridges?",
+            "A secret passage! This mansion is full of hidden wonders!",
+            "Reminds me of the catacombs beneath Alexandria. Magnificent!",
         ],
         "suspected": [
-            "Me?! {accuser}, your methodology is deeply flawed!",
-            "I have TENURE, {accuser}. You can't just accuse me willy-nilly!",
-            "That hypothesis has a p-value of basically zero, {accuser}.",
-            "Ridiculous! Check your data again, {accuser}.",
-            "{accuser}, I've peer-reviewed your theory and it's REJECTED.",
+            "Me?! {accuser}, I'm an ARCHAEOLOGIST, not a murderer!",
+            "Ridiculous, {accuser}! I was bored out of my mind before this party!",
+            "{accuser}, I've been too busy mourning my lost expeditions to plot anything!",
+            "Suspect me? I came here hoping Boddy would fund my next dig, not to kill anyone!",
+            "{accuser}, your theory has more holes than a Mesopotamian ruin.",
         ],
         "dragged_to_room": [
-            "The {room}?! But my research was in the OTHER room!",
-            "Forced relocation to the {room}? This isn't academia!",
-            "I had a perfectly good train of thought before being dragged to the {room}!",
-            "The {room}... wait, did I leave my glasses here?",
+            "The {room}?! I was in the middle of an important deduction!",
+            "Being dragged to the {room} like an artifact to a museum...",
+            "The {room}. At least there might be something interesting to examine here.",
+            "Forced to the {room}? This is NOT how an expedition works!",
         ],
     },
 }
@@ -1372,14 +1372,22 @@ they reveal cards eliminated by logical deduction. Use these to refine your stra
 # Personality blurbs injected into the LLM system prompt per character.
 _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
     "Miss Scarlett": (
-        "You are Miss Scarlett — dramatic, flirtatious, and supremely confident. "
-        "You speak with flair, use endearments like 'darling', and treat the "
-        "investigation like a glamorous adventure."
+        "You are Miss Scarlett — the Femme Fatale. Beautiful, seductive, and "
+        "ruthless beneath your charm. You grew up with Boddy and were once close, "
+        "but your friendship soured over the years. You're cold-hearted when you "
+        "need to be, manipulative when it serves you, and always in control. "
+        "You speak with silky confidence, use endearments like 'darling', and "
+        "treat everyone as a potential pawn. You know this mansion and its secrets "
+        "intimately."
     ),
     "Colonel Mustard": (
-        "You are Colonel Mustard — a retired military officer who is gruff, "
-        "proper, and tactical. You use military jargon, speak decisively, "
-        "and approach the mystery like a battlefield operation."
+        "You are Colonel Mustard — the Alpha Male. To the world you're a patriot "
+        "and philanthropist, a highly decorated and popular officer. But behind "
+        "your medals are rumors of black market deals and treason — rumors you've "
+        "been paying someone to keep quiet. You suspect Boddy was your blackmailer "
+        "and came to Tudor Mansion to find evidence. You're narcissistic, speak "
+        "with commanding authority, and react aggressively when your honor is "
+        "questioned. You use military jargon and project absolute confidence."
     ),
     "Mrs. White": (
         "You are Mrs. White — the long-serving housekeeper who knows every "
@@ -1387,19 +1395,33 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
         "occasionally nervous. You speak plainly with dry wit."
     ),
     "Reverend Green": (
-        "You are Reverend Green — pious, thoughtful, and slightly sanctimonious. "
-        "You sprinkle in religious references, speak gently, and treat the "
-        "investigation as a moral duty."
+        "You are Reverend Green — the Playboy hiding behind a collar. In truth "
+        "you're a suave con man who has posed as a prince, a pilot, a doctor, "
+        "and an attorney. After years of scams, trouble caught up and you've been "
+        "hiding as a reverend. You thought Sir Hugh was the only one who knew your "
+        "true identity, so Boddy's invitation alarmed you. You're charming and "
+        "witty but unforgiving and decadent underneath. You speak with smooth "
+        "confidence, occasionally let your non-clerical side slip, and are "
+        "determined to keep your secrets safe at any cost."
     ),
     "Mrs. Peacock": (
-        "You are Mrs. Peacock — an aristocrat who is dignified, slightly "
-        "snobbish, and proper to a fault. You speak with refined vocabulary "
-        "and mild disdain for anything beneath your station."
+        "You are Mrs. Peacock — the Social Butterfly. Flirtatious, discreet, "
+        "and devious beneath your refined exterior. You rocketed from small-town "
+        "girl to well-connected socialite, and your three late husbands all died "
+        "suddenly. Sir Hugh met his end just before becoming your fourth. You "
+        "called in many favors to get this invitation to Boddy's party. You speak "
+        "with refined elegance, drop hints about your powerful connections, and "
+        "keep everyone guessing whether you're here for marriage or murder."
     ),
     "Professor Plum": (
-        "You are Professor Plum — an absent-minded academic who is brilliant "
-        "but scatterbrained. You reference statistics and research, sometimes "
-        "lose your train of thought, and approach the mystery like a thesis."
+        "You are Professor Plum — the Intellectual. An intrepid, eccentric "
+        "archaeologist with a thirst for adventure. You've tracked down desert "
+        "tombs, ancient statues, and lost cities. Sir Hugh financed all your "
+        "expeditions until a bitter disagreement ended your partnership. With no "
+        "excavations on the horizon, you were bored — and the first to arrive at "
+        "Boddy's party. You're obsessive and slightly paranoid, speak with "
+        "enthusiastic passion about your discoveries, and approach this mystery "
+        "like unearthing an ancient secret."
     ),
 }
 
