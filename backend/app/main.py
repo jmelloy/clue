@@ -402,9 +402,11 @@ async def _execute_action(
                 dice=result.dice,
             )
         else:
+            roll_parts = state.last_roll or []
+            roll_text = f"{result.dice} ({'+'.join(str(d) for d in roll_parts)})" if len(roll_parts) > 1 else str(result.dice)
             await _broadcast_chat(
                 game_id,
-                f"{actor_name} rolled {result.dice}.",
+                f"{actor_name} rolled {roll_text}.",
                 player_id,
             )
         await manager.send_to_player(

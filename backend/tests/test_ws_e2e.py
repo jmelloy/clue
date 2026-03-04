@@ -165,7 +165,7 @@ async def _place_in_room(redis, game_id: str, player_id: str, room: str):
     state.current_room[player_id] = room
     state.dice_rolled = True
     state.moved = True
-    state.last_roll = [6]
+    state.last_roll = [3, 3]
     center = ROOM_CENTERS.get(room)
     if center:
         state.player_positions[player_id] = list(center)

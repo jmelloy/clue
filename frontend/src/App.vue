@@ -243,7 +243,6 @@ function handleMessage(msg) {
         const positions = { ...(gameState.value.player_positions || {}) }
         if (msg.position) positions[msg.player_id] = msg.position
         const updates = { current_room: rooms, player_positions: positions, moved: true }
-        if (msg.dice) updates.last_roll = [msg.dice]
         gameState.value = { ...gameState.value, ...updates }
       }
       // Clear reachable highlights after movement

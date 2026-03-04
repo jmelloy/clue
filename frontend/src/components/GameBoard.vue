@@ -26,7 +26,7 @@
       <div class="header-right">
         <div v-if="isObserver" class="observer-badge">Observer</div>
         <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
-          <span class="dice">{{ gameState.last_roll[0] }}</span>
+          <span class="dice" v-for="(die, idx) in gameState.last_roll" :key="idx">{{ die }}</span>
         </div>
       </div>
     </header>
@@ -168,7 +168,7 @@
 
           <!-- Move (choose room after rolling) -->
           <div v-if="canMove" class="action-group">
-            <h3>Move (rolled {{ gameState?.last_roll?.[0] }})</h3>
+            <h3>Move (rolled {{ gameState?.last_roll?.reduce((a, b) => a + b, 0) }})</h3>
             <p class="action-hint">
               Click a highlighted room on the board or select below:
               <span v-if="reachableRooms.length" class="reachable-count">{{ reachableRooms.length }} room{{ reachableRooms.length !== 1 ? 's' : '' }} reachable</span>
