@@ -208,17 +208,36 @@
 
       <!-- Normal lobby -->
       <template v-else>
+        <!-- Game Type Selector -->
+        <div class="game-type-selector">
+          <button
+            class="game-type-btn"
+            :class="{ active: gameType === 'clue' }"
+            @click="gameType = 'clue'"
+          >
+            <span class="game-type-icon">&#x1F50D;</span>
+            <span class="game-type-label">Clue</span>
+          </button>
+          <button
+            class="game-type-btn"
+            :class="{ active: gameType === 'holdem' }"
+            @click="gameType = 'holdem'"
+          >
+            <span class="game-type-icon">&#x1F0CF;</span>
+            <span class="game-type-label">Texas Hold'em</span>
+          </button>
+        </div>
+
         <div class="lobby-grid">
           <!-- Create Game -->
           <section class="card card-create">
             <div class="card-inner">
               <div class="card-header">
-                <span class="card-label">New Investigation</span>
+                <span class="card-label">{{ gameType === 'holdem' ? 'New Table' : 'New Investigation' }}</span>
                 <h2>Host a Game</h2>
               </div>
               <p class="card-desc">
-                Gather your suspects and uncover the truth. As host, you'll set
-                the stage for murder.
+                {{ gameType === 'holdem' ? 'Take your seat at the table and test your nerve.' : 'Gather your suspects and uncover the truth. As host, you\'ll set the stage for murder.' }}
               </p>
               <div class="form-group">
                 <div class="input-wrapper">
@@ -228,7 +247,7 @@
                     @keyup.enter="createGame"
                   />
                 </div>
-                <div class="select-wrapper">
+                <div class="select-wrapper" v-if="gameType === 'clue'">
                   <select v-model="playerType">
                     <option value="human">Human Player</option>
                     <option value="agent">Random Agent</option>
@@ -240,7 +259,7 @@
                   :disabled="!playerName"
                   @click="createGame"
                 >
-                  Open the Case
+                  {{ gameType === 'holdem' ? 'Deal Me In' : 'Open the Case' }}
                 </button>
               </div>
             </div>
@@ -277,14 +296,13 @@
                 <h2>Join a Game</h2>
               </div>
               <p class="card-desc">
-                You've received an invitation to Tudor Mansion. Enter the case
-                number to join.
+                {{ gameType === 'holdem' ? 'Got a table number? Enter it to take your seat.' : 'You\'ve received an invitation to Tudor Mansion. Enter the case number to join.' }}
               </p>
               <div class="form-group">
                 <div class="input-wrapper input-code">
                   <input
                     v-model="joinGameId"
-                    placeholder="Case No. (e.g. ABC123)"
+                    placeholder="Game ID (e.g. ABC123)"
                     @keyup.enter="joinGame"
                     style="text-transform: uppercase; letter-spacing: 0.15em"
                   />
@@ -292,7 +310,7 @@
                 <div class="input-wrapper">
                   <input v-model="playerName" placeholder="Your alias" />
                 </div>
-                <div class="select-wrapper">
+                <div class="select-wrapper" v-if="gameType === 'clue'">
                   <select v-model="playerType">
                     <option value="human">Human Player</option>
                     <option value="agent">Random Agent</option>
@@ -359,6 +377,7 @@ import { ref, computed, watch } from "vue";
 
 const props = defineProps({
   urlGameId: { type: String, default: null },
+  urlGameType: { type: String, default: "clue" },
 });
 
 const emit = defineEmits([
@@ -370,6 +389,7 @@ const emit = defineEmits([
 
 const playerName = ref("");
 const playerType = ref("human");
+const gameType = ref("clue");
 const joinGameId = ref("");
 const error = ref("");
 
@@ -466,12 +486,15 @@ async function fetchUrlGame(gid) {
   urlGameError.value = "";
   urlGameState.value = null;
   try {
-    const res = await fetch(`/games/${gid}`);
+    const endpoint = props.urlGameType === "holdem" ? `/holdem/games/${gid}` : `/games/${gid}`;
+    const res = await fetch(endpoint);
     if (!res.ok) {
       urlGameError.value = "Case file not found";
       return;
     }
-    urlGameState.value = await res.json();
+    const state = await res.json();
+    urlGameState.value = state;
+    if (state.game_type === "holdem") gameType.value = "holdem";
   } catch (e) {
     urlGameError.value = "Failed to retrieve case: " + e.message;
   } finally {
@@ -481,23 +504,33 @@ async function fetchUrlGame(gid) {
 
 async function joinUrlGame() {
   error.value = "";
-  await doJoin(props.urlGameId);
+  if (props.urlGameType === "holdem" || gameType.value === "holdem") {
+    await doJoinHoldem(props.urlGameId);
+  } else {
+    await doJoin(props.urlGameId);
+  }
 }
 
 function observeUrlGame() {
-  emit("observe", { gameId: props.urlGameId });
+  emit("observe", { gameId: props.urlGameId, gameType: props.urlGameType });
 }
 
 function rejoinAs(player) {
-  emit("rejoin", { gameId: props.urlGameId, playerId: player.id });
+  emit("rejoin", { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType });
 }
 
 async function createGame() {
   error.value = "";
   try {
-    const res = await fetch("/games", { method: "POST" });
-    const { game_id } = await res.json();
-    await doJoin(game_id);
+    if (gameType.value === "holdem") {
+      const res = await fetch("/holdem/games", { method: "POST" });
+      const { game_id } = await res.json();
+      await doJoinHoldem(game_id);
+    } else {
+      const res = await fetch("/games", { method: "POST" });
+      const { game_id } = await res.json();
+      await doJoin(game_id);
+    }
   } catch (e) {
     error.value = "Failed to open case: " + e.message;
   }
@@ -505,7 +538,11 @@ async function createGame() {
 
 async function joinGame() {
   error.value = "";
-  await doJoin(joinGameId.value.trim().toUpperCase());
+  if (gameType.value === "holdem") {
+    await doJoinHoldem(joinGameId.value.trim().toUpperCase());
+  } else {
+    await doJoin(joinGameId.value.trim().toUpperCase());
+  }
 }
 
 async function doJoin(gameId) {
@@ -527,6 +564,27 @@ async function doJoin(gameId) {
     const stateRes = await fetch(`/games/${gameId}`);
     const state = await stateRes.json();
     emit("game-joined", { gameId, playerId: player_id, state });
+  } catch (e) {
+    error.value = "Error: " + e.message;
+  }
+}
+
+async function doJoinHoldem(gameId) {
+  try {
+    const res = await fetch(`/holdem/games/${gameId}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_name: playerName.value }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      error.value = data.detail ?? "Failed to join";
+      return;
+    }
+    const { player_id } = await res.json();
+    const stateRes = await fetch(`/holdem/games/${gameId}`);
+    const state = await stateRes.json();
+    emit("game-joined", { gameId, playerId: player_id, state, gameType: "holdem" });
   } catch (e) {
     error.value = "Error: " + e.message;
   }
@@ -1323,6 +1381,57 @@ async function observeGame() {
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
+}
+
+/* === Game Type Selector === */
+.game-type-selector {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  animation: fade-in 0.8s ease-out 0.3s both;
+}
+
+.game-type-btn {
+  flex: 1;
+  max-width: 200px;
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
+  border: 1.5px solid rgba(212, 168, 73, 0.12);
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.3s;
+  font-family: 'Crimson Text', Georgia, serif;
+}
+
+.game-type-btn:hover {
+  border-color: rgba(212, 168, 73, 0.3);
+  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.06);
+}
+
+.game-type-btn.active {
+  border-color: rgba(212, 168, 73, 0.5);
+  background: linear-gradient(135deg, rgba(40, 32, 20, 0.95), rgba(25, 20, 14, 0.97));
+  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.1);
+}
+
+.game-type-icon {
+  font-size: 1.5rem;
+}
+
+.game-type-label {
+  font-size: 0.85rem;
+  color: #6a6050;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.game-type-btn.active .game-type-label {
+  color: #d4a849;
 }
 
 /* === Responsive === */
