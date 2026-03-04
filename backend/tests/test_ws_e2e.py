@@ -15,10 +15,10 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
-from app.agents import RandomAgent, WandererAgent
+from app.games.clue.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
+from app.games.clue.agents import RandomAgent, WandererAgent
 from app.main import app, manager, _agent_tasks, _game_agents
-from app.models import GameState, PongMessage, WSMessage
+from app.games.clue.models import GameState, PongMessage, WSMessage
 
 # ---------------------------------------------------------------------------
 # Mock WebSocket

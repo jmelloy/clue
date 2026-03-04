@@ -26,10 +26,10 @@ import websockets
 # Ensure the backend package is importable
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app.agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
-from app.game import ClueGame
+from app.games.clue.agents import BaseAgent, LLMAgent, RandomAgent, WandererAgent
+from app.games.clue.game import ClueGame
 from app.logging import get_logging_config
-from app.models import ChatContext, GameState, PlayerState, ShowCardAction
+from app.games.clue.models import ChatContext, GameState, PlayerState, ShowCardAction
 
 logger = logging.getLogger(__name__)
 

@@ -9,9 +9,9 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-from app.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
-from app.agents import RandomAgent, WandererAgent
-from app.models import ShowCardAction
+from app.games.clue.game import ClueGame, SUSPECTS, WEAPONS, ROOMS
+from app.games.clue.agents import RandomAgent, WandererAgent
+from app.games.clue.models import ShowCardAction
 
 # ---------------------------------------------------------------------------
 # Fixtures

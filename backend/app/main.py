@@ -13,14 +13,14 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from .agents import (
+from .games.clue.agents import (
     BaseAgent,
     LLMAgent,
     RandomAgent,
     WandererAgent,
     generate_character_chat,
 )
-from .board import (
+from .games.clue.board import (
     DOORS,
     ROOM_BOUNDS,
     ROOM_CENTERS,
@@ -28,8 +28,8 @@ from .board import (
     START_POSITIONS,
     Room,
 )
-from .game import ClueGame
-from .models import (
+from .games.clue.game import ClueGame
+from .games.clue.models import (
     AccusationMadeMessage,
     AccuseAction,
     AccuseResult,
