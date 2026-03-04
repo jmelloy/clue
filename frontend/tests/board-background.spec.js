@@ -108,27 +108,23 @@ test.describe('Board grid alignment', () => {
     expect(doorCells).toBeGreaterThan(10)
   })
 
-  test('classic board colors are applied correctly', async ({ page }) => {
-    // Container should have green background (classic board)
-    const containerBg = await page.locator('.board-container').evaluate(
+  test('board image background is applied', async ({ page }) => {
+    // Grid should have a background image set
+    const bgImage = await page.locator('.board-grid').evaluate(
+      el => getComputedStyle(el).backgroundImage
+    )
+    expect(bgImage).toContain('board.jpg')
+
+    // Non-highlighted cells should be transparent to let the image show through
+    const hallwayBg = await page.locator('.cell-hallway:not(.reachable):not(.my-room)').first().evaluate(
       el => getComputedStyle(el).backgroundColor
     )
-    // #1a4a2a = rgb(26, 74, 42)
-    expect(containerBg).toContain('26, 74, 42')
+    expect(hallwayBg).toContain('rgba(0, 0, 0, 0)')
 
-    // Hallway cells should have yellow/beige background
-    const hallwayBg = await page.locator('.cell-hallway').first().evaluate(
-      el => getComputedStyle(el).backgroundColor
-    )
-    // #d4b85a = rgb(212, 184, 90)
-    expect(hallwayBg).toContain('212, 184, 90')
-
-    // Wall cells should have green background matching container
     const wallBg = await page.locator('.cell-wall').first().evaluate(
       el => getComputedStyle(el).backgroundColor
     )
-    // #1a4a2a = rgb(26, 74, 42)
-    expect(wallBg).toContain('26, 74, 42')
+    expect(wallBg).toContain('rgba(0, 0, 0, 0)')
   })
 
   test('player tokens are positioned correctly', async ({ page }) => {
@@ -152,23 +148,22 @@ test.describe('Board grid alignment', () => {
     }
   })
 
-  test('room labels are positioned within their rooms', async ({ page }) => {
+  test('room labels are hidden (image provides them)', async ({ page }) => {
+    // Labels exist in DOM but are hidden via display:none
     const labels = page.locator('.room-label')
     const labelCount = await labels.count()
-    expect(labelCount).toBe(9) // 9 rooms
+    expect(labelCount).toBe(9) // 9 rooms still in DOM
 
-    const containerBox = await page.locator('.board-container').boundingBox()
-    for (let i = 0; i < labelCount; i++) {
-      const labelBox = await labels.nth(i).boundingBox()
-      expect(labelBox).toBeTruthy()
-      // Label should be within the container
-      const labelCenterX = labelBox.x + labelBox.width / 2
-      const labelCenterY = labelBox.y + labelBox.height / 2
-      expect(labelCenterX).toBeGreaterThan(containerBox.x)
-      expect(labelCenterX).toBeLessThan(containerBox.x + containerBox.width)
-      expect(labelCenterY).toBeGreaterThan(containerBox.y)
-      expect(labelCenterY).toBeLessThan(containerBox.y + containerBox.height)
-    }
+    const display = await labels.first().evaluate(
+      el => getComputedStyle(el).display
+    )
+    expect(display).toBe('none')
+
+    // Center label also hidden
+    const centerDisplay = await page.locator('.center-label').evaluate(
+      el => getComputedStyle(el).display
+    )
+    expect(centerDisplay).toBe('none')
   })
 
   test('take board screenshot for visual inspection', async ({ page }) => {

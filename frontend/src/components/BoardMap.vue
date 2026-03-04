@@ -305,10 +305,8 @@ function cellClasses(cell) {
   return cls
 }
 
-function cellStyle(cell) {
-  if (cell.room && ROOM_COLORS[cell.room]) {
-    return { backgroundColor: ROOM_COLORS[cell.room] }
-  }
+function cellStyle(_cell) {
+  // Cells are transparent — the board background image provides the visuals
   return {}
 }
 
@@ -372,6 +370,11 @@ function tokenStyle(token) {
   height: 100%;
   gap: 0;
   background: #1a4a2a;
+  /* Classic Clue board background image */
+  background-image: url('/assets/board.jpg');
+  background-size: 114% 112%;
+  background-position: 49% 44%;
+  background-repeat: no-repeat;
 }
 
 /* ── Cell types ── */
@@ -381,75 +384,39 @@ function tokenStyle(token) {
 }
 
 .cell-room {
-  border: 0.5px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  border: none;
 }
 
 .cell-door {
   position: relative;
-  filter: brightness(1.2);
-  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  background: transparent;
+  border: none;
   overflow: visible;
 }
 
-/* Door direction indicators — dark bar on the exit side */
+/* Door direction indicators — hidden when using board image */
 .cell-door[data-door-dir]::after {
-  content: '';
-  position: absolute;
-  background: rgba(60, 30, 10, 0.85);
-  border-radius: 1px;
-  z-index: 3;
-}
-
-.cell-door[data-door-dir="north"]::after {
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-}
-
-.cell-door[data-door-dir="south"]::after {
-  bottom: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-}
-
-.cell-door[data-door-dir="east"]::after {
-  right: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
-}
-
-.cell-door[data-door-dir="west"]::after {
-  left: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
+  display: none;
 }
 
 .cell-hallway {
-  background: #d4b85a;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  border: none;
 }
 
 .cell-start {
-  background: #d4b85a;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  background: transparent;
+  border: none;
   position: relative;
 }
 
 .cell-start::after {
-  content: '';
-  position: absolute;
-  inset: 25%;
-  border-radius: 50%;
-  background: rgba(139, 90, 43, 0.4);
-  border: 1px solid rgba(139, 90, 43, 0.5);
+  display: none;
 }
 
 .cell-wall {
-  background: #1a4a2a;
+  background: transparent;
 }
 
 /* ── Interactive states ── */
@@ -458,19 +425,19 @@ function tokenStyle(token) {
 }
 
 .cell.clickable:hover {
-  filter: brightness(1.15);
+  background: rgba(255, 255, 200, 0.25);
   outline: 2px solid rgba(255, 255, 200, 0.6);
   z-index: 1;
 }
 
 .cell.selected {
-  filter: brightness(1.2);
+  background: rgba(255, 255, 200, 0.35);
   outline: 2px solid rgba(255, 255, 200, 0.8);
   z-index: 1;
 }
 
 .cell.my-room {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 200, 0.3);
+  background: rgba(255, 255, 200, 0.15);
 }
 
 /* ── Reachable highlights ── */
@@ -481,26 +448,24 @@ function tokenStyle(token) {
 }
 
 .cell-room.reachable {
-  filter: brightness(1.2);
+  background: rgba(46, 204, 113, 0.2);
 }
 
 .cell-hallway.reachable,
 .cell-start.reachable {
-  background: #b8d468;
+  background: rgba(46, 204, 113, 0.25);
 }
 
 .cell.unreachable {
-  filter: brightness(0.7);
-  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .cell-door.unreachable {
-  filter: brightness(1.0);
-  opacity: 0.9;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .cell.reachable-door {
-  filter: brightness(1.4);
+  background: rgba(46, 204, 113, 0.3);
   outline: 1px solid rgba(46, 204, 113, 0.8);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
@@ -521,55 +486,19 @@ function tokenStyle(token) {
   pointer-events: none;
 }
 
-/* ── Room labels ── */
+/* ── Room labels (hidden — board image provides them) ── */
 .room-label {
-  position: absolute;
-  color: #2a1a0a;
-  font-size: clamp(7px, 1.2vw, 11px);
-  font-weight: bold;
-  white-space: nowrap;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  display: none;
 }
 
-/* ── Center label ── */
+/* ── Center label (hidden — board image provides it) ── */
 .center-label {
-  position: absolute;
-  color: #2a1a0a;
-  font-size: clamp(12px, 2.5vw, 22px);
-  font-weight: bold;
-  letter-spacing: 0.3em;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
+  display: none;
 }
 
-/* ── Secret passage ── */
+/* ── Secret passage (hidden — board image shows them) ── */
 .secret-passage {
-  position: absolute;
-  color: #5a2a0a;
-  font-size: clamp(7px, 1.2vw, 11px);
-  font-weight: 600;
-  white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.2);
-  padding: 1px 4px;
-  border: 1px dashed rgba(90, 42, 10, 0.5);
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.15);
-  letter-spacing: 0.02em;
-}
-
-.secret-passage::before {
-  content: '';
-  display: inline-block;
-  width: 0.6em;
-  height: 0.75em;
-  border: 1.5px solid currentColor;
-  border-bottom: none;
-  border-radius: 3px 3px 0 0;
-  margin-right: 0.25em;
-  vertical-align: text-bottom;
-  opacity: 0.9;
+  display: none;
 }
 
 /* ── Player tokens ── */
