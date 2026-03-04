@@ -628,6 +628,18 @@ async def _execute_action(
             f"{shown_by_name} showed a card to {shown_to_name}.",
             player_id,
         )
+        # Notify the suggesting player it's still their turn so external
+        # agents (WebSocket-driven) know to take their next action.
+        suggesting_pid = result.suggesting_player_id
+        await manager.send_to_player(
+            game_id,
+            suggesting_pid,
+            YourTurnMessage(
+                available_actions=game.get_available_actions(
+                    suggesting_pid, state
+                ),
+            ),
+        )
 
     elif isinstance(result, AccuseResult):
         actor_name = _player_name(state, player_id)

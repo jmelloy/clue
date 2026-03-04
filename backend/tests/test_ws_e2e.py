@@ -617,6 +617,87 @@ class TestShowCardFlow:
         assert public[0]["shown_by"] == pending_by
         assert public[0]["shown_to"] == whose_turn
 
+    @pytest.mark.asyncio
+    async def test_your_turn_sent_after_show_card(self, http, redis):
+        """After a card is shown, the suggesting player receives a your_turn
+        message with end_turn available — so external agents know to act."""
+        game_id = await _create_game(http)
+        pid1 = await _join_game(http, game_id, "Agent-1")
+        pid2 = await _join_game(http, game_id, "Agent-2")
+        state = await _start_game(http, game_id)
+        whose_turn = state["whose_turn"]
+        other_pid = pid2 if whose_turn == pid1 else pid1
+
+        game = ClueGame(game_id, redis)
+        other_cards = await game._load_player_cards(other_pid)
+        assert other_cards, "Other player must have cards after game start"
+
+        # Build a suggestion guaranteed to match a card the other player holds
+        suggest_suspect = SUSPECTS[0]
+        suggest_weapon = WEAPONS[0]
+        suggest_room = "Kitchen"
+        first_card = other_cards[0]
+        if first_card in SUSPECTS:
+            suggest_suspect = first_card
+        elif first_card in WEAPONS:
+            suggest_weapon = first_card
+        else:
+            suggest_room = first_card
+
+        ws_suggesting = await _connect_mock_ws(game_id, whose_turn)
+
+        await _place_in_room(redis, game_id, whose_turn, suggest_room)
+        ws_suggesting.drain()
+
+        result = await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": suggest_suspect,
+                "weapon": suggest_weapon,
+                "room": suggest_room,
+            },
+        )
+        pending_by = result.get("pending_show_by")
+        assert pending_by is not None, "Expected show_card request"
+
+        # After suggestion, suggesting player gets your_turn with empty actions
+        # (blocked by pending_show_card)
+        post_suggest_turns = [
+            m for m in ws_suggesting.sent if m["type"] == "your_turn"
+        ]
+        assert len(post_suggest_turns) >= 1
+        assert post_suggest_turns[-1]["available_actions"] == []
+
+        # Now show the card
+        gs = await game.get_state()
+        card_to_show = gs.pending_show_card.matching_cards[0]
+        ws_suggesting.drain()
+
+        await _submit_action(
+            http, game_id, pending_by, {"type": "show_card", "card": card_to_show}
+        )
+
+        # After show_card, suggesting player should get your_turn with end_turn
+        your_turns = [
+            m for m in ws_suggesting.sent if m["type"] == "your_turn"
+        ]
+        assert (
+            len(your_turns) >= 1
+        ), f"Suggesting player missing your_turn after show_card. Got: {[m['type'] for m in ws_suggesting.sent]}"
+        assert "end_turn" in your_turns[-1]["available_actions"], (
+            f"Expected end_turn in available_actions, got: {your_turns[-1]['available_actions']}"
+        )
+
+        # Verify the suggesting player can actually end their turn
+        await _submit_action(
+            http, game_id, whose_turn, {"type": "end_turn"}
+        )
+        final = await _get_state(http, game_id)
+        assert final["whose_turn"] != whose_turn, "Turn should have advanced"
+
 
 # ---------------------------------------------------------------------------
 # Tests: Game over broadcasts
