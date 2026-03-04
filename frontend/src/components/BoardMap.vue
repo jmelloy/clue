@@ -84,42 +84,51 @@ const ROOM_KEY_MAP = {
   'c': 'Conservatory', 'a': 'Ballroom', 'k': 'Kitchen',
 }
 
-// Fallback door/start data (used when boardData prop is not available)
-const DEFAULT_DOORS = {
-  '3,6': { room: 'Study', direction: 'south' },
-  '6,11': { room: 'Hall', direction: 'south' },
-  '6,12': { room: 'Hall', direction: 'south' },
-  '4,9': { room: 'Hall', direction: 'west' },
-  '5,17': { room: 'Lounge', direction: 'south' },
-  '8,6': { room: 'Library', direction: 'east' },
-  '10,3': { room: 'Library', direction: 'south' },
-  '12,1': { room: 'Billiard Room', direction: 'north' },
-  '15,5': { room: 'Billiard Room', direction: 'east' },
-  '12,16': { room: 'Dining Room', direction: 'west' },
-  '9,17': { room: 'Dining Room', direction: 'north' },
-  '19,4': { room: 'Conservatory', direction: 'north' },
-  '17,9': { room: 'Ballroom', direction: 'north' },
-  '17,14': { room: 'Ballroom', direction: 'north' },
-  '19,8': { room: 'Ballroom', direction: 'west' },
-  '19,15': { room: 'Ballroom', direction: 'east' },
-  '18,19': { room: 'Kitchen', direction: 'north' },
+const DOORS = {
+  '3,6': 'Study', '6,11': 'Hall', '6,12': 'Hall', '4,9': 'Hall',
+  '5,17': 'Lounge', '8,6': 'Library', '10,3': 'Library',
+  '12,1': 'Billiard Room', '15,5': 'Billiard Room',
+  '12,16': 'Dining Room', '9,17': 'Dining Room',
+  '19,4': 'Conservatory',
+  '17,9': 'Ballroom', '17,14': 'Ballroom', '19,8': 'Ballroom', '19,15': 'Ballroom',
+  '18,19': 'Kitchen',
 }
 
-const DEFAULT_STARTS = {
+const DOOR_DIRECTIONS = {
+  '3,6': 'south',
+  '4,9': 'west',
+  '6,11': 'south',
+  '6,12': 'south',
+  '5,17': 'south',
+  '8,6': 'east',
+  '10,3': 'south',
+  '12,1': 'north',
+  '15,5': 'east',
+  '12,16': 'west',
+  '9,17': 'north',
+  '19,4': 'north',
+  '17,9': 'north',
+  '17,14': 'north',
+  '19,8': 'west',
+  '19,15': 'east',
+  '18,19': 'north',
+}
+
+const STARTS = {
   '24,9': 'Scarlet', '7,23': 'Mustard', '24,14': 'White',
   '0,16': 'Green', '5,0': 'Plum', '18,0': 'Peacock',
 }
 
 const ROOM_COLORS = {
-  'Study':           '#1e3d5c',
-  'Hall':            '#2d4a5a',
-  'Lounge':          '#5c1e2e',
-  'Library':         '#1e4d4d',
-  'Billiard Room':   '#1e4d2d',
-  'Dining Room':     '#5a4a1e',
-  'Conservatory':    '#3d4d1e',
-  'Ballroom':        '#3d1e4d',
-  'Kitchen':         '#5a3a1e',
+  'Study':           '#1a2a3a',
+  'Hall':            '#2a3340',
+  'Lounge':          '#3a1a22',
+  'Library':         '#1a3030',
+  'Billiard Room':   '#1a3020',
+  'Dining Room':     '#3a3018',
+  'Conservatory':    '#283018',
+  'Ballroom':        '#281830',
+  'Kitchen':         '#3a2818',
 }
 
 const CHARACTER_COLORS = {
@@ -160,6 +169,29 @@ for (const room of Object.values(ROOM_INFO)) {
   room.centerCol = (room.minCol + room.maxCol) / 2
 }
 
+// ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
+
+const CELL_DATA = []
+for (let r = 0; r < 25; r++) {
+  const line = (BOARD_ROWS[r] || '').padEnd(24)
+  for (let c = 0; c < 24; c++) {
+    const key = `${r},${c}`
+    const ch = line[c]
+    const doorRoom = DOORS[key]
+    const startChar = STARTS[key]
+
+    if (doorRoom) {
+      CELL_DATA.push({ row: r, col: c, type: 'door', room: doorRoom, doorDir: DOOR_DIRECTIONS[key] })
+    } else if (ROOM_KEY_MAP[ch]) {
+      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
+    } else if (ch === '.') {
+      CELL_DATA.push({ row: r, col: c, type: startChar ? 'start' : 'hallway', room: null, startChar })
+    } else {
+      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null })
+    }
+  }
+}
+
 // ── Component ──
 
 const props = defineProps({
@@ -169,42 +201,11 @@ const props = defineProps({
   selectable: Boolean,
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
-  boardData: { type: Object, default: null },
 })
 
 const emit = defineEmits(['select-room', 'select-position'])
 
-// Use backend board data when available, fall back to hardcoded defaults
-const doors = computed(() => props.boardData?.doors ?? DEFAULT_DOORS)
-const starts = computed(() => props.boardData?.starts ?? DEFAULT_STARTS)
-
-// ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
-
-const cells = computed(() => {
-  const d = doors.value
-  const s = starts.value
-  const result = []
-  for (let r = 0; r < 25; r++) {
-    const line = (BOARD_ROWS[r] || '').padEnd(24)
-    for (let c = 0; c < 24; c++) {
-      const key = `${r},${c}`
-      const ch = line[c]
-      const doorInfo = d[key]
-      const startChar = s[key]
-
-      if (doorInfo) {
-        result.push({ row: r, col: c, type: 'door', room: doorInfo.room, doorDir: doorInfo.direction })
-      } else if (ROOM_KEY_MAP[ch]) {
-        result.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
-      } else if (ch === '.') {
-        result.push({ row: r, col: c, type: startChar ? 'start' : 'hallway', room: null, startChar })
-      } else {
-        result.push({ row: r, col: c, type: 'wall', room: null })
-      }
-    }
-  }
-  return result
-})
+const cells = CELL_DATA
 
 const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
@@ -346,6 +347,8 @@ function tokenStyle(token) {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Text:wght@400;600&display=swap');
+
 .board-map {
   user-select: none;
 }
@@ -356,10 +359,11 @@ function tokenStyle(token) {
   max-width: 576px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #0d1117;
-  border-radius: 8px;
+  background: #080706;
+  border-radius: 6px;
   overflow: hidden;
-  border: 2px solid #2c3e50;
+  border: 1.5px solid rgba(212, 168, 73, 0.15);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Grid ── */
@@ -370,11 +374,10 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   gap: 0;
-  background: #0d1117;
-  /* Draw 1px grid lines without affecting layout, so overlay % math stays aligned */
+  background: #080706;
   background-image:
-    linear-gradient(to right, #020409 1px, transparent 1px),
-    linear-gradient(to bottom, #020409 1px, transparent 1px);
+    linear-gradient(to right, #050404 1px, transparent 1px),
+    linear-gradient(to bottom, #050404 1px, transparent 1px);
   background-size:
     calc(100% / 24) 100%,
     100% calc(100% / 25);
@@ -387,61 +390,49 @@ function tokenStyle(token) {
 }
 
 .cell-room {
-  border: 0.5px solid rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.03);
 }
 
 .cell-door {
   position: relative;
   filter: brightness(1.4);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
   overflow: visible;
 }
 
-/* Door direction indicators — golden bar on the exit side */
+/* Door direction indicators */
 .cell-door[data-door-dir]::after {
   content: '';
   position: absolute;
-  background: rgba(201, 168, 76, 0.85);
+  background: rgba(212, 168, 73, 0.8);
   border-radius: 1px;
   z-index: 3;
 }
 
 .cell-door[data-door-dir="north"]::after {
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  top: 0; left: 20%; right: 20%; height: 2px;
 }
 
 .cell-door[data-door-dir="south"]::after {
-  bottom: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  bottom: 0; left: 20%; right: 20%; height: 2px;
 }
 
 .cell-door[data-door-dir="east"]::after {
-  right: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
+  right: 0; top: 20%; bottom: 20%; width: 2px;
 }
 
 .cell-door[data-door-dir="west"]::after {
-  left: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 2px;
+  left: 0; top: 20%; bottom: 20%; width: 2px;
 }
 
 .cell-hallway {
-  background: #2a2a3e;
-  border: 0.5px solid rgba(255, 255, 255, 0.03);
+  background: #1a1810;
+  border: 0.5px solid rgba(255, 255, 255, 0.02);
 }
 
 .cell-start {
-  background: #2a2a3e;
-  border: 0.5px solid rgba(255, 255, 255, 0.03);
+  background: #1a1810;
+  border: 0.5px solid rgba(255, 255, 255, 0.02);
   position: relative;
 }
 
@@ -450,7 +441,7 @@ function tokenStyle(token) {
   position: absolute;
   inset: 30%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(212, 168, 73, 0.12);
 }
 
 .cell-wall {
@@ -464,23 +455,23 @@ function tokenStyle(token) {
 
 .cell.clickable:hover {
   filter: brightness(1.3);
-  outline: 1px solid rgba(201, 168, 76, 0.5);
+  outline: 1px solid rgba(212, 168, 73, 0.4);
   z-index: 1;
 }
 
 .cell.selected {
   filter: brightness(1.4);
-  outline: 1px solid rgba(201, 168, 76, 0.8);
+  outline: 1px solid rgba(212, 168, 73, 0.7);
   z-index: 1;
 }
 
 .cell.my-room {
-  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(212, 168, 73, 0.2);
 }
 
 /* ── Reachable highlights ── */
 .cell.reachable {
-  outline: 1px solid rgba(46, 204, 113, 0.6);
+  outline: 1px solid rgba(76, 175, 80, 0.5);
   z-index: 1;
   animation: reachable-glow 2s ease-in-out infinite;
 }
@@ -491,7 +482,7 @@ function tokenStyle(token) {
 
 .cell-hallway.reachable,
 .cell-start.reachable {
-  background: #3a4a4e;
+  background: #2a2a18;
 }
 
 .cell.unreachable {
@@ -506,14 +497,14 @@ function tokenStyle(token) {
 
 .cell.reachable-door {
   filter: brightness(1.6);
-  outline: 1px solid rgba(46, 204, 113, 0.8);
+  outline: 1px solid rgba(76, 175, 80, 0.7);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
 }
 
 @keyframes reachable-glow {
-  0%, 100% { box-shadow: inset 0 0 0 0 rgba(46, 204, 113, 0); }
-  50% { box-shadow: inset 0 0 4px 1px rgba(46, 204, 113, 0.3); }
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(76, 175, 80, 0); }
+  50% { box-shadow: inset 0 0 4px 1px rgba(76, 175, 80, 0.25); }
 }
 
 /* ── Overlay ── */
@@ -529,37 +520,40 @@ function tokenStyle(token) {
 /* ── Room labels ── */
 .room-label {
   position: absolute;
-  color: #c9a84c;
+  color: #d4a849;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: clamp(7px, 1.2vw, 11px);
-  font-weight: bold;
+  font-weight: 600;
   white-space: nowrap;
   text-align: center;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-  letter-spacing: 0.03em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  letter-spacing: 0.05em;
 }
 
 /* ── Center label ── */
 .center-label {
   position: absolute;
-  color: #c9a84c;
+  color: #d4a849;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(12px, 2.5vw, 22px);
-  font-weight: bold;
+  font-weight: 900;
   letter-spacing: 0.3em;
-  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+  text-shadow: 0 0 15px rgba(212, 168, 73, 0.4);
 }
 
 /* ── Secret passage ── */
 .secret-passage {
   position: absolute;
-  color: #e67e22;
+  color: #c8a060;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: 600;
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   padding: 1px 4px;
-  border: 1px dashed rgba(230, 126, 34, 0.45);
+  border: 1px dashed rgba(200, 160, 96, 0.35);
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   letter-spacing: 0.02em;
 }
 
@@ -573,7 +567,7 @@ function tokenStyle(token) {
   border-radius: 3px 3px 0 0;
   margin-right: 0.25em;
   vertical-align: text-bottom;
-  opacity: 0.9;
+  opacity: 0.8;
 }
 
 /* ── Player tokens ── */
@@ -587,18 +581,19 @@ function tokenStyle(token) {
   justify-content: center;
   font-size: clamp(6px, 1vw, 9px);
   font-weight: bold;
+  font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(0, 0, 0, 0.3);
   z-index: 10;
   transition: left 0.4s ease, top 0.4s ease;
 }
 
 .player-token.my-token {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(241, 196, 15, 0.7);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(212, 168, 73, 0.7);
   z-index: 11;
 }
 
 .player-token.wanderer-token {
-  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
   z-index: 9;
 }
 
@@ -608,10 +603,10 @@ function tokenStyle(token) {
 
 @keyframes token-pulse {
   0%, 100% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(241, 196, 15, 0.7);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 0 1.5px rgba(212, 168, 73, 0.7);
   }
   50% {
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 8px 3px rgba(241, 196, 15, 0.6);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 8px 3px rgba(212, 168, 73, 0.5);
   }
 }
 </style>

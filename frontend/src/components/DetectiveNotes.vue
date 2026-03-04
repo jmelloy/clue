@@ -161,24 +161,31 @@ defineExpose({ markCard })
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 .detective-notes {
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.8rem;
 }
 
 h3 {
-  color: #c9a84c;
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 h4 {
-  color: #8899aa;
-  font-size: 0.75rem;
+  color: #8a7e6b;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   margin-bottom: 0.2rem;
   padding-bottom: 0.15rem;
-  border-bottom: 1px solid #2c3e50;
+  border-bottom: 1px solid rgba(212, 168, 73, 0.1);
+  font-weight: 600;
 }
 
 .notes-section {
@@ -193,10 +200,11 @@ h4 {
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.15s;
+  color: #e8dcc8;
 }
 
 .note-row:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(212, 168, 73, 0.04);
 }
 
 .note-card {
@@ -215,32 +223,32 @@ h4 {
 
 /* State colors */
 .note-have {
-  color: #2ecc71;
+  color: #4caf50;
   opacity: 0.7;
 }
 
 .note-have .note-mark {
-  color: #2ecc71;
+  color: #4caf50;
 }
 
 .note-seen {
-  color: #888;
+  color: #6a6050;
 }
 
 .note-seen .note-mark {
-  color: #3498db;
+  color: #7aa8d4;
 }
 
 .note-no {
-  color: #666;
+  color: #4a4030;
   text-decoration: line-through;
 }
 
 .note-no .note-mark {
-  color: #e74c3c;
+  color: #c45050;
 }
 
 .note-maybe .note-mark {
-  color: #f39c12;
+  color: #d4a849;
 }
 </style>
