@@ -95,7 +95,7 @@ const DOORS = {
 }
 
 const DOOR_DIRECTIONS = {
-  '3,6': 'east',      // Study → hallway right
+  '3,6': 'south',     // Study → hallway below
   '4,9': 'west',      // Hall → hallway left
   '6,11': 'south',    // Hall → hallway below
   '6,12': 'south',    // Hall → hallway below

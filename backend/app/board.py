@@ -103,7 +103,7 @@ ROOM_KEYS = {
 # Doors: (row, col) ON the room perimeter (inset 1 from hallway)
 # Each connects to the room node + adjacent hallway square outside the room
 DOORS = {
-    # Study (0,0)-(3,6): south-east corner
+    # Study (0,0)-(3,6): south side
     (3, 6): Room.STUDY,
     # Hall (1,9)-(6,14): 2 south, 1 west
     (6, 11): Room.HALL,
