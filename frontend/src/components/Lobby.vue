@@ -1,8 +1,8 @@
 <template>
   <div class="lobby">
     <div class="lobby-header">
-      <h1>CLUE</h1>
-      <p class="subtitle">The Classic Mystery Game</p>
+      <h1>GAME LOBBY</h1>
+      <p class="subtitle">Choose Your Game</p>
     </div>
 
     <!-- URL-based game join: show focused view for a specific game -->
@@ -85,12 +85,32 @@
     <template v-else>
       <section class="panel">
         <h2>Create a New Game</h2>
+        <div class="game-type-selector">
+          <button
+            class="game-type-btn"
+            :class="{ active: gameType === 'clue' }"
+            @click="gameType = 'clue'"
+          >
+            <span class="game-type-icon">&#x1F50D;</span>
+            <span class="game-type-label">Clue</span>
+          </button>
+          <button
+            class="game-type-btn"
+            :class="{ active: gameType === 'holdem' }"
+            @click="gameType = 'holdem'"
+          >
+            <span class="game-type-icon">&#x1F0CF;</span>
+            <span class="game-type-label">Texas Hold'em</span>
+          </button>
+        </div>
         <input v-model="playerName" placeholder="Your name" />
-        <select v-model="playerType">
-          <option value="human">Human</option>
-          <option value="agent">Random Agent</option>
-          <option value="llm_agent">LLM Agent</option>
-        </select>
+        <template v-if="gameType === 'clue'">
+          <select v-model="playerType">
+            <option value="human">Human</option>
+            <option value="agent">Random Agent</option>
+            <option value="llm_agent">LLM Agent</option>
+          </select>
+        </template>
         <button :disabled="!playerName" @click="createGame">Create Game</button>
       </section>
 
@@ -98,7 +118,7 @@
         <h2>Join Existing Game</h2>
         <input v-model="joinGameId" placeholder="Game ID (e.g. ABC123)" />
         <input v-model="playerName" placeholder="Your name" />
-        <select v-model="playerType">
+        <select v-model="playerType" v-if="gameType === 'clue'">
           <option value="human">Human</option>
           <option value="agent">Random Agent</option>
           <option value="llm_agent">LLM Agent</option>
@@ -119,12 +139,14 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   urlGameId: { type: String, default: null },
+  urlGameType: { type: String, default: 'clue' },
 })
 
 const emit = defineEmits(['game-joined', 'observe', 'rejoin', 'clear-url-game'])
 
 const playerName = ref('')
 const playerType = ref('human')
+const gameType = ref('clue')
 const joinGameId = ref('')
 const error = ref('')
 
@@ -160,12 +182,16 @@ async function fetchUrlGame(gid) {
   urlGameError.value = ''
   urlGameState.value = null
   try {
-    const res = await fetch(`/games/${gid}`)
+    const endpoint = props.urlGameType === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
+    const res = await fetch(endpoint)
     if (!res.ok) {
       urlGameError.value = 'Game not found'
       return
     }
-    urlGameState.value = await res.json()
+    const state = await res.json()
+    urlGameState.value = state
+    // Detect game type from response if available
+    if (state.game_type === 'holdem') gameType.value = 'holdem'
   } catch (e) {
     urlGameError.value = 'Failed to load game: ' + e.message
   } finally {
@@ -175,23 +201,33 @@ async function fetchUrlGame(gid) {
 
 async function joinUrlGame() {
   error.value = ''
-  await doJoin(props.urlGameId)
+  if (props.urlGameType === 'holdem' || gameType.value === 'holdem') {
+    await doJoinHoldem(props.urlGameId)
+  } else {
+    await doJoin(props.urlGameId)
+  }
 }
 
 function observeUrlGame() {
-  emit('observe', { gameId: props.urlGameId })
+  emit('observe', { gameId: props.urlGameId, gameType: props.urlGameType })
 }
 
 function rejoinAs(player) {
-  emit('rejoin', { gameId: props.urlGameId, playerId: player.id })
+  emit('rejoin', { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType })
 }
 
 async function createGame() {
   error.value = ''
   try {
-    const res = await fetch('/games', { method: 'POST' })
-    const { game_id } = await res.json()
-    await doJoin(game_id)
+    if (gameType.value === 'holdem') {
+      const res = await fetch('/holdem/games', { method: 'POST' })
+      const { game_id } = await res.json()
+      await doJoinHoldem(game_id)
+    } else {
+      const res = await fetch('/games', { method: 'POST' })
+      const { game_id } = await res.json()
+      await doJoin(game_id)
+    }
   } catch (e) {
     error.value = 'Failed to create game: ' + e.message
   }
@@ -199,7 +235,11 @@ async function createGame() {
 
 async function joinGame() {
   error.value = ''
-  await doJoin(joinGameId.value.trim().toUpperCase())
+  if (gameType.value === 'holdem') {
+    await doJoinHoldem(joinGameId.value.trim().toUpperCase())
+  } else {
+    await doJoin(joinGameId.value.trim().toUpperCase())
+  }
 }
 
 async function doJoin(gameId) {
@@ -218,6 +258,27 @@ async function doJoin(gameId) {
     const stateRes = await fetch(`/games/${gameId}`)
     const state = await stateRes.json()
     emit('game-joined', { gameId, playerId: player_id, state })
+  } catch (e) {
+    error.value = 'Error: ' + e.message
+  }
+}
+
+async function doJoinHoldem(gameId) {
+  try {
+    const res = await fetch(`/holdem/games/${gameId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_name: playerName.value })
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      error.value = data.detail ?? 'Failed to join'
+      return
+    }
+    const { player_id } = await res.json()
+    const stateRes = await fetch(`/holdem/games/${gameId}`)
+    const state = await stateRes.json()
+    emit('game-joined', { gameId, playerId: player_id, state, gameType: 'holdem' })
   } catch (e) {
     error.value = 'Error: ' + e.message
   }
@@ -455,5 +516,48 @@ button:disabled {
 
 .join-new-details .join-section {
   margin-top: 0.75rem;
+}
+
+.game-type-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.game-type-btn {
+  flex: 1;
+  background: #0f3460;
+  border: 2px solid #334;
+  border-radius: 8px;
+  padding: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+}
+
+.game-type-btn:hover {
+  border-color: #556;
+}
+
+.game-type-btn.active {
+  border-color: #c9a84c;
+  background: #1a2a4e;
+}
+
+.game-type-icon {
+  font-size: 1.5rem;
+}
+
+.game-type-label {
+  font-size: 0.85rem;
+  color: #aab;
+  font-weight: bold;
+}
+
+.game-type-btn.active .game-type-label {
+  color: #c9a84c;
 }
 </style>

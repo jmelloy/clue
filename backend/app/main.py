@@ -1625,6 +1625,15 @@ async def spa_game_route(game_id: str):
     return FileResponse(str(index)) if index.exists() else {"detail": "Not found"}
 
 
+@app.get("/holdem/{game_id}")
+async def spa_holdem_route(game_id: str):
+    """Serve index.html for /holdem/{id} so the Vue SPA can handle routing."""
+    index = _static_dir / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"detail": "Not found"}
+
+
 # ---------------------------------------------------------------------------
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
