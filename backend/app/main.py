@@ -1912,11 +1912,6 @@ async def spa_holdem_route(game_id: str):
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
 
-# Serve game card images
-_images_dir = Path(__file__).parent / "games" / "clue" / "images"
-if _images_dir.exists():
-    app.mount("/images", StaticFiles(directory=str(_images_dir)), name="images")
-
 # NOTE: Static files must be mounted LAST — it acts as a catch-all and would
 # shadow any API routes defined after this point.
 if _static_dir.exists():
