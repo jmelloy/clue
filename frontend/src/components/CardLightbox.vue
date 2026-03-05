@@ -11,7 +11,7 @@
           </div>
           <div class="card-lightbox__card-area">
             <div class="card-lightbox__reveal">
-              <ClueCard :name="cardName" use-full-image />
+              <ClueCard :name="cardName" use-full-image size="large" />
             </div>
           </div>
           <button class="card-lightbox__dismiss" @click="$emit('close')">
@@ -51,8 +51,8 @@ defineEmits(["close"]);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 28px 36px;
+  gap: 28px;
+  padding: 40px 56px;
   background: linear-gradient(145deg, #2a2018, #1a1408);
   border: 2px solid rgba(212, 168, 73, 0.3);
   border-radius: 16px;
@@ -74,14 +74,14 @@ defineEmits(["close"]);
 .card-lightbox__header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   color: #e8dcc8;
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-family: "Crimson Text", Georgia, serif;
 }
 
 .card-lightbox__eye {
-  font-size: 1.6rem;
+  font-size: 2.2rem;
 }
 
 .card-lightbox__card-area {
@@ -109,13 +109,13 @@ defineEmits(["close"]);
 }
 
 .card-lightbox__dismiss {
-  padding: 8px 28px;
-  border-radius: 6px;
+  padding: 12px 40px;
+  border-radius: 8px;
   border: 1px solid rgba(212, 168, 73, 0.3);
   background: rgba(212, 168, 73, 0.1);
   color: #d4a849;
   font-family: "Crimson Text", Georgia, serif;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

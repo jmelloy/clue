@@ -1,7 +1,7 @@
 <template>
   <div
     class="clue-card"
-    :class="[`clue-card--${type}`, { 'clue-card--clickable': clickable }]"
+    :class="[`clue-card--${type}`, `clue-card--${size}`, { 'clue-card--clickable': clickable }]"
     @click="$emit('click')"
   >
     <div class="clue-card__frame" :class="`clue-card__frame--${type}`">
@@ -161,5 +161,48 @@ const imageUrl = computed(() => {
   letter-spacing: 0.03em;
   line-height: 1.2;
   color: #d4a849;
+}
+
+/* === Large size === */
+.clue-card--large {
+  width: 220px;
+  padding: 16px;
+  gap: 12px;
+  border-radius: 12px;
+  border-width: 3px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.clue-card--large .clue-card__frame--suspect {
+  width: 170px;
+  height: 170px;
+  border-width: 4px;
+}
+
+.clue-card--large .clue-card__frame--weapon {
+  width: 150px;
+  height: 150px;
+  border-width: 4px;
+}
+
+.clue-card--large .clue-card__image--weapon {
+  width: 145%;
+  height: 145%;
+}
+
+.clue-card--large .clue-card__frame--room {
+  width: 190px;
+  height: 140px;
+  border-width: 3px;
+  border-radius: 6px;
+}
+
+.clue-card--large .clue-card__icon {
+  font-size: 4rem;
+}
+
+.clue-card--large .clue-card__label {
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
 }
 </style>

@@ -12,15 +12,15 @@
           <div class="win-overlay__cards">
             <div class="win-overlay__card-slot" style="animation-delay: 0.2s">
               <div class="win-overlay__card-label">Suspect</div>
-              <ClueCard :name="suspect" use-full-image />
+              <ClueCard :name="suspect" use-full-image size="large" />
             </div>
             <div class="win-overlay__card-slot" style="animation-delay: 0.5s">
               <div class="win-overlay__card-label">Weapon</div>
-              <ClueCard :name="weapon" use-full-image />
+              <ClueCard :name="weapon" use-full-image size="large" />
             </div>
             <div class="win-overlay__card-slot" style="animation-delay: 0.8s">
               <div class="win-overlay__card-label">Room</div>
-              <ClueCard :name="room" use-full-image />
+              <ClueCard :name="room" use-full-image size="large" />
             </div>
           </div>
 
@@ -63,8 +63,8 @@ defineEmits(["close"]);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  padding: 36px 48px;
+  gap: 32px;
+  padding: 48px 64px;
   background: linear-gradient(
     145deg,
     rgba(42, 32, 24, 0.97),
@@ -93,7 +93,7 @@ defineEmits(["close"]);
 }
 
 .win-overlay__trophy {
-  font-size: 3rem;
+  font-size: 4rem;
   animation: trophy-bounce 0.8s ease 0.3s both;
 }
 
@@ -113,7 +113,7 @@ defineEmits(["close"]);
 
 .win-overlay__title {
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 2rem;
+  font-size: 2.8rem;
   font-weight: 900;
   color: #d4a849;
   letter-spacing: 0.05em;
@@ -123,7 +123,7 @@ defineEmits(["close"]);
 
 .win-overlay__subtitle {
   font-family: "Crimson Text", Georgia, serif;
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: #8a7e6b;
   font-style: italic;
   margin-top: 4px;
@@ -131,7 +131,7 @@ defineEmits(["close"]);
 
 .win-overlay__cards {
   display: flex;
-  gap: 20px;
+  gap: 32px;
   justify-content: center;
   flex-wrap: wrap;
 }
@@ -157,7 +157,7 @@ defineEmits(["close"]);
 
 .win-overlay__card-label {
   font-family: "Crimson Text", Georgia, serif;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: #6a6050;
@@ -165,13 +165,13 @@ defineEmits(["close"]);
 }
 
 .win-overlay__dismiss {
-  padding: 10px 36px;
+  padding: 14px 48px;
   border-radius: 8px;
   border: 1px solid rgba(212, 168, 73, 0.4);
   background: linear-gradient(135deg, rgba(212, 168, 73, 0.15), rgba(212, 168, 73, 0.08));
   color: #d4a849;
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.25s;
