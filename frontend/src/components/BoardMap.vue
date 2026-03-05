@@ -130,10 +130,10 @@ const DOOR_DIRECTIONS = {
 }
 
 const STARTS = {
-  '24,9': 'Scarlet',
+  '0,16': 'Scarlet',
   '7,23': 'Mustard',
   '24,14': 'White',
-  '0,16': 'Green',
+  '24,9': 'Green',
   '5,0': 'Plum',
   '18,0': 'Peacock'
 }
