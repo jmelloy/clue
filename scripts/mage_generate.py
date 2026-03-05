@@ -259,7 +259,7 @@ async def generate_image(
         await page.wait_for_timeout(1000)
 
         # Click "Save" to save it to your mage.space account
-        save_btn = page.get_by_role("button", name="Save")
+        save_btn = page.get_by_role("button", name="Save", exact=True)
         await save_btn.click(timeout=5000)
         await page.get_by_text("Success").first.wait_for(state="visible", timeout=10000)
         print("  Saved to mage.space account!")
@@ -357,9 +357,8 @@ async def main():
     # Build generation plan: each prompt N times per model
     # Model names must match keys in MODEL_MAP
     MODELS = [
-        ("FLUX.2 Dev", 1),
-        ("Z-Image Turbo", 1),
         ("FLUX.2 Dev", 2),
+        ("Z-Image Turbo", 1),
     ]
 
     total_generations = len(prompts) * sum(count for _, count in MODELS)
