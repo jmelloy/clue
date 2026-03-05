@@ -91,6 +91,7 @@ from .games.holdem.models import (
     HoldemChatMessagesResponse,
     HoldemChatRequest,
     HoldemCommunityCardsMessage,
+    HoldemCreateGameRequest,
     HoldemCreateGameResponse,
     HoldemGameOverMessage,
     HoldemGameStartedMessage,
@@ -1463,11 +1464,16 @@ async def _holdem_broadcast_chat(
 
 
 @app.post("/holdem/games", status_code=201, response_model=HoldemCreateGameResponse)
-async def holdem_create_game():
+async def holdem_create_game(req: HoldemCreateGameRequest | None = None):
     game_id = _new_id(6)
     game = HoldemGame(game_id, redis_client)
-    state = await game.create()
-    return HoldemCreateGameResponse(game_id=game_id, status=state.status)
+    buy_in = req.buy_in if req else 2000
+    allow_rebuys = req.allow_rebuys if req else False
+    state = await game.create(buy_in=buy_in, allow_rebuys=allow_rebuys)
+    return HoldemCreateGameResponse(
+        game_id=game_id, status=state.status,
+        buy_in=state.buy_in, allow_rebuys=state.allow_rebuys,
+    )
 
 
 @app.get("/holdem/games/{game_id}")
@@ -1493,7 +1499,7 @@ async def holdem_join_game(game_id: str, req: HoldemJoinRequest):
     game = HoldemGame(game_id, redis_client)
     player_id = _new_player_id()
     try:
-        player = await game.add_player(player_id, req.player_name, req.buy_in)
+        player = await game.add_player(player_id, req.player_name)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -1845,7 +1851,6 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    buy_in = req.buy_in if req else 1000
     aggression = req.aggression if req else 0.5
 
     # Pick a name
@@ -1862,7 +1867,7 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
     player_id = _new_player_id()
     try:
         player = await game.add_player(
-            player_id, name, buy_in, player_type="holdem_agent"
+            player_id, name, player_type="holdem_agent"
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
