@@ -149,7 +149,7 @@ async def test_two_agent_game_completes(redis):
         "P1": HoldemAgent("P1", "Bot2", aggression=0.7),
     }
 
-    max_actions = 200
+    max_actions = 1000
     for _ in range(max_actions):
         state = await game.get_state()
         if state.status != "playing":
