@@ -1,13 +1,6 @@
 <template>
   <div class="board-map">
-    <div class="board-container">
-      <!-- Vintage board background image -->
-      <img
-        v-if="theme === 'vintage'"
-        src="/images/clue/board.jpg"
-        alt="Clue Board"
-        class="board-image-bg"
-      />
+    <div class="board-container" :class="{ 'vintage-board': theme === 'vintage' }">
       <!-- Background grid of 25x24 cells -->
       <div class="board-grid">
         <div v-for="(cell, i) in cells" :key="i" :class="cellClasses(cell)" :style="cellStyle(cell)"
@@ -585,16 +578,29 @@ function tokenStyle(token) {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
 
-/* Vintage theme: full board image as background */
-.board-image-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-  pointer-events: none;
-  opacity: var(--board-image-opacity, 0);
+/* Vintage theme: full board image as background, cropped to align grid.
+   The source image is 1440x1440 (square) with a green border.
+   Our grid is 24 cols x 25 rows (aspect-ratio 24/25, nearly square).
+   We scale past the green border and nudge so the 4 heavy red
+   corner rooms (Study, Lounge, Conservatory, Kitchen) land on the
+   grid corners. */
+.board-container.vintage-board {
+  background-image: url('/images/clue/board.jpg');
+  background-size: 119% 117%;
+  background-position: 48% 47%;
+  background-repeat: no-repeat;
+}
+
+/* Hide overlay labels in vintage — the board image has its own */
+.board-container.vintage-board .room-label,
+.board-container.vintage-board .center-label,
+.board-container.vintage-board .secret-passage {
+  display: none;
+}
+
+/* Hide door indicators in vintage — visible on the board image */
+.board-container.vintage-board .cell-door::after {
+  display: none;
 }
 
 /* ── Grid ── */

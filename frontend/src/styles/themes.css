@@ -144,49 +144,49 @@
   --board-image-opacity: 0;
 }
 
-/* ── Vintage theme ── */
+/* ── Vintage theme (light-ish, parchment aesthetic) ── */
 [data-theme="vintage"] {
-  /* Page backgrounds */
-  --bg-page: #1a1008;
-  --bg-panel: linear-gradient(135deg, rgba(35, 28, 16, 0.95) 0%, rgba(20, 14, 8, 0.97) 100%);
-  --bg-panel-solid: #231c10;
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
-  --bg-hover: rgba(180, 140, 60, 0.05);
+  /* Page backgrounds — warm parchment */
+  --bg-page: #f0e8d4;
+  --bg-panel: linear-gradient(135deg, rgba(245, 235, 215, 0.97) 0%, rgba(235, 222, 195, 0.98) 100%);
+  --bg-panel-solid: #f2ead6;
+  --bg-input: rgba(120, 80, 30, 0.06);
+  --bg-input-focus: rgba(120, 80, 30, 0.1);
+  --bg-hover: rgba(140, 90, 20, 0.06);
 
-  /* Text */
-  --text-primary: #e0d4b8;
-  --text-secondary: #9a8e6b;
-  --text-muted: #7a6e50;
-  --text-dim: #6a5e40;
-  --text-faint: #5a4e38;
-  --text-darkest: #3a3020;
+  /* Text — warm browns */
+  --text-primary: #3a2810;
+  --text-secondary: #6a5535;
+  --text-muted: #8a7555;
+  --text-dim: #9a8a68;
+  --text-faint: #b0a080;
+  --text-darkest: #c8b898;
 
-  /* Accent / gold — warmer, more orange */
-  --accent: #c89838;
-  --accent-dark: #a87828;
-  --accent-text: #1a0e04;
-  --accent-glow: rgba(200, 152, 56, 0.15);
-  --accent-border: rgba(200, 152, 56, 0.15);
-  --accent-border-hover: rgba(200, 152, 56, 0.3);
-  --accent-border-focus: rgba(200, 152, 56, 0.45);
-  --accent-bg: rgba(200, 152, 56, 0.08);
+  /* Accent — deep warm red-brown to match board's red elements */
+  --accent: #8b2020;
+  --accent-dark: #6a1818;
+  --accent-text: #f8f0e0;
+  --accent-glow: rgba(139, 32, 32, 0.12);
+  --accent-border: rgba(139, 32, 32, 0.18);
+  --accent-border-hover: rgba(139, 32, 32, 0.3);
+  --accent-border-focus: rgba(139, 32, 32, 0.45);
+  --accent-bg: rgba(139, 32, 32, 0.06);
 
-  /* Borders */
-  --border-panel: rgba(200, 152, 56, 0.1);
-  --border-card: rgba(200, 152, 56, 0.12);
+  /* Borders — warm brown tints */
+  --border-panel: rgba(120, 80, 30, 0.15);
+  --border-card: rgba(120, 80, 30, 0.18);
 
   /* Errors */
-  --error: #c45050;
-  --error-bg: rgba(139, 42, 42, 0.1);
-  --error-border: rgba(139, 42, 42, 0.2);
+  --error: #a03030;
+  --error-bg: rgba(160, 48, 48, 0.08);
+  --error-border: rgba(160, 48, 48, 0.2);
 
   /* Success */
-  --success: #4caf50;
+  --success: #2e7a30;
 
   /* Board — vintage uses the real board image */
-  --board-bg: #0e0a04;
-  --board-border: #6a1010;
+  --board-bg: #c8b888;
+  --board-border: #8b1a1a;
   --board-grid-line: transparent;
   --board-room: transparent;
   --board-hallway: transparent;
@@ -194,22 +194,19 @@
   --board-center: transparent;
   --board-room-filter: none;
 
-  /* Board overlay text — more subtle over real board */
-  --board-label-color: #f0e0b0;
-  --board-label-bg: rgba(0, 0, 0, 0.6);
-  --board-passage-color: #c8a060;
-  --board-passage-bg: rgba(0, 0, 0, 0.5);
+  /* Board overlay text — dark on light board */
+  --board-label-color: #3a2810;
+  --board-label-bg: rgba(240, 232, 212, 0.75);
+  --board-passage-color: #5a3818;
+  --board-passage-bg: rgba(240, 232, 212, 0.65);
 
   /* Token tooltip */
-  --tooltip-bg: rgba(0, 0, 0, 0.9);
-  --tooltip-text: #e0d4b8;
+  --tooltip-bg: rgba(245, 235, 215, 0.95);
+  --tooltip-text: #3a2810;
 
-  /* Fog atmosphere — heavier for vintage feel */
-  --fog-opacity: 0.04;
+  /* Fog atmosphere — very subtle warm */
+  --fog-opacity: 0.015;
   --fog-color-1: #c89838;
-  --fog-color-2: #6a1a1a;
-  --vignette-color: #1a1008;
-
-  /* Vintage board overlay — VISIBLE */
-  --board-image-opacity: 1;
+  --fog-color-2: #8b2a2a;
+  --vignette-color: #f0e8d4;
 }
