@@ -102,6 +102,44 @@ export const CARD_IMAGES = {
   "Dining Room": "/images/clue/rooms/thumbnails/DiningRoom.jpg",
 };
 
+export const CARD_FULL_IMAGES = {
+  // Suspects
+  "Miss Scarlett": "/images/clue/suspects/MissScarlett.jpg",
+  "Colonel Mustard": "/images/clue/suspects/ColonelMustard.jpg",
+  "Mrs. White": "/images/clue/suspects/MrsWhite.jpg",
+  "Reverend Green": "/images/clue/suspects/MrGreen.jpg",
+  "Mrs. Peacock": "/images/clue/suspects/MrsPeacock.jpg",
+  "Professor Plum": "/images/clue/suspects/ProfessorPlum.jpg",
+  // Weapons
+  Candlestick: "/images/clue/weapons/Candlestick.jpg",
+  Knife: "/images/clue/weapons/Knife.jpg",
+  "Lead Pipe": "/images/clue/weapons/LeadPipe.jpg",
+  Revolver: "/images/clue/weapons/Revolver.jpg",
+  Rope: "/images/clue/weapons/Rope.jpg",
+  Wrench: "/images/clue/weapons/Wrench.jpg",
+  // Rooms
+  Kitchen: "/images/clue/rooms/Kitchen.jpg",
+  Ballroom: "/images/clue/rooms/BallRoom.jpg",
+  Conservatory: "/images/clue/rooms/Conservatory.jpg",
+  "Billiard Room": "/images/clue/rooms/BilliardRoom.jpg",
+  Library: "/images/clue/rooms/Library.jpg",
+  Study: "/images/clue/rooms/Study.jpg",
+  Hall: "/images/clue/rooms/Hall.jpg",
+  Lounge: "/images/clue/rooms/Lounge.jpg",
+  "Dining Room": "/images/clue/rooms/DiningRoom.jpg",
+};
+
+export function cardFullImageUrl(card) {
+  return CARD_FULL_IMAGES[card] || "";
+}
+
+export function cardType(card) {
+  if (SUSPECTS.includes(card)) return "suspect";
+  if (WEAPONS.includes(card)) return "weapon";
+  if (ROOMS.includes(card)) return "room";
+  return "unknown";
+}
+
 export function cardIcon(card) {
   return CARD_ICONS[card] || "\u{1F0CF}";
 }

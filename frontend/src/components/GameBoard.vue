@@ -148,81 +148,50 @@
               <div v-if="suspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in suspectCards"
                     :key="card"
-                    class="hand-card card-suspect card-with-image"
+                    :name="card"
+                    clickable
                     @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                  />
                 </div>
               </div>
               <div v-if="weaponCards.length" class="card-group">
                 <h3 class="card-group-label card-group-weapon">Weapons</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in weaponCards"
                     :key="card"
-                    class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-weapon"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                    :name="card"
+                    clickable
+                    @click="showCardPreview(card)"
+                  />
                 </div>
               </div>
               <div v-if="roomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in roomCards"
                     :key="card"
-                    class="hand-card card-room card-with-image"
+                    :name="card"
+                    clickable
                     @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-room"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                  />
                 </div>
               </div>
             </template>
           </div>
         </section>
 
-        <!-- Card Shown notification -->
-        <section v-if="cardShown" class="sidebar-panel shown-card-panel">
-          <div class="shown-card-notice">
-            <span class="shown-card-icon">&#128065;</span>
-            <div>
-              <strong>{{ playerName(cardShown.by) }}</strong> showed you:
-              <span class="shown-card-name">{{ cardShown.card }}</span>
-            </div>
-            <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">
-              &times;
-            </button>
-          </div>
-        </section>
+        <!-- Card Shown Lightbox -->
+        <CardLightbox
+          :visible="!!cardShown"
+          :card-name="cardShown?.card ?? ''"
+          :shown-by-name="cardShown ? playerName(cardShown.by) : ''"
+          @close="$emit('dismiss-card-shown')"
+        />
 
         <!-- Show Card Request (must respond) -->
         <section
@@ -468,62 +437,37 @@
               <div v-if="observerSuspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in observerSuspectCards"
                     :key="card"
-                    class="hand-card card-suspect card-with-image"
+                    :name="card"
+                    clickable
                     @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                  />
                 </div>
               </div>
               <div v-if="observerWeaponCards.length" class="card-group">
                 <h3 class="card-group-label card-group-weapon">Weapons</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in observerWeaponCards"
                     :key="card"
-                    class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-weapon"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                    :name="card"
+                    clickable
+                    @click="showCardPreview(card)"
+                  />
                 </div>
               </div>
               <div v-if="observerRoomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div
+                  <ClueCard
                     v-for="card in observerRoomCards"
                     :key="card"
-                    class="hand-card card-room card-with-image"
+                    :name="card"
+                    clickable
                     @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-room"
-                    />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
+                  />
                 </div>
               </div>
             </template>
@@ -544,30 +488,28 @@
     <!-- Card Preview Overlay -->
     <Teleport to="body">
       <div
-        v-if="previewCard && hasCardImage(previewCard)"
+        v-if="previewCard"
         class="card-preview-overlay"
         @click="closePreview"
       >
-        <div class="card-preview-frame" @click.stop>
-          <div class="card-preview-ornament top-left"></div>
-          <div class="card-preview-ornament top-right"></div>
-          <div class="card-preview-ornament bottom-left"></div>
-          <div class="card-preview-ornament bottom-right"></div>
-          <img
-            :src="cardImageUrl(previewCard)"
-            :alt="previewCard"
-            class="card-preview-image"
-          />
-          <div class="card-preview-nameplate">
-            <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
-            <span class="card-preview-name">{{ previewCard }}</span>
-          </div>
+        <div class="card-preview-container" @click.stop>
+          <ClueCard :name="previewCard" use-full-image />
           <button class="card-preview-close" @click="closePreview">
             &times;
           </button>
         </div>
       </div>
     </Teleport>
+
+    <!-- Game Win Overlay -->
+    <GameWinOverlay
+      :visible="showWinOverlay"
+      :winner-name="winnerName"
+      :suspect="gameState?.solution?.suspect ?? ''"
+      :weapon="gameState?.solution?.weapon ?? ''"
+      :room="gameState?.solution?.room ?? ''"
+      @close="showWinOverlay = false"
+    />
 
     <!-- Bottom: Chat -->
     <div class="chat-row">
@@ -588,6 +530,9 @@ import BoardMap from "./BoardMap.vue";
 import ChatPanel from "./ChatPanel.vue";
 import DetectiveNotes from "./DetectiveNotes.vue";
 import AgentDebugPanel from "./AgentDebugPanel.vue";
+import ClueCard from "./ClueCard.vue";
+import CardLightbox from "./CardLightbox.vue";
+import GameWinOverlay from "./GameWinOverlay.vue";
 import {
   SUSPECTS,
   WEAPONS,
@@ -597,6 +542,7 @@ import {
   cardIcon,
   hasCardImage,
   cardImageUrl,
+  cardType,
   abbr,
   characterColors,
 } from "../constants/clue.js";
@@ -796,8 +742,13 @@ function onLegendClick(player) {
 // Card preview state
 const previewCard = ref(null);
 
+// Win overlay state
+const showWinOverlay = ref(false);
+
 function showCardPreview(card) {
-  previewCard.value = previewCard.value === card ? null : card;
+  if (hasCardImage(card)) {
+    previewCard.value = previewCard.value === card ? null : card;
+  }
 }
 
 function closePreview() {
@@ -899,6 +850,16 @@ watch(
   () => props.gameState?.whose_turn,
   () => {
     showAccuseForm.value = false;
+  }
+);
+
+// Show win overlay when game finishes
+watch(
+  () => props.gameState?.status,
+  (newStatus, oldStatus) => {
+    if (newStatus === "finished" && oldStatus !== "finished" && props.gameState?.solution) {
+      showWinOverlay.value = true;
+    }
   }
 );
 </script>
@@ -1249,20 +1210,7 @@ watch(
 .card-hand {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.hand-card {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1px solid;
-  min-height: 32px;
-  box-sizing: border-box;
+  gap: 0.5rem;
 }
 
 .card-suspect {
@@ -1309,61 +1257,10 @@ watch(
   color: #7ac89a;
 }
 
-.card-icon {
-  font-size: 0.85rem;
-}
-
-.card-label {
-  white-space: nowrap;
-}
-
 .no-cards {
   color: #4a4030;
   font-style: italic;
   font-size: 0.85rem;
-}
-
-/* Card shown notification */
-.shown-card-panel {
-  border-color: rgba(26, 58, 107, 0.4);
-  background: linear-gradient(
-    135deg,
-    rgba(26, 58, 107, 0.15),
-    rgba(18, 14, 10, 0.95)
-  );
-}
-
-.shown-card-notice {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 0.85rem;
-  color: #e8dcc8;
-}
-
-.shown-card-icon {
-  font-size: 1.3rem;
-  flex-shrink: 0;
-}
-
-.shown-card-name {
-  color: #7aa8d4;
-  font-weight: bold;
-}
-
-.dismiss-btn {
-  background: none;
-  border: none;
-  color: #5a5040;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0;
-  margin-left: auto;
-  transition: color 0.2s;
-}
-
-.dismiss-btn:hover {
-  color: #e8dcc8;
 }
 
 /* Show card request */
@@ -1681,60 +1578,12 @@ watch(
   padding: 0.8rem;
 }
 
-/* Card thumbnails in hand */
-.card-with-image {
-  cursor: pointer;
-  transition: all 0.25s ease;
-  position: relative;
-}
-
-.card-with-image:hover {
-  background: rgba(155, 27, 48, 0.28);
-  border-color: rgba(212, 168, 73, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 8px rgba(212, 168, 73, 0.1);
-}
-
-.card-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  object-position: center 15%;
-  border: 1.5px solid rgba(212, 168, 73, 0.4);
-  flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-
-.card-thumb-room {
-  border-radius: 4px;
-  object-position: center center;
-}
-
-.card-thumb-weapon {
-  border-radius: 4px;
-  object-position: center center;
-  border-color: rgba(204, 85, 0, 0.4);
-}
-
+/* Show card thumbnails */
 .show-card-thumb {
   width: 24px;
   height: 24px;
   object-fit: cover;
   flex-shrink: 0;
-}
-
-.card-with-image:hover .card-thumb {
-  border-color: #d4a849;
-  box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
-}
-
-.card-with-image.card-room:hover {
-  background: rgba(26, 107, 60, 0.28);
-}
-
-.card-with-image.card-weapon:hover {
-  background: rgba(204, 85, 0, 0.18);
 }
 
 .show-card-thumb.show-card-thumb-suspect {
@@ -1777,15 +1626,8 @@ watch(
   }
 }
 
-.card-preview-frame {
+.card-preview-container {
   position: relative;
-  width: 280px;
-  background: linear-gradient(145deg, #2a2018, #1a1408);
-  border: 3px solid #d4a849;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 0 30px rgba(212, 168, 73, 0.15), 0 20px 60px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(212, 168, 73, 0.1);
   animation: cardReveal 0.3s ease;
 }
 
@@ -1798,79 +1640,6 @@ watch(
     opacity: 1;
     transform: scale(1) rotateY(0);
   }
-}
-
-.card-preview-ornament {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-color: #d4a849;
-  border-style: solid;
-  opacity: 0.5;
-}
-
-.card-preview-ornament.top-left {
-  top: 6px;
-  left: 6px;
-  border-width: 2px 0 0 2px;
-  border-radius: 4px 0 0 0;
-}
-
-.card-preview-ornament.top-right {
-  top: 6px;
-  right: 6px;
-  border-width: 2px 2px 0 0;
-  border-radius: 0 4px 0 0;
-}
-
-.card-preview-ornament.bottom-left {
-  bottom: 6px;
-  left: 6px;
-  border-width: 0 0 2px 2px;
-  border-radius: 0 0 0 4px;
-}
-
-.card-preview-ornament.bottom-right {
-  bottom: 6px;
-  right: 6px;
-  border-width: 0 2px 2px 0;
-  border-radius: 0 0 4px 0;
-}
-
-.card-preview-image {
-  width: 100%;
-  border-radius: 6px;
-  display: block;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-.card-preview-nameplate {
-  text-align: center;
-  margin-top: 10px;
-  padding: 6px 12px;
-  background: linear-gradient(
-    135deg,
-    rgba(212, 168, 73, 0.1),
-    rgba(212, 168, 73, 0.05)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.2);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.card-preview-icon {
-  font-size: 1.1rem;
-}
-
-.card-preview-name {
-  font-family: "Playfair Display", Georgia, serif;
-  color: #d4a849;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .card-preview-close {
@@ -1890,6 +1659,7 @@ watch(
   justify-content: center;
   transition: all 0.2s;
   line-height: 1;
+  z-index: 1;
 }
 
 .card-preview-close:hover {
