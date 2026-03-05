@@ -884,6 +884,103 @@ async def test_flag_cleared_after_turn_ends(game: ClueGame):
 
 
 @pytest.mark.asyncio
+async def test_flag_cleared_on_roll(game: ClueGame):
+    """The was_moved_by_suggestion flag is cleared as soon as the player rolls."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+    other_char = next(p.character for p in state.players if p.id == other_id)
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    result = await game.process_action(
+        whose_turn,
+        {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
+    )
+    if result.pending_show_by:
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
+        )
+
+    await game.process_action(whose_turn, {"type": "end_turn"})
+
+    # Advance to other_id's turn
+    state = await game.get_state()
+    while state.whose_turn != other_id:
+        wt = state.whose_turn
+        await _advance_turn(game, wt)
+        state = await game.get_state()
+
+    # Flag is set before rolling
+    assert state.was_moved_by_suggestion.get(other_id) is True
+
+    # Roll — the player declines the free suggest
+    await game.process_action(other_id, {"type": "roll"})
+    state = await game.get_state()
+
+    # Flag should be cleared immediately after rolling
+    assert state.was_moved_by_suggestion.get(other_id) is None
+
+
+@pytest.mark.asyncio
+async def test_flag_cleared_on_free_suggest(game: ClueGame):
+    """The was_moved_by_suggestion flag is cleared when the player uses the free suggest."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+    other_id = "P2" if whose_turn == "P1" else "P1"
+    other_char = next(p.character for p in state.players if p.id == other_id)
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    result = await game.process_action(
+        whose_turn,
+        {"type": "suggest", "suspect": other_char, "weapon": WEAPONS[0], "room": room},
+    )
+    if result.pending_show_by:
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
+        )
+
+    await game.process_action(whose_turn, {"type": "end_turn"})
+
+    # Advance to other_id's turn
+    state = await game.get_state()
+    while state.whose_turn != other_id:
+        wt = state.whose_turn
+        await _advance_turn(game, wt)
+        state = await game.get_state()
+
+    # Flag is set before suggesting
+    assert state.was_moved_by_suggestion.get(other_id) is True
+
+    # Use the free suggest
+    result = await game.process_action(
+        other_id,
+        {"type": "suggest", "suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room},
+    )
+    if result.pending_show_by:
+        st = await game._load_state()
+        matching = st.pending_show_card.matching_cards
+        await game.process_action(
+            result.pending_show_by, {"type": "show_card", "card": matching[0]}
+        )
+
+    # Flag should be cleared after using the free suggest
+    state = await game.get_state()
+    assert state.was_moved_by_suggestion.get(other_id) is None
+
+
+@pytest.mark.asyncio
 async def test_no_free_suggest_without_being_moved(game: ClueGame):
     """A player NOT moved by suggestion should not get suggest before rolling."""
     await _add_two_players(game)

@@ -508,6 +508,9 @@ class ClueGame:
         total = die1 + die2
         state.last_roll = [die1, die2]
         state.dice_rolled = True
+        # Rolling means the player declined the free suggest from being
+        # moved by a suggestion, so clear the flag.
+        state.was_moved_by_suggestion.pop(player_id, None)
 
         await self._save_state(state)
         await self._append_log(
@@ -531,6 +534,9 @@ class ClueGame:
         dest_room = SECRET_PASSAGE_MAP[current_room]
         state.current_room[player_id] = dest_room
         state.moved = True
+        # Using a secret passage means the player declined the free suggest
+        # from being moved by a suggestion, so clear the flag.
+        state.was_moved_by_suggestion.pop(player_id, None)
         position: list[int] | None = None
         center = ROOM_CENTERS.get(dest_room)
         if center:
@@ -722,6 +728,10 @@ class ClueGame:
                 # so they can suggest from it on their next turn without rolling.
                 state.was_moved_by_suggestion[moved_suspect_player] = True
                 break
+
+        # If this player was using their free suggest (from being moved by
+        # a suggestion), clear the flag now that it's been consumed.
+        state.was_moved_by_suggestion.pop(player_id, None)
 
         suggestion_entry = Suggestion(
             suspect=suspect,
