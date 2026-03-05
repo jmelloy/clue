@@ -7,13 +7,8 @@
     <div v-if="!collapsed">
       <!-- Agent selector tabs -->
       <div v-if="agentIds.length > 1" class="agent-tabs">
-        <button
-          v-for="aid in agentIds"
-          :key="aid"
-          class="agent-tab"
-          :class="{ active: selectedAgent === aid }"
-          @click="selectedAgent = aid"
-        >
+        <button v-for="aid in agentIds" :key="aid" class="agent-tab" :class="{ active: selectedAgent === aid }"
+          @click="selectedAgent = aid">
           {{ agentLabel(aid) }}
         </button>
       </div>
@@ -25,7 +20,7 @@
           <span class="status-label">{{ currentDebug.status }}</span>
           <span v-if="currentDebug.action_description" class="status-desc">{{
             currentDebug.action_description
-          }}</span>
+            }}</span>
         </div>
 
         <!-- Position & Room -->
@@ -33,26 +28,21 @@
           <div class="location-row">
             <span class="location-label">Room:</span>
             <span class="location-value" :class="{ 'in-room': currentDebug.room }">{{
-              currentDebug.room || "Hallway"
-            }}</span>
+              currentDebug.room || 'Hallway'
+              }}</span>
           </div>
           <div class="location-row">
             <span class="location-label">Position:</span>
             <span class="location-value">{{
               currentDebug.position
                 ? `[${currentDebug.position[0]}, ${currentDebug.position[1]}]`
-                : "—"
+                : '—'
             }}</span>
           </div>
           <div v-if="currentDebug.reachable_rooms?.length" class="location-row">
             <span class="location-label">Reachable:</span>
             <span class="reachable-chips">
-              <span
-                v-for="r in currentDebug.reachable_rooms"
-                :key="r"
-                class="unknown-chip room-chip"
-                >{{ r }}</span
-              >
+              <span v-for="r in currentDebug.reachable_rooms" :key="r" class="unknown-chip room-chip">{{ r }}</span>
             </span>
           </div>
         </div>
@@ -72,43 +62,22 @@
           <div v-if="cardsExpanded">
             <div class="unknown-group">
               <span class="unknown-label suspect-label">Suspects?</span>
-              <span
-                v-for="s in currentDebug.unknown_suspects"
-                :key="s"
-                class="unknown-chip suspect-chip"
-                >{{ s }}</span
-              >
-              <span v-if="!currentDebug.unknown_suspects?.length" class="all-known"
-                >all eliminated</span
-              >
+              <span v-for="s in currentDebug.unknown_suspects" :key="s" class="unknown-chip suspect-chip">{{ s }}</span>
+              <span v-if="!currentDebug.unknown_suspects?.length" class="all-known">all eliminated</span>
             </div>
             <div class="unknown-group">
               <span class="unknown-label weapon-label">Weapons?</span>
-              <span
-                v-for="w in currentDebug.unknown_weapons"
-                :key="w"
-                class="unknown-chip weapon-chip"
-                >{{ w }}</span
-              >
-              <span v-if="!currentDebug.unknown_weapons?.length" class="all-known"
-                >all eliminated</span
-              >
+              <span v-for="w in currentDebug.unknown_weapons" :key="w" class="unknown-chip weapon-chip">{{ w }}</span>
+              <span v-if="!currentDebug.unknown_weapons?.length" class="all-known">all eliminated</span>
             </div>
             <div class="unknown-group">
               <span class="unknown-label room-label">Rooms?</span>
-              <span
-                v-for="r in currentDebug.unknown_rooms"
-                :key="r"
-                class="unknown-chip room-chip"
-                >{{ r }}</span
-              >
-              <span v-if="!currentDebug.unknown_rooms?.length" class="all-known"
-                >all eliminated</span
-              >
+              <span v-for="r in currentDebug.unknown_rooms" :key="r" class="unknown-chip room-chip">{{ r }}</span>
+              <span v-if="!currentDebug.unknown_rooms?.length" class="all-known">all eliminated</span>
             </div>
             <div class="seen-cards-line">
               <span class="seen-label">Seen:</span>
-              <span class="seen-list">{{ currentDebug.seen_cards?.join(", ") || "none" }}</span>
+              <span class="seen-list">{{ currentDebug.seen_cards?.join(', ') || 'none' }}</span>
             </div>
           </div>
         </div>
@@ -120,11 +89,7 @@
             <span class="collapse-indicator" :class="{ collapsed: !holdersExpanded }">&#9660;</span>
           </h3>
           <div v-if="holdersExpanded">
-            <div
-              v-for="(cards, pid) in currentDebug.player_has_cards"
-              :key="pid"
-              class="holder-row"
-            >
+            <div v-for="(cards, pid) in currentDebug.player_has_cards" :key="pid" class="holder-row">
               <span class="holder-name">{{ playerName(pid) }}:</span>
               <span v-for="c in cards" :key="c" class="holder-card">{{ c }}</span>
             </div>
@@ -167,11 +132,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   agentDebugData: { type: Object, default: () => ({}) },
-  players: { type: Array, default: () => [] },
+  players: { type: Array, default: () => [] }
 })
 
 const collapsed = ref(false)
@@ -185,7 +150,7 @@ const agentIds = computed(() => {
   // Filter out wanderers for a cleaner view
   return ids.filter((id) => {
     const data = props.agentDebugData[id]
-    return data && data.agent_type !== "wanderer"
+    return data && data.agent_type !== 'wanderer'
   })
 })
 
@@ -312,10 +277,12 @@ function playerName(pid) {
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.4;
   }
@@ -384,9 +351,11 @@ function playerName(pid) {
 .suspect-label {
   color: #e8a49c;
 }
+
 .weapon-label {
   color: #94c6e8;
 }
+
 .room-label {
   color: #8ed8ad;
 }

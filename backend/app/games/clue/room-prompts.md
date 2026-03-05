@@ -13,6 +13,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Miss Scarlett
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Miss Scarlett. A striking young woman in a figure-hugging scarlet evening gown with black lace trim. Fiery red lips and sharp, knowing eyes. Deep crimson and black tones. A cigarette holder in one gloved hand, a small pearl-handled clutch in the other. Diamond earrings catching the light. Moonlit balcony behind her with billowing curtains. Confident, dangerous, seductive.
@@ -20,6 +21,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Colonel Mustard
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Colonel Mustard. A broad-shouldered older military man in a mustard-yellow dress uniform with brass buttons and medal ribbons. Thick grey moustache, weathered tan face, steely eyes. Golden ochre and military khaki tones. A riding crop tucked under one arm, a brandy snifter in hand. Trophy room background with crossed sabres on the wall. Warm lamplight from a desk. Imperious, proud, guarded.
@@ -27,6 +29,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Mrs. White
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Mrs. White. A young woman in her late twenties with fiery red hair pinned up in a loose, slightly rebellious updo, stray curls framing her face. Bright green eyes with a mischievous glint. Wearing a crisp white blouse with rolled sleeves and a dark apron, as if she's been busy and doesn't care who knows it. Warm ivory and burnt sienna tones. A feather duster in one hand held like a fencing foil, a ring of manor keys at her hip. Kitchen doorway behind her, warm gaslight catching the copper pots. Spirited, sharp-witted, underestimated.
@@ -34,6 +37,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Reverend Green
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Reverend Green. A handsome, sharp-jawed man in his mid-thirties wearing a tailored dark green clerical suit with a white dog collar, the fit just a little too fashionable for a real clergyman. Warm brown eyes with a rakish glint, thick dark hair swept back with effortless style, a disarming smile that could sell you anything. Deep emerald and charcoal tones. One hand resting casually on a leather-bound bible he's clearly never read, the other adjusting gold cufflinks that no reverend could afford. Candlelit parlour behind him with velvet curtains and a half-empty champagne flute on the mantel. Charming, confident, dangerously likeable.
@@ -41,6 +45,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Mrs. Peacock
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Mrs. Peacock. A regal woman in an elaborate royal blue gown with a peacock-feather brooch at the collar. Hair in a perfect chignon, sharp aristocratic features, an icy stare. Sapphire blue and midnight indigo tones. A folded silk fan in one hand, the other resting on the back of a gilded chair. Grand parlour background with oil paintings and velvet drapes. Warm candlelight through a leaded window. Commanding, haughty, calculating.
@@ -48,6 +53,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Professor Plum
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo suspect portrait — Professor Plum. A disheveled middle-aged academic in a rumpled plum-purple tweed jacket with leather elbow patches. Wild salt-and-pepper hair, round tortoiseshell glasses slightly askew, distracted expression. Rich violet and dusty aubergine tones. An open notebook crammed with equations in one hand, a pipe trailing smoke in the other. University study background with chalkboard scrawl and teetering book stacks. Warm lamplight through a dormer window. Brilliant, absent-minded, oddly suspicious.
@@ -131,6 +137,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Grand Staircase
+
 **Ratio:** 5:4
 
 > Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, warm gaslight from wall sconces illuminating the wide carpeted stairs. Rich mahogany and deep burgundy tones. A sweeping staircase with ornate carved banisters and a plush crimson runner, ascending into shadow. Oil portraits of stern ancestors lining the wall. A suit of armor standing guard at the landing. Polished brass handrail reflecting the gaslight. Dark wood paneling and a heavy newel post topped with a carved finial.
@@ -198,6 +205,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Miss Scarlett — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Miss Scarlett. A stunning young woman leaning against a marble fireplace mantel, scarlet silk robe slipping off one shoulder, revealing a delicate lace chemise beneath. Half-lidded eyes and a teasing smile. Warm candlelight painting her skin in amber and rose tones. One finger tracing the rim of a champagne coupe. Tousled red curls. A love letter lying open on the table behind her. Deep crimson and blush pink tones. Inviting, playful, magnetic.
@@ -205,6 +213,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Colonel Mustard — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Colonel Mustard. A ruggedly handsome older gentleman, mustard-gold dress shirt unbuttoned at the collar, sleeves rolled to the forearms revealing tanned, strong arms. Leaning back in a leather armchair with one leg crossed, a knowing smirk beneath his thick grey moustache. A rose tucked into his breast pocket. Brandy in hand, firelight dancing across his weathered features. Golden amber and warm honey tones. Confident, rakish, unexpectedly charming.
@@ -212,6 +221,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Mrs. White — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Mrs. White. A young woman with fiery red hair tumbling loose over bare shoulders, apron discarded on a kitchen chair behind her. Wearing a fitted cream blouse with the top buttons undone, leaning forward on a flour-dusted countertop with a coy grin. A smudge of flour on her cheek. Warm gaslight catching green eyes full of mischief. A fresh-baked pie cooling nearby, steam curling upward. Warm ivory and cinnamon tones. Flirtatious, disarming, full of surprises.
@@ -219,6 +229,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Reverend Green — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Reverend Green. A devastatingly handsome young clergyman, dog collar removed and dangling from two fingers, dark green waistcoat fitted perfectly over a white shirt open at the throat. Leaning in a candlelit doorway with a slow, dangerous smile. Dark hair slightly disheveled as if he's been running his hands through it. One eyebrow raised in invitation. A glass of red wine in his other hand. Deep emerald and warm candlelight tones. Tempting, forbidden, irresistible.
@@ -226,6 +237,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Mrs. Peacock — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Mrs. Peacock. A regal woman reclining on a sapphire-blue velvet chaise longue, royal blue evening gown with a daring neckline, a peacock-feather fan held just below her chin, peering over it with smoldering dark eyes. Hair loosened from its chignon, a few dark curls cascading down her neck. A string of pearls wound loosely around one wrist. Moonlight through sheer curtains casting soft blue shadows. Sapphire and silver tones. Commanding, alluring, impossible to refuse.
@@ -233,7 +245,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 ---
 
 ### Professor Plum — Flirtatious
+
 **Ratio:** 2:3
 
 > Colored pencil art. Romantic victorian Cluedo portrait — Professor Plum. A tousle-haired academic perched on the edge of a cluttered desk, plum-purple waistcoat unbuttoned, shirtsleeves pushed up, glasses removed and dangling from his lips as he looks up with unexpected intensity. An open book forgotten in his lap. Ink stains on his fingers. Late-night lamplight warm on his face, casting the book-lined study in soft violet and gold. A half-written love poem visible on the desk behind him. Distracted, smoldering, surprisingly passionate.
-

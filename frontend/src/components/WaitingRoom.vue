@@ -37,23 +37,10 @@
 
         <div class="suspects-grid">
           <!-- Filled seats -->
-          <div
-            v-for="p in players"
-            :key="p.id"
-            class="suspect-card"
-            :class="{ 'is-you': p.id === playerId }"
-          >
-            <div
-              class="suspect-token"
-              :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
-              :style="tokenStyle(p)"
-            >
-              <img
-                v-if="CARD_IMAGES[p.character]"
-                :src="CARD_IMAGES[p.character]"
-                :alt="p.character"
-                class="suspect-portrait"
-              />
+          <div v-for="p in players" :key="p.id" class="suspect-card" :class="{ 'is-you': p.id === playerId }">
+            <div class="suspect-token" :class="{ 'has-portrait': CARD_IMAGES[p.character] }" :style="tokenStyle(p)">
+              <img v-if="CARD_IMAGES[p.character]" :src="CARD_IMAGES[p.character]" :alt="p.character"
+                class="suspect-portrait" />
               <span v-else>{{ abbr(p.character) }}</span>
             </div>
             <div class="suspect-details">
@@ -81,11 +68,7 @@
         <button class="btn-agent" @click="addAgent('agent')" :disabled="addingAgent">
           <span class="btn-agent-icon">&#x1F3B2;</span> Add Agent
         </button>
-        <button
-          class="btn-agent btn-agent-llm"
-          @click="addAgent('llm_agent')"
-          :disabled="addingAgent"
-        >
+        <button class="btn-agent btn-agent-llm" @click="addAgent('llm_agent')" :disabled="addingAgent">
           <span class="btn-agent-icon">&#x1F9E0;</span> Add LLM Agent
         </button>
       </div>
@@ -107,17 +90,17 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
-import { CARD_IMAGES, abbr, characterColors } from "../constants/clue.js"
+import { ref } from 'vue'
+import { CARD_IMAGES, abbr, characterColors } from '../constants/clue.js'
 
 const props = defineProps({
   gameId: String,
   playerId: String,
-  players: Array,
+  players: Array
 })
-const emit = defineEmits(["game-started", "leave-game"])
+const emit = defineEmits(['game-started', 'leave-game'])
 
-const error = ref("")
+const error = ref('')
 const copied = ref(false)
 const addingAgent = ref(false)
 
@@ -127,10 +110,10 @@ function tokenStyle(player) {
 }
 
 function typeLabel(type) {
-  if (type === "human") return "Human"
-  if (type === "agent") return "AI"
-  if (type === "llm_agent") return "LLM"
-  if (type === "wanderer") return "NPC"
+  if (type === 'human') return 'Human'
+  if (type === 'agent') return 'AI'
+  if (type === 'llm_agent') return 'LLM'
+  if (type === 'wanderer') return 'NPC'
   return type
 }
 
@@ -144,7 +127,7 @@ function particleStyle(n) {
     animationDelay: `${delay}s`,
     animationDuration: `${duration}s`,
     width: `${size}px`,
-    height: `${size}px`,
+    height: `${size}px`
   }
 }
 
@@ -158,50 +141,50 @@ function copyLink() {
 }
 
 async function addAgent(agentType) {
-  error.value = ""
+  error.value = ''
   addingAgent.value = true
   try {
     const res = await fetch(`/games/${props.gameId}/add_agent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent_type: agentType }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agent_type: agentType })
     })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? "Failed to add agent"
+      error.value = data.detail ?? 'Failed to add agent'
     }
   } catch (e) {
-    error.value = "Error: " + e.message
+    error.value = 'Error: ' + e.message
   } finally {
     addingAgent.value = false
   }
 }
 
 async function startGame() {
-  error.value = ""
+  error.value = ''
   try {
-    const res = await fetch(`/games/${props.gameId}/start`, { method: "POST" })
+    const res = await fetch(`/games/${props.gameId}/start`, { method: 'POST' })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? "Failed to start"
+      error.value = data.detail ?? 'Failed to start'
       return
     }
     const state = await res.json()
-    emit("game-started", state)
+    emit('game-started', state)
   } catch (e) {
-    error.value = "Error: " + e.message
+    error.value = 'Error: ' + e.message
   }
 }
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 .waiting-room {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   background: #1c1812;
 }
 
@@ -234,6 +217,7 @@ async function startGame() {
   0% {
     transform: translate(0, 0) scale(1);
   }
+
   100% {
     transform: translate(30px, -15px) scale(1.08);
   }
@@ -267,12 +251,15 @@ async function startGame() {
     transform: translateY(0) translateX(0);
     opacity: 0;
   }
+
   10% {
     opacity: 0.5;
   }
+
   90% {
     opacity: 0.15;
   }
+
   100% {
     transform: translateY(-100vh) translateX(20px);
     opacity: 0;
@@ -300,6 +287,7 @@ async function startGame() {
     opacity: 0;
     transform: translateY(-12px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -307,7 +295,7 @@ async function startGame() {
 }
 
 .title {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 2.5rem;
   font-weight: 900;
   letter-spacing: 0.3em;
@@ -343,6 +331,7 @@ async function startGame() {
   0% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
@@ -357,7 +346,7 @@ async function startGame() {
 }
 
 .case-file-id {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.25rem;
   font-weight: 700;
   color: #d4a849;
@@ -370,7 +359,7 @@ async function startGame() {
   border: 1px solid rgba(212, 168, 73, 0.15);
   background: transparent;
   color: #6a6050;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.25s;
@@ -401,6 +390,7 @@ async function startGame() {
     opacity: 0;
     transform: translateY(14px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -415,7 +405,7 @@ async function startGame() {
 }
 
 .panel-header h2 {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.15rem;
   font-weight: 700;
   color: #e8dcc8;
@@ -453,18 +443,23 @@ async function startGame() {
 .suspect-card:nth-child(1) {
   animation-delay: 0.3s;
 }
+
 .suspect-card:nth-child(2) {
   animation-delay: 0.4s;
 }
+
 .suspect-card:nth-child(3) {
   animation-delay: 0.5s;
 }
+
 .suspect-card:nth-child(4) {
   animation-delay: 0.6s;
 }
+
 .suspect-card:nth-child(5) {
   animation-delay: 0.7s;
 }
+
 .suspect-card:nth-child(6) {
   animation-delay: 0.8s;
 }
@@ -474,6 +469,7 @@ async function startGame() {
     opacity: 0;
     transform: translateX(-8px);
   }
+
   100% {
     opacity: 1;
     transform: translateX(0);
@@ -499,7 +495,7 @@ async function startGame() {
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
   overflow: hidden;
@@ -615,7 +611,7 @@ async function startGame() {
   border: 1px solid rgba(212, 168, 73, 0.15);
   background: transparent;
   color: #8a7e6b;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.25s;
@@ -656,7 +652,7 @@ async function startGame() {
   border-radius: 6px;
   background: linear-gradient(135deg, #d4a849, #b8912e);
   color: #1a1008;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -668,7 +664,7 @@ async function startGame() {
 }
 
 .btn-start::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
@@ -732,7 +728,7 @@ async function startGame() {
   background: none;
   border: none;
   color: #3a3528;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   cursor: pointer;
   transition: color 0.2s;

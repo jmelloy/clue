@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from "vue"
+import { ref, onUnmounted } from 'vue'
 
 /**
  * Composable for WebSocket connection management.
@@ -11,7 +11,7 @@ export function useWebSocket(gameId, playerId) {
   let ws = null
 
   function connect() {
-    const proto = location.protocol === "https:" ? "wss" : "ws"
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     ws = new WebSocket(`${proto}://${location.host}/ws/${gameId}/${playerId}`)
 
     ws.onopen = () => {
@@ -32,7 +32,7 @@ export function useWebSocket(gameId, playerId) {
         messages.value.push(msg)
       } catch (e) {
         console.warn(
-          "[useWebSocket] Failed to parse WebSocket message as JSON. Check message format."
+          '[useWebSocket] Failed to parse WebSocket message as JSON. Check message format.'
         )
       }
     }
@@ -40,7 +40,7 @@ export function useWebSocket(gameId, playerId) {
 
   function send(data) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(typeof data === "string" ? data : JSON.stringify(data))
+      ws.send(typeof data === 'string' ? data : JSON.stringify(data))
     }
   }
 

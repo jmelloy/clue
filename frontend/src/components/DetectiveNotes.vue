@@ -4,87 +4,42 @@
 
     <div class="notes-section">
       <h4>Suspects</h4>
-      <div
-        v-for="card in SUSPECTS"
-        :key="card"
-        class="note-row"
-        :class="noteClass(card)"
-        @click="cycleNote(card)"
-      >
-        <img
-          v-if="CARD_IMAGES[card]"
-          :src="CARD_IMAGES[card]"
-          :alt="card"
-          class="note-thumb"
-          :style="{ borderColor: CHARACTER_COLORS[card]?.bg || '#666' }"
-        />
+      <div v-for="card in SUSPECTS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb"
+          :style="{ borderColor: CHARACTER_COLORS[card]?.bg || '#666' }" />
         <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
-        <span
-          class="note-mark"
-          :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }"
-        >
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
           {{ noteMark(card) }}
-          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip"
-            >Shown by {{ shownByMap[card] }}</span
-          >
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
+            }}</span>
         </span>
       </div>
     </div>
 
     <div class="notes-section">
       <h4>Weapons</h4>
-      <div
-        v-for="card in WEAPONS"
-        :key="card"
-        class="note-row"
-        :class="noteClass(card)"
-        @click="cycleNote(card)"
-      >
-        <img
-          v-if="CARD_IMAGES[card]"
-          :src="CARD_IMAGES[card]"
-          :alt="card"
-          class="note-thumb note-thumb-weapon"
-        />
-        <span v-else class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
+      <div v-for="card in WEAPONS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb note-thumb-weapon" />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
-        <span
-          class="note-mark"
-          :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }"
-        >
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
           {{ noteMark(card) }}
-          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip"
-            >Shown by {{ shownByMap[card] }}</span
-          >
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
+            }}</span>
         </span>
       </div>
     </div>
 
     <div class="notes-section">
       <h4>Rooms</h4>
-      <div
-        v-for="card in ROOMS"
-        :key="card"
-        class="note-row"
-        :class="noteClass(card)"
-        @click="cycleNote(card)"
-      >
-        <img
-          v-if="CARD_IMAGES[card]"
-          :src="CARD_IMAGES[card]"
-          :alt="card"
-          class="note-thumb note-thumb-room"
-        />
-        <span v-else class="note-emoji">{{ CARD_ICONS[card] || "" }}</span>
+      <div v-for="card in ROOMS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb note-thumb-room" />
+        <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
-        <span
-          class="note-mark"
-          :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }"
-        >
+        <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
           {{ noteMark(card) }}
-          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip"
-            >Shown by {{ shownByMap[card] }}</span
-          >
+          <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
+            }}</span>
         </span>
       </div>
     </div>
@@ -92,25 +47,25 @@
 </template>
 
 <script setup>
-import { reactive, watch } from "vue"
+import { reactive, watch } from 'vue'
 import {
   SUSPECTS,
   WEAPONS,
   ROOMS,
   CHARACTER_COLORS,
   CARD_ICONS,
-  CARD_IMAGES,
-} from "../constants/clue.js"
+  CARD_IMAGES
+} from '../constants/clue.js'
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
-const CYCLE = ["", "no", "maybe", ""]
+const CYCLE = ['', 'no', 'maybe', '']
 
 const props = defineProps({
   yourCards: { type: Array, default: () => [] },
-  savedNotes: { type: Object, default: null },
+  savedNotes: { type: Object, default: null }
 })
 
-const emit = defineEmits(["notes-changed"])
+const emit = defineEmits(['notes-changed'])
 
 // notes: card -> state string
 const notes = reactive({})
@@ -144,7 +99,7 @@ watch(
   () => props.yourCards,
   (cards) => {
     for (const card of cards) {
-      notes[card] = "have"
+      notes[card] = 'have'
     }
   },
   { immediate: true }
@@ -152,9 +107,9 @@ watch(
 
 function emitNotesChanged() {
   if (restoring) return
-  emit("notes-changed", {
+  emit('notes-changed', {
     notes: { ...notes },
-    shownBy: { ...shownByMap },
+    shownBy: { ...shownByMap }
   })
 }
 
@@ -162,8 +117,8 @@ function emitNotesChanged() {
 watch(notes, () => emitNotesChanged(), { deep: true })
 
 function suspectStyle(card) {
-  const state = notes[card] ?? ""
-  if (state === "have" || state === "no" || state === "seen") return {}
+  const state = notes[card] ?? ''
+  if (state === 'have' || state === 'no' || state === 'seen') return {}
   const color = CHARACTER_COLORS[card]?.bg
   if (!color) return {}
   // Default and 'maybe' states show the suspect's color
@@ -171,28 +126,28 @@ function suspectStyle(card) {
 }
 
 function noteMark(card) {
-  const state = notes[card] ?? ""
-  if (state === "have") return "\u2713"
-  if (state === "seen") return "\u{1F441}"
-  if (state === "no") return "\u2717"
-  if (state === "maybe") return "\u{25C6}" // ◆ diamond — person of interest
-  return ""
+  const state = notes[card] ?? ''
+  if (state === 'have') return '\u2713'
+  if (state === 'seen') return '\u{1F441}'
+  if (state === 'no') return '\u2717'
+  if (state === 'maybe') return '\u{25C6}' // ◆ diamond — person of interest
+  return ''
 }
 
 function noteClass(card) {
-  const state = notes[card] ?? ""
+  const state = notes[card] ?? ''
   return {
-    "note-have": state === "have",
-    "note-seen": state === "seen",
-    "note-no": state === "no",
-    "note-maybe": state === "maybe",
+    'note-have': state === 'have',
+    'note-seen': state === 'seen',
+    'note-no': state === 'no',
+    'note-maybe': state === 'maybe'
   }
 }
 
 function cycleNote(card) {
   // Don't let users change cards they hold
-  if (notes[card] === "have") return
-  const current = notes[card] ?? ""
+  if (notes[card] === 'have') return
+  const current = notes[card] ?? ''
   const idx = CYCLE.indexOf(current)
   const next = CYCLE[(idx + 1) % CYCLE.length]
   notes[card] = next
@@ -200,16 +155,16 @@ function cycleNote(card) {
 
 // Expose for parent to programmatically mark cards
 function markCard(card, state, shownBy) {
-  if (notes[card] !== "have") {
+  if (notes[card] !== 'have') {
     notes[card] = state
     if (shownBy) shownByMap[card] = shownBy
   }
 }
 
 function noteTitle(card) {
-  const state = notes[card] ?? ""
-  if (state === "seen" && shownByMap[card]) return `Shown by ${shownByMap[card]}`
-  return ""
+  const state = notes[card] ?? ''
+  if (state === 'seen' && shownByMap[card]) return `Shown by ${shownByMap[card]}`
+  return ''
 }
 
 // Get all cards shown by a specific player name
@@ -225,15 +180,15 @@ defineExpose({ markCard, getCardsShownBy })
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 .detective-notes {
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.8rem;
 }
 
 h3 {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   color: #d4a849;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;

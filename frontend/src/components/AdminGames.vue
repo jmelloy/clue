@@ -4,7 +4,7 @@
       <h1 class="admin-title">Game Administration</h1>
       <div class="admin-actions">
         <button class="refresh-btn" @click="fetchGames" :disabled="loading">
-          {{ loading ? "Loading..." : "Refresh" }}
+          {{ loading ? 'Loading...' : 'Refresh' }}
         </button>
         <button class="back-btn" @click="$emit('go-home')">Back to Lobby</button>
       </div>
@@ -32,13 +32,8 @@
     </div>
 
     <div class="filter-row">
-      <button
-        v-for="f in filters"
-        :key="f.value"
-        class="filter-btn"
-        :class="{ active: activeFilter === f.value }"
-        @click="activeFilter = f.value"
-      >
+      <button v-for="f in filters" :key="f.value" class="filter-btn" :class="{ active: activeFilter === f.value }"
+        @click="activeFilter = f.value">
         {{ f.label }}
       </button>
     </div>
@@ -46,26 +41,19 @@
     <div v-if="!loading && filteredGames.length === 0" class="empty-state">No games found.</div>
 
     <div class="games-grid">
-      <div
-        v-for="game in filteredGames"
-        :key="game.game_id"
-        class="game-card"
-        :class="[`status-${game.status}`]"
-        @click="openGame(game)"
-      >
+      <div v-for="game in filteredGames" :key="game.game_id" class="game-card" :class="[`status-${game.status}`]"
+        @click="openGame(game)">
         <div class="game-card-header">
           <span class="game-id">{{ game.game_id }}</span>
           <span class="game-type-badge" :class="game.game_type">
-            {{ game.game_type === "clue" ? "Clue" : "Hold'em" }}
+            {{ game.game_type === 'clue' ? 'Clue' : "Hold'em" }}
           </span>
         </div>
 
         <div class="game-status-row">
           <span class="status-dot" :class="game.status"></span>
           <span class="status-text">{{ game.status }}</span>
-          <span v-if="game.winner" class="winner-text"
-            >Winner: {{ playerName(game, game.winner) }}</span
-          >
+          <span v-if="game.winner" class="winner-text">Winner: {{ playerName(game, game.winner) }}</span>
         </div>
 
         <div class="players-list">
@@ -73,9 +61,7 @@
             <span class="player-name">{{ p.name }}</span>
             <span class="player-type" :class="p.type">{{ p.type }}</span>
             <span v-if="p.character" class="player-character">{{ p.character }}</span>
-            <span v-if="p.chips != null" class="player-chips"
-              >${{ (p.chips / 100).toFixed(2) }}</span
-            >
+            <span v-if="p.chips != null" class="player-chips">${{ (p.chips / 100).toFixed(2) }}</span>
           </div>
         </div>
 
@@ -94,8 +80,8 @@
           <h2>
             {{ selectedGame.game_id }}
             <span class="game-type-badge" :class="selectedGame.game_type">{{
-              selectedGame.game_type === "clue" ? "Clue" : "Hold'em"
-            }}</span>
+              selectedGame.game_type === 'clue' ? 'Clue' : "Hold'em"
+              }}</span>
           </h2>
           <button class="close-btn" @click="selectedGame = null">&times;</button>
         </div>
@@ -119,34 +105,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted } from 'vue'
 
-const emit = defineEmits(["go-home", "observe-game"])
+const emit = defineEmits(['go-home', 'observe-game'])
 
 const games = ref([])
 const loading = ref(false)
 const error = ref(null)
-const activeFilter = ref("all")
+const activeFilter = ref('all')
 const selectedGame = ref(null)
 const gameDetail = ref(null)
 const detailLoading = ref(false)
 
 const filters = [
-  { label: "All", value: "all" },
-  { label: "In Progress", value: "playing" },
-  { label: "Waiting", value: "waiting" },
-  { label: "Finished", value: "finished" },
-  { label: "Clue", value: "clue" },
-  { label: "Hold'em", value: "holdem" },
+  { label: 'All', value: 'all' },
+  { label: 'In Progress', value: 'playing' },
+  { label: 'Waiting', value: 'waiting' },
+  { label: 'Finished', value: 'finished' },
+  { label: 'Clue', value: 'clue' },
+  { label: "Hold'em", value: 'holdem' }
 ]
 
-const playingCount = computed(() => games.value.filter((g) => g.status === "playing").length)
-const waitingCount = computed(() => games.value.filter((g) => g.status === "waiting").length)
-const finishedCount = computed(() => games.value.filter((g) => g.status === "finished").length)
+const playingCount = computed(() => games.value.filter((g) => g.status === 'playing').length)
+const waitingCount = computed(() => games.value.filter((g) => g.status === 'waiting').length)
+const finishedCount = computed(() => games.value.filter((g) => g.status === 'finished').length)
 
 const filteredGames = computed(() => {
-  if (activeFilter.value === "all") return games.value
-  if (["clue", "holdem"].includes(activeFilter.value)) {
+  if (activeFilter.value === 'all') return games.value
+  if (['clue', 'holdem'].includes(activeFilter.value)) {
     return games.value.filter((g) => g.game_type === activeFilter.value)
   }
   return games.value.filter((g) => g.status === activeFilter.value)
@@ -161,7 +147,7 @@ async function fetchGames() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch("/admin/games")
+    const res = await fetch('/admin/games')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     games.value = data.games
@@ -188,7 +174,7 @@ async function openGame(game) {
 }
 
 function observeGame(game) {
-  emit("observe-game", { gameId: game.game_id, gameType: game.game_type })
+  emit('observe-game', { gameId: game.game_id, gameType: game.game_type })
 }
 
 onMounted(fetchGames)
@@ -199,7 +185,7 @@ onMounted(fetchGames)
   max-width: 1100px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   color: #e8dcc8;
   min-height: 100vh;
 }
@@ -585,7 +571,7 @@ onMounted(fetchGames)
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 1rem;
-  font-family: "Fira Code", "Consolas", monospace;
+  font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 0.75rem;
   color: #a0987e;
   overflow-x: auto;

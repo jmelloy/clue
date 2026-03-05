@@ -80,40 +80,24 @@
             <div v-if="urlGameState?.players?.length" class="suspects-section">
               <h3 class="section-label">Choose Your Identity</h3>
               <ul class="suspect-list">
-                <li
-                  v-for="p in urlGameState.players"
-                  :key="p.id"
-                  class="suspect-item"
-                  :class="{
-                    eliminated: !p.active && urlGameState.status !== 'waiting',
-                  }"
-                  @click="rejoinAs(p)"
-                >
-                  <div
-                    class="suspect-token"
-                    :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
-                    :style="tokenColor(p.character)"
-                  >
-                    <img
-                      v-if="CARD_IMAGES[p.character]"
-                      :src="CARD_IMAGES[p.character]"
-                      :alt="p.character"
-                      class="suspect-portrait"
-                    />
+                <li v-for="p in urlGameState.players" :key="p.id" class="suspect-item" :class="{
+                  eliminated: !p.active && urlGameState.status !== 'waiting'
+                }" @click="rejoinAs(p)">
+                  <div class="suspect-token" :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
+                    :style="tokenColor(p.character)">
+                    <img v-if="CARD_IMAGES[p.character]" :src="CARD_IMAGES[p.character]" :alt="p.character"
+                      class="suspect-portrait" />
                     <span v-else>{{ charAbbr(p.character) }}</span>
                   </div>
                   <div class="suspect-info">
                     <span class="suspect-name">{{ p.name }}</span>
                     <span class="suspect-character">{{ p.character }}</span>
                   </div>
-                  <span
-                    v-if="!p.active && urlGameState.status !== 'waiting'"
-                    class="badge badge-eliminated"
-                    >Eliminated</span
-                  >
+                  <span v-if="!p.active && urlGameState.status !== 'waiting'"
+                    class="badge badge-eliminated">Eliminated</span>
                   <span v-else-if="p.type !== 'human'" class="badge badge-agent">{{
                     agentLabel(p.type)
-                  }}</span>
+                    }}</span>
                   <span v-else class="badge badge-human">Human</span>
                 </li>
               </ul>
@@ -125,11 +109,7 @@
                 <summary>Enter as a new suspect...</summary>
                 <div class="form-group">
                   <div class="input-wrapper">
-                    <input
-                      v-model="playerName"
-                      placeholder="Your alias"
-                      @keyup.enter="joinUrlGame"
-                    />
+                    <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
                   </div>
                   <div class="select-wrapper">
                     <select v-model="playerType">
@@ -183,19 +163,11 @@
       <template v-else>
         <!-- Game Type Selector -->
         <div class="game-type-selector">
-          <button
-            class="game-type-btn"
-            :class="{ active: gameType === 'clue' }"
-            @click="gameType = 'clue'"
-          >
+          <button class="game-type-btn" :class="{ active: gameType === 'clue' }" @click="gameType = 'clue'">
             <span class="game-type-icon">&#x1F50D;</span>
             <span class="game-type-label">Clue</span>
           </button>
-          <button
-            class="game-type-btn"
-            :class="{ active: gameType === 'holdem' }"
-            @click="gameType = 'holdem'"
-          >
+          <button class="game-type-btn" :class="{ active: gameType === 'holdem' }" @click="gameType = 'holdem'">
             <span class="game-type-icon">&#x1F0CF;</span>
             <span class="game-type-label">Texas Hold'em</span>
           </button>
@@ -207,14 +179,14 @@
             <div class="card-inner">
               <div class="card-header">
                 <span class="card-label">{{
-                  gameType === "holdem" ? "New Table" : "New Investigation"
-                }}</span>
+                  gameType === 'holdem' ? 'New Table' : 'New Investigation'
+                  }}</span>
                 <h2>Host a Game</h2>
               </div>
               <p class="card-desc">
                 {{
-                  gameType === "holdem"
-                    ? "Take your seat at the table and test your nerve."
+                  gameType === 'holdem'
+                    ? 'Take your seat at the table and test your nerve.'
                     : "Gather your suspects and uncover the truth. As host, you'll set the stage for murder."
                 }}
               </p>
@@ -234,13 +206,7 @@
                     <label class="input-label">Buy-in</label>
                     <div class="dollar-input">
                       <span class="dollar-sign">$</span>
-                      <input
-                        v-model.number="holdemBuyIn"
-                        type="number"
-                        min="1"
-                        step="1"
-                        placeholder="20"
-                      />
+                      <input v-model.number="holdemBuyIn" type="number" min="1" step="1" placeholder="20" />
                     </div>
                   </div>
                   <label class="checkbox-row">
@@ -249,31 +215,15 @@
                   </label>
                 </template>
                 <button class="btn-primary" :disabled="!playerName" @click="createGame">
-                  {{ gameType === "holdem" ? "Deal Me In" : "Open the Case" }}
+                  {{ gameType === 'holdem' ? 'Deal Me In' : 'Open the Case' }}
                 </button>
               </div>
             </div>
             <div class="card-decoration">
               <svg viewBox="0 0 120 120" class="deco-magnifier">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="35"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  opacity="0.15"
-                />
-                <line
-                  x1="75"
-                  y1="75"
-                  x2="110"
-                  y2="110"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  opacity="0.15"
-                />
+                <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.15" />
+                <line x1="75" y1="75" x2="110" y2="110" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                  opacity="0.15" />
               </svg>
             </div>
           </section>
@@ -287,19 +237,15 @@
               </div>
               <p class="card-desc">
                 {{
-                  gameType === "holdem"
-                    ? "Got a table number? Enter it to take your seat."
+                  gameType === 'holdem'
+                    ? 'Got a table number? Enter it to take your seat.'
                     : "You've received an invitation to Tudor Mansion. Enter the case number to join."
                 }}
               </p>
               <div class="form-group">
                 <div class="input-wrapper input-code">
-                  <input
-                    v-model="joinGameId"
-                    placeholder="Game ID (e.g. ABC123)"
-                    @keyup.enter="joinGame"
-                    style="text-transform: uppercase; letter-spacing: 0.15em"
-                  />
+                  <input v-model="joinGameId" placeholder="Game ID (e.g. ABC123)" @keyup.enter="joinGame"
+                    style="text-transform: uppercase; letter-spacing: 0.15em" />
                 </div>
                 <div class="input-wrapper">
                   <input v-model="playerName" placeholder="Your alias" />
@@ -312,11 +258,7 @@
                   </select>
                 </div>
                 <div class="btn-row">
-                  <button
-                    class="btn-primary"
-                    :disabled="!joinGameId || !playerName"
-                    @click="joinGame"
-                  >
+                  <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
                     Enter the Mansion
                   </button>
                   <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
@@ -327,24 +269,10 @@
             </div>
             <div class="card-decoration">
               <svg viewBox="0 0 120 120" class="deco-envelope">
-                <rect
-                  x="10"
-                  y="30"
-                  width="100"
-                  height="70"
-                  rx="4"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  opacity="0.12"
-                />
-                <polyline
-                  points="10,30 60,72 110,30"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  opacity="0.12"
-                />
+                <rect x="10" y="30" width="100" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="2"
+                  opacity="0.12" />
+                <polyline points="10,30 60,72 110,30" fill="none" stroke="currentColor" stroke-width="2"
+                  opacity="0.12" />
               </svg>
             </div>
           </section>
@@ -364,20 +292,20 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue"
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   urlGameId: { type: String, default: null },
-  urlGameType: { type: String, default: "clue" },
+  urlGameType: { type: String, default: 'clue' }
 })
 
-const emit = defineEmits(["game-joined", "observe", "rejoin", "clear-url-game"])
+const emit = defineEmits(['game-joined', 'observe', 'rejoin', 'clear-url-game'])
 
-const playerName = ref("")
-const playerType = ref("human")
-const gameType = ref("clue")
-const joinGameId = ref("")
-const error = ref("")
+const playerName = ref('')
+const playerType = ref('human')
+const gameType = ref('clue')
+const joinGameId = ref('')
+const error = ref('')
 
 // Hold'em game creation options
 const holdemBuyIn = ref(20)
@@ -386,24 +314,24 @@ const holdemAllowRebuys = ref(false)
 // URL game state
 const urlGameState = ref(null)
 const urlGameLoading = ref(false)
-const urlGameError = ref("")
+const urlGameError = ref('')
 
 // Imported from shared constants
-import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from "../constants/clue.js"
+import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from '../constants/clue.js'
 
 function tokenColor(character) {
-  const c = CHARACTER_COLORS[character] || { bg: "#444", text: "#fff" }
+  const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
   return { backgroundColor: c.bg, color: c.text, borderColor: c.bg }
 }
 
 function charAbbr(character) {
-  return CHARACTER_ABBR[character] || "??"
+  return CHARACTER_ABBR[character] || '??'
 }
 
 function agentLabel(type) {
-  if (type === "agent") return "AI"
-  if (type === "llm_agent") return "LLM"
-  if (type === "wanderer") return "NPC"
+  if (type === 'agent') return 'AI'
+  if (type === 'llm_agent') return 'LLM'
+  if (type === 'wanderer') return 'NPC'
   return type
 }
 
@@ -417,20 +345,20 @@ function particleStyle(n) {
     animationDelay: `${delay}s`,
     animationDuration: `${duration}s`,
     width: `${size}px`,
-    height: `${size}px`,
+    height: `${size}px`
   }
 }
 
 const urlGameCanJoin = computed(() => {
-  return urlGameState.value?.status === "waiting"
+  return urlGameState.value?.status === 'waiting'
 })
 
 const urlGameStatusText = computed(() => {
   const status = urlGameState.value?.status
-  if (status === "waiting") return "Awaiting suspects"
-  if (status === "playing") return "Investigation in progress"
-  if (status === "finished") return "Case closed"
-  return ""
+  if (status === 'waiting') return 'Awaiting suspects'
+  if (status === 'playing') return 'Investigation in progress'
+  if (status === 'finished') return 'Case closed'
+  return ''
 })
 
 watch(
@@ -441,7 +369,7 @@ watch(
     } else {
       urlGameState.value = null
       urlGameLoading.value = false
-      urlGameError.value = ""
+      urlGameError.value = ''
     }
   },
   { immediate: true }
@@ -449,28 +377,28 @@ watch(
 
 async function fetchUrlGame(gid) {
   urlGameLoading.value = true
-  urlGameError.value = ""
+  urlGameError.value = ''
   urlGameState.value = null
   try {
-    const endpoint = props.urlGameType === "holdem" ? `/holdem/games/${gid}` : `/games/${gid}`
+    const endpoint = props.urlGameType === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
     const res = await fetch(endpoint)
     if (!res.ok) {
-      urlGameError.value = "Case file not found"
+      urlGameError.value = 'Case file not found'
       return
     }
     const state = await res.json()
     urlGameState.value = state
-    if (state.game_type === "holdem") gameType.value = "holdem"
+    if (state.game_type === 'holdem') gameType.value = 'holdem'
   } catch (e) {
-    urlGameError.value = "Failed to retrieve case: " + e.message
+    urlGameError.value = 'Failed to retrieve case: ' + e.message
   } finally {
     urlGameLoading.value = false
   }
 }
 
 async function joinUrlGame() {
-  error.value = ""
-  if (props.urlGameType === "holdem" || gameType.value === "holdem") {
+  error.value = ''
+  if (props.urlGameType === 'holdem' || gameType.value === 'holdem') {
     await doJoinHoldem(props.urlGameId)
   } else {
     await doJoin(props.urlGameId)
@@ -478,41 +406,41 @@ async function joinUrlGame() {
 }
 
 function observeUrlGame() {
-  emit("observe", { gameId: props.urlGameId, gameType: props.urlGameType })
+  emit('observe', { gameId: props.urlGameId, gameType: props.urlGameType })
 }
 
 function rejoinAs(player) {
-  emit("rejoin", { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType })
+  emit('rejoin', { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType })
 }
 
 async function createGame() {
-  error.value = ""
+  error.value = ''
   try {
-    if (gameType.value === "holdem") {
+    if (gameType.value === 'holdem') {
       const buyInCents = Math.round(holdemBuyIn.value * 100)
-      const res = await fetch("/holdem/games", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/holdem/games', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           buy_in: buyInCents,
-          allow_rebuys: holdemAllowRebuys.value,
-        }),
+          allow_rebuys: holdemAllowRebuys.value
+        })
       })
       const { game_id } = await res.json()
       await doJoinHoldem(game_id)
     } else {
-      const res = await fetch("/games", { method: "POST" })
+      const res = await fetch('/games', { method: 'POST' })
       const { game_id } = await res.json()
       await doJoin(game_id)
     }
   } catch (e) {
-    error.value = "Failed to open case: " + e.message
+    error.value = 'Failed to open case: ' + e.message
   }
 }
 
 async function joinGame() {
-  error.value = ""
-  if (gameType.value === "holdem") {
+  error.value = ''
+  if (gameType.value === 'holdem') {
     await doJoinHoldem(joinGameId.value.trim().toUpperCase())
   } else {
     await doJoin(joinGameId.value.trim().toUpperCase())
@@ -522,72 +450,72 @@ async function joinGame() {
 async function doJoin(gameId) {
   try {
     const res = await fetch(`/games/${gameId}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         player_name: playerName.value,
-        player_type: playerType.value,
-      }),
+        player_type: playerType.value
+      })
     })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? "Failed to join"
+      error.value = data.detail ?? 'Failed to join'
       return
     }
     const { player_id } = await res.json()
     const stateRes = await fetch(`/games/${gameId}`)
     const state = await stateRes.json()
-    emit("game-joined", { gameId, playerId: player_id, state })
+    emit('game-joined', { gameId, playerId: player_id, state })
   } catch (e) {
-    error.value = "Error: " + e.message
+    error.value = 'Error: ' + e.message
   }
 }
 
 async function doJoinHoldem(gameId) {
   try {
     const res = await fetch(`/holdem/games/${gameId}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_name: playerName.value }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_name: playerName.value })
     })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? "Failed to join"
+      error.value = data.detail ?? 'Failed to join'
       return
     }
     const { player_id } = await res.json()
     const stateRes = await fetch(`/holdem/games/${gameId}`)
     const state = await stateRes.json()
-    emit("game-joined", { gameId, playerId: player_id, state, gameType: "holdem" })
+    emit('game-joined', { gameId, playerId: player_id, state, gameType: 'holdem' })
   } catch (e) {
-    error.value = "Error: " + e.message
+    error.value = 'Error: ' + e.message
   }
 }
 
 async function observeGame() {
-  error.value = ""
+  error.value = ''
   const gid = joinGameId.value.trim().toUpperCase()
   try {
     const res = await fetch(`/games/${gid}`)
     if (!res.ok) {
-      error.value = "Case file not found"
+      error.value = 'Case file not found'
       return
     }
-    emit("observe", { gameId: gid })
+    emit('observe', { gameId: gid })
   } catch (e) {
-    error.value = "Error: " + e.message
+    error.value = 'Error: ' + e.message
   }
 }
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 .lobby {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   background: #1c1812;
 }
 
@@ -620,6 +548,7 @@ async function observeGame() {
   0% {
     transform: translate(0, 0) scale(1);
   }
+
   100% {
     transform: translate(40px, -20px) scale(1.1);
   }
@@ -653,12 +582,15 @@ async function observeGame() {
     transform: translateY(0) translateX(0);
     opacity: 0;
   }
+
   10% {
     opacity: 0.6;
   }
+
   90% {
     opacity: 0.2;
   }
+
   100% {
     transform: translateY(-100vh) translateX(30px);
     opacity: 0;
@@ -709,11 +641,13 @@ async function observeGame() {
 }
 
 @keyframes pulse-glow {
+
   0%,
   100% {
     opacity: 0.7;
     transform: translate(-50%, -50%) scale(1);
   }
+
   50% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.15);
@@ -746,18 +680,21 @@ async function observeGame() {
   border-top: 1.5px solid;
   border-left: 1.5px solid;
 }
+
 .frame-corner.tr {
   top: 0;
   right: 0;
   border-top: 1.5px solid;
   border-right: 1.5px solid;
 }
+
 .frame-corner.bl {
   bottom: 0;
   left: 0;
   border-bottom: 1.5px solid;
   border-left: 1.5px solid;
 }
+
 .frame-corner.br {
   bottom: 0;
   right: 0;
@@ -766,14 +703,15 @@ async function observeGame() {
 }
 
 .title {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 4.5rem;
   font-weight: 900;
   letter-spacing: 0.35em;
   color: #d4a849;
   text-shadow: 0 0 40px rgba(212, 168, 73, 0.2), 0 2px 0 #a07830;
   line-height: 1;
-  margin-right: -0.35em; /* compensate letter-spacing */
+  margin-right: -0.35em;
+  /* compensate letter-spacing */
   animation: title-appear 1.2s ease-out;
 }
 
@@ -783,6 +721,7 @@ async function observeGame() {
     transform: translateY(-10px);
     letter-spacing: 0.6em;
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -791,7 +730,7 @@ async function observeGame() {
 }
 
 .tagline {
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-style: italic;
   font-size: 1.05rem;
   color: #8a7e6b;
@@ -804,6 +743,7 @@ async function observeGame() {
   0% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
@@ -867,6 +807,7 @@ async function observeGame() {
     opacity: 0;
     transform: translateY(16px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -900,7 +841,7 @@ async function observeGame() {
 
 .card-label {
   display: inline-block;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -911,7 +852,7 @@ async function observeGame() {
 }
 
 .card-header h2 {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.35rem;
   font-weight: 700;
   color: #e8dcc8;
@@ -961,10 +902,12 @@ async function observeGame() {
 }
 
 @keyframes pulse-dot {
+
   0%,
   100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
@@ -996,7 +939,7 @@ async function observeGame() {
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
   outline: none;
@@ -1025,7 +968,7 @@ async function observeGame() {
 }
 
 .select-wrapper::after {
-  content: "\25BE";
+  content: '\25BE';
   position: absolute;
   right: 0.9rem;
   top: 50%;
@@ -1046,7 +989,7 @@ async function observeGame() {
   border-radius: 5px;
   background: linear-gradient(135deg, #d4a849, #b8912e);
   color: #1a1008;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1057,7 +1000,7 @@ async function observeGame() {
 }
 
 .btn-primary::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
@@ -1093,7 +1036,7 @@ async function observeGame() {
   border-radius: 5px;
   background: transparent;
   color: #8a7e6b;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s;
@@ -1125,7 +1068,7 @@ async function observeGame() {
   background: none;
   border: none;
   color: #5a5040;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   cursor: pointer;
   transition: color 0.2s;
@@ -1148,7 +1091,7 @@ async function observeGame() {
 
 /* === Suspect list === */
 .section-label {
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -1193,7 +1136,7 @@ async function observeGame() {
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
   overflow: hidden;
@@ -1396,7 +1339,7 @@ async function observeGame() {
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
   outline: none;
@@ -1423,7 +1366,7 @@ async function observeGame() {
   padding: 0.25rem 0;
 }
 
-.checkbox-row input[type="checkbox"] {
+.checkbox-row input[type='checkbox'] {
   width: 16px;
   height: 16px;
   accent-color: #d4a849;
@@ -1457,7 +1400,7 @@ async function observeGame() {
   align-items: center;
   gap: 0.4rem;
   transition: all 0.3s;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
 }
 
 .game-type-btn:hover {
