@@ -376,6 +376,13 @@ class ClueGame:
                 row, col = START_POSITIONS[start_key]
                 state.player_positions[player.id] = [row, col]
 
+        # Initialize weapon positions — distribute weapons across rooms randomly
+        shuffled_rooms = list(ROOMS)
+        random.shuffle(shuffled_rooms)
+        state.weapon_positions = {}
+        for i, weapon in enumerate(WEAPONS):
+            state.weapon_positions[weapon] = shuffled_rooms[i % len(shuffled_rooms)]
+
         await self._save_state(state)
 
         await self._append_log(
@@ -720,6 +727,9 @@ class ClueGame:
                 break
             else:
                 players_without_match.append(other_id)
+
+        # Move the suggested weapon to the suggestion room
+        state.weapon_positions[weapon] = room
 
         # Move the suggested suspect's player to the suggestion room
         moved_suspect_player = None

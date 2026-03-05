@@ -508,6 +508,7 @@ async def _execute_action(
                 player_positions=(
                     dict(state.player_positions) if moved_suspect_player else None
                 ),
+                weapon_positions=dict(state.weapon_positions),
                 current_room=(
                     dict(state.current_room) if moved_suspect_player else None
                 ),

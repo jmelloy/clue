@@ -329,6 +329,8 @@ function handleMessage(msg) {
         }
         // Update player positions and room assignments if a suspect player was moved
         if (msg.player_positions) suggUpdate.player_positions = msg.player_positions
+        // Update weapon positions (weapon moved to suggestion room)
+        if (msg.weapon_positions) suggUpdate.weapon_positions = msg.weapon_positions
         if (msg.current_room) suggUpdate.current_room = msg.current_room
         gameState.value = { ...gameState.value, ...suggUpdate }
       }
