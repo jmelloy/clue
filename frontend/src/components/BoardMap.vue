@@ -24,15 +24,15 @@
         <div v-for="token in playerTokens" :key="'tk-' + token.id" class="player-token" :class="{
           'my-token': token.id === playerId,
           'wanderer-token': token.type === 'wanderer',
+          'weapon-token': token.isWeapon,
           'is-turn': token.id === gameState?.whose_turn,
           'has-image': !!CARD_IMAGES[token.character]
         }" :style="tokenStyle(token)">
           <img v-if="CARD_IMAGES[token.character]" :src="CARD_IMAGES[token.character]" :alt="token.character"
             class="token-portrait" />
+          <span v-else-if="token.isWeapon">{{ WEAPON_ABBR[token.name] || token.name.charAt(0) }}</span>
           <span v-else>{{ abbr(token.character) }}</span>
-          <span class="token-tooltip">
-            {{ token.type === 'wanderer' ? token.character : `${token.name} (${token.character})` }}
-          </span>
+          <span class="token-tooltip">{{ token.isWeapon ? token.name : (token.type === 'wanderer' ? token.character : `${token.name} (${token.character})`) }}</span>
         </div>
       </div>
     </div>
@@ -41,7 +41,25 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CARD_IMAGES, abbr, characterColors } from '../constants/clue.js'
+import { CARD_IMAGES, CARD_ICONS, WEAPONS, abbr, characterColors } from '../constants/clue.js'
+
+const WEAPON_COLORS = {
+  Candlestick: { bg: '#c9a84c', text: '#1a1a2e' },
+  Knife: { bg: '#8a8a8a', text: '#fff' },
+  'Lead Pipe': { bg: '#5a6a7a', text: '#fff' },
+  Revolver: { bg: '#4a3a2a', text: '#fff' },
+  Rope: { bg: '#a0855a', text: '#1a1a2e' },
+  Wrench: { bg: '#6a6a6a', text: '#fff' }
+}
+
+const WEAPON_ABBR = {
+  Candlestick: 'Ca',
+  Knife: 'Kn',
+  'Lead Pipe': 'LP',
+  Revolver: 'Rv',
+  Rope: 'Ro',
+  Wrench: 'Wr'
+}
 
 // ── Board layout data (matches backend board.py) ──
 
@@ -270,11 +288,28 @@ const secretPassages = [
   }
 ]
 
+// Get the active suggestion (last suggestion this turn, if any)
+const activeSuggestion = computed(() => {
+  const suggestions = props.gameState?.suggestions_this_turn ?? []
+  return suggestions.length > 0 ? suggestions[suggestions.length - 1] : null
+})
+
 const playerTokens = computed(() => {
   const players = props.gameState?.players ?? []
   const roomMap = props.gameState?.current_room ?? {}
   const posMap = props.gameState?.player_positions ?? {}
+  const weaponPos = props.gameState?.weapon_positions ?? {}
+  const suggestion = activeSuggestion.value
   const tokens = []
+
+  // Build weapon items for rooms
+  const weaponsByRoom = {}
+  for (const [weapon, room] of Object.entries(weaponPos)) {
+    if (ROOM_INFO[room]) {
+      if (!weaponsByRoom[room]) weaponsByRoom[room] = []
+      weaponsByRoom[room].push(weapon)
+    }
+  }
 
   // Group players by room
   const byRoom = {}
@@ -289,17 +324,119 @@ const playerTokens = computed(() => {
     }
   }
 
-  // Distribute players within each room
-  for (const [roomName, rPlayers] of Object.entries(byRoom)) {
+  // Get all rooms that have players or weapons
+  const allRooms = new Set([...Object.keys(byRoom), ...Object.keys(weaponsByRoom)])
+
+  // Distribute players and weapons within each room
+  for (const roomName of allRooms) {
     const info = ROOM_INFO[roomName]
-    const cR = info.centerRow + 0.8
+    const rPlayers = byRoom[roomName] || []
+    const rWeapons = weaponsByRoom[roomName] || []
+    const cR = info.centerRow
     const cC = info.centerCol + 0.5
-    const n = rPlayers.length
     const roomW = info.maxCol - info.minCol + 1
-    const spacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, n - 1)))
-    const startC = cC - (spacing * (n - 1)) / 2
-    for (let i = 0; i < n; i++) {
-      tokens.push({ ...rPlayers[i], row: cR, col: startC + i * spacing })
+    const roomH = info.maxRow - info.minRow + 1
+
+    // Check if this room has an active suggestion
+    const isSuggestionRoom = suggestion && suggestion.room === roomName
+
+    if (isSuggestionRoom) {
+      // Separate suspects (character + weapon in suggestion) from bystanders
+      const suspectedPlayers = []
+      const bystanderPlayers = []
+      const suspectedWeapons = []
+      const bystanderWeapons = []
+
+      for (const p of rPlayers) {
+        if (p.character === suggestion.suspect) {
+          suspectedPlayers.push(p)
+        } else {
+          bystanderPlayers.push(p)
+        }
+      }
+      for (const w of rWeapons) {
+        if (w === suggestion.weapon) {
+          suspectedWeapons.push(w)
+        } else {
+          bystanderWeapons.push(w)
+        }
+      }
+
+      // Center row for suspects (middle of room)
+      const centerItems = [...suspectedPlayers.map(p => ({ kind: 'player', data: p })),
+                           ...suspectedWeapons.map(w => ({ kind: 'weapon', data: w }))]
+      const nCenter = centerItems.length
+      const centerSpacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, nCenter - 1)))
+      const centerStartC = cC - (centerSpacing * (nCenter - 1)) / 2
+      for (let i = 0; i < nCenter; i++) {
+        const item = centerItems[i]
+        if (item.kind === 'player') {
+          tokens.push({ ...item.data, row: cR + 0.8, col: centerStartC + i * centerSpacing })
+        } else {
+          tokens.push({
+            id: `weapon-${item.data}`,
+            name: item.data,
+            character: item.data,
+            type: 'weapon',
+            isWeapon: true,
+            row: cR + 0.8,
+            col: centerStartC + i * centerSpacing
+          })
+        }
+      }
+
+      // Bystanders pushed to top edge of room
+      const bystanders = [...bystanderPlayers.map(p => ({ kind: 'player', data: p })),
+                          ...bystanderWeapons.map(w => ({ kind: 'weapon', data: w }))]
+      const nBy = bystanders.length
+      if (nBy > 0) {
+        const byRow = info.minRow + 1.0
+        const bySpacing = Math.min(1.6, Math.max(1.0, (roomW - 2) / Math.max(1, nBy - 1)))
+        const byStartC = cC - (bySpacing * (nBy - 1)) / 2
+        for (let i = 0; i < nBy; i++) {
+          const item = bystanders[i]
+          if (item.kind === 'player') {
+            tokens.push({ ...item.data, row: byRow, col: byStartC + i * bySpacing })
+          } else {
+            tokens.push({
+              id: `weapon-${item.data}`,
+              name: item.data,
+              character: item.data,
+              type: 'weapon',
+              isWeapon: true,
+              row: byRow,
+              col: byStartC + i * bySpacing
+            })
+          }
+        }
+      }
+    } else {
+      // No active suggestion: players in center row, weapons below
+      const n = rPlayers.length
+      const spacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, n - 1)))
+      const startC = cC - (spacing * (n - 1)) / 2
+      for (let i = 0; i < n; i++) {
+        tokens.push({ ...rPlayers[i], row: cR + 0.8, col: startC + i * spacing })
+      }
+
+      // Weapons on a row below players
+      const nW = rWeapons.length
+      if (nW > 0) {
+        const wRow = cR + (n > 0 ? 2.0 : 0.8)
+        const wSpacing = Math.min(1.5, Math.max(0.9, (roomW - 2) / Math.max(1, nW - 1)))
+        const wStartC = cC - (wSpacing * (nW - 1)) / 2
+        for (let i = 0; i < nW; i++) {
+          tokens.push({
+            id: `weapon-${rWeapons[i]}`,
+            name: rWeapons[i],
+            character: rWeapons[i],
+            type: 'weapon',
+            isWeapon: true,
+            row: wRow,
+            col: wStartC + i * wSpacing
+          })
+        }
+      }
     }
   }
 
@@ -386,6 +523,17 @@ function overlayPos(row, col) {
 }
 
 function tokenStyle(token) {
+  if (token.isWeapon) {
+    const colors = WEAPON_COLORS[token.name] ?? { bg: '#666', text: '#fff' }
+    return {
+      left: `${(token.col / 24) * 100}%`,
+      top: `${(token.row / 25) * 100}%`,
+      transform: 'translate(-50%, -50%)',
+      backgroundColor: colors.bg,
+      color: colors.text,
+      '--token-border': colors.bg
+    }
+  }
   const { bg, text } = characterColors(token.character)
   const style = {
     left: `${(token.col / 24) * 100}%`,
@@ -712,6 +860,24 @@ function tokenStyle(token) {
 
 .player-token.wanderer-token.has-image {
   z-index: 9;
+}
+
+.player-token.weapon-token {
+  width: clamp(16px, 2.8vw, 28px);
+  height: clamp(16px, 2.8vw, 28px);
+  border-radius: 4px;
+  z-index: 8;
+  font-size: clamp(7px, 1.1vw, 10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 0 1.5px rgba(0, 0, 0, 0.4);
+}
+
+.player-token.weapon-token.has-image {
+  border-radius: 4px;
+  border-width: 2px;
+}
+
+.player-token.weapon-token .token-portrait {
+  border-radius: 3px;
 }
 
 .player-token.is-turn {

@@ -61,6 +61,7 @@ class GameState(BaseModel):
     last_roll: Optional[list[int]] = None
     pending_show_card: Optional[PendingShowCard] = None
     was_moved_by_suggestion: dict[str, bool] = Field(default_factory=dict)
+    weapon_positions: dict[str, str] = Field(default_factory=dict)
     agent_trace_enabled: bool = False
 
 
@@ -256,6 +257,7 @@ class SuggestionMadeMessage(WSMessage):
     pending_show_by: Optional[str] = None
     moved_suspect_player: Optional[str] = None
     player_positions: Optional[dict[str, list[int]]] = None
+    weapon_positions: Optional[dict[str, str]] = None
     current_room: Optional[dict[str, str]] = None
     players_without_match: list[str] = Field(default_factory=list)
 
