@@ -220,7 +220,7 @@ defineExpose({ markCard, getCardsShownBy });
 
 h3 {
   font-family: "Playfair Display", Georgia, serif;
-  color: #d4a849;
+  color: var(--accent);
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
   font-weight: 700;
@@ -228,13 +228,13 @@ h3 {
 }
 
 h4 {
-  color: #8a7e6b;
+  color: var(--text-secondary);
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 0.2rem;
   padding-bottom: 0.15rem;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.1);
+  border-bottom: 1px solid var(--border-subtle);
   font-weight: 600;
 }
 
@@ -250,11 +250,11 @@ h4 {
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.15s;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .note-row:hover {
-  background: rgba(212, 168, 73, 0.04);
+  background: var(--accent-bg);
 }
 
 .note-card {
@@ -273,12 +273,12 @@ h4 {
 
 /* State colors */
 .note-have {
-  color: #4caf50;
+  color: var(--success);
   opacity: 0.7;
 }
 
 .note-have .note-mark {
-  color: #4caf50;
+  color: var(--success);
 }
 
 .note-seen {
@@ -295,7 +295,7 @@ h4 {
 }
 
 .note-no .note-mark {
-  color: #c45050;
+  color: var(--error-text);
 }
 
 .note-maybe {
@@ -307,7 +307,7 @@ h4 {
 }
 
 .note-maybe .note-mark {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.7rem;
 }
 
@@ -383,9 +383,9 @@ h4 {
   right: 100%;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(30, 24, 16, 0.95);
-  border: 1px solid rgba(212, 168, 73, 0.3);
-  color: #d4a849;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-hover);
+  color: var(--accent);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-size: 0.7rem;

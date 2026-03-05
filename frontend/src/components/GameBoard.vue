@@ -918,12 +918,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.1);
+  background: var(--panel-gradient);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
   gap: 1rem;
@@ -939,15 +935,15 @@ watch(
   font-family: "Playfair Display", Georgia, serif;
   font-size: 1.5rem;
   font-weight: 900;
-  color: #d4a849;
+  color: var(--accent);
   letter-spacing: 0.15em;
   margin: 0;
-  text-shadow: 0 0 20px rgba(212, 168, 73, 0.15);
+  text-shadow: 0 0 20px var(--accent-glow);
 }
 
 .game-id-label {
   font-size: 0.7rem;
-  color: #5a5040;
+  color: var(--text-muted);
   letter-spacing: 0.08em;
 }
 
@@ -966,18 +962,18 @@ watch(
 }
 
 .status-banner.my-turn {
-  background: rgba(212, 168, 73, 0.15);
-  color: #d4a849;
-  border: 1px solid rgba(212, 168, 73, 0.25);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--border-hover);
 }
 
 .status-banner.waiting {
-  color: #6a6050;
+  color: var(--text-secondary);
 }
 
 .status-banner.winner {
   background: rgba(46, 160, 80, 0.15);
-  color: #4caf50;
+  color: var(--success);
   border: 1px solid rgba(46, 160, 80, 0.25);
 }
 
@@ -994,8 +990,8 @@ watch(
 }
 
 .observer-badge {
-  background: rgba(212, 168, 73, 0.12);
-  color: #d4a849;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 0.65rem;
   padding: 0.2rem 0.6rem;
   border-radius: 3px;
@@ -1011,8 +1007,8 @@ watch(
 }
 
 .dice {
-  background: #d4a849;
-  color: #1a1008;
+  background: var(--accent);
+  color: var(--bg-body);
   width: 28px;
   height: 28px;
   border-radius: 4px;
@@ -1042,12 +1038,8 @@ watch(
 
 /* Player legend */
 .player-legend {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.9),
-    rgba(18, 14, 10, 0.95)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--panel-gradient);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   display: flex;
@@ -1119,29 +1111,29 @@ watch(
 
 .legend-name {
   font-weight: 600;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .legend-character {
-  color: #5a5040;
+  color: var(--text-muted);
   font-style: italic;
 }
 
 .legend-room {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.7rem;
 }
 
 .legend-status {
-  color: #c45050;
+  color: var(--error-text);
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .legend-turn {
-  background: #d4a849;
-  color: #1a1008;
+  background: var(--accent);
+  color: var(--bg-body);
   font-size: 0.6rem;
   padding: 0.05rem 0.3rem;
   border-radius: 3px;
@@ -1170,8 +1162,8 @@ watch(
   top: 100%;
   left: 0;
   z-index: 20;
-  background: rgba(30, 24, 16, 0.97);
-  border: 1px solid rgba(212, 168, 73, 0.3);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-hover);
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   min-width: 140px;
@@ -1179,7 +1171,7 @@ watch(
 }
 
 .shown-cards-title {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1188,7 +1180,7 @@ watch(
 }
 
 .shown-cards-item {
-  color: #e8dcc8;
+  color: var(--text-primary);
   font-size: 0.75rem;
   padding: 0.1rem 0;
 }
@@ -1203,19 +1195,15 @@ watch(
 }
 
 .sidebar-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--panel-gradient);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0.8rem;
 }
 
 .sidebar-panel h2 {
   font-family: "Playfair Display", Georgia, serif;
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.9rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -1238,7 +1226,7 @@ watch(
 .collapse-indicator {
   font-size: 0.6rem;
   transition: transform 0.2s ease;
-  color: #5a5040;
+  color: var(--text-muted);
 }
 
 .collapse-indicator.collapsed {
@@ -1318,7 +1306,7 @@ watch(
 }
 
 .no-cards {
-  color: #4a4030;
+  color: var(--text-faint);
   font-style: italic;
   font-size: 0.85rem;
 }
@@ -1338,7 +1326,7 @@ watch(
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .shown-card-icon {
@@ -1392,7 +1380,7 @@ watch(
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   line-height: 1.4;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 /* Card type color highlights */
@@ -1459,20 +1447,20 @@ watch(
 
 .action-group h3 {
   font-size: 0.8rem;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   margin-bottom: 0.3rem;
   font-weight: 600;
 }
 
 .action-hint {
   font-size: 0.75rem;
-  color: #5a5040;
+  color: var(--text-muted);
   margin-bottom: 0.3rem;
 }
 
 .reachable-count {
   display: inline-block;
-  color: #4caf50;
+  color: var(--success);
   font-weight: bold;
   margin-left: 0.3rem;
 }
@@ -1483,9 +1471,9 @@ watch(
   margin-bottom: 0.35rem;
   padding: 0.45rem 0.6rem;
   border-radius: 4px;
-  border: 1px solid rgba(212, 168, 73, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-family: "Crimson Text", Georgia, serif;
   font-size: 0.85rem;
   appearance: none;
@@ -1494,9 +1482,9 @@ watch(
 }
 
 .action-select:focus {
-  border-color: rgba(212, 168, 73, 0.3);
+  border-color: var(--border-focus);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .action-btn {
@@ -1529,8 +1517,8 @@ watch(
 }
 
 .roll-btn {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+  color: var(--bg-body);
 }
 
 .roll-btn:hover {
@@ -1539,8 +1527,8 @@ watch(
 }
 
 .move-btn {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+  color: var(--bg-body);
 }
 
 .move-btn:not(:disabled):hover {
@@ -1629,20 +1617,20 @@ watch(
 
 .timer-bar-fill {
   height: 100%;
-  background: #d4a849;
+  background: var(--accent);
   border-radius: 2px;
   transition: width 1s linear;
 }
 
 .timer-text {
   font-size: 0.75rem;
-  color: #d4a849;
+  color: var(--accent);
   font-weight: 600;
 }
 
 .header-timer {
   font-size: 0.85rem;
-  color: #d4a849;
+  color: var(--accent);
 }
 
 /* Waiting message */
@@ -1652,7 +1640,7 @@ watch(
 
 .waiting-message {
   padding: 0.5rem;
-  color: #6a6050;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   font-style: italic;
 }
@@ -1671,12 +1659,8 @@ watch(
 
 .chat-panel-wrapper {
   flex: 1;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--panel-gradient);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0.8rem;
 }
@@ -1867,7 +1851,7 @@ watch(
 
 .card-preview-name {
   font-family: "Playfair Display", Georgia, serif;
-  color: #d4a849;
+  color: var(--accent);
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.04em;

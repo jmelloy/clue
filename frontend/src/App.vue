@@ -1,5 +1,6 @@
 <template>
   <div id="clue-app">
+    <ThemeSwitcher class="global-theme-switcher" />
     <Lobby
       v-if="!gameId"
       :url-game-id="urlGameId"
@@ -80,6 +81,11 @@ import WaitingRoom from "./components/WaitingRoom.vue";
 import GameBoard from "./components/GameBoard.vue";
 import PokerWaitingRoom from "./components/PokerWaitingRoom.vue";
 import PokerTable from "./components/PokerTable.vue";
+import ThemeSwitcher from "./components/ThemeSwitcher.vue";
+import { useTheme } from "./composables/useTheme.js";
+
+// Initialize theme on app load
+useTheme();
 
 const gameId = ref(null);
 const playerId = ref(null);
@@ -733,6 +739,191 @@ setInterval(() => {
 </script>
 
 <style>
+/* ═══ Theme CSS Variables ═══ */
+
+/* Dark theme (default) */
+:root,
+[data-theme="dark"] {
+  --bg-body: #1c1812;
+  --bg-panel: rgba(30, 24, 16, 0.95);
+  --bg-panel-solid: #1e1810;
+  --bg-panel-hover: rgba(40, 32, 20, 0.95);
+  --bg-input: rgba(255, 255, 255, 0.03);
+  --bg-input-focus: rgba(255, 255, 255, 0.05);
+
+  --text-primary: #e8dcc8;
+  --text-secondary: #8a7e6b;
+  --text-muted: #5a5040;
+  --text-faint: #3a3528;
+
+  --accent: #d4a849;
+  --accent-dim: #b8912e;
+  --accent-bg: rgba(212, 168, 73, 0.15);
+  --accent-glow: rgba(212, 168, 73, 0.2);
+  --accent-border: rgba(212, 168, 73, 0.12);
+
+  --border-subtle: rgba(212, 168, 73, 0.12);
+  --border-hover: rgba(212, 168, 73, 0.25);
+  --border-focus: rgba(212, 168, 73, 0.4);
+
+  --error-text: #c45050;
+  --error-bg: rgba(139, 42, 42, 0.1);
+  --error-border: rgba(139, 42, 42, 0.2);
+
+  --success: #4caf50;
+
+  /* Board */
+  --board-bg: #1a1510;
+  --board-border: #8b1a1a;
+  --board-grid-line: #15110c;
+  --hallway-color: #c8b88a;
+  --hallway-border: rgba(160, 140, 100, 0.4);
+  --room-bg: #1a1610;
+  --room-filter: saturate(0.35) brightness(0.9);
+  --wall-bg: #2a2a1e;
+  --center-bg: #3a2e1e;
+  --center-border: rgba(80, 65, 40, 0.3);
+  --door-color: #e8be4a;
+  --room-label-color: #f0e0b0;
+  --room-label-bg: rgba(0, 0, 0, 0.45);
+  --secret-passage-color: #c8a060;
+
+  /* Panel chrome */
+  --panel-gradient: linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
+
+  /* Fog/atmosphere */
+  --fog-color-1: #d4a849;
+  --fog-color-2: #8b2a2a;
+  --vignette-color: #1c1812;
+  --particle-color: rgba(212, 168, 73, 0.25);
+
+  /* Chat */
+  --chat-border: rgba(212, 168, 73, 0.04);
+  --chat-system: #6a6050;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-body: #f5f0e8;
+  --bg-panel: rgba(255, 255, 255, 0.92);
+  --bg-panel-solid: #faf8f4;
+  --bg-panel-hover: rgba(255, 255, 255, 0.97);
+  --bg-input: rgba(0, 0, 0, 0.04);
+  --bg-input-focus: rgba(0, 0, 0, 0.06);
+
+  --text-primary: #2c2418;
+  --text-secondary: #6b5f4e;
+  --text-muted: #9a8e7c;
+  --text-faint: #c4b8a4;
+
+  --accent: #b08830;
+  --accent-dim: #977425;
+  --accent-bg: rgba(176, 136, 48, 0.12);
+  --accent-glow: rgba(176, 136, 48, 0.15);
+  --accent-border: rgba(176, 136, 48, 0.2);
+
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(176, 136, 48, 0.35);
+  --border-focus: rgba(176, 136, 48, 0.5);
+
+  --error-text: #b33030;
+  --error-bg: rgba(179, 48, 48, 0.08);
+  --error-border: rgba(179, 48, 48, 0.15);
+
+  --success: #2e8b40;
+
+  /* Board */
+  --board-bg: #e8e0d0;
+  --board-border: #a03030;
+  --board-grid-line: #d8d0c0;
+  --hallway-color: #d8c890;
+  --hallway-border: rgba(160, 140, 100, 0.3);
+  --room-bg: #e0d8c8;
+  --room-filter: saturate(0.55) brightness(1.1);
+  --wall-bg: #e0d8ca;
+  --center-bg: #d8ceb8;
+  --center-border: rgba(120, 100, 70, 0.2);
+  --door-color: #c09820;
+  --room-label-color: #4a3e28;
+  --room-label-bg: rgba(255, 255, 255, 0.7);
+  --secret-passage-color: #8a6a30;
+
+  /* Panel chrome */
+  --panel-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 248, 244, 0.97) 100%);
+
+  /* Fog/atmosphere */
+  --fog-color-1: #d4a849;
+  --fog-color-2: #c08060;
+  --vignette-color: #f5f0e8;
+  --particle-color: rgba(176, 136, 48, 0.15);
+
+  /* Chat */
+  --chat-border: rgba(0, 0, 0, 0.06);
+  --chat-system: #8a7e6b;
+}
+
+/* Vintage theme */
+[data-theme="vintage"] {
+  --bg-body: #2a2010;
+  --bg-panel: rgba(42, 32, 16, 0.95);
+  --bg-panel-solid: #2a2010;
+  --bg-panel-hover: rgba(50, 38, 20, 0.95);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --bg-input-focus: rgba(255, 255, 255, 0.07);
+
+  --text-primary: #e8d8b0;
+  --text-secondary: #a09070;
+  --text-muted: #70603a;
+  --text-faint: #4a3e28;
+
+  --accent: #c8952a;
+  --accent-dim: #a07820;
+  --accent-bg: rgba(200, 149, 42, 0.15);
+  --accent-glow: rgba(200, 149, 42, 0.25);
+  --accent-border: rgba(200, 149, 42, 0.15);
+
+  --border-subtle: rgba(200, 149, 42, 0.12);
+  --border-hover: rgba(200, 149, 42, 0.3);
+  --border-focus: rgba(200, 149, 42, 0.45);
+
+  --error-text: #c45050;
+  --error-bg: rgba(139, 42, 42, 0.12);
+  --error-border: rgba(139, 42, 42, 0.25);
+
+  --success: #4caf50;
+
+  /* Board — vintage uses board.jpg as background */
+  --board-bg: #1a1408;
+  --board-border: #6b1515;
+  --board-grid-line: transparent;
+  --hallway-color: transparent;
+  --hallway-border: rgba(160, 140, 100, 0.15);
+  --room-bg: transparent;
+  --room-filter: saturate(0.3) brightness(0.85) sepia(0.3);
+  --wall-bg: transparent;
+  --center-bg: transparent;
+  --center-border: transparent;
+  --door-color: #e8be4a;
+  --room-label-color: #f0e0b0;
+  --room-label-bg: rgba(0, 0, 0, 0.55);
+  --secret-passage-color: #c8a060;
+
+  /* Panel chrome */
+  --panel-gradient: linear-gradient(135deg, rgba(42, 32, 16, 0.96) 0%, rgba(28, 20, 10, 0.98) 100%);
+
+  /* Fog/atmosphere */
+  --fog-color-1: #c89530;
+  --fog-color-2: #6b2020;
+  --vignette-color: #2a2010;
+  --particle-color: rgba(200, 149, 42, 0.2);
+
+  /* Chat */
+  --chat-border: rgba(200, 149, 42, 0.05);
+  --chat-system: #7a6a4a;
+}
+
+/* ═══ Base Styles ═══ */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -740,13 +931,21 @@ setInterval(() => {
 }
 body {
   font-family: "Georgia", serif;
-  background: #1c1812;
-  color: #e8dcc8;
+  background: var(--bg-body);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 #clue-app {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0.75rem;
+  position: relative;
+}
+.global-theme-switcher {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.75rem;
+  z-index: 1000;
 }
 </style>

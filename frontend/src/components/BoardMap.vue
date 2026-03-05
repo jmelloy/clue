@@ -1,6 +1,6 @@
 <template>
   <div class="board-map">
-    <div class="board-container">
+    <div class="board-container" :class="{ 'vintage-board': theme === 'vintage' }">
       <!-- Background grid of 25x24 cells -->
       <div class="board-grid">
         <div
@@ -71,6 +71,9 @@ import {
   abbr,
   characterColors,
 } from "../constants/clue.js";
+import { useTheme } from "../composables/useTheme.js";
+
+const { theme } = useTheme();
 
 // ── Board layout data (matches backend board.py) ──
 
@@ -388,6 +391,8 @@ function cellClasses(cell) {
 }
 
 function cellStyle(cell) {
+  // In vintage theme, the board.jpg background covers everything
+  if (theme.value === "vintage") return {};
   if (cell.room) {
     const img = CARD_IMAGES[cell.room];
     const info = ROOM_INFO[cell.room];
@@ -402,10 +407,10 @@ function cellStyle(cell) {
         backgroundImage: `url(${img})`,
         backgroundSize: `${roomCols * 100}% ${roomRows * 100}%`,
         backgroundPosition: `${posX}% ${posY}%`,
-        backgroundColor: '#1a1610',
+        backgroundColor: 'var(--room-bg)',
       };
     }
-    return { backgroundColor: '#1a1610' };
+    return { backgroundColor: 'var(--room-bg)' };
   }
   return {};
 }
@@ -457,11 +462,17 @@ function tokenStyle(token) {
   max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #1a1510;
+  background: var(--board-bg);
   border-radius: 6px;
   overflow: hidden;
-  border: 4px solid #8b1a1a;
+  border: 4px solid var(--board-border);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
+}
+
+/* Vintage theme: board.jpg as background */
+.board-container.vintage-board {
+  background: url("/images/clue/board.jpg") center/100% 100% no-repeat;
+  background-color: var(--board-bg);
 }
 
 /* ── Grid ── */
@@ -472,9 +483,9 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   gap: 0;
-  background: #1a1510;
-  background-image: linear-gradient(to right, #15110c 1px, transparent 1px),
-    linear-gradient(to bottom, #15110c 1px, transparent 1px);
+  background: var(--board-bg);
+  background-image: linear-gradient(to right, var(--board-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--board-grid-line) 1px, transparent 1px);
   background-size: calc(100% / 24) 100%, 100% calc(100% / 25);
 }
 
@@ -486,7 +497,7 @@ function tokenStyle(token) {
 
 .cell-room {
   border: 0.5px solid rgba(255, 255, 255, 0.03);
-  filter: saturate(0.35) brightness(0.9);
+  filter: var(--room-filter);
 }
 
 .cell-door {
@@ -499,7 +510,7 @@ function tokenStyle(token) {
 .cell-door[data-door-dir]::after {
   content: "";
   position: absolute;
-  background: #e8be4a;
+  background: var(--door-color);
   border-radius: 1px;
   z-index: 3;
   box-shadow: 0 0 5px rgba(232, 190, 74, 0.9), 0 0 2px rgba(255, 255, 255, 0.5);
@@ -534,13 +545,13 @@ function tokenStyle(token) {
 }
 
 .cell-hallway {
-  background: #c8b88a;
-  border: 0.5px solid rgba(160, 140, 100, 0.4);
+  background: var(--hallway-color);
+  border: 0.5px solid var(--hallway-border);
 }
 
 .cell-start {
-  background: #c8b88a;
-  border: 0.5px solid rgba(160, 140, 100, 0.4);
+  background: var(--hallway-color);
+  border: 0.5px solid var(--hallway-border);
   position: relative;
 }
 
@@ -553,13 +564,13 @@ function tokenStyle(token) {
 }
 
 .cell-wall {
-  background: #2a2a1e;
+  background: var(--wall-bg);
 }
 
 /* Center dead space (staircase area) */
 .cell-wall.cell-center {
-  background: #3a2e1e;
-  border: 0.5px solid rgba(80, 65, 40, 0.3);
+  background: var(--center-bg);
+  border: 0.5px solid var(--center-border);
 }
 
 /* ── Interactive states ── */
@@ -648,7 +659,7 @@ function tokenStyle(token) {
 /* ── Room labels ── */
 .room-label {
   position: absolute;
-  color: #f0e0b0;
+  color: var(--room-label-color);
   font-family: "Crimson Text", Georgia, serif;
   font-size: clamp(8px, 1.4vw, 13px);
   font-weight: 600;
@@ -656,7 +667,7 @@ function tokenStyle(token) {
   text-align: center;
   text-shadow: 0 0 6px rgba(0, 0, 0, 1), 0 0 12px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 1);
   letter-spacing: 0.05em;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--room-label-bg);
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -664,7 +675,7 @@ function tokenStyle(token) {
 /* ── Center label ── */
 .center-label {
   position: absolute;
-  color: #d4a849;
+  color: var(--accent);
   font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(14px, 2.8vw, 26px);
   font-weight: 900;
@@ -675,7 +686,7 @@ function tokenStyle(token) {
 /* ── Secret passage ── */
 .secret-passage {
   position: absolute;
-  color: #c8a060;
+  color: var(--secret-passage-color);
   font-family: "Crimson Text", Georgia, serif;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: 600;
@@ -792,8 +803,8 @@ function tokenStyle(token) {
   bottom: 110%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
-  color: #f0e0b0;
+  background: var(--bg-panel-solid, rgba(0, 0, 0, 0.85));
+  color: var(--room-label-color, #f0e0b0);
   font-family: "Crimson Text", Georgia, serif;
   font-size: 11px;
   font-weight: 600;

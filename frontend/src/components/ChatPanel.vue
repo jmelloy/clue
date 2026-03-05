@@ -262,7 +262,7 @@ watch(
   display: flex;
   gap: 0;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.15);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .tab-btn {
@@ -271,7 +271,7 @@ watch(
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #6a6050;
+  color: var(--text-secondary);
   font-family: "Playfair Display", Georgia, serif;
   font-size: 0.85rem;
   font-weight: 700;
@@ -281,12 +281,12 @@ watch(
 }
 
 .tab-btn:hover {
-  color: #d4a849;
+  color: var(--accent);
 }
 
 .tab-btn.active {
-  color: #d4a849;
-  border-bottom-color: #d4a849;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .log-filters {
@@ -326,7 +326,7 @@ watch(
 
 .chat-message {
   padding: 0.2rem 0;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.04);
+  border-bottom: 1px solid var(--chat-border);
   font-size: 0.8rem;
   display: flex;
   justify-content: space-between;
@@ -335,7 +335,7 @@ watch(
 }
 
 .system-message {
-  color: #6a6050;
+  color: var(--chat-system);
   font-style: italic;
 }
 
@@ -343,11 +343,11 @@ watch(
   flex: 1;
   word-break: break-word;
   line-height: 1.3;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .system-message .chat-text {
-  color: #6a6050;
+  color: var(--chat-system);
 }
 
 .chat-tag {
@@ -377,14 +377,14 @@ watch(
 }
 
 .chat-time {
-  color: #3a3528;
+  color: var(--text-faint);
   font-size: 0.7rem;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .chat-empty {
-  color: #3a3528;
+  color: var(--text-faint);
   font-style: italic;
   font-size: 0.8rem;
   padding: 0.5rem 0;
@@ -399,9 +399,9 @@ watch(
   flex: 1;
   padding: 0.45rem 0.7rem;
   border-radius: 4px;
-  border: 1px solid rgba(212, 168, 73, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-family: "Crimson Text", Georgia, serif;
   font-size: 0.85rem;
   transition: border-color 0.2s;
@@ -409,18 +409,18 @@ watch(
 }
 
 .chat-input input::placeholder {
-  color: #3a3528;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .chat-input input:focus {
-  border-color: rgba(212, 168, 73, 0.3);
-  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .chat-input button {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+  color: var(--bg-body);
   border: none;
   padding: 0.45rem 0.8rem;
   border-radius: 4px;
