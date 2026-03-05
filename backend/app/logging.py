@@ -157,8 +157,8 @@ def get_logging_config(
 
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        trace_level: Deprecated, ignored. Agent tracing now uses AGENT_TRACE env var.
         log_format: Format type - "colored" (default), "json", or "plain"
-        log_sql: Whether to enable SQL query logging
 
     Returns:
         Dictionary suitable for logging.config.dictConfig()
@@ -217,11 +217,6 @@ def get_logging_config(
             "app": {
                 "handlers": ["default"],
                 "level": log_level,
-                "propagate": False,
-            },
-            "app.agents.trace": {
-                "handlers": ["default"],
-                "level": trace_level if trace_level else "WARNING",
                 "propagate": False,
             },
         },

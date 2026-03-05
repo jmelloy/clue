@@ -144,6 +144,7 @@ The `k8s/` directory contains:
 | `backend.yaml` | FastAPI backend Deployment and ClusterIP Service |
 | `ingress.yaml` | Ingress routing `/games`, `/holdem`, `/ws` to backend; `/` to frontend |
 | `clusterissuer.yaml` | cert-manager `ClusterIssuer` (Let's Encrypt) for TLS |
+| `ingress.yaml`       | Ingress for `clue.melloy.life`, routing `/games` and `/ws` to backend, `/` to frontend |
 
 Update the ACME email in `k8s/clusterissuer.yaml` before first deploy when using cert-manager.
 

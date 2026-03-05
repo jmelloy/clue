@@ -168,9 +168,10 @@ python scripts/live_ws_test.py --base-url http://localhost:8000 --agents 3
 
 ## Architecture & Key Patterns
 
-### Game Registry (backend/app/games/__init__.py)
+### Game Registry (backend/app/games/**init**.py)
 
 Games are registered by slug in `GAME_TYPES`:
+
 - `"clue"` → `app.games.clue` (default)
 - `"holdem"` → `app.games.holdem`
 
@@ -181,6 +182,7 @@ Each game package exports its own game class, models, and agents.
 All state lives in Redis with 24-hour TTL.
 
 **Clue keys:**
+
 - `game:{id}` — primary game state (JSON)
 - `game:{id}:solution` — the hidden solution cards (JSON)
 - `game:{id}:cards:{player_id}` — a player's hand (JSON)
@@ -192,6 +194,7 @@ All state lives in Redis with 24-hour TTL.
 - `game:{id}:agent_debug` — agent debug state (JSON)
 
 **Hold'em keys:**
+
 - `holdem:{id}` — primary game state (JSON)
 - `holdem:{id}:chat` — chat messages (Redis list)
 
@@ -228,6 +231,7 @@ Three agent types, all inheriting from `BaseAgent`:
 - **`LLMAgent`** — Calls an OpenAI-compatible API with character-specific system prompts. Falls back to `RandomAgent` on failure. Supports persistent memory across turns.
 
 All agents share:
+
 - `seen_cards` tracking (own hand + shown cards)
 - Card inference logic (`observe_suggestion`, `observe_card_shown_to_other`, `_try_infer_shown_card`)
 - Cascading deduction engine
@@ -253,6 +257,7 @@ Hold'em agents run inline as a background asyncio task (no external agent runner
 ### Clue Agent Runner (backend/agent_runner.py)
 
 Runs as a separate process/container (when `AGENT_MODE=external`):
+
 - Polls Redis for `game:*:agent_config` keys to discover active games
 - Creates agent instances and drives them through the game loop
 - Consumes observation events from `game:{id}:agent_events` (Redis list)
@@ -262,6 +267,7 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 ### Pydantic Models
 
 **Clue** (`backend/app/games/clue/models.py`):
+
 - `GameState` — full game snapshot (status, players, positions, turn state)
 - `PlayerState` — extends GameState with player-specific info (cards, available_actions)
 - `Player` — id, name, type, character, active
@@ -270,6 +276,7 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 - `AgentDebugMessage` — WebSocket message for agent debug panel
 
 **Hold'em** (`backend/app/games/holdem/models.py`):
+
 - `HoldemGameState` — game snapshot (players, community cards, pot, betting round)
 - `HoldemPlayerState` — player-specific view with hole cards
 - `HoldemPlayer` — id, name, chips, bet, folded, all_in
@@ -279,6 +286,7 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 ### WebSocket Communication (backend/app/main.py, ws_manager.py)
 
 **Clue message types** broadcast to clients:
+
 - `game_state`, `player_joined`, `game_started`, `player_moved`
 - `suggestion_made`, `card_shown`, `card_shown_public`
 - `accusation_made`, `game_over`
@@ -290,12 +298,14 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 - `ping`/`pong` — keep-alive
 
 **Hold'em WebSocket** (`/ws/holdem/{game_id}/{player_id}`):
+
 - `game_state` — full state broadcast after each action
 - `chat_message` — table chat
 
 ### API Routes
 
 **Clue** — `/games/{game_id}/...`:
+
 - `GET /games/{game_id}` — game state
 - `GET /games/{game_id}/player/{player_id}` — player-specific state
 - `POST /games/{game_id}/join`, `/start`, `/action`, `/chat`
@@ -304,6 +314,7 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 - `GET/POST /games/{game_id}/agent_debug` — agent debug state
 
 **Hold'em** — `/holdem/games/{game_id}/...`:
+
 - `POST /holdem/games` — create game
 - `GET /holdem/games/{game_id}` — game state
 - `GET /holdem/games/{game_id}/player/{player_id}` — player state
@@ -321,6 +332,7 @@ Runs as a separate process/container (when `AGENT_MODE=external`):
 - Observer mode for spectating games
 
 Key components:
+
 - **BoardMap.vue** — Interactive CSS Grid board (24 cols x 25 rows) with player tokens, reachability highlighting, room/position selection
 - **DetectiveNotes.vue** — Card tracking notepad with auto-marking of shown cards, state cycling (unknown/eliminated/maybe)
 - **GameBoard.vue** — Main gameplay UI: action panel, player legend, auto-end timer display, suggestion/accusation forms
@@ -329,6 +341,7 @@ Key components:
 ### Logging (backend/app/logging.py)
 
 Structured logging with multiple formatters:
+
 - `ColoredFormatter` — ANSI colors for terminal output
 - `JSONFormatter` — JSON lines for production
 - `AccessFormatter` — HTTP access logs with status code coloring
@@ -336,40 +349,46 @@ Structured logging with multiple formatters:
 
 ## Environment Variables
 
-| Variable | Default | Used By |
-|---|---|---|
-| `REDIS_URL` | `redis://localhost:6379` | Backend, Agent Runner |
-| `CORS_ORIGINS` | `*` | Backend |
-| `AGENT_MODE` | `inline` | Backend (`inline` or `external`) |
-| `BACKEND_URL` | `http://localhost:8000` | Frontend (vite proxy), Agent Runner |
-| `DEBUG` | `false` | Backend (enables --reload) |
-| `LOG_LEVEL` | `INFO` | Backend, Agent Runner |
-| `LOG_FORMAT` | `colored` | Backend, Agent Runner (`colored`, `json`, `plain`) |
-| `LLM_API_KEY` | _(empty)_ | LLM Agent (OpenAI-compatible API key) |
-| `LLM_API_URL` | `https://api.openai.com/v1/chat/completions` | LLM Agent |
-| `LLM_MODEL` | `gpt-5-mini` | LLM Agent |
-| `LLM_TRACE_LOG_LEVEL` | _(empty)_ | Backend (trace-level logging for LLM calls) |
-| `AGENT_POLL_INTERVAL` | `2` | Agent Runner (seconds between Redis polls) |
+| Variable              | Default                                      | Used By                                            |
+| --------------------- | -------------------------------------------- | -------------------------------------------------- |
+| `REDIS_URL`           | `redis://localhost:6379`                     | Backend, Agent Runner                              |
+| `CORS_ORIGINS`        | `*`                                          | Backend                                            |
+| `AGENT_MODE`          | `inline`                                     | Backend (`inline` or `external`)                   |
+| `BACKEND_URL`         | `http://localhost:8000`                      | Frontend (vite proxy), Agent Runner                |
+| `DEBUG`               | `false`                                      | Backend (enables --reload)                         |
+| `LOG_LEVEL`           | `INFO`                                       | Backend, Agent Runner                              |
+| `LOG_FORMAT`          | `colored`                                    | Backend, Agent Runner (`colored`, `json`, `plain`) |
+| `LLM_API_KEY`         | _(empty)_                                    | LLM Agent (OpenAI-compatible API key)              |
+| `LLM_API_URL`         | `https://api.openai.com/v1/chat/completions` | LLM Agent                                          |
+| `LLM_MODEL`           | `gpt-5-mini`                                 | LLM Agent                                          |
+| `LLM_TRACE_LOG_LEVEL` | _(empty)_                                    | Backend (trace-level logging for LLM calls)        |
+| `AGENT_POLL_INTERVAL` | `2`                                          | Agent Runner (seconds between Redis polls)         |
 
 ## CI/CD
 
 ### CI (`.github/workflows/ci.yml`)
+
 Runs on pushes to `main` and all PRs:
+
 - **Frontend job**: `npm install` + `npm run build` (Node 20)
 - **Backend job**: `pip install .` + `pytest` (Python 3.12)
 
 ### CD (`.github/workflows/deploy.yml`)
+
 Runs on pushes to `main`:
+
 1. **test** — Calls CI workflow
 2. **build-backend** — Docker buildx, pushes to ghcr.io with SHA + branch + latest tags
 3. **deploy** — K8s rollout: namespace, secrets, Redis, backend, agent-runner, ingress
 
 ### Dependabot
+
 Automated dependency updates for npm (frontend), pip (backend), and GitHub Actions.
 
 ## Coding Conventions
 
 ### Python (backend)
+
 - Async/await everywhere (FastAPI + asyncio)
 - Pydantic models for request body validation
 - Business logic errors as `ValueError` -> `HTTPException(400)` in route handlers
@@ -378,11 +397,13 @@ Automated dependency updates for npm (frontend), pip (backend), and GitHub Actio
 - Dependencies managed via `pyproject.toml` + `uv.lock`
 
 ### JavaScript/Vue (frontend)
+
 - Vue 3 Composition API with `<script setup>` syntax
 - No state management library — reactive refs only
 - Vite dev proxy for `/games` (HTTP) and `/ws` (WebSocket) routes
 
 ### General
+
 - Keep dependencies minimal; no unnecessary abstractions
 - Each game type lives in its own package under `backend/app/games/`
 - Clue constants (SUSPECTS, WEAPONS, ROOMS) are in `games/clue/game.py`; Hold'em constants (RANKS, SUITS) are in `games/holdem/models.py`

@@ -7,19 +7,12 @@
         <span class="game-id-label">Case {{ gameId }}</span>
       </div>
       <div class="header-center">
-        <div
-          v-if="gameState?.status === 'finished'"
-          class="status-banner winner"
-        >
+        <div v-if="gameState?.status === 'finished'" class="status-banner winner">
           Case Closed! {{ winnerName }} wins!
           <div v-if="gameState.solution" class="solution-detail">
-            <span class="highlight-suspect">{{
-              gameState.solution.suspect
-            }}</span>
+            <span class="highlight-suspect">{{ gameState.solution.suspect }}</span>
             with the
-            <span class="highlight-weapon">{{
-              gameState.solution.weapon
-            }}</span>
+            <span class="highlight-weapon">{{ gameState.solution.weapon }}</span>
             in the
             <span class="highlight-room">{{ gameState.solution.room }}</span>
           </div>
@@ -29,24 +22,13 @@
         </div>
         <div v-else class="status-banner waiting">
           {{ currentPlayerName }}'s turn (Turn {{ gameState?.turn_number }})
-          <span v-if="countdown !== null && !timerForMe" class="header-timer"
-            >- auto-end in {{ countdown }}s</span
-          >
+          <span v-if="countdown !== null && !timerForMe" class="header-timer">- auto-end in {{ countdown }}s</span>
         </div>
       </div>
       <div class="header-right">
         <div v-if="isObserver" class="observer-badge">Observer</div>
-        <div
-          v-if="gameState?.last_roll"
-          class="dice-display"
-          title="Last dice roll"
-        >
-          <span
-            class="dice"
-            v-for="(die, idx) in gameState.last_roll"
-            :key="idx"
-            >{{ die }}</span
-          >
+        <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
+          <span class="dice" v-for="(die, idx) in gameState.last_roll" :key="idx">{{ die }}</span>
         </div>
       </div>
     </header>
@@ -55,111 +37,71 @@
     <div class="main-layout">
       <!-- Left: Board Map + Players -->
       <div class="board-column">
-        <BoardMap
-          :game-state="gameState"
-          :player-id="playerId"
-          :selected-room="targetRoom"
-          :selectable="canMove"
-          :reachable-rooms="reachableRooms"
-          :reachable-positions="reachablePositions"
-          @select-room="onRoomSelected"
-          @select-position="onPositionSelected"
-        />
+        <BoardMap :game-state="gameState" :player-id="playerId" :selected-room="targetRoom" :selectable="canMove"
+          :reachable-rooms="reachableRooms" :reachable-positions="reachablePositions" @select-room="onRoomSelected"
+          @select-position="onPositionSelected" />
 
         <!-- Player Legend -->
         <div class="player-legend">
-          <div
-            v-for="p in gameState?.players"
-            :key="p.id"
-            class="legend-item"
-            :class="{
-              active: gameState?.whose_turn === p.id,
-              eliminated: !p.active,
-              'is-me': p.id === playerId,
-              'wanderer-legend': p.type === 'wanderer',
-              'observer-clickable': isObserver,
-              'observer-selected':
-                isObserver && observerPlayerState?.playerId === p.id,
-            }"
-            @click="onLegendClick(p)"
-          >
-            <span
-              class="legend-token"
-              :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
-              :style="tokenStyle(p)"
-              >{{ abbr(p.character) }}</span
-            >
+          <div v-for="p in gameState?.players" :key="p.id" class="legend-item" :class="{
+            active: gameState?.whose_turn === p.id,
+            eliminated: !p.active,
+            'is-me': p.id === playerId,
+            'wanderer-legend': p.type === 'wanderer',
+            'observer-clickable': isObserver,
+            'observer-selected': isObserver && observerPlayerState?.playerId === p.id
+          }" @click="onLegendClick(p)">
+            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
+              :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
-            <span v-if="p.type !== 'wanderer'" class="legend-character">{{
-              p.character
-            }}</span>
+            <span v-if="p.type !== 'wanderer'" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
               gameState.current_room[p.id]
-            }}</span>
+              }}</span>
             <span v-if="!p.active" class="legend-status">eliminated</span>
-            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label"
-              >wandering</span
-            >
-            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn"
-              >turn</span
-            >
+            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
+            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
             <!-- Shown cards popup -->
-            <div
-              v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length"
-              class="shown-cards-popup"
-              @click.stop
-            >
+            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
               <div v-for="card in shownCardsForPlayer" :key="card" class="shown-cards-item">
                 {{ card }}
               </div>
             </div>
-            <div
-              v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length"
-              class="shown-cards-popup"
-              @click.stop
-            >
+            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
+              @click.stop>
               <div class="shown-cards-title">No cards shown to you</div>
             </div>
           </div>
         </div>
+
+        <!-- Chat -->
+        <section class="chat-panel-wrapper">
+          <ChatPanel
+            :messages="chatMessages"
+            :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)"
+          />
+        </section>
       </div>
 
       <!-- Right: Sidebar -->
       <div class="sidebar-column">
         <!-- Your Cards -->
         <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2
-            class="collapsible-header"
-            @click="cardsCollapsed = !cardsCollapsed"
-          >
+          <h2 class="collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
             <span>Your Cards</span>
-            <span
-              class="collapse-indicator"
-              :class="{ collapsed: cardsCollapsed }"
-              >&#9660;</span
-            >
+            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
           </h2>
           <div v-if="!cardsCollapsed">
-            <div v-if="!yourCards.length" class="no-cards">
-              No cards dealt yet
-            </div>
+            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
             <template v-else>
               <div v-if="suspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in suspectCards"
-                    :key="card"
-                    class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb"
-                    />
+                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                    @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -168,19 +110,11 @@
               <div v-if="weaponCards.length" class="card-group">
                 <h3 class="card-group-label card-group-weapon">Weapons</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in weaponCards"
-                    :key="card"
-                    class="hand-card card-weapon"
+                  <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
                     :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-weapon"
-                    />
+                    @click="hasCardImage(card) && showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                      class="card-thumb card-thumb-weapon" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -189,18 +123,10 @@
               <div v-if="roomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in roomCards"
-                    :key="card"
-                    class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-room"
-                    />
+                  <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
+                    @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                      class="card-thumb card-thumb-room" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -218,22 +144,15 @@
               <strong>{{ playerName(cardShown.by) }}</strong> showed you:
               <span class="shown-card-name">{{ cardShown.card }}</span>
             </div>
-            <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">
-              &times;
-            </button>
+            <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">&times;</button>
           </div>
         </section>
 
         <!-- Show Card Request (must respond) -->
-        <section
-          v-if="showCardRequest"
-          class="sidebar-panel show-card-request-panel"
-        >
+        <section v-if="showCardRequest" class="sidebar-panel show-card-request-panel">
           <h2>You Must Show a Card</h2>
           <p class="show-card-desc">
-            <strong>{{
-              playerName(showCardRequest.suggestingPlayerId)
-            }}</strong>
+            <strong>{{ playerName(showCardRequest.suggestingPlayerId) }}</strong>
             suggested:
             <span class="highlight-suspect">{{ showCardRequest.suspect }}</span>
             with the
@@ -243,20 +162,10 @@
           </p>
           <p class="show-card-prompt">Choose a card to reveal:</p>
           <div class="show-card-options">
-            <button
-              v-for="card in matchingCards"
-              :key="card"
-              class="show-card-btn"
-              :class="cardCategory(card)"
-              @click="doShowCard(card)"
-            >
-              <img
-                v-if="hasCardImage(card)"
-                :src="cardImageUrl(card)"
-                :alt="card"
-                class="show-card-thumb"
-                :class="'show-card-thumb-' + cardCategory(card).replace('card-', '')"
-              />
+            <button v-for="card in matchingCards" :key="card" class="show-card-btn" :class="cardCategory(card)"
+              @click="doShowCard(card)">
+              <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="show-card-thumb"
+                :class="'show-card-thumb-' + cardCategory(card).replace('card-', '')" />
               <span v-else class="card-icon">{{ cardIcon(card) }}</span>
               {{ card }}
             </button>
@@ -264,23 +173,14 @@
         </section>
 
         <!-- Actions -->
-        <section
-          v-if="
-            isMyTurn &&
-            !showCardRequest &&
-            gameState?.status === 'playing' &&
-            !isObserver
-          "
-          class="sidebar-panel actions-panel"
-        >
+        <section v-if="isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
+          class="sidebar-panel actions-panel">
           <h2>Actions</h2>
 
           <!-- Secret Passage -->
           <div v-if="canSecretPassage" class="action-group">
             <h3>Secret Passage</h3>
-            <p class="action-hint">
-              You're in {{ myCurrentRoom }} — take the secret passage?
-            </p>
+            <p class="action-hint">You're in {{ myCurrentRoom }} — take the secret passage?</p>
             <button class="action-btn passage-btn" @click="doSecretPassage">
               Use Passage to {{ passageDestination }}
             </button>
@@ -289,51 +189,38 @@
           <!-- Roll Dice -->
           <div v-if="canRoll" class="action-group">
             <h3>Roll Dice</h3>
-            <button class="action-btn roll-btn" @click="doRoll">
-              Roll Dice
-            </button>
+            <button class="action-btn roll-btn" @click="doRoll">Roll Dice</button>
           </div>
 
           <!-- Move (choose room after rolling) -->
           <div v-if="canMove" class="action-group">
             <h3>
               Move (rolled
-              {{ gameState?.last_roll?.reduce((a, b) => a + b, 0) }})
+              {{gameState?.last_roll?.reduce((a, b) => a + b, 0)}})
             </h3>
             <p class="action-hint">
               Click a highlighted room on the board or select below:
-              <span v-if="reachableRooms.length" class="reachable-count"
-                >{{ reachableRooms.length }} room{{
-                  reachableRooms.length !== 1 ? "s" : ""
-                }}
-                reachable</span
-              >
+              <span v-if="reachableRooms.length" class="reachable-count">{{ reachableRooms.length }} room{{
+                reachableRooms.length !== 1 ? 's' : ''
+              }}
+                reachable</span>
             </p>
             <select v-model="targetRoom" class="action-select">
               <option value="">-- Choose a room --</option>
-              <option
-                v-for="room in ROOMS"
-                :key="room"
-                :value="room"
-                :class="{ 'reachable-option': reachableRooms.includes(room) }"
-              >
-                {{ room }}{{ reachableRooms.includes(room) ? " ✓" : "" }}
+              <option v-for="room in ROOMS" :key="room" :value="room"
+                :class="{ 'reachable-option': reachableRooms.includes(room) }">
+                {{ room }}{{ reachableRooms.includes(room) ? ' ✓' : '' }}
               </option>
             </select>
-            <button
-              class="action-btn move-btn"
-              :disabled="!targetRoom"
-              @click="doMove"
-            >
-              Move{{ targetRoom ? " to " + targetRoom : "" }}
+            <button class="action-btn move-btn" :disabled="!targetRoom" @click="doMove">
+              Move{{ targetRoom ? ' to ' + targetRoom : '' }}
             </button>
           </div>
 
           <!-- Suggest -->
           <div v-if="canSuggest" class="action-group">
             <h3>
-              Suggest (in <span class="highlight-room">{{ myCurrentRoom }}</span
-              >)
+              Suggest (in <span class="highlight-room">{{ myCurrentRoom }}</span>)
             </h3>
             <select v-model="suggestSuspect" class="action-select">
               <option value="">-- Suspect --</option>
@@ -343,22 +230,14 @@
               <option value="">-- Weapon --</option>
               <option v-for="w in WEAPONS" :key="w" :value="w">{{ w }}</option>
             </select>
-            <button
-              class="action-btn suggest-btn"
-              :disabled="!suggestSuspect || !suggestWeapon"
-              @click="doSuggest"
-            >
+            <button class="action-btn suggest-btn" :disabled="!suggestSuspect || !suggestWeapon" @click="doSuggest">
               Make Suggestion
             </button>
           </div>
 
           <!-- Accuse -->
           <div v-if="canAccuse" class="action-group accuse-group">
-            <button
-              v-if="!showAccuseForm"
-              class="action-btn toggle-accuse-btn"
-              @click="showAccuseForm = true"
-            >
+            <button v-if="!showAccuseForm" class="action-btn toggle-accuse-btn" @click="showAccuseForm = true">
               Make Final Accusation...
             </button>
             <div v-if="showAccuseForm" class="accuse-form">
@@ -383,17 +262,11 @@
                 <option v-for="r in ROOMS" :key="r" :value="r">{{ r }}</option>
               </select>
               <div class="accuse-buttons">
-                <button
-                  class="action-btn accuse-btn"
-                  :disabled="!accuseSuspect || !accuseWeapon || !accuseRoom"
-                  @click="doAccuse"
-                >
+                <button class="action-btn accuse-btn" :disabled="!accuseSuspect || !accuseWeapon || !accuseRoom"
+                  @click="doAccuse">
                   Accuse!
                 </button>
-                <button
-                  class="action-btn cancel-btn"
-                  @click="showAccuseForm = false"
-                >
+                <button class="action-btn cancel-btn" @click="showAccuseForm = false">
                   Cancel
                 </button>
               </div>
@@ -404,60 +277,35 @@
           <div v-if="canEndTurn" class="action-group">
             <div v-if="timerForMe" class="auto-end-timer">
               <div class="timer-bar">
-                <div
-                  class="timer-bar-fill"
-                  :style="{
-                    width:
-                      (countdown / (props.autoEndTimer?.seconds || 15)) * 100 +
-                      '%',
-                  }"
-                ></div>
+                <div class="timer-bar-fill" :style="{
+                  width: (countdown / (props.autoEndTimer?.seconds || 15)) * 100 + '%'
+                }"></div>
               </div>
-              <span class="timer-text"
-                >Auto-ending turn in {{ countdown }}s</span
-              >
+              <span class="timer-text">Auto-ending turn in {{ countdown }}s</span>
             </div>
-            <button class="action-btn end-turn-btn" @click="doEndTurn">
-              End Turn
-            </button>
+            <button class="action-btn end-turn-btn" @click="doEndTurn">End Turn</button>
           </div>
         </section>
 
         <!-- Waiting message when not your turn -->
-        <section
-          v-if="
-            !isMyTurn &&
-            !showCardRequest &&
-            gameState?.status === 'playing' &&
-            !isObserver
-          "
-          class="sidebar-panel waiting-panel"
-        >
+        <section v-if="!isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
+          class="sidebar-panel waiting-panel">
           <div class="waiting-message">
-            Waiting for <strong>{{ currentPlayerName }}</strong
-            >'s turn...
+            Waiting for <strong>{{ currentPlayerName }}</strong>'s turn...
           </div>
         </section>
 
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
-          <DetectiveNotes
-            ref="notesRef"
-            :your-cards="yourCards"
-            :saved-notes="savedNotes"
-            @notes-changed="onNotesChanged"
-          />
+          <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes"
+            @notes-changed="onNotesChanged" />
         </section>
 
         <!-- Observer: Selected Player Info -->
         <template v-if="isObserver">
-          <section
-            v-if="!observerPlayerState"
-            class="sidebar-panel observer-hint-panel"
-          >
+          <section v-if="!observerPlayerState" class="sidebar-panel observer-hint-panel">
             <div class="observer-hint">
-              Click a player below the board to inspect their cards and debug
-              info.
+              Click a player below the board to inspect their cards and debug info.
             </div>
           </section>
 
@@ -468,18 +316,9 @@
               <div v-if="observerSuspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in observerSuspectCards"
-                    :key="card"
-                    class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb"
-                    />
+                  <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                    @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -488,19 +327,11 @@
               <div v-if="observerWeaponCards.length" class="card-group">
                 <h3 class="card-group-label card-group-weapon">Weapons</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in observerWeaponCards"
-                    :key="card"
-                    class="hand-card card-weapon"
+                  <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
                     :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-weapon"
-                    />
+                    @click="hasCardImage(card) && showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                      class="card-thumb card-thumb-weapon" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -509,18 +340,10 @@
               <div v-if="observerRoomCards.length" class="card-group">
                 <h3 class="card-group-label card-group-room">Rooms</h3>
                 <div class="card-hand">
-                  <div
-                    v-for="card in observerRoomCards"
-                    :key="card"
-                    class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)"
-                  >
-                    <img
-                      v-if="hasCardImage(card)"
-                      :src="cardImageUrl(card)"
-                      :alt="card"
-                      class="card-thumb card-thumb-room"
-                    />
+                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
+                    @click="showCardPreview(card)">
+                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                      class="card-thumb card-thumb-room" />
                     <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                     <span class="card-label">{{ card }}</span>
                   </div>
@@ -530,12 +353,9 @@
           </section>
 
           <section v-if="observerSelectedDebug" class="sidebar-panel">
-            <AgentDebugPanel
-              :agent-debug-data="{
-                [observerPlayerState.playerId]: observerSelectedDebug,
-              }"
-              :players="gameState?.players"
-            />
+            <AgentDebugPanel :agent-debug-data="{
+              [observerPlayerState.playerId]: observerSelectedDebug
+            }" :players="gameState?.players" />
           </section>
         </template>
       </div>
@@ -543,51 +363,30 @@
 
     <!-- Card Preview Overlay -->
     <Teleport to="body">
-      <div
-        v-if="previewCard && hasCardImage(previewCard)"
-        class="card-preview-overlay"
-        @click="closePreview"
-      >
+      <div v-if="previewCard && hasCardImage(previewCard)" class="card-preview-overlay" @click="closePreview">
         <div class="card-preview-frame" @click.stop>
           <div class="card-preview-ornament top-left"></div>
           <div class="card-preview-ornament top-right"></div>
           <div class="card-preview-ornament bottom-left"></div>
           <div class="card-preview-ornament bottom-right"></div>
-          <img
-            :src="cardImageUrl(previewCard)"
-            :alt="previewCard"
-            class="card-preview-image"
-          />
+          <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
           <div class="card-preview-nameplate">
             <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
             <span class="card-preview-name">{{ previewCard }}</span>
           </div>
-          <button class="card-preview-close" @click="closePreview">
-            &times;
-          </button>
+          <button class="card-preview-close" @click="closePreview">&times;</button>
         </div>
       </div>
     </Teleport>
-
-    <!-- Bottom: Chat -->
-    <div class="chat-row">
-      <section class="chat-panel-wrapper">
-        <ChatPanel
-          :messages="chatMessages"
-          :players="gameState?.players"
-          @send-message="$emit('send-chat', $event)"
-        />
-      </section>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import BoardMap from "./BoardMap.vue";
-import ChatPanel from "./ChatPanel.vue";
-import DetectiveNotes from "./DetectiveNotes.vue";
-import AgentDebugPanel from "./AgentDebugPanel.vue";
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import BoardMap from './BoardMap.vue'
+import ChatPanel from './ChatPanel.vue'
+import DetectiveNotes from './DetectiveNotes.vue'
+import AgentDebugPanel from './AgentDebugPanel.vue'
 import {
   SUSPECTS,
   WEAPONS,
@@ -598,8 +397,8 @@ import {
   hasCardImage,
   cardImageUrl,
   abbr,
-  characterColors,
-} from "../constants/clue.js";
+  characterColors
+} from '../constants/clue.js'
 
 const props = defineProps({
   gameId: String,
@@ -616,301 +415,277 @@ const props = defineProps({
   reachablePositions: { type: Array, default: () => [] },
   savedNotes: { type: Object, default: null },
   agentDebugData: { type: Object, default: () => ({}) },
-  observerPlayerState: { type: Object, default: null },
-});
+  observerPlayerState: { type: Object, default: null }
+})
 
-const emit = defineEmits([
-  "action",
-  "send-chat",
-  "dismiss-card-shown",
-  "select-player",
-]);
+const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown', 'select-player'])
 
-const notesRef = ref(null);
+const notesRef = ref(null)
 
 // Form state
-const targetRoom = ref("");
-const suggestSuspect = ref("");
-const suggestWeapon = ref("");
-const accuseSuspect = ref("");
-const accuseWeapon = ref("");
-const accuseRoom = ref("");
-const showAccuseForm = ref(false);
-const cardsCollapsed = ref(false);
+const targetRoom = ref('')
+const suggestSuspect = ref('')
+const suggestWeapon = ref('')
+const accuseSuspect = ref('')
+const accuseWeapon = ref('')
+const accuseRoom = ref('')
+const showAccuseForm = ref(false)
+const cardsCollapsed = ref(false)
 
 // Auto-end timer countdown
-const countdown = ref(null);
-let countdownInterval = null;
+const countdown = ref(null)
+let countdownInterval = null
 
 function clearCountdown() {
   if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
+    clearInterval(countdownInterval)
+    countdownInterval = null
   }
-  countdown.value = null;
+  countdown.value = null
 }
 
 watch(
   () => props.autoEndTimer,
   (timer) => {
-    clearCountdown();
+    clearCountdown()
     if (timer && timer.seconds > 0) {
       const updateCountdown = () => {
-        const elapsed = (Date.now() - timer.startedAt) / 1000;
-        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed));
-        countdown.value = remaining;
-        if (remaining <= 0) clearCountdown();
-      };
-      updateCountdown();
-      countdownInterval = setInterval(updateCountdown, 1000);
+        const elapsed = (Date.now() - timer.startedAt) / 1000
+        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed))
+        countdown.value = remaining
+        if (remaining <= 0) clearCountdown()
+      }
+      updateCountdown()
+      countdownInterval = setInterval(updateCountdown, 1000)
     }
   },
   { immediate: true }
-);
+)
 
-onUnmounted(() => clearCountdown());
+onUnmounted(() => clearCountdown())
 
 const timerForMe = computed(
-  () =>
-    countdown.value !== null && props.autoEndTimer?.playerId === props.playerId
-);
+  () => countdown.value !== null && props.autoEndTimer?.playerId === props.playerId
+)
 
 // Computed
-const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId);
-const myCurrentRoom = computed(
-  () => props.gameState?.current_room?.[props.playerId] ?? null
-);
+const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
+const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
-const canSecretPassage = computed(() =>
-  props.availableActions.includes("secret_passage")
-);
-const canRoll = computed(() => props.availableActions.includes("roll"));
-const canMove = computed(() => props.availableActions.includes("move"));
-const canSuggest = computed(() => props.availableActions.includes("suggest"));
-const canAccuse = computed(() => props.availableActions.includes("accuse"));
-const canEndTurn = computed(() => props.availableActions.includes("end_turn"));
+const canSecretPassage = computed(() => props.availableActions.includes('secret_passage'))
+const canRoll = computed(() => props.availableActions.includes('roll'))
+const canMove = computed(() => props.availableActions.includes('move'))
+const canSuggest = computed(() => props.availableActions.includes('suggest'))
+const canAccuse = computed(() => props.availableActions.includes('accuse'))
+const canEndTurn = computed(() => props.availableActions.includes('end_turn'))
 
 const SECRET_PASSAGES = {
-  Study: "Kitchen",
-  Kitchen: "Study",
-  Lounge: "Conservatory",
-  Conservatory: "Lounge",
-};
-const passageDestination = computed(
-  () => SECRET_PASSAGES[myCurrentRoom.value] ?? "?"
-);
+  Study: 'Kitchen',
+  Kitchen: 'Study',
+  Lounge: 'Conservatory',
+  Conservatory: 'Lounge'
+}
+const passageDestination = computed(() => SECRET_PASSAGES[myCurrentRoom.value] ?? '?')
 
 const currentPlayerName = computed(() => {
-  return playerName(props.gameState?.whose_turn);
-});
+  return playerName(props.gameState?.whose_turn)
+})
 
 const winnerName = computed(() => {
-  return playerName(props.gameState?.winner);
-});
+  return playerName(props.gameState?.winner)
+})
 
-const suspectCards = computed(() =>
-  props.yourCards.filter((c) => SUSPECTS.includes(c))
-);
-const weaponCards = computed(() =>
-  props.yourCards.filter((c) => WEAPONS.includes(c))
-);
-const roomCards = computed(() =>
-  props.yourCards.filter((c) => ROOMS.includes(c))
-);
+const suspectCards = computed(() => props.yourCards.filter((c) => SUSPECTS.includes(c)))
+const weaponCards = computed(() => props.yourCards.filter((c) => WEAPONS.includes(c)))
+const roomCards = computed(() => props.yourCards.filter((c) => ROOMS.includes(c)))
 
 // Observer selected player computeds
-const observerCards = computed(
-  () => props.observerPlayerState?.your_cards ?? []
-);
+const observerCards = computed(() => props.observerPlayerState?.your_cards ?? [])
 const observerSuspectCards = computed(() =>
   observerCards.value.filter((c) => SUSPECTS.includes(c))
-);
-const observerWeaponCards = computed(() =>
-  observerCards.value.filter((c) => WEAPONS.includes(c))
-);
-const observerRoomCards = computed(() =>
-  observerCards.value.filter((c) => ROOMS.includes(c))
-);
+)
+const observerWeaponCards = computed(() => observerCards.value.filter((c) => WEAPONS.includes(c)))
+const observerRoomCards = computed(() => observerCards.value.filter((c) => ROOMS.includes(c)))
 const observerSelectedPlayerName = computed(() => {
-  if (!props.observerPlayerState) return "";
-  return playerName(props.observerPlayerState.playerId);
-});
+  if (!props.observerPlayerState) return ''
+  return playerName(props.observerPlayerState.playerId)
+})
 const observerSelectedDebug = computed(() => {
-  if (!props.observerPlayerState) return null;
-  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null;
-});
+  if (!props.observerPlayerState) return null
+  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null
+})
 
 const matchingCards = computed(() => {
-  if (!props.showCardRequest) return [];
+  if (!props.showCardRequest) return []
   const suggestion = [
     props.showCardRequest.suspect,
     props.showCardRequest.weapon,
-    props.showCardRequest.room,
-  ];
-  return props.yourCards.filter((c) => suggestion.includes(c));
-});
+    props.showCardRequest.room
+  ]
+  return props.yourCards.filter((c) => suggestion.includes(c))
+})
 
 function playerName(pid) {
-  if (!pid) return "?";
-  const p = props.gameState?.players?.find((pl) => pl.id === pid);
-  return p ? p.name : pid;
+  if (!pid) return '?'
+  const p = props.gameState?.players?.find((pl) => pl.id === pid)
+  return p ? p.name : pid
 }
 
 function tokenStyle(player) {
-  const { bg, text } = characterColors(player.character);
-  const style = { backgroundColor: bg, color: text };
-  if (player.type === "wanderer") style.opacity = 0.5;
-  return style;
+  const { bg, text } = characterColors(player.character)
+  const style = { backgroundColor: bg, color: text }
+  if (player.type === 'wanderer') style.opacity = 0.5
+  return style
 }
 
 function cardCategory(card) {
-  if (SUSPECTS.includes(card)) return "card-suspect";
-  if (WEAPONS.includes(card)) return "card-weapon";
-  if (ROOMS.includes(card)) return "card-room";
-  return "";
+  if (SUSPECTS.includes(card)) return 'card-suspect'
+  if (WEAPONS.includes(card)) return 'card-weapon'
+  if (ROOMS.includes(card)) return 'card-room'
+  return ''
 }
 
 // Per-card emoji icons
 
 // Shown cards popup state
-const shownCardsPlayerId = ref(null);
+const shownCardsPlayerId = ref(null)
 const shownCardsForPlayer = computed(() => {
-  if (!shownCardsPlayerId.value || !notesRef.value) return [];
-  const pName = playerName(shownCardsPlayerId.value);
-  return notesRef.value.getCardsShownBy(pName);
-});
+  if (!shownCardsPlayerId.value || !notesRef.value) return []
+  const pName = playerName(shownCardsPlayerId.value)
+  return notesRef.value.getCardsShownBy(pName)
+})
 
 function onLegendClick(player) {
   if (props.isObserver) {
-    emit('select-player', player.id);
-    return;
+    emit('select-player', player.id)
+    return
   }
   // Toggle shown cards popup for this player
   if (shownCardsPlayerId.value === player.id) {
-    shownCardsPlayerId.value = null;
+    shownCardsPlayerId.value = null
   } else {
-    shownCardsPlayerId.value = player.id;
+    shownCardsPlayerId.value = player.id
   }
 }
 
 // Card preview state
-const previewCard = ref(null);
+const previewCard = ref(null)
 
 function showCardPreview(card) {
-  previewCard.value = previewCard.value === card ? null : card;
+  previewCard.value = previewCard.value === card ? null : card
 }
 
 function closePreview() {
-  previewCard.value = null;
+  previewCard.value = null
 }
 
 // Actions
 function onRoomSelected(room) {
   if (canMove.value) {
-    targetRoom.value = room;
-    emit("action", { type: "move", room });
-    targetRoom.value = "";
+    targetRoom.value = room
+    emit('action', { type: 'move', room })
+    targetRoom.value = ''
   }
 }
 
 function onPositionSelected(position) {
   if (canMove.value) {
-    emit("action", { type: "move", position });
+    emit('action', { type: 'move', position })
   }
 }
 
 function doSecretPassage() {
-  emit("action", { type: "secret_passage" });
+  emit('action', { type: 'secret_passage' })
 }
 
 function doRoll() {
-  emit("action", { type: "roll" });
+  emit('action', { type: 'roll' })
 }
 
 function doMove() {
-  emit("action", { type: "move", room: targetRoom.value });
-  targetRoom.value = "";
+  emit('action', { type: 'move', room: targetRoom.value })
+  targetRoom.value = ''
 }
 
 function doSuggest() {
-  emit("action", {
-    type: "suggest",
+  emit('action', {
+    type: 'suggest',
     suspect: suggestSuspect.value,
     weapon: suggestWeapon.value,
-    room: myCurrentRoom.value,
-  });
-  suggestSuspect.value = "";
-  suggestWeapon.value = "";
+    room: myCurrentRoom.value
+  })
+  suggestSuspect.value = ''
+  suggestWeapon.value = ''
 }
 
 function doShowCard(card) {
-  emit("action", { type: "show_card", card });
+  emit('action', { type: 'show_card', card })
 }
 
 function doAccuse() {
-  emit("action", {
-    type: "accuse",
+  emit('action', {
+    type: 'accuse',
     suspect: accuseSuspect.value,
     weapon: accuseWeapon.value,
-    room: accuseRoom.value,
-  });
-  showAccuseForm.value = false;
+    room: accuseRoom.value
+  })
+  showAccuseForm.value = false
 }
 
 function doEndTurn() {
-  emit("action", { type: "end_turn" });
+  emit('action', { type: 'end_turn' })
 }
 
 // Debounced save of detective notes to backend
-let saveNotesTimer = null;
+let saveNotesTimer = null
 function onNotesChanged(notesData) {
-  if (saveNotesTimer) clearTimeout(saveNotesTimer);
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
   saveNotesTimer = setTimeout(() => {
     fetch(`/games/${props.gameId}/notes`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_id: props.playerId, notes: notesData }),
-    }).catch(() => {});
-  }, 500);
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_id: props.playerId, notes: notesData })
+    }).catch(() => { })
+  }, 500)
 }
 
 // Close shown cards popup when clicking outside
 function onDocClick() {
-  shownCardsPlayerId.value = null;
+  shownCardsPlayerId.value = null
 }
-onMounted(() => document.addEventListener("click", onDocClick));
+onMounted(() => document.addEventListener('click', onDocClick))
 onUnmounted(() => {
-  document.removeEventListener("click", onDocClick);
-  if (saveNotesTimer) clearTimeout(saveNotesTimer);
-});
+  document.removeEventListener('click', onDocClick)
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
+})
 
 // Auto-mark shown cards in detective notes
 watch(
   () => props.cardShown,
   (shown) => {
     if (shown?.card && notesRef.value) {
-      notesRef.value.markCard(shown.card, "seen", playerName(shown.by));
+      notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
     }
   }
-);
+)
 
 // Reset accuse form on turn change
 watch(
   () => props.gameState?.whose_turn,
   () => {
-    showAccuseForm.value = false;
+    showAccuseForm.value = false
   }
-);
+)
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 .game-board {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
 }
 
 /* Header */
@@ -918,11 +693,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
   border: 1px solid rgba(212, 168, 73, 0.1);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
@@ -936,7 +707,7 @@ watch(
 }
 
 .header-left h1 {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.5rem;
   font-weight: 900;
   color: #d4a849;
@@ -1021,7 +792,7 @@ watch(
   justify-content: center;
   font-weight: 700;
   font-size: 0.95rem;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
@@ -1031,6 +802,7 @@ watch(
   grid-template-columns: 1fr 340px;
   gap: 0.75rem;
   min-height: 400px;
+  align-items: start;
 }
 
 /* Board column */
@@ -1042,11 +814,7 @@ watch(
 
 /* Player legend */
 .player-legend {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.9),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.9), rgba(18, 14, 10, 0.95));
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
@@ -1198,23 +966,17 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  overflow-y: auto;
-  max-height: calc(100vh - 180px);
 }
 
 .sidebar-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
 }
 
 .sidebar-panel h2 {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   color: #d4a849;
   font-size: 0.9rem;
   font-weight: 700;
@@ -1302,9 +1064,11 @@ watch(
 .card-group-suspect {
   color: #d4888a;
 }
+
 .card-group-weapon {
   color: #7aa8d4;
 }
+
 .card-group-room {
   color: #7ac89a;
 }
@@ -1326,11 +1090,7 @@ watch(
 /* Card shown notification */
 .shown-card-panel {
   border-color: rgba(26, 58, 107, 0.4);
-  background: linear-gradient(
-    135deg,
-    rgba(26, 58, 107, 0.15),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), rgba(18, 14, 10, 0.95));
 }
 
 .shown-card-notice {
@@ -1369,19 +1129,17 @@ watch(
 /* Show card request */
 .show-card-request-panel {
   border: 1.5px solid rgba(155, 27, 48, 0.6);
-  background: linear-gradient(
-    135deg,
-    rgba(155, 27, 48, 0.1),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(155, 27, 48, 0.1), rgba(18, 14, 10, 0.95));
   animation: pulse-border 2s ease-in-out infinite;
 }
 
 @keyframes pulse-border {
+
   0%,
   100% {
     border-color: rgba(155, 27, 48, 0.6);
   }
+
   50% {
     border-color: rgba(155, 27, 48, 0.9);
     box-shadow: 0 0 12px rgba(155, 27, 48, 0.15);
@@ -1400,10 +1158,12 @@ watch(
   color: #d4888a;
   font-weight: bold;
 }
+
 .highlight-weapon {
   color: #7aa8d4;
   font-weight: bold;
 }
+
 .highlight-room {
   color: #7ac89a;
   font-weight: bold;
@@ -1429,7 +1189,7 @@ watch(
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   transition: all 0.2s;
   display: inline-flex;
   align-items: center;
@@ -1445,9 +1205,11 @@ watch(
 .show-card-btn.card-suspect {
   background: #9b1b30;
 }
+
 .show-card-btn.card-weapon {
   background: #1a3a6b;
 }
+
 .show-card-btn.card-room {
   background: #1a6b3c;
 }
@@ -1486,7 +1248,7 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.12);
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   appearance: none;
   cursor: pointer;
@@ -1508,7 +1270,7 @@ watch(
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   transition: all 0.25s;
   letter-spacing: 0.02em;
 }
@@ -1663,14 +1425,8 @@ watch(
   overflow-y: auto;
 }
 
-/* Chat row */
-.chat-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
+/* Chat */
 .chat-panel-wrapper {
-  flex: 1;
   background: linear-gradient(
     135deg,
     rgba(30, 24, 16, 0.95),
@@ -1679,6 +1435,7 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
+  min-height: 200px;
 }
 
 /* Card thumbnails in hand */
@@ -1772,6 +1529,7 @@ watch(
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1794,6 +1552,7 @@ watch(
     opacity: 0;
     transform: scale(0.85) rotateY(15deg);
   }
+
   to {
     opacity: 1;
     transform: scale(1) rotateY(0);
@@ -1848,11 +1607,7 @@ watch(
   text-align: center;
   margin-top: 10px;
   padding: 6px 12px;
-  background: linear-gradient(
-    135deg,
-    rgba(212, 168, 73, 0.1),
-    rgba(212, 168, 73, 0.05)
-  );
+  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
   border: 1px solid rgba(212, 168, 73, 0.2);
   border-radius: 6px;
   display: flex;
@@ -1866,7 +1621,7 @@ watch(
 }
 
 .card-preview-name {
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   color: #d4a849;
   font-size: 1.05rem;
   font-weight: 700;
@@ -1902,10 +1657,6 @@ watch(
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar-column {
-    max-height: none;
   }
 }
 </style>
