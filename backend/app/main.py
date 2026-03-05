@@ -80,7 +80,7 @@ from .games.clue.models import (
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
-from .games.holdem.agents import HoldemAgent, get_personality, PERSONALITY_NAMES
+from .games.holdem.agents import HoldemAgent, get_personality
 from .games.holdem.game import HoldemGame
 from .games.holdem.models import (
     HoldemActionMessage,
