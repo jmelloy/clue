@@ -1310,15 +1310,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Use the character name as the display name for more personality
     state = await game.get_state()
-    if player.character:
-        player.name = player.character
-        for p in state.players:
-            if p.id == player_id:
-                p.name = player.character
-                break
-        await game._save_state(state)
     await manager.broadcast(
         game_id,
         PlayerJoinedMessage(player=player, players=list(state.players)),
