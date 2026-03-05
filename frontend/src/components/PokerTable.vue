@@ -157,7 +157,17 @@
                       <span class="card-rank">{{ card.rank }}</span>
                       <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
                     </span>
-                    <span class="card-pip">{{ suitSymbol(card.suit) }}</span>
+                    <div v-if="isFaceCard(card.rank)" class="card-face-center">
+                      <span class="card-face-symbol">{{ FACE_SYMBOLS[card.rank] }}</span>
+                    </div>
+                    <div v-else class="card-pips" :class="'pips-' + pipCount(card.rank)">
+                      <span
+                        v-for="(pos, pi) in pipPositions(card.rank)"
+                        :key="pi"
+                        class="pip"
+                        :style="{ top: pos[0] + '%', left: pos[1] + '%', transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)' }"
+                      >{{ suitSymbol(card.suit) }}</span>
+                    </div>
                     <span class="card-corner bottom-right">
                       <span class="card-rank">{{ card.rank }}</span>
                       <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
@@ -209,7 +219,17 @@
                 <span class="card-rank">{{ c.rank }}</span>
                 <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
               </span>
-              <span class="card-pip">{{ suitSymbol(c.suit) }}</span>
+              <div v-if="isFaceCard(c.rank)" class="card-face-center">
+                <span class="card-face-symbol">{{ FACE_SYMBOLS[c.rank] }}</span>
+              </div>
+              <div v-else class="card-pips" :class="'pips-' + pipCount(c.rank)">
+                <span
+                  v-for="(pos, pi) in pipPositions(c.rank)"
+                  :key="pi"
+                  class="pip"
+                  :style="{ gridRow: pos[0] + 1, gridColumn: pos[1] + 1, transform: pos[0] > 2 ? 'rotate(180deg)' : '' }"
+                >{{ suitSymbol(c.suit) }}</span>
+              </div>
               <span class="card-corner bottom-right">
                 <span class="card-rank">{{ c.rank }}</span>
                 <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
@@ -625,6 +645,39 @@ function suitSymbol(suit) {
 
 function suitClass(suit) {
   return `suit-${suit}`
+}
+
+const FACE_SYMBOLS = { J: '\u265E', Q: '\u2655', K: '\u2654' }
+
+function pipCount(rank) {
+  const n = parseInt(rank)
+  if (!isNaN(n) && n >= 2 && n <= 10) return n
+  if (rank === 'A') return 1
+  return 0 // face cards
+}
+
+function isFaceCard(rank) {
+  return rank === 'J' || rank === 'Q' || rank === 'K'
+}
+
+// Pip positions as [top%, left%] percentages within the pip area
+// Based on standard playing card pip layouts
+const PIP_LAYOUTS = {
+  1: [[50, 50]],
+  2: [[18, 50], [82, 50]],
+  3: [[18, 50], [50, 50], [82, 50]],
+  4: [[18, 28], [18, 72], [82, 28], [82, 72]],
+  5: [[18, 28], [18, 72], [50, 50], [82, 28], [82, 72]],
+  6: [[18, 28], [18, 72], [50, 28], [50, 72], [82, 28], [82, 72]],
+  7: [[18, 28], [18, 72], [34, 50], [50, 28], [50, 72], [82, 28], [82, 72]],
+  8: [[18, 28], [18, 72], [34, 50], [50, 28], [50, 72], [66, 50], [82, 28], [82, 72]],
+  9: [[18, 28], [18, 72], [38, 28], [38, 72], [50, 50], [62, 28], [62, 72], [82, 28], [82, 72]],
+  10: [[18, 28], [18, 72], [30, 50], [38, 28], [38, 72], [62, 28], [62, 72], [70, 50], [82, 28], [82, 72]],
+}
+
+function pipPositions(rank) {
+  const count = pipCount(rank)
+  return PIP_LAYOUTS[count] || []
 }
 
 function formatTime(ts) {
@@ -1254,10 +1307,34 @@ watch(() => props.gameState?.betting_round, (round) => {
   line-height: 1;
 }
 
-.card-pip {
-  font-size: 1.6rem;
+.card-pips {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 6px;
+  right: 6px;
+}
+
+.pip {
+  position: absolute;
+  font-size: 0.7rem;
   line-height: 1;
+  opacity: 0.9;
+}
+
+.pips-1 .pip { font-size: 1.6rem; }
+.pips-2 .pip, .pips-3 .pip { font-size: 0.85rem; }
+
+.card-face-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
   opacity: 0.85;
+}
+
+.card-face-symbol {
+  line-height: 1;
 }
 
 .card-back {
@@ -1336,9 +1413,8 @@ watch(() => props.gameState?.betting_round, (round) => {
   font-size: 0.9rem;
 }
 
-.hole-card .card-pip {
-  font-size: 1.8rem;
-}
+.hole-card .pips-1 .pip { font-size: 1.8rem; }
+.hole-card .card-face-center { font-size: 2rem; }
 
 /* ─── Action Buttons ─── */
 .action-dock {
@@ -1817,7 +1893,8 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .mini-card .card-rank { font-size: 0.6rem; }
 .mini-card .card-suit-small { font-size: 0.5rem; }
-.mini-card .card-pip { display: none; }
+.mini-card .card-pips { display: none; }
+.mini-card .card-face-center { display: none; }
 
 .showdown-dismiss {
   background: var(--gold);
@@ -1982,7 +2059,8 @@ watch(() => props.gameState?.betting_round, (round) => {
   }
 
   .card-rank { font-size: 0.65rem; }
-  .card-pip { font-size: 1.2rem; }
+  .pip { font-size: 0.55rem; }
+  .pips-1 .pip { font-size: 1.2rem; }
 
   .action-btn {
     padding: 0.45rem 0.9rem;
