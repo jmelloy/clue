@@ -50,7 +50,7 @@
             'wanderer-legend': p.type === 'wanderer',
             'observer-clickable': isObserver,
             'observer-selected': isObserver && observerPlayerState?.playerId === p.id
-          }" @click="onLegendClick(p)">
+          }" @click.stop="onLegendClick(p)">
             <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
               :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
@@ -64,8 +64,12 @@
             <!-- Shown cards popup -->
             <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
-              <div v-for="card in shownCardsForPlayer" :key="card" class="shown-cards-item">
-                {{ card }}
+              <div class="shown-cards-hand">
+                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)">
+                  <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                  <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
               </div>
             </div>
             <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
@@ -95,44 +99,29 @@
           </h2>
           <div v-if="!cardsCollapsed">
             <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-            <template v-else>
-              <div v-if="suspectCards.length" class="card-group">
-                <h3 class="card-group-label card-group-suspect">Suspects</h3>
-                <div class="card-hand">
-                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+            <div v-else class="card-hand">
+              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="weaponCards.length" class="card-group">
-                <h3 class="card-group-label card-group-weapon">Weapons</h3>
-                <div class="card-hand">
-                  <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-weapon" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
+                :class="{ 'card-with-image': hasCardImage(card) }"
+                @click="hasCardImage(card) && showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-weapon" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="roomCards.length" class="card-group">
-                <h3 class="card-group-label card-group-room">Rooms</h3>
-                <div class="card-hand">
-                  <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-room" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-room" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-            </template>
+            </div>
           </div>
         </section>
 
@@ -312,44 +301,29 @@
           <section v-if="observerPlayerState" class="sidebar-panel cards-panel">
             <h2>{{ observerSelectedPlayerName }}'s Cards</h2>
             <div v-if="!observerCards.length" class="no-cards">No cards</div>
-            <template v-else>
-              <div v-if="observerSuspectCards.length" class="card-group">
-                <h3 class="card-group-label card-group-suspect">Suspects</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+            <div v-else class="card-hand">
+              <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="observerWeaponCards.length" class="card-group">
-                <h3 class="card-group-label card-group-weapon">Weapons</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-weapon" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
+                :class="{ 'card-with-image': hasCardImage(card) }"
+                @click="hasCardImage(card) && showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-weapon" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="observerRoomCards.length" class="card-group">
-                <h3 class="card-group-label card-group-room">Rooms</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-room" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-room" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-            </template>
+            </div>
           </section>
 
           <section v-if="observerSelectedDebug" class="sidebar-panel">
@@ -1034,13 +1008,13 @@ watch(
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
 }
 
-.shown-cards-item {
-  color: #e8dcc8;
-  font-size: 0.75rem;
-  padding: 0.1rem 0;
+.shown-cards-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 /* Sidebar */
