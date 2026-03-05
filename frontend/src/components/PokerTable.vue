@@ -90,6 +90,13 @@
               </span>
             </div>
 
+            <!-- Chip stack indicator for active players -->
+            <div v-if="!p.folded && p.chips > 0" class="player-chip-stack">
+              <div class="pcs-chip"></div>
+              <div class="pcs-chip"></div>
+              <div class="pcs-chip"></div>
+            </div>
+
             <!-- Status badge -->
             <div v-if="p.folded" class="status-badge folded">Fold</div>
             <div v-else-if="p.all_in" class="status-badge all-in">All In</div>
@@ -138,6 +145,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Winner Banner (persistent, shows after showdown until next hand) -->
+    <Transition name="banner-slide">
+      <div v-if="winnerBanner" class="winner-banner">
+        <div class="winner-banner-glow"></div>
+        <div class="winner-banner-content">
+          <span class="winner-crown">&#9813;</span>
+          <span class="winner-text">
+            <strong>{{ winnerBanner.names }}</strong> takes the pot
+          </span>
+          <span class="winner-pot">
+            <svg class="chip-svg" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/></svg>
+            {{ formatChips(winnerBanner.pot) }}
+          </span>
+          <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Bottom Dock: Hole Cards + Actions -->
     <div class="bottom-dock" v-if="!isObserver">
@@ -403,6 +428,7 @@ const chatInput = ref('')
 const chatContainer = ref(null)
 const chatOpen = ref(false)
 const showdownData = ref(null)
+const winnerBanner = ref(null)
 const feltRef = ref(null)
 const unreadChat = ref(0)
 const lastReadChat = ref(0)
@@ -612,6 +638,20 @@ watch(chatOpen, (open) => {
 defineExpose({
   onShowdown(data) {
     showdownData.value = data
+    // Set persistent banner
+    const names = data.winners.map(wid => playerName(wid)).join(' & ')
+    winnerBanner.value = {
+      names,
+      pot: data.pot,
+      hand: data.winning_hand,
+    }
+  }
+})
+
+// Clear winner banner when a new hand starts (betting_round changes from showdown)
+watch(() => props.gameState?.betting_round, (round) => {
+  if (round && round !== 'showdown') {
+    winnerBanner.value = null
   }
 })
 </script>
@@ -642,11 +682,13 @@ defineExpose({
   --card-shadow: rgba(0, 0, 0, 0.35);
 
   font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 15px;
   color: var(--text);
   background: var(--bg);
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   user-select: none;
 }
@@ -672,14 +714,14 @@ defineExpose({
 .logo {
   font-family: 'Cinzel', serif;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.15rem;
   color: var(--gold);
   letter-spacing: 0.06em;
 }
 
 .game-code {
   font-family: 'Fira Code', monospace;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   background: rgba(255,255,255,0.04);
   padding: 0.15rem 0.5rem;
@@ -720,7 +762,7 @@ defineExpose({
 
 .meta-value {
   font-family: 'Fira Code', monospace;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: var(--text);
 }
 
@@ -769,8 +811,8 @@ defineExpose({
 /* ─── Turn Strip ─── */
 .turn-strip {
   text-align: center;
-  padding: 0.35rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-dim);
   background: var(--bg-raised);
@@ -799,6 +841,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .felt-wrapper {
@@ -808,6 +851,7 @@ defineExpose({
   justify-content: center;
   padding: 0.75rem 1.5rem;
   min-height: 0;
+  overflow: hidden;
 }
 
 .felt {
@@ -920,19 +964,19 @@ defineExpose({
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(6px);
   border-radius: 6px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.2rem 0.5rem;
   text-align: center;
-  min-width: 56px;
+  min-width: 60px;
   border: 1px solid rgba(255,255,255,0.06);
 }
 
 .player-name {
   display: block;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #eee;
   white-space: nowrap;
-  max-width: 80px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -943,19 +987,19 @@ defineExpose({
   justify-content: center;
   gap: 0.2rem;
   font-family: 'Fira Code', monospace;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: var(--gold);
 }
 
 .chip-svg { flex-shrink: 0; }
 
 .status-badge {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 0.08rem 0.35rem;
-  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
 }
 
 .status-badge.folded {
@@ -994,7 +1038,7 @@ defineExpose({
 
 .bet-on-felt span {
   font-family: 'Fira Code', monospace;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
@@ -1043,8 +1087,8 @@ defineExpose({
 
 .pot-number {
   font-family: 'Fira Code', monospace;
-  font-size: 1.2rem;
-  font-weight: 500;
+  font-size: 1.4rem;
+  font-weight: 600;
   color: var(--gold-bright);
   text-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
@@ -1052,7 +1096,7 @@ defineExpose({
 /* ─── Cards ─── */
 .community-cards {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .card-slot {
@@ -1071,11 +1115,11 @@ defineExpose({
 
 .playing-card {
   position: relative;
-  width: 48px;
-  height: 68px;
+  width: 62px;
+  height: 88px;
   background: var(--card-face);
-  border-radius: 5px;
-  box-shadow: 0 2px 6px var(--card-shadow);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px var(--card-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1101,29 +1145,29 @@ defineExpose({
 }
 
 .card-corner.top-left {
-  top: 3px;
-  left: 4px;
+  top: 4px;
+  left: 5px;
 }
 
 .card-corner.bottom-right {
-  bottom: 3px;
-  right: 4px;
+  bottom: 4px;
+  right: 5px;
   transform: rotate(180deg);
 }
 
 .card-rank {
   font-family: 'Fira Code', monospace;
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .card-suit-small {
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   line-height: 1;
 }
 
 .card-pip {
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   line-height: 1;
   opacity: 0.85;
 }
@@ -1188,8 +1232,8 @@ defineExpose({
 }
 
 .hole-card {
-  width: 56px;
-  height: 80px;
+  width: 68px;
+  height: 96px;
   transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0px));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: default;
@@ -1201,11 +1245,11 @@ defineExpose({
 }
 
 .hole-card .card-rank {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
 }
 
 .hole-card .card-pip {
-  font-size: 1.6rem;
+  font-size: 1.8rem;
 }
 
 /* ─── Action Buttons ─── */
@@ -1223,25 +1267,25 @@ defineExpose({
 
 .action-btn {
   position: relative;
-  padding: 0.5rem 1.1rem;
+  padding: 0.55rem 1.2rem;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   transition: all 0.15s;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.05rem;
-  min-width: 72px;
+  min-width: 78px;
 }
 
-.btn-label { font-size: 0.85rem; }
+.btn-label { font-size: 0.95rem; }
 .btn-amount {
   font-family: 'Fira Code', monospace;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   opacity: 0.8;
 }
 
@@ -1418,7 +1462,7 @@ defineExpose({
   justify-content: center;
   gap: 0.5rem;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   padding: 0.5rem;
 }
 
@@ -1610,23 +1654,24 @@ defineExpose({
 }
 
 .showdown-crown {
-  font-size: 2.5rem;
+  font-size: 3rem;
   color: var(--gold);
   line-height: 1;
   margin-bottom: 0.25rem;
   text-shadow: 0 0 20px rgba(201,168,76,0.4);
+  animation: crown-bob 1.5s ease-in-out infinite;
 }
 
 .showdown-title {
   font-family: 'Cinzel', serif;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #fff;
   margin-bottom: 0.3rem;
 }
 
 .showdown-hand-type {
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   color: var(--gold);
   font-weight: 500;
   margin-bottom: 0.5rem;
@@ -1639,7 +1684,7 @@ defineExpose({
   justify-content: center;
   gap: 0.35rem;
   font-family: 'Fira Code', monospace;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   color: var(--gold-bright);
   margin-bottom: 1rem;
 }
@@ -1677,24 +1722,24 @@ defineExpose({
 }
 
 .mini-card {
-  width: 34px;
-  height: 48px;
-  font-size: 0.7rem;
+  width: 40px;
+  height: 56px;
+  font-size: 0.75rem;
 }
 
-.mini-card .card-rank { font-size: 0.5rem; }
-.mini-card .card-suit-small { font-size: 0.4rem; }
+.mini-card .card-rank { font-size: 0.6rem; }
+.mini-card .card-suit-small { font-size: 0.5rem; }
 .mini-card .card-pip { display: none; }
 
 .showdown-dismiss {
   background: var(--gold);
   color: var(--bg);
   border: none;
-  padding: 0.55rem 2rem;
+  padding: 0.6rem 2.5rem;
   border-radius: 8px;
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.15s;
   letter-spacing: 0.02em;
@@ -1711,6 +1756,124 @@ defineExpose({
 .showdown-fade-leave-to { opacity: 0; }
 .showdown-fade-enter-from .showdown-modal { transform: scale(0.9) translateY(20px); }
 
+/* ─── Player Chip Stack (in front of active players) ─── */
+.player-chip-stack {
+  display: flex;
+  gap: 2px;
+  margin-top: -2px;
+}
+
+.pcs-chip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1.5px solid var(--gold-dim);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.pcs-chip:nth-child(2) {
+  background: #b89842;
+}
+
+.pcs-chip:nth-child(3) {
+  background: #a88838;
+}
+
+/* ─── Winner Banner ─── */
+.winner-banner {
+  position: relative;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #1a1200, #2e2000 20%, #3d2a00 50%, #2e2000 80%, #1a1200);
+  border-top: 1px solid var(--gold-dim);
+  border-bottom: 1px solid var(--gold-dim);
+  padding: 0.6rem 1.5rem;
+  overflow: hidden;
+  z-index: 8;
+}
+
+.winner-banner-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(201,168,76,0.15) 0%, transparent 70%);
+  pointer-events: none;
+  animation: banner-glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes banner-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.winner-banner-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.winner-crown {
+  font-size: 1.4rem;
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(201,168,76,0.5);
+  animation: crown-bob 1.5s ease-in-out infinite;
+}
+
+@keyframes crown-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.winner-text {
+  font-size: 1rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.winner-text strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.winner-pot {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+
+.winner-hand-type {
+  font-size: 0.85rem;
+  color: var(--gold);
+  font-weight: 500;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.banner-slide-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.banner-slide-leave-active {
+  transition: all 0.25s ease;
+}
+.banner-slide-enter-from {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.banner-slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
   .felt {
@@ -1718,23 +1881,25 @@ defineExpose({
   }
 
   .playing-card {
-    width: 40px;
-    height: 56px;
+    width: 50px;
+    height: 70px;
   }
 
   .hole-card {
-    width: 48px;
-    height: 68px;
+    width: 58px;
+    height: 82px;
   }
 
-  .card-rank { font-size: 0.55rem; }
-  .card-pip { font-size: 1rem; }
+  .card-rank { font-size: 0.65rem; }
+  .card-pip { font-size: 1.2rem; }
 
   .action-btn {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.8rem;
-    min-width: 60px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    min-width: 64px;
   }
+
+  .btn-label { font-size: 0.85rem; }
 
   .chat-drawer {
     width: 260px;
@@ -1745,31 +1910,38 @@ defineExpose({
   }
 
   .avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 
   .avatar-letter {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
   .info-plate {
-    padding: 0.1rem 0.3rem;
-    min-width: 48px;
+    padding: 0.12rem 0.35rem;
+    min-width: 50px;
   }
 
   .player-name {
-    font-size: 0.55rem;
-    max-width: 60px;
+    font-size: 0.65rem;
+    max-width: 70px;
   }
 
   .player-chips {
-    font-size: 0.5rem;
+    font-size: 0.6rem;
   }
 
   .pot-number {
-    font-size: 1rem;
+    font-size: 1.15rem;
   }
+
+  .winner-banner-content {
+    gap: 0.4rem;
+  }
+
+  .winner-text { font-size: 0.9rem; }
+  .winner-pot { font-size: 0.9rem; }
 }
 
 @media (max-width: 480px) {
@@ -1777,7 +1949,7 @@ defineExpose({
     padding: 0.35rem 0.75rem;
   }
 
-  .logo { font-size: 0.85rem; }
+  .logo { font-size: 0.95rem; }
   .meta-item { display: none; }
   .meta-divider { display: none; }
 
@@ -1785,14 +1957,30 @@ defineExpose({
     padding: 0.5rem;
   }
 
+  .playing-card {
+    width: 44px;
+    height: 62px;
+  }
+
+  .hole-card {
+    width: 52px;
+    height: 74px;
+  }
+
   .bottom-dock {
     padding: 0.35rem 0.75rem 0.5rem;
   }
 
   .action-btn {
-    padding: 0.35rem 0.6rem;
-    min-width: 52px;
-    font-size: 0.75rem;
+    padding: 0.4rem 0.7rem;
+    min-width: 56px;
+    font-size: 0.8rem;
   }
+
+  .btn-label { font-size: 0.8rem; }
+
+  .winner-text { font-size: 0.85rem; }
+  .winner-pot { font-size: 0.85rem; }
+  .winner-crown { font-size: 1.1rem; }
 }
 </style>
