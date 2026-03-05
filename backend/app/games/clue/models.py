@@ -258,6 +258,7 @@ class SuggestionMadeMessage(WSMessage):
     moved_suspect_player: Optional[str] = None
     player_positions: Optional[dict[str, list[int]]] = None
     weapon_positions: Optional[dict[str, str]] = None
+    current_room: Optional[dict[str, str]] = None
     players_without_match: list[str] = Field(default_factory=list)
 
 
