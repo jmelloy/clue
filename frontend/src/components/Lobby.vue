@@ -284,6 +284,9 @@
       <!-- Footer -->
       <footer class="lobby-footer">
         <div class="footer-line"></div>
+        <div class="footer-theme">
+          <ThemeSwitcher />
+        </div>
         <p>&ldquo;The truth is rarely pure and never simple.&rdquo;</p>
         <a href="/admin" class="admin-link">Admin</a>
       </footer>
@@ -318,6 +321,7 @@ const urlGameError = ref('')
 
 // Imported from shared constants
 import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from '../constants/clue.js'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 function tokenColor(character) {
   const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
@@ -516,7 +520,7 @@ async function observeGame() {
   min-height: 100vh;
   overflow: hidden;
   font-family: 'Crimson Text', Georgia, serif;
-  background: #1c1812;
+  background: var(--bg-page);
 }
 
 /* === Atmosphere === */
@@ -530,9 +534,9 @@ async function observeGame() {
 .fog {
   position: absolute;
   inset: 0;
-  opacity: 0.035;
-  background: radial-gradient(ellipse at 30% 20%, #d4a849 0%, transparent 60%),
-    radial-gradient(ellipse at 70% 80%, #8b2a2a 0%, transparent 50%);
+  opacity: var(--fog-opacity);
+  background: radial-gradient(ellipse at 30% 20%, var(--fog-color-1) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, var(--fog-color-2) 0%, transparent 50%);
   animation: fog-drift 20s ease-in-out infinite alternate;
 }
 
@@ -557,7 +561,7 @@ async function observeGame() {
 .vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, #1c1812 85%);
+  background: radial-gradient(ellipse at center, transparent 40%, var(--vignette-color) 85%);
 }
 
 /* === Particles === */
@@ -572,7 +576,7 @@ async function observeGame() {
   position: absolute;
   bottom: -10px;
   border-radius: 50%;
-  background: rgba(212, 168, 73, 0.25);
+  background: rgba(212, 168, 73, 0.15);
   animation: float-up linear infinite;
   opacity: 0;
 }
@@ -707,8 +711,8 @@ async function observeGame() {
   font-size: 4.5rem;
   font-weight: 900;
   letter-spacing: 0.35em;
-  color: #d4a849;
-  text-shadow: 0 0 40px rgba(212, 168, 73, 0.2), 0 2px 0 #a07830;
+  color: var(--accent);
+  text-shadow: 0 0 40px var(--accent-glow), 0 2px 0 var(--accent-dark);
   line-height: 1;
   margin-right: -0.35em;
   /* compensate letter-spacing */
@@ -733,7 +737,7 @@ async function observeGame() {
   font-family: 'Crimson Text', Georgia, serif;
   font-style: italic;
   font-size: 1.05rem;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   margin-top: 0.6rem;
   letter-spacing: 0.08em;
   animation: fade-in 1.5s ease-out 0.3s both;
@@ -791,8 +795,8 @@ async function observeGame() {
 .card {
   position: relative;
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
-  border: 1px solid rgba(212, 168, 73, 0.12);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-card);
   overflow: hidden;
   transition: border-color 0.4s, box-shadow 0.4s;
   animation: card-appear 0.6s ease-out both;
@@ -815,8 +819,8 @@ async function observeGame() {
 }
 
 .card:hover {
-  border-color: rgba(212, 168, 73, 0.25);
-  box-shadow: 0 8px 40px rgba(212, 168, 73, 0.06);
+  border-color: var(--accent-border-hover);
+  box-shadow: 0 8px 40px var(--accent-glow);
 }
 
 .card-inner {
@@ -846,7 +850,7 @@ async function observeGame() {
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #d4a849;
+  color: var(--accent);
   opacity: 0.7;
   margin-bottom: 0.3rem;
 }
@@ -855,12 +859,12 @@ async function observeGame() {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.35rem;
   font-weight: 700;
-  color: #e8dcc8;
+  color: var(--text-primary);
   letter-spacing: 0.03em;
 }
 
 .card-desc {
-  color: #7a7060;
+  color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.55;
   margin-bottom: 1.25rem;
@@ -935,10 +939,10 @@ async function observeGame() {
   display: block;
   width: 100%;
   padding: 0.65rem 0.9rem;
-  border: 1px solid rgba(212, 168, 73, 0.15);
+  border: 1px solid var(--accent-border);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
@@ -946,15 +950,15 @@ async function observeGame() {
 }
 
 .input-wrapper input::placeholder {
-  color: #5a5040;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .input-wrapper input:focus,
 .select-wrapper select:focus {
-  border-color: rgba(212, 168, 73, 0.4);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 0 3px rgba(212, 168, 73, 0.06);
+  border-color: var(--accent-border-focus);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .select-wrapper {
@@ -987,8 +991,8 @@ async function observeGame() {
   padding: 0.7rem 1.5rem;
   border: none;
   border-radius: 5px;
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.95rem;
   font-weight: 600;
@@ -1032,10 +1036,10 @@ async function observeGame() {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.65rem 1.25rem;
-  border: 1px solid rgba(212, 168, 73, 0.2);
+  border: 1px solid var(--accent-border);
   border-radius: 5px;
   background: transparent;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.9rem;
   cursor: pointer;
@@ -1043,9 +1047,9 @@ async function observeGame() {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: rgba(212, 168, 73, 0.4);
-  color: #d4a849;
-  background: rgba(212, 168, 73, 0.05);
+  border-color: var(--accent-border-focus);
+  color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .btn-secondary:disabled {
@@ -1166,13 +1170,13 @@ async function observeGame() {
 }
 
 .suspect-name {
-  color: #e8dcc8;
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .suspect-character {
-  color: #6a6050;
+  color: var(--text-muted);
   font-size: 0.75rem;
   font-style: italic;
 }
@@ -1251,13 +1255,13 @@ async function observeGame() {
 
 /* === Error === */
 .error-text {
-  color: #c45050;
+  color: var(--error);
   font-size: 0.9rem;
   margin-top: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 5px;
-  background: rgba(139, 42, 42, 0.1);
-  border: 1px solid rgba(139, 42, 42, 0.2);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
 }
 
 .error-global {
@@ -1280,8 +1284,14 @@ async function observeGame() {
   margin: 0 auto 1rem;
 }
 
+.footer-theme {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
 .lobby-footer p {
-  color: #3a3528;
+  color: var(--text-darkest);
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
@@ -1390,8 +1400,8 @@ async function observeGame() {
 .game-type-btn {
   flex: 1;
   max-width: 200px;
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1.5px solid rgba(212, 168, 73, 0.12);
+  background: var(--bg-panel);
+  border: 1.5px solid var(--border-card);
   border-radius: 8px;
   padding: 1rem;
   cursor: pointer;
@@ -1409,9 +1419,9 @@ async function observeGame() {
 }
 
 .game-type-btn.active {
-  border-color: rgba(212, 168, 73, 0.5);
-  background: linear-gradient(135deg, rgba(40, 32, 20, 0.95), rgba(25, 20, 14, 0.97));
-  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.1);
+  border-color: var(--accent-border-focus);
+  background: var(--bg-panel);
+  box-shadow: 0 4px 20px var(--accent-glow);
 }
 
 .game-type-icon {
@@ -1420,13 +1430,13 @@ async function observeGame() {
 
 .game-type-label {
   font-size: 0.85rem;
-  color: #6a6050;
+  color: var(--text-muted);
   font-weight: 600;
   letter-spacing: 0.05em;
 }
 
 .game-type-btn.active .game-type-label {
-  color: #d4a849;
+  color: var(--accent);
 }
 
 /* === Responsive === */

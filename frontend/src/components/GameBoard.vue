@@ -30,6 +30,7 @@
         <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
           <span class="dice" v-for="(die, idx) in gameState.last_roll" :key="idx">{{ die }}</span>
         </div>
+        <ThemeSwitcher />
       </div>
     </header>
 
@@ -387,6 +388,7 @@ import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
 import AgentDebugPanel from './AgentDebugPanel.vue'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 import {
   SUSPECTS,
   WEAPONS,
@@ -693,8 +695,8 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1px solid rgba(212, 168, 73, 0.1);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
   gap: 1rem;
@@ -710,15 +712,15 @@ watch(
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.5rem;
   font-weight: 900;
-  color: #d4a849;
+  color: var(--accent);
   letter-spacing: 0.15em;
   margin: 0;
-  text-shadow: 0 0 20px rgba(212, 168, 73, 0.15);
+  text-shadow: 0 0 20px var(--accent-glow);
 }
 
 .game-id-label {
   font-size: 0.7rem;
-  color: #5a5040;
+  color: var(--text-dim);
   letter-spacing: 0.08em;
 }
 
@@ -737,13 +739,13 @@ watch(
 }
 
 .status-banner.my-turn {
-  background: rgba(212, 168, 73, 0.15);
-  color: #d4a849;
-  border: 1px solid rgba(212, 168, 73, 0.25);
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border-hover);
 }
 
 .status-banner.waiting {
-  color: #6a6050;
+  color: var(--text-muted);
 }
 
 .status-banner.winner {
@@ -765,8 +767,8 @@ watch(
 }
 
 .observer-badge {
-  background: rgba(212, 168, 73, 0.12);
-  color: #d4a849;
+  background: var(--accent-bg);
+  color: var(--accent);
   font-size: 0.65rem;
   padding: 0.2rem 0.6rem;
   border-radius: 3px;
@@ -782,8 +784,8 @@ watch(
 }
 
 .dice {
-  background: #d4a849;
-  color: #1a1008;
+  background: var(--accent);
+  color: var(--accent-text);
   width: 28px;
   height: 28px;
   border-radius: 4px;
@@ -814,8 +816,8 @@ watch(
 
 /* Player legend */
 .player-legend {
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.9), rgba(18, 14, 10, 0.95));
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   display: flex;
@@ -887,16 +889,16 @@ watch(
 
 .legend-name {
   font-weight: 600;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .legend-character {
-  color: #5a5040;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .legend-room {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.7rem;
 }
 
@@ -908,8 +910,8 @@ watch(
 }
 
 .legend-turn {
-  background: #d4a849;
-  color: #1a1008;
+  background: var(--accent);
+  color: var(--accent-text);
   font-size: 0.6rem;
   padding: 0.05rem 0.3rem;
   border-radius: 3px;
@@ -938,8 +940,8 @@ watch(
   top: 100%;
   left: 0;
   z-index: 20;
-  background: rgba(30, 24, 16, 0.97);
-  border: 1px solid rgba(212, 168, 73, 0.3);
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--accent-border-hover);
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   min-width: 140px;
@@ -947,7 +949,7 @@ watch(
 }
 
 .shown-cards-title {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -956,7 +958,7 @@ watch(
 }
 
 .shown-cards-item {
-  color: #e8dcc8;
+  color: var(--text-primary);
   font-size: 0.75rem;
   padding: 0.1rem 0;
 }
@@ -969,15 +971,15 @@ watch(
 }
 
 .sidebar-panel {
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
   border-radius: 6px;
   padding: 0.8rem;
 }
 
 .sidebar-panel h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  color: #d4a849;
+  color: var(--accent);
   font-size: 0.9rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -1245,9 +1247,9 @@ watch(
   margin-bottom: 0.35rem;
   padding: 0.45rem 0.6rem;
   border-radius: 4px;
-  border: 1px solid rgba(212, 168, 73, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
+  border: 1px solid var(--accent-border);
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   appearance: none;
@@ -1256,9 +1258,9 @@ watch(
 }
 
 .action-select:focus {
-  border-color: rgba(212, 168, 73, 0.3);
+  border-color: var(--accent-border-focus);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
 .action-btn {
@@ -1291,8 +1293,8 @@ watch(
 }
 
 .roll-btn {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
 }
 
 .roll-btn:hover {
@@ -1301,8 +1303,8 @@ watch(
 }
 
 .move-btn {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
 }
 
 .move-btn:not(:disabled):hover {
@@ -1391,20 +1393,20 @@ watch(
 
 .timer-bar-fill {
   height: 100%;
-  background: #d4a849;
+  background: var(--accent);
   border-radius: 2px;
   transition: width 1s linear;
 }
 
 .timer-text {
   font-size: 0.75rem;
-  color: #d4a849;
+  color: var(--accent);
   font-weight: 600;
 }
 
 .header-timer {
   font-size: 0.85rem;
-  color: #d4a849;
+  color: var(--accent);
 }
 
 /* Waiting message */
@@ -1427,12 +1429,8 @@ watch(
 
 /* Chat */
 .chat-panel-wrapper {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
   border-radius: 6px;
   padding: 0.8rem;
   min-height: 200px;

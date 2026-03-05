@@ -239,7 +239,7 @@ watch(
   display: flex;
   gap: 0;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.15);
+  border-bottom: 1px solid var(--accent-border);
 }
 
 .tab-btn {
@@ -248,7 +248,7 @@ watch(
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
-  color: #6a6050;
+  color: var(--text-muted);
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 0.85rem;
   font-weight: 700;
@@ -258,12 +258,12 @@ watch(
 }
 
 .tab-btn:hover {
-  color: #d4a849;
+  color: var(--accent);
 }
 
 .tab-btn.active {
-  color: #d4a849;
-  border-bottom-color: #d4a849;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .log-filters {
@@ -279,14 +279,14 @@ watch(
   align-items: center;
   gap: 0.25rem;
   font-size: 0.72rem;
-  color: #8a7e6e;
+  color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
 }
 
 .filter-label input[type='checkbox'] {
-  accent-color: #d4a849;
+  accent-color: var(--accent);
   width: 12px;
   height: 12px;
   cursor: pointer;
@@ -312,7 +312,7 @@ watch(
 }
 
 .system-message {
-  color: #6a6050;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -320,11 +320,11 @@ watch(
   flex: 1;
   word-break: break-word;
   line-height: 1.3;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .system-message .chat-text {
-  color: #6a6050;
+  color: var(--text-muted);
 }
 
 .chat-tag {
@@ -344,8 +344,8 @@ watch(
 }
 
 .chat-tag-show {
-  background: rgba(212, 168, 73, 0.15);
-  color: #d4a849;
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .chat-tag-accuse {
@@ -354,14 +354,14 @@ watch(
 }
 
 .chat-time {
-  color: #3a3528;
+  color: var(--text-darkest);
   font-size: 0.7rem;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .chat-empty {
-  color: #3a3528;
+  color: var(--text-darkest);
   font-style: italic;
   font-size: 0.8rem;
   padding: 0.5rem 0;
@@ -376,9 +376,9 @@ watch(
   flex: 1;
   padding: 0.45rem 0.7rem;
   border-radius: 4px;
-  border: 1px solid rgba(212, 168, 73, 0.12);
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
+  border: 1px solid var(--accent-border);
+  background: var(--bg-input);
+  color: var(--text-primary);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   transition: border-color 0.2s;
@@ -386,18 +386,18 @@ watch(
 }
 
 .chat-input input::placeholder {
-  color: #3a3528;
+  color: var(--text-darkest);
   font-style: italic;
 }
 
 .chat-input input:focus {
-  border-color: rgba(212, 168, 73, 0.3);
-  box-shadow: 0 0 0 2px rgba(212, 168, 73, 0.06);
+  border-color: var(--accent-border-focus);
+  box-shadow: 0 0 0 2px var(--accent-bg);
 }
 
 .chat-input button {
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
   border: none;
   padding: 0.45rem 0.8rem;
   border-radius: 4px;

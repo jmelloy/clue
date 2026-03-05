@@ -30,6 +30,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useTheme } from './composables/useTheme.js'
 import Lobby from './components/Lobby.vue'
 import WaitingRoom from './components/WaitingRoom.vue'
 import GameBoard from './components/GameBoard.vue'
@@ -58,6 +59,9 @@ const observerPlayerState = ref(null)
 const currentGameType = ref('clue') // 'clue' or 'holdem'
 const isAdminRoute = ref(false)
 const pokerTableRef = ref(null)
+
+// Initialize theme system (applies data-theme attribute on mount)
+useTheme()
 
 const gameStatus = computed(() => gameState.value?.status ?? 'waiting')
 const players = computed(() => gameState.value?.players ?? [])
@@ -726,9 +730,10 @@ setInterval(() => {
 
 body {
   font-family: 'Georgia', serif;
-  background: #1c1812;
-  color: #e8dcc8;
+  background: var(--bg-page);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
 }
 
 #clue-app {

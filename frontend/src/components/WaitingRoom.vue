@@ -185,7 +185,7 @@ async function startGame() {
   min-height: 100vh;
   overflow: hidden;
   font-family: 'Crimson Text', Georgia, serif;
-  background: #1c1812;
+  background: var(--bg-page);
 }
 
 /* === Atmosphere === */
@@ -199,9 +199,9 @@ async function startGame() {
 .fog {
   position: absolute;
   inset: 0;
-  opacity: 0.03;
-  background: radial-gradient(ellipse at 40% 30%, #d4a849 0%, transparent 55%),
-    radial-gradient(ellipse at 65% 75%, #6b2a2a 0%, transparent 50%);
+  opacity: var(--fog-opacity);
+  background: radial-gradient(ellipse at 40% 30%, var(--fog-color-1) 0%, transparent 55%),
+    radial-gradient(ellipse at 65% 75%, var(--fog-color-2) 0%, transparent 50%);
   animation: fog-drift 25s ease-in-out infinite alternate;
 }
 
@@ -226,7 +226,7 @@ async function startGame() {
 .vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 35%, #1c1812 85%);
+  background: radial-gradient(ellipse at center, transparent 35%, var(--vignette-color) 85%);
 }
 
 /* === Particles === */
@@ -299,14 +299,14 @@ async function startGame() {
   font-size: 2.5rem;
   font-weight: 900;
   letter-spacing: 0.3em;
-  color: #d4a849;
-  text-shadow: 0 0 30px rgba(212, 168, 73, 0.15);
+  color: var(--accent);
+  text-shadow: 0 0 30px var(--accent-glow);
   margin-right: -0.3em;
 }
 
 .tagline {
   font-style: italic;
-  color: #6a6050;
+  color: var(--text-muted);
   font-size: 0.95rem;
   margin-top: 0.3rem;
   letter-spacing: 0.06em;
@@ -322,8 +322,8 @@ async function startGame() {
   margin-bottom: 1.75rem;
   padding: 0.9rem 1.25rem;
   border-radius: 6px;
-  background: rgba(212, 168, 73, 0.04);
-  border: 1px solid rgba(212, 168, 73, 0.1);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
   animation: fade-in 0.8s ease-out 0.15s both;
 }
 
@@ -342,14 +342,14 @@ async function startGame() {
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #6a6050;
+  color: var(--text-muted);
 }
 
 .case-file-id {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #d4a849;
+  color: var(--accent);
   letter-spacing: 0.15em;
 }
 
@@ -378,8 +378,8 @@ async function startGame() {
 /* === Suspects panel === */
 .suspects-panel {
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1px solid rgba(212, 168, 73, 0.1);
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-border);
   padding: 1.5rem 1.25rem;
   margin-bottom: 1.25rem;
   animation: card-appear 0.6s ease-out 0.2s both;
@@ -408,7 +408,7 @@ async function startGame() {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #e8dcc8;
+  color: var(--text-primary);
   letter-spacing: 0.02em;
 }
 
@@ -532,7 +532,7 @@ async function startGame() {
 }
 
 .suspect-name {
-  color: #e8dcc8;
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 600;
   display: flex;
@@ -551,14 +551,14 @@ async function startGame() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #d4a849;
-  background: rgba(212, 168, 73, 0.1);
+  color: var(--accent);
+  background: var(--accent-bg);
   padding: 0.1rem 0.35rem;
   border-radius: 2px;
 }
 
 .suspect-character {
-  color: #5a5040;
+  color: var(--text-dim);
   font-size: 0.8rem;
   font-style: italic;
 }
@@ -579,8 +579,8 @@ async function startGame() {
 }
 
 .type-agent {
-  background: rgba(212, 168, 73, 0.1);
-  color: #d4a849;
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .type-llm_agent {
@@ -650,8 +650,8 @@ async function startGame() {
   padding: 0.85rem 2.25rem;
   border: none;
   border-radius: 6px;
-  background: linear-gradient(135deg, #d4a849, #b8912e);
-  color: #1a1008;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.05rem;
   font-weight: 700;
