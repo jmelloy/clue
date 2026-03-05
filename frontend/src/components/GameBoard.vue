@@ -592,13 +592,13 @@ import {
   SUSPECTS,
   WEAPONS,
   ROOMS,
-  CHARACTER_COLORS,
-  CHARACTER_ABBR,
   CARD_ICONS,
   CARD_IMAGES,
   cardIcon,
   hasCardImage,
   cardImageUrl,
+  abbr,
+  characterColors,
 } from "../constants/clue.js";
 
 const props = defineProps({
@@ -756,16 +756,9 @@ function playerName(pid) {
   return p ? p.name : pid;
 }
 
-function abbr(character) {
-  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?";
-}
-
 function tokenStyle(player) {
-  const colors = CHARACTER_COLORS[player.character] ?? {
-    bg: "#666",
-    text: "#fff",
-  };
-  const style = { backgroundColor: colors.bg, color: colors.text };
+  const { bg, text } = characterColors(player.character);
+  const style = { backgroundColor: bg, color: text };
   if (player.type === "wanderer") style.opacity = 0.5;
   return style;
 }

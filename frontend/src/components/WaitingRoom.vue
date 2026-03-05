@@ -132,9 +132,9 @@
 <script setup>
 import { ref } from "vue";
 import {
-  CHARACTER_COLORS,
-  CHARACTER_ABBR,
   CARD_IMAGES,
+  abbr,
+  characterColors,
 } from "../constants/clue.js";
 
 const props = defineProps({
@@ -148,20 +148,9 @@ const error = ref("");
 const copied = ref(false);
 const addingAgent = ref(false);
 
-function abbr(character) {
-  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?";
-}
-
 function tokenStyle(player) {
-  const colors = CHARACTER_COLORS[player.character] ?? {
-    bg: "#444",
-    text: "#fff",
-  };
-  return {
-    backgroundColor: colors.bg,
-    color: colors.text,
-    borderColor: colors.bg,
-  };
+  const { bg, text } = characterColors(player.character);
+  return { backgroundColor: bg, color: text, borderColor: bg };
 }
 
 function typeLabel(type) {
