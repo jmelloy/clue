@@ -495,8 +495,11 @@ class BaseAgent(ABC):
         self.player_has_cards: dict[str, set[str]] = {}
         self.player_not_has_cards: dict[str, set[str]] = {}
         self.suggestion_log: list[dict] = []
-        # Accumulate inference notifications for LLM agents to consume
-        self._pending_inferences: list[str] = []
+        # General inference notifications (NEGATIVE, OBSERVED, UNREFUTED)
+        self._general_inferences: list[str] = []
+        # Per-card inference notifications (DEDUCED) — keyed by card name,
+        # capped at 3 entries each, filtered to exclude already-seen cards.
+        self._card_inferences: dict[str, list[str]] = {}
 
         # Trace infrastructure — writes debug entries to Redis + log
         self._redis = redis_client
@@ -607,7 +610,7 @@ class BaseAgent(ABC):
         self.unrefuted_suggestions.append(
             {"suspect": suspect, "weapon": weapon, "room": room}
         )
-        self._pending_inferences.append(
+        self._general_inferences.append(
             f"UNREFUTED: My suggestion of {suspect}/{weapon}/{room} was not "
             f"disproved by anyone! These could all be the solution."
         )
@@ -640,10 +643,11 @@ class BaseAgent(ABC):
                 weapon=weapon,
                 room=room,
             )
-            self._pending_inferences.append(
+            self._add_card_inference(
+                inferred,
                 f"DEDUCED: {self._name(shown_by)} showed a card to {self._name(shown_to)} for "
                 f"{suspect}/{weapon}/{room}. By elimination I deduced the "
-                f"card was '{inferred}' — it is NOT the solution."
+                f"card was '{inferred}' — it is NOT the solution.",
             )
             self.seen_cards.add(inferred)
             self._run_inference()
@@ -728,7 +732,7 @@ class BaseAgent(ABC):
 
         if players_without_match:
             names = ", ".join(self._name(pid) for pid in players_without_match)
-            self._pending_inferences.append(
+            self._general_inferences.append(
                 f"NEGATIVE: {self._name(suggesting_player_id)} suggested {suspect}/{weapon}/{room}. "
                 f"Players [{names}] could NOT show any of these cards."
             )
@@ -737,7 +741,7 @@ class BaseAgent(ABC):
             and shown_by != self.player_id
             and suggesting_player_id != self.player_id
         ):
-            self._pending_inferences.append(
+            self._general_inferences.append(
                 f"OBSERVED: {self._name(shown_by)} showed a card to {self._name(suggesting_player_id)} "
                 f"for {suspect}/{weapon}/{room}."
             )
@@ -796,10 +800,11 @@ class BaseAgent(ABC):
                         weapon=weapon,
                         room=room,
                     )
-                    self._pending_inferences.append(
+                    self._add_card_inference(
+                        inferred,
                         f"DEDUCED (chain): From earlier suggestion "
                         f"{suspect}/{weapon}/{room}, I now deduce {self._name(shown_by)} "
-                        f"has '{inferred}' — it is NOT the solution."
+                        f"has '{inferred}' — it is NOT the solution.",
                     )
                     self.seen_cards.add(inferred)
                     changed = True
@@ -818,6 +823,35 @@ class BaseAgent(ABC):
         unknown_weapons = [w for w in WEAPONS if w not in self.seen_cards]
         unknown_rooms = [r for r in ROOMS if r not in self.seen_cards]
         return unknown_suspects, unknown_weapons, unknown_rooms
+
+    def _add_card_inference(self, card: str, inference: str) -> None:
+        """Record an inference about a specific card.
+
+        Skips the inference if the card is already in ``seen_cards`` (no new
+        information to pass to the LLM).  Deduplicates messages per card and
+        keeps only the last 3 entries to keep prompts compact.
+        """
+        if card in self.seen_cards:
+            return
+        entries = self._card_inferences.setdefault(card, [])
+        if inference not in entries:
+            entries.append(inference)
+            # Trim to the most recent 3 inferences per card
+            self._card_inferences[card] = entries[-3:]
+
+    @property
+    def _pending_inferences(self) -> list[str]:
+        """Combined view of all pending inferences (general + card-specific).
+
+        Returned as a flat list for backward-compatible display in debug info.
+        Card-specific inferences for cards already in ``seen_cards`` are
+        automatically excluded.
+        """
+        result: list[str] = list(self._general_inferences)
+        for card, infs in self._card_inferences.items():
+            if card not in self.seen_cards:
+                result.extend(infs)
+        return result
 
     # ------------------------------------------------------------------
     # Chat generation
@@ -1503,6 +1537,9 @@ class LLMAgent(BaseAgent):
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
+        # Faster/cheaper model for simple decisions (roll, move, end_turn, show_card).
+        # Defaults to gpt-4o-nano; override with LLM_NANO_MODEL.
+        self.nano_model = os.getenv("LLM_NANO_MODEL", "gpt-4o-nano")
         self.memory: list[str] = []
 
         # Fallback agent shares our observation state — LLM agents always
@@ -1531,6 +1568,7 @@ class LLMAgent(BaseAgent):
             "llm_configured",
             api_url=self.api_url,
             model=self.model,
+            nano_model=self.nano_model,
             api_key_set=bool(self.api_key),
         )
 
@@ -1543,22 +1581,44 @@ class LLMAgent(BaseAgent):
             self.memory = await game.get_memory(self.player_id)
             self.agent_trace("memory_loaded", count=len(self.memory))
 
+    # Maximum number of memory entries retained in Redis per agent.
+    _MEMORY_MAX = 20
+
     async def _save_memory_entry(self, entry: str):
-        """Append a memory entry both in-memory and to Redis."""
+        """Append a memory entry both in-memory and to Redis.
+
+        The in-memory list is capped at ``_MEMORY_MAX`` entries so older
+        entries don't accumulate indefinitely.  Redis is trimmed to match.
+        """
         self.memory.append(entry)
+        # Keep in-memory list bounded
+        if len(self.memory) > self._MEMORY_MAX:
+            self.memory = self.memory[-self._MEMORY_MAX :]
         if self._redis and self._game_id and self.player_id:
             from .game import ClueGame
 
             game = ClueGame(self._game_id, self._redis)
             await game.append_memory(self.player_id, entry)
+            # Trim the Redis list to the most recent entries
+            key = game._memory_key(self.player_id)
+            await self._redis.ltrim(key, -self._MEMORY_MAX, -1)
 
     async def _flush_pending_inferences(self):
-        """Save any accumulated inference notifications to memory."""
-        if not self._pending_inferences:
+        """Save any accumulated inference notifications to memory.
+
+        Combines general inferences and per-card inferences (already filtered
+        to exclude cards in ``seen_cards``, capped at 3 per card) into a single
+        compact memory entry, then clears both stores.
+        """
+        all_inferences = self._pending_inferences  # property — filtered view
+        if not all_inferences:
+            self._general_inferences.clear()
+            self._card_inferences.clear()
             return
         # Combine all pending inferences into a single memory entry
-        entry = "INFERENCE UPDATE: " + " | ".join(self._pending_inferences)
-        self._pending_inferences.clear()
+        entry = "INFERENCE UPDATE: " + " | ".join(all_inferences)
+        self._general_inferences.clear()
+        self._card_inferences.clear()
         await self._save_memory_entry(entry)
         self.agent_trace("inferences_flushed", entry=entry)
 
@@ -1566,18 +1626,19 @@ class LLMAgent(BaseAgent):
     # LLM communication
     # ------------------------------------------------------------------
 
-    async def _call_llm(self, system_prompt: str, user_prompt: str) -> str | None:
+    async def _call_llm(self, system_prompt: str, user_prompt: str, model: str | None = None) -> str | None:
         """Call the LLM API and return the response text, or None on failure."""
         if not self.api_key:
             self.agent_trace("llm_no_api_key")
             return None
 
+        effective_model = model or self.model
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": self.model,
+            "model": effective_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -1586,7 +1647,7 @@ class LLMAgent(BaseAgent):
 
         self.agent_trace(
             "llm_request",
-            model=self.model,
+            model=effective_model,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
@@ -1704,12 +1765,12 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
-        # Include memory from previous turns (recent entries, capped to avoid
-        # overwhelming the prompt)
+        # Include memory from previous turns — only the 3 most recent entries to
+        # keep the prompt compact while still providing useful recent context.
         if self.memory:
             lines.append("")
             lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
-            recent = self.memory[-1:]  # last 1 entry
+            recent = self.memory[-3:]
             start_idx = len(self.memory) - len(recent) + 1
             for i, entry in enumerate(recent):
                 lines.append(f"  [{start_idx + i}] {entry}")
@@ -1864,14 +1925,20 @@ class LLMAgent(BaseAgent):
             self.agent_trace("fallback_action", action=fallback_action.model_dump())
             return fallback_action
 
-        # Build prompt and call LLM
+        # Build prompt and call LLM.
+        # Use the nano model when only simple actions are available (no suggest/accuse).
+        # Reserve the full model for complex decisions.
+        complex_actions = {"suggest", "accuse"}
+        needs_full_model = bool(complex_actions & set(available))
+        active_model = self.model if needs_full_model else self.nano_model
+
         personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
         system_prompt = _ACTION_SYSTEM_PROMPT.format(
             character=self.character or "a detective",
             personality=personality,
         )
         user_prompt = self._build_action_prompt(game_state, player_state)
-        response_text = await self._call_llm(system_prompt, user_prompt)
+        response_text = await self._call_llm(system_prompt, user_prompt, model=active_model)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
@@ -1947,7 +2014,8 @@ class LLMAgent(BaseAgent):
             return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
-        response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt)
+        # Show-card choices are simple comparisons — use the nano model for speed.
+        response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt, model=self.nano_model)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
