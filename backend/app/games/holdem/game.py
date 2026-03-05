@@ -223,7 +223,7 @@ class HoldemGame:
             bb_player.all_in = True
         state.pot += bb_amount
 
-        state.current_bet = bb_amount
+        state.current_bet = max(sb_amount, bb_amount)
 
         # First to act preflop: player after BB (or SB in heads-up after dealing)
         if num_active == 2:
@@ -231,7 +231,17 @@ class HoldemGame:
         else:
             first_to_act_idx = (bb_idx + 1) % num_active
 
-        state.whose_turn = active[first_to_act_idx].id
+        # Find the first player who can actually act (skip all-in players)
+        first_actor_id = None
+        for offset in range(num_active):
+            idx = (first_to_act_idx + offset) % num_active
+            if not active[idx].all_in:
+                first_actor_id = active[idx].id
+                break
+
+        if first_actor_id is not None:
+            state.whose_turn = first_actor_id
+        # else: everyone is all-in; whose_turn stays None and we auto-advance below
 
         await self._save_state(state)
         await self._append_log(
@@ -241,6 +251,11 @@ class HoldemGame:
                 timestamp=dt.datetime.now(dt.timezone.utc).isoformat(),
             )
         )
+
+        # If no one can act (all players went all-in posting blinds), auto-advance
+        if first_actor_id is None:
+            await self._advance_betting_round(state)
+
 
     def get_available_actions(
         self, player_id: str, state: HoldemGameState

@@ -269,7 +269,7 @@ async def test_move_logging(game: ClueGame):
     assert any(entry.type == "move" for entry in log)
     move_entry = next(e for e in log if e.type == "move")
     assert move_entry.player_id == whose_turn
-    # Room may be None if the dice roll wasn't enough to reach it
+    # Player either reaches the requested room or stops in a hallway
     assert move_entry.room == room or move_entry.room is None
 
 

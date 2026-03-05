@@ -586,11 +586,15 @@ def move_towards(
                     else:
                         bfs_queue.append((nb, new_dist))
 
-    # Pick the reachable square (excluding start) that is closest to the target
+    # Pick the reachable square (excluding start) that is closest to the target.
+    # Skip rooms that are not the target — a player should never be placed in an
+    # intermediate room they didn't choose; they should stop in a hallway instead.
     best_sq = start
     best_dist = dist_from_target.get(start, float("inf"))
     for sq in reachable_squares:
         if sq == start:
+            continue
+        if sq.type == SquareType.ROOM and sq != target_node:
             continue
         d = dist_from_target.get(sq, float("inf"))
         if d < best_dist:

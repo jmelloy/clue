@@ -632,15 +632,6 @@ class ClueGame:
                     # Player couldn't actually move (all paths blocked)
                     final_room = current_room_name
                     final_position = state.player_positions.get(player_id)
-                elif dest.type == SquareType.ROOM and dest.room:
-                    # Player entered an intermediate room on the way
-                    entered_room = dest.room.value
-                    state.current_room[player_id] = entered_room
-                    final_room = entered_room
-                    center = ROOM_CENTERS.get(entered_room)
-                    if center:
-                        state.player_positions[player_id] = list(center)
-                        final_position = list(center)
                 else:
                     # Player ends up in the hallway partway there
                     final_room = None
