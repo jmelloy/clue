@@ -75,7 +75,7 @@ import {
 // ── Board layout data (matches backend board.py) ──
 
 const BOARD_ROWS = [
-  "ssssss hhhhhhhhhh oooooo",
+  "ssssss . hhhhhh . oooooo",
   "sssssss..hhhhhh..ooooooo",
   "sssssss..hhhhhh..ooooooo",
   "sssssss..hhhhhh..ooooooo",

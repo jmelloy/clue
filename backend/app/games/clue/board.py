@@ -148,7 +148,7 @@ START_POSITIONS = {
 
 ROWS, COLS = 25, 24
 
-BOARD = """ssssss hhhhhhhhhh oooooo
+BOARD = """ssssss . hhhhhh . oooooo
 sssssss..hhhhhh..ooooooo
 sssssss..hhhhhh..ooooooo
 sssssss..hhhhhh..ooooooo
