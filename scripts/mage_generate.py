@@ -26,7 +26,7 @@ Each prompt is generated 3x with FLUX.2 Dev, then 2x with Z-Image Turbo.
 
 Prerequisites:
     pip install playwright
-    playwright install chromium
+    playwright install webkit
 
 The script uses your existing browser session (persistent context) so you
 stay logged in to mage.space across runs.
@@ -364,8 +364,9 @@ async def main():
 
     # Build generation plan: each prompt N times per model
     MODELS = [
-        ("Flux 2 Dev", 3),
-        ("Z-Image Turbo", 2),
+        ("Flux 2 Dev", 1),
+        ("Z-Image Turbo", 1),
+        ("Flux 2 Dev", 2),
     ]
 
     total_generations = len(prompts) * sum(count for _, count in MODELS)
@@ -377,7 +378,7 @@ async def main():
 
     async with async_playwright() as p:
         # Use persistent context to preserve login session
-        browser = await p.chromium.launch_persistent_context(
+        browser = await p.webkit.launch_persistent_context(
             USER_DATA_DIR,
             headless=args.headless,
             viewport={"width": 1280, "height": 900},
@@ -441,7 +442,7 @@ async def main():
                             await browser.close()
                         except Exception:
                             pass
-                        browser = await p.chromium.launch_persistent_context(
+                        browser = await p.webkit.launch_persistent_context(
                             USER_DATA_DIR,
                             headless=args.headless,
                             viewport={"width": 1280, "height": 900},
