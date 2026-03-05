@@ -9,11 +9,12 @@ from pydantic import TypeAdapter, ValidationError
 from .board import (
     START_POSITIONS,
     ROOM_CENTERS,
+    ROOM_NAME_TO_ENUM,
+    ROOM_NODES,
     SECRET_PASSAGES,
+    SQUARES,
     Room,
     SquareType,
-    build_grid,
-    build_graph,
     reachable,
     move_towards,
 )
@@ -52,19 +53,10 @@ from .models import (
     SuggestResult,
     Suggestion,
     SuggestionLogEntry,
+    action_adapter,
 )
 
 logger = logging.getLogger(__name__)
-
-# Pre-build the board graph for pathfinding
-_GRID = build_grid()
-_SQUARES, _ROOM_NODES = build_graph(_GRID)
-
-# Map room name strings to Room enum values
-_ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
-
-# TypeAdapter for parsing action dicts into typed GameAction models
-_action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)
 
 CHARACTER_START_KEY = {
     "Miss Scarlett": "Scarlet",
@@ -395,10 +387,10 @@ class ClueGame:
         """Return the board Square for the given player's current location."""
         current_room_name = state.current_room.get(player_id)
         pos = state.player_positions.get(player_id)
-        if current_room_name and current_room_name in _ROOM_NAME_TO_ENUM:
-            return _ROOM_NODES[_ROOM_NAME_TO_ENUM[current_room_name]]
+        if current_room_name and current_room_name in ROOM_NAME_TO_ENUM:
+            return ROOM_NODES[ROOM_NAME_TO_ENUM[current_room_name]]
         elif pos:
-            return _SQUARES.get((pos[0], pos[1]))
+            return SQUARES.get((pos[0], pos[1]))
         return None
 
     @staticmethod
@@ -445,7 +437,7 @@ class ClueGame:
 
         occupied = self._get_occupied_positions(state, player_id)
         reached = reachable(
-            start_sq, dice, _SQUARES, _ROOM_NODES, occupied, use_secret_passages=False
+            start_sq, dice, SQUARES, ROOM_NODES, occupied, use_secret_passages=False
         )
 
         rooms = []
@@ -473,7 +465,7 @@ class ClueGame:
         """
         # Parse dict actions into typed models
         if isinstance(action, dict):
-            action = _action_adapter.validate_python(action)
+            action = action_adapter.validate_python(action)
 
         state = await self._load_state()
         if state is None:
@@ -592,7 +584,7 @@ class ClueGame:
         if target_pos and not room_name:
             # Position-based move: player clicked a specific hallway cell
             target_row, target_col = int(target_pos[0]), int(target_pos[1])
-            target_sq = _SQUARES.get((target_row, target_col))
+            target_sq = SQUARES.get((target_row, target_col))
             if not target_sq:
                 raise ValueError("Invalid position")
 
@@ -600,8 +592,8 @@ class ClueGame:
                 reachable_squares = reachable(
                     start_sq,
                     total,
-                    _SQUARES,
-                    _ROOM_NODES,
+                    SQUARES,
+                    ROOM_NODES,
                     occupied,
                     use_secret_passages=False,
                 )
@@ -616,15 +608,15 @@ class ClueGame:
                 raise ValueError("Cannot determine current position")
 
         elif room_name:
-            target_room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
+            target_room_enum = ROOM_NAME_TO_ENUM.get(room_name)
 
             if start_sq and target_room_enum:
                 dest, reached = move_towards(
                     start_sq,
                     target_room_enum,
                     total,
-                    _SQUARES,
-                    _ROOM_NODES,
+                    SQUARES,
+                    ROOM_NODES,
                     occupied,
                     use_secret_passages=False,
                 )
