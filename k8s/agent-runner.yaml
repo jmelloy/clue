@@ -27,6 +27,10 @@ spec:
               value: http://backend:8000
             - name: AGENT_POLL_INTERVAL
               value: "2"
+            - name: LOG_LEVEL
+              value: "DEBUG"
+            - name: LLM_TRACE_LOG_LEVEL
+              value: "DEBUG"
             - name: LLM_API_KEY
               valueFrom:
                 secretKeyRef:
