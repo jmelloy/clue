@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "frontend/public/images/**"
-    branches: [main]
+    
 
 concurrency:
   group: resize-images
@@ -31,7 +31,7 @@ jobs:
             filename=$(basename "$img")
             thumb_dir="$dir/thumbnails"
             mkdir -p "$thumb_dir"
-            convert "$img" -resize 320x320^ -gravity center -extent 320x320 -quality 90 "$thumb_dir/$filename"
+            convert "$img" -resize 320x320 -quality 90 "$thumb_dir/$filename"
             echo "Created thumbnail: $thumb_dir/$filename"
           done
 
