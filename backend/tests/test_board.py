@@ -280,3 +280,65 @@ def test_room_has_infinite_capacity(board):
         occupied={(ballroom.row, ballroom.col)},
     )
     assert ballroom in reached, "Room should be reachable regardless of occupants"
+
+
+# ---------------------------------------------------------------------------
+# room-prompts.md ratio validation
+# ---------------------------------------------------------------------------
+
+
+def test_room_prompt_ratios_match_board():
+    """Ratios in room-prompts.md must match actual room grid dimensions.
+
+    For rooms with a ROOM_IMAGE_ROW_OFFSET (e.g. Hall), the effective image
+    height is reduced by the offset, so the ratio is computed from the image
+    dimensions rather than the raw bounding box.
+    """
+    import re
+    from math import gcd
+    from pathlib import Path
+
+    from app.games.clue.board import ROOM_BOUNDS, ROOM_IMAGE_ROW_OFFSETS
+
+    prompts_path = (
+        Path(__file__).parent.parent / "app" / "games" / "clue" / "room-prompts.md"
+    )
+    text = prompts_path.read_text()
+
+    # Parse "### RoomName\n**Ratio:** W:H" from the Rooms section only
+    # (stop when we reach the Weapons section)
+    room_ratios: dict[str, tuple[int, int]] = {}
+    in_rooms_section = False
+    current_room: str | None = None
+    for line in text.splitlines():
+        if line.strip() == "## Rooms":
+            in_rooms_section = True
+            continue
+        if line.startswith("## ") and in_rooms_section:
+            break  # left the Rooms section
+        if not in_rooms_section:
+            continue
+        m = re.match(r"^### (.+)$", line)
+        if m:
+            current_room = m.group(1).strip()
+        m = re.match(r"^\*\*Ratio:\*\* (\d+):(\d+)$", line)
+        if m and current_room:
+            room_ratios[current_room] = (int(m.group(1)), int(m.group(2)))
+            current_room = None
+
+    assert room_ratios, "No room ratios found in room-prompts.md"
+
+    for room in Room:
+        assert room.value in room_ratios, (
+            f"Room '{room.value}' not found in room-prompts.md"
+        )
+        c1, r1, c2, r2 = ROOM_BOUNDS[room]
+        image_width = c2 - c1 + 1
+        image_height = r2 - r1 + 1 - ROOM_IMAGE_ROW_OFFSETS.get(room, 0)
+        divisor = gcd(image_width, image_height)
+        expected = (image_width // divisor, image_height // divisor)
+        actual = room_ratios[room.value]
+        assert actual == expected, (
+            f"{room.value}: room-prompts.md ratio is {actual[0]}:{actual[1]}, "
+            f"but image dimensions are {image_width}x{image_height} = {expected[0]}:{expected[1]}"
+        )

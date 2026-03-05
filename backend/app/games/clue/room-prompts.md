@@ -9,7 +9,7 @@ Prompts for generating illustrations for the Clue board game.
 ---
 
 ### Study
-**Ratio:** 16:9
+**Ratio:** 7:4
 
 > Colored pencil art. Dark victorian noir of a Cluedo mansion — the Study. Top view from the bottom, moonlight streaming through a tall window. Deep midnight blue and mahogany tones. A heavy oak desk strewn with papers and an inkwell, floor-to-ceiling bookshelves, a globe in the corner, a green banker's lamp casting a small circle of light. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug.
 
@@ -23,42 +23,42 @@ Prompts for generating illustrations for the Clue board game.
 ---
 
 ### Lounge
-**Ratio:** 5:4
+**Ratio:** 7:6
 
 > Colored pencil art. Moody victorian Cluedo mansion — the Lounge. Top view from the bottom, pale moonlight filtering through heavy drapes. Rich crimson and gold tones. Tufted velvet chaise longue, a crackling fireplace with marble mantel, crystal decanter and glasses on a side table, thick burgundy drapes, an animal-skin rug, scattered playing cards. Cigarette smoke curling upward.
 
 ---
 
 ### Library
-**Ratio:** 3:2
+**Ratio:** 7:5
 
 > Colored pencil art. Atmospheric victorian Cluedo mansion — the Library. Top view from the bottom, cold moonlight casting long shadows through a bay window. Forest green and aged leather tones. Towering shelves packed with leather-bound volumes, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the window, scattered notes and a magnifying glass on a side table.
 
 ---
 
 ### Billiard Room
-**Ratio:** 5:4
+**Ratio:** 6:5
 
 > Colored pencil art. Smoky victorian Cluedo mansion — the Billiard Room. Top view from the bottom, a sliver of moonlight through a high transom window. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game, cue rack on the wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, mounted trophy heads faintly visible on wood-paneled walls.
 
 ---
 
 ### Dining Room
-**Ratio:** 1:1
+**Ratio:** 8:7
 
 > Colored pencil art. Opulent victorian Cluedo mansion — the Dining Room. Top view from the bottom, silver moonlight spilling across the table through French doors. Deep plum and silver tones. A long mahogany dining table set for six with fine china and candelabras, high-backed chairs, a sideboard with a silver tureen, wine bottles, and a carving knife. Heavy damask curtains. Spilled red wine on the white tablecloth.
 
 ---
 
 ### Conservatory
-**Ratio:** 5:4
+**Ratio:** 6:5
 
 > Colored pencil art. Lush victorian Cluedo mansion — the Conservatory. Top view from the bottom, bright moonlight flooding through the glass-paned ceiling. Warm sage green and terracotta tones. Potted palms and exotic ferns, a wrought-iron garden bench, stone tile floor with moss in the cracks, a watering can, scattered gardening tools, and a vine creeping along the window frame.
 
 ---
 
 ### Ballroom
-**Ratio:** 1:1
+**Ratio:** 8:7
 
 > Colored pencil art. Elegant victorian Cluedo mansion — the Ballroom. Top view from the bottom, blue moonlight washing across the dance floor through towering windows. Lavender and champagne gold tones. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the corner, enormous crystal chandelier reflection on the floor, floor-length mirrors on the walls, velvet rope barriers, a single dropped silk glove.
 

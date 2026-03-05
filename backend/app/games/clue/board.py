@@ -78,7 +78,7 @@ SECRET_PASSAGES = {
 # Corrected against the board image
 ROOM_BOUNDS = {
     Room.STUDY: (0, 0, 6, 3),  # 4x7   top-left
-    Room.HALL: (9, 1, 14, 6),  # 6x6   top-center
+    Room.HALL: (9, 1, 14, 6),  # 6 cols x 7 rows top-center (image offset: 1 extra row at top)
     Room.LOUNGE: (17, 0, 23, 5),  # 6x7   top-right
     Room.LIBRARY: (0, 7, 6, 10),  # 4x7   mid-left
     Room.BILLIARD_ROOM: (0, 12, 5, 16),  # 5x6   center-left
@@ -86,6 +86,12 @@ ROOM_BOUNDS = {
     Room.CONSERVATORY: (0, 20, 5, 24),  # 5x6   bottom-left (was row 19, fixed)
     Room.BALLROOM: (8, 17, 15, 22),  # 6x8   bottom-center
     Room.KITCHEN: (18, 19, 23, 24),  # 6x6   bottom-right
+}
+
+# Number of rows at the top of a room that are not covered by the room image.
+# These extra rows reuse the first row of the image when rendering.
+ROOM_IMAGE_ROW_OFFSETS = {
+    Room.HALL: 1,  # Hall grew by one row at the top; image was designed for 6 rows
 }
 
 ROOM_KEYS = {
