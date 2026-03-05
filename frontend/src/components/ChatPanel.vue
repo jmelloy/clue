@@ -1,28 +1,83 @@
 <template>
   <div class="chat-panel">
-    <h2>Game Log &amp; Chat</h2>
-    <ul class="chat-messages" ref="chatContainer">
-      <li
-        v-for="(msg, i) in messages"
-        :key="i"
-        class="chat-message"
-        :class="{ 'system-message': isSystemMsg(msg) }"
+    <div class="chat-tabs">
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'chat' }"
+        @click="activeTab = 'chat'"
       >
-        <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
-        <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{ msgTagLabel(msg) }}</span>
-        <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
-      </li>
-      <li v-if="!messages.length" class="chat-empty">No messages yet.</li>
-    </ul>
-    <div class="chat-input">
-      <input
-        v-model="inputText"
-        placeholder="Type a message..."
-        maxlength="300"
-        @keyup.enter="sendMessage"
-      />
-      <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
+        Chat
+      </button>
+      <button
+        class="tab-btn"
+        :class="{ active: activeTab === 'log' }"
+        @click="activeTab = 'log'"
+      >
+        Game Log
+      </button>
     </div>
+
+    <!-- Chat Tab -->
+    <template v-if="activeTab === 'chat'">
+      <ul class="chat-messages" ref="chatContainer">
+        <li
+          v-for="(msg, i) in chatOnly"
+          :key="i"
+          class="chat-message"
+        >
+          <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
+          <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
+        </li>
+        <li v-if="!chatOnly.length" class="chat-empty">No messages yet.</li>
+      </ul>
+      <div class="chat-input">
+        <input
+          v-model="inputText"
+          placeholder="Type a message..."
+          maxlength="300"
+          @keyup.enter="sendMessage"
+        />
+        <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
+      </div>
+    </template>
+
+    <!-- Game Log Tab -->
+    <template v-if="activeTab === 'log'">
+      <div class="log-filters">
+        <label class="filter-label">
+          <input type="checkbox" v-model="showSuggestions" />
+          Suggestions
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showCardShows" />
+          Card Shows
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showAccusations" />
+          Accusations
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showMoves" />
+          Moves &amp; Rolls
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showOther" />
+          Other
+        </label>
+      </div>
+      <ul class="chat-messages" ref="logContainer">
+        <li
+          v-for="(msg, i) in filteredLog"
+          :key="i"
+          class="chat-message system-message"
+        >
+          <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
+          <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{ msgTagLabel(msg) }}</span>
+          <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
+        </li>
+        <li v-if="!filteredLog.length" class="chat-empty">No log entries match filters.</li>
+      </ul>
+    </template>
   </div>
 </template>
 
@@ -36,8 +91,17 @@ const props = defineProps({
 });
 const emit = defineEmits(["send-message"]);
 
+const activeTab = ref("chat");
 const inputText = ref("");
 const chatContainer = ref(null);
+const logContainer = ref(null);
+
+// Log filters — all on by default
+const showSuggestions = ref(true);
+const showCardShows = ref(true);
+const showAccusations = ref(true);
+const showMoves = ref(true);
+const showOther = ref(true);
 
 const playerById = computed(() => {
   const map = {};
@@ -64,8 +128,33 @@ function isSystemMsg(msg) {
   return !isPlayerChat(msg);
 }
 
+// Categorize log messages
+function logCategory(msg) {
+  const t = msg.text || "";
+  if (t.includes("suggests it was") || t.includes("No one could disprove")) return "suggestion";
+  if (t.includes("showed a card to") || t.includes("showed you:") || t.includes("No one could show")) return "cardshow";
+  if (t.includes("accuses")) return "accusation";
+  if (t.includes("rolled") || t.includes("moved to") || t.includes("used the secret passage")) return "move";
+  return "other";
+}
+
+// Split messages into chat vs game log
+const chatOnly = computed(() => props.messages.filter((msg) => isPlayerChat(msg)));
+const logOnly = computed(() => props.messages.filter((msg) => isSystemMsg(msg)));
+
+const filteredLog = computed(() => {
+  return logOnly.value.filter((msg) => {
+    const cat = logCategory(msg);
+    if (cat === "suggestion" && !showSuggestions.value) return false;
+    if (cat === "cardshow" && !showCardShows.value) return false;
+    if (cat === "accusation" && !showAccusations.value) return false;
+    if (cat === "move" && !showMoves.value) return false;
+    if (cat === "other" && !showOther.value) return false;
+    return true;
+  });
+});
+
 function colorizeNames(text) {
-  // Color character names — sort longest first to avoid partial matches
   const entries = Object.entries(CHARACTER_COLORS).sort(
     (a, b) => b[0].length - a[0].length
   );
@@ -79,7 +168,6 @@ function colorizeNames(text) {
       );
     }
   }
-  // Color player display names (may differ from character names)
   for (const p of props.players) {
     const charColor = CHARACTER_COLORS[p.character];
     if (!charColor) continue;
@@ -99,7 +187,6 @@ function formatMessageHtml(msg) {
   const escaped = escapeHtml(msg.text);
 
   if (isPlayerChat(msg)) {
-    // Player chat: "PlayerName: message text"
     const player = playerById.value[msg.player_id];
     const charColor = CHARACTER_COLORS[player.character];
     const color = charColor?.bg || charColor;
@@ -113,7 +200,6 @@ function formatMessageHtml(msg) {
     }
   }
 
-  // System / action message: color all known names
   return colorizeNames(escaped);
 }
 
@@ -152,8 +238,11 @@ watch(
   () => props.messages.length,
   async () => {
     await nextTick();
-    if (chatContainer.value) {
+    if (activeTab.value === "chat" && chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    }
+    if (activeTab.value === "log" && logContainer.value) {
+      logContainer.value.scrollTop = logContainer.value.scrollHeight;
     }
   }
 );
@@ -169,13 +258,61 @@ watch(
   font-family: "Crimson Text", Georgia, serif;
 }
 
-h2 {
-  font-family: "Playfair Display", Georgia, serif;
-  color: #d4a849;
+.chat-tabs {
+  display: flex;
+  gap: 0;
   margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(212, 168, 73, 0.15);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #6a6050;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #d4a849;
+}
+
+.tab-btn.active {
+  color: #d4a849;
+  border-bottom-color: #d4a849;
+}
+
+.log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  margin-bottom: 0.4rem;
+  padding: 0.3rem 0;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: #8a7e6e;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.filter-label input[type="checkbox"] {
+  accent-color: #d4a849;
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
 }
 
 .chat-messages {
