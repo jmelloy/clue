@@ -1,6 +1,6 @@
 <template>
   <div class="board-map">
-    <div class="board-container">
+    <div class="board-container" :class="{ 'vintage-board': theme === 'vintage' }">
       <!-- Background grid of 25x24 cells -->
       <div class="board-grid">
         <div v-for="(cell, i) in cells" :key="i" :class="cellClasses(cell)" :style="cellStyle(cell)"
@@ -42,6 +42,9 @@
 <script setup>
 import { computed } from 'vue'
 import { CARD_IMAGES, CARD_ICONS, WEAPONS, abbr, characterColors } from '../constants/clue.js'
+import { useTheme } from '../composables/useTheme.js'
+
+const { theme } = useTheme()
 
 
 // ── Board layout data (matches backend board.py) ──
@@ -467,6 +470,10 @@ function cellClasses(cell) {
 
 function cellStyle(cell) {
   if (cell.room) {
+    // In vintage mode, the full board image is used as background — skip per-room images
+    if (theme.value === 'vintage') {
+      return { backgroundColor: 'transparent' }
+    }
     const img = CARD_IMAGES[cell.room]
     const info = ROOM_INFO[cell.room]
     if (img && info) {
@@ -480,10 +487,10 @@ function cellStyle(cell) {
         backgroundImage: `url(${img})`,
         backgroundSize: `${roomCols * 100}% ${roomRows * 100}%`,
         backgroundPosition: `${posX}% ${posY}%`,
-        backgroundColor: '#1a1610'
+        backgroundColor: 'var(--board-room)'
       }
     }
-    return { backgroundColor: '#1a1610' }
+    return { backgroundColor: 'var(--board-room)' }
   }
   return {}
 }
@@ -543,11 +550,36 @@ function tokenStyle(token) {
   max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: #1a1510;
+  background: var(--board-bg);
   border-radius: 6px;
-  overflow: visible;
-  border: 4px solid #8b1a1a;
+  overflow: hidden;
+  border: 4px solid var(--board-border);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
+}
+
+/* Vintage theme: full board image as background, cropped to align grid.
+   The source image is 1440x1440 (square) with a green border.
+   Our grid is 24 cols x 25 rows (aspect-ratio 24/25, nearly square).
+   We scale past the green border and nudge so the 4 heavy red
+   corner rooms (Study, Lounge, Conservatory, Kitchen) land on the
+   grid corners. */
+.board-container.vintage-board {
+  background-image: url('/images/clue/board.jpg');
+  background-size: 119% 117%;
+  background-position: 48% 47%;
+  background-repeat: no-repeat;
+}
+
+/* Hide overlay labels in vintage — the board image has its own */
+.board-container.vintage-board .room-label,
+.board-container.vintage-board .center-label,
+.board-container.vintage-board .secret-passage {
+  display: none;
+}
+
+/* Hide door indicators in vintage — visible on the board image */
+.board-container.vintage-board .cell-door::after {
+  display: none;
 }
 
 /* ── Grid ── */
@@ -558,10 +590,17 @@ function tokenStyle(token) {
   position: absolute;
   inset: 0;
   gap: 0;
-  background: #1a1510;
-  background-image: linear-gradient(to right, #15110c 1px, transparent 1px),
-    linear-gradient(to bottom, #15110c 1px, transparent 1px);
+  z-index: 1;
+  background: var(--board-bg);
+  background-image: linear-gradient(to right, var(--board-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--board-grid-line) 1px, transparent 1px);
   background-size: calc(100% / 24) 100%, 100% calc(100% / 25);
+}
+
+/* In vintage mode, make the grid transparent so the board image shows through */
+[data-theme="vintage"] .board-grid {
+  background: transparent;
+  background-image: none;
 }
 
 /* ── Cell types ── */
@@ -572,7 +611,15 @@ function tokenStyle(token) {
 
 .cell-room {
   border: 0.5px solid rgba(255, 255, 255, 0.03);
-  filter: saturate(0.35) brightness(0.9);
+  filter: var(--board-room-filter);
+}
+
+[data-theme="vintage"] .cell-room {
+  border-color: transparent;
+}
+
+[data-theme="light"] .cell-room {
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
 .cell-door {
@@ -620,14 +667,24 @@ function tokenStyle(token) {
 }
 
 .cell-hallway {
-  background: #c8b88a;
+  background: var(--board-hallway);
   border: 0.5px solid rgba(160, 140, 100, 0.4);
 }
 
+[data-theme="vintage"] .cell-hallway {
+  background: transparent;
+  border-color: transparent;
+}
+
 .cell-start {
-  background: #c8b88a;
+  background: var(--board-hallway);
   border: 0.5px solid rgba(160, 140, 100, 0.4);
   position: relative;
+}
+
+[data-theme="vintage"] .cell-start {
+  background: transparent;
+  border-color: transparent;
 }
 
 .cell-start::after {
@@ -639,13 +696,22 @@ function tokenStyle(token) {
 }
 
 .cell-wall {
-  background: #2a2a1e;
+  background: var(--board-wall);
+}
+
+[data-theme="vintage"] .cell-wall {
+  background: transparent;
 }
 
 /* Center dead space (staircase area) */
 .cell-wall.cell-center {
-  background: #3a2e1e;
+  background: var(--board-center);
   border: 0.5px solid rgba(80, 65, 40, 0.3);
+}
+
+[data-theme="vintage"] .cell-wall.cell-center {
+  background: transparent;
+  border-color: transparent;
 }
 
 /* ── Interactive states ── */
@@ -694,6 +760,11 @@ function tokenStyle(token) {
   background: #d8cca0;
 }
 
+[data-theme="vintage"] .cell-hallway.reachable,
+[data-theme="vintage"] .cell-start.reachable {
+  background: rgba(76, 175, 80, 0.2);
+}
+
 .cell.unreachable {
   filter: saturate(0.25) brightness(0.7);
   opacity: 0.85;
@@ -736,7 +807,7 @@ function tokenStyle(token) {
 /* ── Room labels ── */
 .room-label {
   position: absolute;
-  color: #f0e0b0;
+  color: var(--board-label-color);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: clamp(8px, 1.4vw, 13px);
   font-weight: 600;
@@ -744,26 +815,34 @@ function tokenStyle(token) {
   text-align: center;
   text-shadow: 0 0 6px rgba(0, 0, 0, 1), 0 0 12px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 1);
   letter-spacing: 0.05em;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--board-label-bg);
   padding: 1px 5px;
   border-radius: 3px;
+}
+
+[data-theme="light"] .room-label {
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
 }
 
 /* ── Center label ── */
 .center-label {
   position: absolute;
-  color: #d4a849;
+  color: var(--accent);
   font-family: 'Playfair Display', Georgia, serif;
   font-size: clamp(14px, 2.8vw, 26px);
   font-weight: 900;
   letter-spacing: 0.3em;
-  text-shadow: 0 0 15px rgba(212, 168, 73, 0.4);
+  text-shadow: 0 0 15px var(--accent-glow);
+}
+
+[data-theme="vintage"] .center-label {
+  text-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Secret passage ── */
 .secret-passage {
   position: absolute;
-  color: #c8a060;
+  color: var(--board-passage-color);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: clamp(7px, 1.2vw, 11px);
   font-weight: 600;
@@ -772,7 +851,7 @@ function tokenStyle(token) {
   padding: 1px 4px;
   border: 1px dashed rgba(200, 160, 96, 0.35);
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--board-passage-bg);
   letter-spacing: 0.02em;
 }
 
@@ -898,8 +977,8 @@ function tokenStyle(token) {
   bottom: 110%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
-  color: #f0e0b0;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
   font-family: 'Crimson Text', Georgia, serif;
   font-size: 11px;
   font-weight: 600;

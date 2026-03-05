@@ -1,0 +1,212 @@
+/* ================================================================
+   Theme definitions — CSS custom properties
+   Three themes: dark (default), light, vintage
+   ================================================================ */
+
+/* ── Dark theme (current default) ── */
+:root,
+[data-theme="dark"] {
+  /* Page backgrounds */
+  --bg-page: #1c1812;
+  --bg-panel: linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
+  --bg-panel-solid: #1e1810;
+  --bg-input: rgba(255, 255, 255, 0.03);
+  --bg-input-focus: rgba(255, 255, 255, 0.05);
+  --bg-hover: rgba(212, 168, 73, 0.04);
+
+  /* Text */
+  --text-primary: #e8dcc8;
+  --text-secondary: #8a7e6b;
+  --text-muted: #6a6050;
+  --text-dim: #5a5040;
+  --text-faint: #4a4030;
+  --text-darkest: #3a3528;
+
+  /* Accent / gold */
+  --accent: #d4a849;
+  --accent-dark: #b8912e;
+  --accent-text: #1a1008;
+  --accent-glow: rgba(212, 168, 73, 0.15);
+  --accent-border: rgba(212, 168, 73, 0.12);
+  --accent-border-hover: rgba(212, 168, 73, 0.25);
+  --accent-border-focus: rgba(212, 168, 73, 0.4);
+  --accent-bg: rgba(212, 168, 73, 0.06);
+
+  /* Borders */
+  --border-panel: rgba(212, 168, 73, 0.08);
+  --border-card: rgba(212, 168, 73, 0.12);
+
+  /* Errors */
+  --error: #c45050;
+  --error-bg: rgba(139, 42, 42, 0.1);
+  --error-border: rgba(139, 42, 42, 0.2);
+
+  /* Success */
+  --success: #4caf50;
+
+  /* Board */
+  --board-bg: #1a1510;
+  --board-border: #8b1a1a;
+  --board-grid-line: #15110c;
+  --board-room: #1a1610;
+  --board-hallway: #c8b88a;
+  --board-wall: #2a2a1e;
+  --board-center: #3a2e1e;
+  --board-room-filter: saturate(0.35) brightness(0.9);
+
+  /* Board overlay text */
+  --board-label-color: #f0e0b0;
+  --board-label-bg: rgba(0, 0, 0, 0.45);
+  --board-passage-color: #c8a060;
+  --board-passage-bg: rgba(0, 0, 0, 0.4);
+
+  /* Token tooltip */
+  --tooltip-bg: rgba(0, 0, 0, 0.85);
+  --tooltip-text: #f0e0b0;
+
+  /* Fog atmosphere */
+  --fog-opacity: 0.035;
+  --fog-color-1: #d4a849;
+  --fog-color-2: #8b2a2a;
+  --vignette-color: #1c1812;
+
+  /* Vintage board overlay — hidden in dark */
+  --board-image-opacity: 0;
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  /* Page backgrounds */
+  --bg-page: #f5f0e8;
+  --bg-panel: linear-gradient(135deg, rgba(255, 252, 245, 0.97) 0%, rgba(245, 240, 230, 0.98) 100%);
+  --bg-panel-solid: #fdfbf5;
+  --bg-input: rgba(0, 0, 0, 0.04);
+  --bg-input-focus: rgba(0, 0, 0, 0.06);
+  --bg-hover: rgba(160, 120, 40, 0.06);
+
+  /* Text */
+  --text-primary: #2c2418;
+  --text-secondary: #6a5d4d;
+  --text-muted: #8a7e6b;
+  --text-dim: #9a8e7b;
+  --text-faint: #b0a490;
+  --text-darkest: #c0b8a8;
+
+  /* Accent / gold */
+  --accent: #a07830;
+  --accent-dark: #8a6520;
+  --accent-text: #fff;
+  --accent-glow: rgba(160, 120, 48, 0.12);
+  --accent-border: rgba(160, 120, 48, 0.2);
+  --accent-border-hover: rgba(160, 120, 48, 0.35);
+  --accent-border-focus: rgba(160, 120, 48, 0.5);
+  --accent-bg: rgba(160, 120, 48, 0.08);
+
+  /* Borders */
+  --border-panel: rgba(160, 120, 48, 0.15);
+  --border-card: rgba(160, 120, 48, 0.18);
+
+  /* Errors */
+  --error: #b03030;
+  --error-bg: rgba(176, 48, 48, 0.08);
+  --error-border: rgba(176, 48, 48, 0.2);
+
+  /* Success */
+  --success: #2e8b3e;
+
+  /* Board */
+  --board-bg: #e8e0d0;
+  --board-border: #8b1a1a;
+  --board-grid-line: #d8d0c0;
+  --board-room: #ddd5c2;
+  --board-hallway: #d8cca0;
+  --board-wall: #c8c0b0;
+  --board-center: #d0c8b0;
+  --board-room-filter: saturate(0.5) brightness(1.1);
+
+  /* Board overlay text */
+  --board-label-color: #3a3020;
+  --board-label-bg: rgba(255, 255, 255, 0.7);
+  --board-passage-color: #6a5530;
+  --board-passage-bg: rgba(255, 255, 255, 0.6);
+
+  /* Token tooltip */
+  --tooltip-bg: rgba(255, 255, 255, 0.95);
+  --tooltip-text: #2c2418;
+
+  /* Fog atmosphere */
+  --fog-opacity: 0.02;
+  --fog-color-1: #d4a849;
+  --fog-color-2: #8b2a2a;
+  --vignette-color: #f5f0e8;
+
+  /* Vintage board overlay — hidden in light */
+  --board-image-opacity: 0;
+}
+
+/* ── Vintage theme (light-ish, parchment aesthetic) ── */
+[data-theme="vintage"] {
+  /* Page backgrounds — warm parchment */
+  --bg-page: #f0e8d4;
+  --bg-panel: linear-gradient(135deg, rgba(245, 235, 215, 0.97) 0%, rgba(235, 222, 195, 0.98) 100%);
+  --bg-panel-solid: #f2ead6;
+  --bg-input: rgba(120, 80, 30, 0.06);
+  --bg-input-focus: rgba(120, 80, 30, 0.1);
+  --bg-hover: rgba(140, 90, 20, 0.06);
+
+  /* Text — warm browns */
+  --text-primary: #3a2810;
+  --text-secondary: #6a5535;
+  --text-muted: #8a7555;
+  --text-dim: #9a8a68;
+  --text-faint: #b0a080;
+  --text-darkest: #c8b898;
+
+  /* Accent — deep warm red-brown to match board's red elements */
+  --accent: #8b2020;
+  --accent-dark: #6a1818;
+  --accent-text: #f8f0e0;
+  --accent-glow: rgba(139, 32, 32, 0.12);
+  --accent-border: rgba(139, 32, 32, 0.18);
+  --accent-border-hover: rgba(139, 32, 32, 0.3);
+  --accent-border-focus: rgba(139, 32, 32, 0.45);
+  --accent-bg: rgba(139, 32, 32, 0.06);
+
+  /* Borders — warm brown tints */
+  --border-panel: rgba(120, 80, 30, 0.15);
+  --border-card: rgba(120, 80, 30, 0.18);
+
+  /* Errors */
+  --error: #a03030;
+  --error-bg: rgba(160, 48, 48, 0.08);
+  --error-border: rgba(160, 48, 48, 0.2);
+
+  /* Success */
+  --success: #2e7a30;
+
+  /* Board — vintage uses the real board image */
+  --board-bg: #c8b888;
+  --board-border: #8b1a1a;
+  --board-grid-line: transparent;
+  --board-room: transparent;
+  --board-hallway: transparent;
+  --board-wall: transparent;
+  --board-center: transparent;
+  --board-room-filter: none;
+
+  /* Board overlay text — dark on light board */
+  --board-label-color: #3a2810;
+  --board-label-bg: rgba(240, 232, 212, 0.75);
+  --board-passage-color: #5a3818;
+  --board-passage-bg: rgba(240, 232, 212, 0.65);
+
+  /* Token tooltip */
+  --tooltip-bg: rgba(245, 235, 215, 0.95);
+  --tooltip-text: #3a2810;
+
+  /* Fog atmosphere — very subtle warm */
+  --fog-opacity: 0.015;
+  --fog-color-1: #c89838;
+  --fog-color-2: #8b2a2a;
+  --vignette-color: #f0e8d4;
+}
