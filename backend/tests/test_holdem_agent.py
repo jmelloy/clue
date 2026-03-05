@@ -138,10 +138,9 @@ class TestHoldemAgentDecisions:
 async def test_two_agent_game_completes(redis):
     """Two agents play a game to completion."""
     game = HoldemGame("AGENT2", redis)
-    await game.create()
-    # Small buy-in (2.5 big blinds) forces fast elimination
-    await game.add_player("P0", "Bot1", buy_in=50, player_type="holdem_agent")
-    await game.add_player("P1", "Bot2", buy_in=50, player_type="holdem_agent")
+    await game.create(buy_in=50)  # Small buy-in (2.5 big blinds) forces fast elimination
+    await game.add_player("P0", "Bot1", player_type="holdem_agent")
+    await game.add_player("P1", "Bot2", player_type="holdem_agent")
     state = await game.start()
 
     agents = {
@@ -184,11 +183,10 @@ async def test_two_agent_game_completes(redis):
 async def test_three_agent_game_completes(redis):
     """Three agents play a game to completion."""
     game = HoldemGame("AGENT3", redis)
-    await game.create()
-    # Small buy-in forces fast elimination
-    await game.add_player("P0", "Bot1", buy_in=50, player_type="holdem_agent")
-    await game.add_player("P1", "Bot2", buy_in=50, player_type="holdem_agent")
-    await game.add_player("P2", "Bot3", buy_in=50, player_type="holdem_agent")
+    await game.create(buy_in=50)  # Small buy-in forces fast elimination
+    await game.add_player("P0", "Bot1", player_type="holdem_agent")
+    await game.add_player("P1", "Bot2", player_type="holdem_agent")
+    await game.add_player("P2", "Bot3", player_type="holdem_agent")
     state = await game.start()
 
     agents = {
@@ -275,10 +273,9 @@ async def test_agent_always_returns_valid_action(redis):
 async def test_agent_plays_multiple_hands(redis):
     """Agents successfully play through multiple hands."""
     game = HoldemGame("MULTI", redis)
-    await game.create()
-    # Large stacks with low aggression to avoid first-hand all-in
-    await game.add_player("P0", "Bot1", buy_in=1000, player_type="holdem_agent")
-    await game.add_player("P1", "Bot2", buy_in=1000, player_type="holdem_agent")
+    await game.create(buy_in=1000)  # Large stacks with low aggression to avoid first-hand all-in
+    await game.add_player("P0", "Bot1", player_type="holdem_agent")
+    await game.add_player("P1", "Bot2", player_type="holdem_agent")
     state = await game.start()
 
     agents = {

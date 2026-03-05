@@ -254,6 +254,25 @@
                     <option value="llm_agent">LLM Agent</option>
                   </select>
                 </div>
+                <template v-if="gameType === 'holdem'">
+                  <div class="input-wrapper holdem-buyin-row">
+                    <label class="input-label">Buy-in</label>
+                    <div class="dollar-input">
+                      <span class="dollar-sign">$</span>
+                      <input
+                        v-model.number="holdemBuyIn"
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="20"
+                      />
+                    </div>
+                  </div>
+                  <label class="checkbox-row">
+                    <input type="checkbox" v-model="holdemAllowRebuys" />
+                    <span class="checkbox-label">Allow rebuys</span>
+                  </label>
+                </template>
                 <button
                   class="btn-primary"
                   :disabled="!playerName"
@@ -393,6 +412,10 @@ const gameType = ref("clue");
 const joinGameId = ref("");
 const error = ref("");
 
+// Hold'em game creation options
+const holdemBuyIn = ref(20);
+const holdemAllowRebuys = ref(false);
+
 // URL game state
 const urlGameState = ref(null);
 const urlGameLoading = ref(false);
@@ -503,7 +526,15 @@ async function createGame() {
   error.value = "";
   try {
     if (gameType.value === "holdem") {
-      const res = await fetch("/holdem/games", { method: "POST" });
+      const buyInCents = Math.round(holdemBuyIn.value * 100);
+      const res = await fetch("/holdem/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buy_in: buyInCents,
+          allow_rebuys: holdemAllowRebuys.value,
+        }),
+      });
       const { game_id } = await res.json();
       await doJoinHoldem(game_id);
     } else {
@@ -1361,6 +1392,82 @@ async function observeGame() {
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
+}
+
+/* === Hold'em Buy-in === */
+.holdem-buyin-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.input-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #8a7e6b;
+}
+
+.dollar-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dollar-sign {
+  position: absolute;
+  left: 0.75rem;
+  color: #8a7e6b;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+.dollar-input input {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 0.9rem 0.65rem 1.6rem;
+  border: 1px solid rgba(212, 168, 73, 0.15);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e8dcc8;
+  font-family: "Crimson Text", Georgia, serif;
+  font-size: 0.95rem;
+  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.dollar-input input::-webkit-outer-spin-button,
+.dollar-input input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.dollar-input input:focus {
+  border-color: rgba(212, 168, 73, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(212, 168, 73, 0.06);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #d4a849;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  font-size: 0.9rem;
+  color: #8a7e6b;
 }
 
 /* === Game Type Selector === */

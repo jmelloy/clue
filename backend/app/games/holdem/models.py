@@ -56,14 +56,18 @@ class HoldemGameState(BaseModel):
     status: str = "waiting"  # "waiting" | "playing" | "finished"
     players: list[HoldemPlayer] = Field(default_factory=list)
 
+    # Table configuration (set at creation, in cents)
+    buy_in: int = 2000  # default $20.00
+    allow_rebuys: bool = False
+
     # Hand state
     community_cards: list[Card] = Field(default_factory=list)
     pot: int = 0
     current_bet: int = 0  # highest bet this round
     whose_turn: Optional[str] = None
     dealer_index: int = 0
-    small_blind: int = 10
-    big_blind: int = 20
+    small_blind: int = 10  # $0.10
+    big_blind: int = 20  # $0.20
     hand_number: int = 0
 
     # Betting round: "preflop" | "flop" | "turn" | "river" | "showdown"
@@ -302,9 +306,13 @@ HoldemLogEntry = Annotated[
 # ---------------------------------------------------------------------------
 
 
+class HoldemCreateGameRequest(BaseModel):
+    buy_in: int = 2000  # in cents, default $20.00
+    allow_rebuys: bool = False
+
+
 class HoldemJoinRequest(BaseModel):
     player_name: str
-    buy_in: int = 1000
 
 
 class HoldemActionRequest(BaseModel):
@@ -316,6 +324,8 @@ class HoldemCreateGameResponse(BaseModel):
     game_id: str
     game_type: str = "holdem"
     status: str
+    buy_in: int = 2000
+    allow_rebuys: bool = False
 
 
 class HoldemJoinGameResponse(BaseModel):
@@ -347,7 +357,6 @@ class HoldemChatMessagesResponse(BaseModel):
 
 class HoldemAddAgentRequest(BaseModel):
     name: str = ""
-    buy_in: int = 1000
     aggression: float = 0.5
 
 

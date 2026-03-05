@@ -121,8 +121,15 @@ class HoldemGame:
     # Public API
     # ------------------------------------------------------------------
 
-    async def create(self) -> HoldemGameState:
-        state = HoldemGameState(game_id=self.game_id, status="waiting")
+    async def create(
+        self, buy_in: int = 2000, allow_rebuys: bool = False
+    ) -> HoldemGameState:
+        state = HoldemGameState(
+            game_id=self.game_id,
+            status="waiting",
+            buy_in=buy_in,
+            allow_rebuys=allow_rebuys,
+        )
         await self._save_state(state)
         return state
 
@@ -130,7 +137,7 @@ class HoldemGame:
         return await self._load_state()
 
     async def add_player(
-        self, player_id: str, player_name: str, buy_in: int = 1000,
+        self, player_id: str, player_name: str,
         player_type: str = "human",
     ) -> HoldemPlayer:
         state = await self._load_state()
@@ -144,7 +151,7 @@ class HoldemGame:
             raise ValueError("Already joined")
 
         player = HoldemPlayer(
-            id=player_id, name=player_name, chips=buy_in,
+            id=player_id, name=player_name, chips=state.buy_in,
             player_type=player_type,
         )
         state.players.append(player)

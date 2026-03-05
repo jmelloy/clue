@@ -179,13 +179,15 @@ async def test_add_players(game: HoldemGame):
     assert len(state.players) == 2
     assert state.players[0].name == "Alice"
     assert state.players[1].name == "Bob"
-    assert state.players[0].chips == 1000
-    assert state.players[1].chips == 1000
+    assert state.players[0].chips == 2000
+    assert state.players[1].chips == 2000
 
 
 @pytest.mark.asyncio
-async def test_custom_buy_in(game: HoldemGame):
-    p = await game.add_player("P1", "Alice", buy_in=5000)
+async def test_custom_buy_in(redis):
+    game = HoldemGame("BUYIN", redis)
+    await game.create(buy_in=5000)
+    p = await game.add_player("P1", "Alice")
     assert p.chips == 5000
 
 
@@ -503,9 +505,9 @@ async def test_player_state(redis):
 async def test_player_elimination(redis):
     """A player who loses all chips is eliminated."""
     game = HoldemGame("ELIM", redis)
-    await game.create()
-    await game.add_player("P0", "Alice", buy_in=30)  # Just enough for a few blinds
-    await game.add_player("P1", "Bob", buy_in=1000)
+    await game.create(buy_in=30)  # Just enough for a few blinds
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
     state = await game.start()
 
     # P0 keeps going all-in until eliminated
