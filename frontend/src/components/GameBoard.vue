@@ -123,6 +123,15 @@
             </div>
           </div>
         </div>
+
+        <!-- Chat -->
+        <section class="chat-panel-wrapper">
+          <ChatPanel
+            :messages="chatMessages"
+            :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)"
+          />
+        </section>
       </div>
 
       <!-- Right: Sidebar -->
@@ -538,15 +547,6 @@
             />
           </section>
         </template>
-
-        <!-- Chat -->
-        <section class="chat-panel-wrapper sidebar-panel">
-          <ChatPanel
-            :messages="chatMessages"
-            :players="gameState?.players"
-            @send-message="$emit('send-chat', $event)"
-          />
-        </section>
       </div>
     </div>
 
@@ -1660,9 +1660,16 @@ watch(
   overflow-y: auto;
 }
 
-/* Chat row */
+/* Chat */
 .chat-panel-wrapper {
-  flex: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 24, 16, 0.95),
+    rgba(18, 14, 10, 0.97)
+  );
+  border: 1px solid rgba(212, 168, 73, 0.08);
+  border-radius: 6px;
+  padding: 0.8rem;
   min-height: 200px;
 }
 
