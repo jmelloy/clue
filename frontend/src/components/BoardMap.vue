@@ -175,13 +175,6 @@ const ROOM_COLORS = {
   Kitchen: "#2a2218",
 };
 
-// Rows at the top of a room that are not covered by the room image.
-// The image is rendered starting from minRow + offset, with the added rows
-// above showing the same slice as the first image row.
-const IMAGE_ROW_OFFSETS = {
-  Hall: 1, // Hall grew by one row at the top; image was designed for 6 rows
-};
-
 
 // ── Pre-compute room info from board layout ──
 
@@ -399,16 +392,15 @@ function cellStyle(cell) {
     const img = CARD_IMAGES[cell.room];
     const info = ROOM_INFO[cell.room];
     if (img && info) {
-      const rowOffset = IMAGE_ROW_OFFSETS[cell.room] || 0;
       const roomCols = info.maxCol - info.minCol + 1;
-      const imageRows = info.maxRow - info.minRow + 1 - rowOffset;
+      const roomRows = info.maxRow - info.minRow + 1;
       const dc = cell.col - info.minCol;
-      const dr = Math.max(0, cell.row - info.minRow - rowOffset);
+      const dr = cell.row - info.minRow;
       const posX = roomCols > 1 ? (dc / (roomCols - 1)) * 100 : 50;
-      const posY = imageRows > 1 ? (dr / (imageRows - 1)) * 100 : 50;
+      const posY = roomRows > 1 ? (dr / (roomRows - 1)) * 100 : 50;
       return {
         backgroundImage: `url(${img})`,
-        backgroundSize: `${roomCols * 100}% ${imageRows * 100}%`,
+        backgroundSize: `${roomCols * 100}% ${roomRows * 100}%`,
         backgroundPosition: `${posX}% ${posY}%`,
         backgroundColor: '#1a1610',
       };

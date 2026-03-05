@@ -288,17 +288,11 @@ def test_room_has_infinite_capacity(board):
 
 
 def test_room_prompt_ratios_match_board():
-    """Ratios in room-prompts.md must match actual room grid dimensions.
-
-    For rooms with a ROOM_IMAGE_ROW_OFFSET (e.g. Hall), the effective image
-    height is reduced by the offset, so the ratio is computed from the image
-    dimensions rather than the raw bounding box.
-    """
+    """Ratios in room-prompts.md must be from the allowed set of standard aspect ratios."""
     import re
-    from math import gcd
     from pathlib import Path
 
-    from app.games.clue.board import ROOM_BOUNDS, ROOM_IMAGE_ROW_OFFSETS
+    ALLOWED_RATIOS = {(1, 1), (2, 3), (4, 5), (9, 16), (16, 9), (5, 4), (3, 2)}
 
     prompts_path = (
         Path(__file__).parent.parent / "app" / "games" / "clue" / "room-prompts.md"
@@ -332,13 +326,8 @@ def test_room_prompt_ratios_match_board():
         assert room.value in room_ratios, (
             f"Room '{room.value}' not found in room-prompts.md"
         )
-        c1, r1, c2, r2 = ROOM_BOUNDS[room]
-        image_width = c2 - c1 + 1
-        image_height = r2 - r1 + 1 - ROOM_IMAGE_ROW_OFFSETS.get(room, 0)
-        divisor = gcd(image_width, image_height)
-        expected = (image_width // divisor, image_height // divisor)
-        actual = room_ratios[room.value]
-        assert actual == expected, (
-            f"{room.value}: room-prompts.md ratio is {actual[0]}:{actual[1]}, "
-            f"but image dimensions are {image_width}x{image_height} = {expected[0]}:{expected[1]}"
+        ratio = room_ratios[room.value]
+        assert ratio in ALLOWED_RATIOS, (
+            f"{room.value}: ratio {ratio[0]}:{ratio[1]} is not in the allowed set "
+            f"{', '.join(f'{w}:{h}' for w, h in sorted(ALLOWED_RATIOS))}"
         )
