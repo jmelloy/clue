@@ -78,7 +78,7 @@ SECRET_PASSAGES = {
 # Corrected against the board image
 ROOM_BOUNDS = {
     Room.STUDY: (0, 0, 6, 3),  # 4x7   top-left
-    Room.HALL: (9, 1, 14, 6),  # 6x7   top-center
+    Room.HALL: (9, 0, 14, 6),  # 6x7   top-center
     Room.LOUNGE: (17, 0, 23, 5),  # 6x7   top-right
     Room.LIBRARY: (0, 7, 6, 10),  # 4x7   mid-left
     Room.BILLIARD_ROOM: (0, 12, 5, 16),  # 5x6   center-left
