@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 
 
 class Player(BaseModel):
@@ -556,3 +556,7 @@ class OkResponse(BaseModel):
 
 class ChatMessagesResponse(BaseModel):
     messages: list[ChatMessage]
+
+
+# Shared TypeAdapter for parsing action dicts into typed GameAction models
+action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)

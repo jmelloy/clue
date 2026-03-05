@@ -338,6 +338,11 @@ def build_graph(
     return squares, room_nodes
 
 
+# Pre-built board graph shared by game logic and agents
+SQUARES, ROOM_NODES = build_graph(_init_grid)
+ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
+
+
 # ── BFS Reachability ────────────────────────────────────────
 
 

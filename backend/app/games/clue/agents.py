@@ -17,8 +17,9 @@ import httpx
 from .game import SUSPECTS, WEAPONS, ROOMS, SECRET_PASSAGE_MAP
 from .board import (
     Room,
-    build_grid,
-    build_graph,
+    ROOM_NAME_TO_ENUM,
+    ROOM_NODES,
+    SQUARES,
     SquareType,
 )
 from .models import (
@@ -31,21 +32,12 @@ from .models import (
     RollAction,
     SecretPassageAction,
     SuggestAction,
+    action_adapter,
 )
-
-from pydantic import TypeAdapter
-
-# Pre-build the board graph for agent pathfinding
-_GRID = build_grid()
-_SQUARES, _ROOM_NODES = build_graph(_GRID)
-_ROOM_NAME_TO_ENUM = {r.value: r for r in Room}
 
 
 logger = logging.getLogger(__name__)
 llm_trace_logger = logging.getLogger(f"{__name__}.trace")
-
-# TypeAdapter for parsing LLM response dicts into typed GameAction models
-_action_adapter: TypeAdapter[GameAction] = TypeAdapter(GameAction)
 
 
 def _compute_room_distances(
@@ -59,10 +51,10 @@ def _compute_room_distances(
     from collections import deque
 
     start_sq = None
-    if current_room and current_room in _ROOM_NAME_TO_ENUM:
-        start_sq = _ROOM_NODES.get(_ROOM_NAME_TO_ENUM[current_room])
+    if current_room and current_room in ROOM_NAME_TO_ENUM:
+        start_sq = ROOM_NODES.get(ROOM_NAME_TO_ENUM[current_room])
     elif player_position:
-        start_sq = _SQUARES.get((player_position[0], player_position[1]))
+        start_sq = SQUARES.get((player_position[0], player_position[1]))
 
     if start_sq is None:
         return []
@@ -79,9 +71,9 @@ def _compute_room_distances(
 
     results = []
     for room_name in ROOMS:
-        room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
+        room_enum = ROOM_NAME_TO_ENUM.get(room_name)
         if room_enum:
-            node = _ROOM_NODES.get(room_enum)
+            node = ROOM_NODES.get(room_enum)
             if node and node in dist_map:
                 results.append((room_name, dist_map[node]))
 
@@ -1225,10 +1217,10 @@ class RandomAgent(BaseAgent):
 
         # Determine the starting square for distance calculation
         start_sq = None
-        if current_room and current_room in _ROOM_NAME_TO_ENUM:
-            start_sq = _ROOM_NODES.get(_ROOM_NAME_TO_ENUM[current_room])
+        if current_room and current_room in ROOM_NAME_TO_ENUM:
+            start_sq = ROOM_NODES.get(ROOM_NAME_TO_ENUM[current_room])
         elif player_position:
-            start_sq = _SQUARES.get((player_position[0], player_position[1]))
+            start_sq = SQUARES.get((player_position[0], player_position[1]))
 
         if start_sq is None:
             return random.choice(candidates)
@@ -1247,9 +1239,9 @@ class RandomAgent(BaseAgent):
         # Compute distances to each candidate room
         room_dists = {}
         for room_name in candidates:
-            room_enum = _ROOM_NAME_TO_ENUM.get(room_name)
+            room_enum = ROOM_NAME_TO_ENUM.get(room_name)
             if room_enum:
-                node = _ROOM_NODES.get(room_enum)
+                node = ROOM_NODES.get(room_enum)
                 if node and node in dist_map:
                     room_dists[room_name] = dist_map[node]
 
@@ -2006,7 +1998,7 @@ class LLMAgent(BaseAgent):
                         room = parsed.get("room")
                         if room:
                             self.rooms_suggested_in.add(room)
-                    return _action_adapter.validate_python(parsed)
+                    return action_adapter.validate_python(parsed)
                 else:
                     llm_trace_logger.debug(
                         "[%s:%s] LLM response failed validation: %s",
