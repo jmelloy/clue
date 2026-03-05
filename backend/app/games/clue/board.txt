@@ -1,5 +1,5 @@
    012345678901234567890123
- 0 ssssss .        S oooooo
+ 0 ssssss . hhhhhh S oooooo
  1 sssssss..hhhhhh..ooooooo
  2 sssssss..hhhhhh..ooooooo
  3 ssssssD..hhhhhh..ooooooo
