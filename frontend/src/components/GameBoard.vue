@@ -123,6 +123,15 @@
             </div>
           </div>
         </div>
+
+        <!-- Chat -->
+        <section class="chat-panel-wrapper">
+          <ChatPanel
+            :messages="chatMessages"
+            :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)"
+          />
+        </section>
       </div>
 
       <!-- Right: Sidebar -->
@@ -511,16 +520,6 @@
       @close="showWinOverlay = false"
     />
 
-    <!-- Bottom: Chat -->
-    <div class="chat-row">
-      <section class="chat-panel-wrapper">
-        <ChatPanel
-          :messages="chatMessages"
-          :players="gameState?.players"
-          @send-message="$emit('send-chat', $event)"
-        />
-      </section>
-    </div>
   </div>
 </template>
 
@@ -992,6 +991,7 @@ watch(
   grid-template-columns: 1fr 340px;
   gap: 0.75rem;
   min-height: 400px;
+  align-items: start;
 }
 
 /* Board column */
@@ -1159,8 +1159,6 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  overflow-y: auto;
-  max-height: calc(100vh - 180px);
 }
 
 .sidebar-panel {
@@ -1560,14 +1558,8 @@ watch(
   overflow-y: auto;
 }
 
-/* Chat row */
-.chat-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
+/* Chat */
 .chat-panel-wrapper {
-  flex: 1;
   background: linear-gradient(
     135deg,
     rgba(30, 24, 16, 0.95),
@@ -1576,6 +1568,7 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
+  min-height: 200px;
 }
 
 /* Show card thumbnails */
@@ -1672,10 +1665,6 @@ watch(
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
-  }
-
-  .sidebar-column {
-    max-height: none;
   }
 }
 </style>

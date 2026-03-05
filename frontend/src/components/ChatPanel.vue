@@ -1,18 +1,10 @@
 <template>
   <div class="chat-panel">
     <div class="chat-tabs">
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'chat' }"
-        @click="activeTab = 'chat'"
-      >
+      <button class="tab-btn" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
         Chat
       </button>
-      <button
-        class="tab-btn"
-        :class="{ active: activeTab === 'log' }"
-        @click="activeTab = 'log'"
-      >
+      <button class="tab-btn" :class="{ active: activeTab === 'log' }" @click="activeTab = 'log'">
         Game Log
       </button>
     </div>
@@ -20,23 +12,14 @@
     <!-- Chat Tab -->
     <template v-if="activeTab === 'chat'">
       <ul class="chat-messages" ref="chatContainer">
-        <li
-          v-for="(msg, i) in chatOnly"
-          :key="i"
-          class="chat-message"
-        >
+        <li v-for="(msg, i) in chatOnly" :key="i" class="chat-message">
           <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
           <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
         </li>
         <li v-if="!chatOnly.length" class="chat-empty">No messages yet.</li>
       </ul>
       <div class="chat-input">
-        <input
-          v-model="inputText"
-          placeholder="Type a message..."
-          maxlength="300"
-          @keyup.enter="sendMessage"
-        />
+        <input v-model="inputText" placeholder="Type a message..." maxlength="300" @keyup.enter="sendMessage" />
         <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
       </div>
     </template>
@@ -66,13 +49,11 @@
         </label>
       </div>
       <ul class="chat-messages" ref="logContainer">
-        <li
-          v-for="(msg, i) in filteredLog"
-          :key="i"
-          class="chat-message system-message"
-        >
+        <li v-for="(msg, i) in filteredLog" :key="i" class="chat-message system-message">
           <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
-          <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{ msgTagLabel(msg) }}</span>
+          <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{
+            msgTagLabel(msg)
+            }}</span>
           <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
         </li>
         <li v-if="!filteredLog.length" class="chat-empty">No log entries match filters.</li>
@@ -82,180 +63,176 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from "vue";
-import { CHARACTER_COLORS } from "../constants/clue.js";
+import { ref, computed, watch, nextTick } from 'vue'
+import { CHARACTER_COLORS } from '../constants/clue.js'
 
 const props = defineProps({
   messages: { type: Array, default: () => [] },
-  players: { type: Array, default: () => [] },
-});
-const emit = defineEmits(["send-message"]);
+  players: { type: Array, default: () => [] }
+})
+const emit = defineEmits(['send-message'])
 
-const activeTab = ref("chat");
-const inputText = ref("");
-const chatContainer = ref(null);
-const logContainer = ref(null);
+const activeTab = ref('chat')
+const inputText = ref('')
+const chatContainer = ref(null)
+const logContainer = ref(null)
 
 // Log filters — all on by default
-const showSuggestions = ref(true);
-const showCardShows = ref(true);
-const showAccusations = ref(true);
-const showMoves = ref(true);
-const showOther = ref(true);
+const showSuggestions = ref(true)
+const showCardShows = ref(true)
+const showAccusations = ref(true)
+const showMoves = ref(true)
+const showOther = ref(true)
 
 const playerById = computed(() => {
-  const map = {};
-  for (const p of props.players) map[p.id] = p;
-  return map;
-});
+  const map = {}
+  for (const p of props.players) map[p.id] = p
+  return map
+})
 
 function escapeHtml(str) {
   return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 function isPlayerChat(msg) {
-  if (!msg.player_id) return false;
-  const player = playerById.value[msg.player_id];
-  if (!player) return false;
-  return msg.text.startsWith(player.name + ": ");
+  if (!msg.player_id) return false
+  const player = playerById.value[msg.player_id]
+  if (!player) return false
+  return msg.text.startsWith(player.name + ': ')
 }
 
 function isSystemMsg(msg) {
-  return !isPlayerChat(msg);
+  return !isPlayerChat(msg)
 }
 
 // Categorize log messages
 function logCategory(msg) {
-  const t = msg.text || "";
-  if (t.includes("suggests it was") || t.includes("No one could disprove")) return "suggestion";
-  if (t.includes("showed a card to") || t.includes("showed you:") || t.includes("No one could show")) return "cardshow";
-  if (t.includes("accuses")) return "accusation";
-  if (t.includes("rolled") || t.includes("moved to") || t.includes("used the secret passage")) return "move";
-  return "other";
+  const t = msg.text || ''
+  if (t.includes('suggests it was') || t.includes('No one could disprove')) return 'suggestion'
+  if (
+    t.includes('showed a card to') ||
+    t.includes('showed you:') ||
+    t.includes('No one could show')
+  )
+    return 'cardshow'
+  if (t.includes('accuses')) return 'accusation'
+  if (t.includes('rolled') || t.includes('moved to') || t.includes('used the secret passage'))
+    return 'move'
+  return 'other'
 }
 
 // Split messages into chat vs game log
-const chatOnly = computed(() => props.messages.filter((msg) => isPlayerChat(msg)));
-const logOnly = computed(() => props.messages.filter((msg) => isSystemMsg(msg)));
+const chatOnly = computed(() => props.messages.filter((msg) => isPlayerChat(msg)))
+const logOnly = computed(() => props.messages.filter((msg) => isSystemMsg(msg)))
 
 const filteredLog = computed(() => {
   return logOnly.value.filter((msg) => {
-    const cat = logCategory(msg);
-    if (cat === "suggestion" && !showSuggestions.value) return false;
-    if (cat === "cardshow" && !showCardShows.value) return false;
-    if (cat === "accusation" && !showAccusations.value) return false;
-    if (cat === "move" && !showMoves.value) return false;
-    if (cat === "other" && !showOther.value) return false;
-    return true;
-  });
-});
+    const cat = logCategory(msg)
+    if (cat === 'suggestion' && !showSuggestions.value) return false
+    if (cat === 'cardshow' && !showCardShows.value) return false
+    if (cat === 'accusation' && !showAccusations.value) return false
+    if (cat === 'move' && !showMoves.value) return false
+    if (cat === 'other' && !showOther.value) return false
+    return true
+  })
+})
 
 function colorizeNames(text) {
-  const entries = Object.entries(CHARACTER_COLORS).sort(
-    (a, b) => b[0].length - a[0].length
-  );
+  const entries = Object.entries(CHARACTER_COLORS).sort((a, b) => b[0].length - a[0].length)
   for (const [name, charColor] of entries) {
-    const color = charColor?.bg || charColor;
-    const esc = escapeHtml(name);
+    const color = charColor?.bg || charColor
+    const esc = escapeHtml(name)
     if (text.includes(esc)) {
-      text = text.replaceAll(
-        esc,
-        `<span style="color:${color};font-weight:bold">${esc}</span>`
-      );
+      text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
     }
   }
   for (const p of props.players) {
-    const charColor = CHARACTER_COLORS[p.character];
-    if (!charColor) continue;
-    const color = charColor?.bg || charColor;
-    const esc = escapeHtml(p.name);
+    const charColor = CHARACTER_COLORS[p.character]
+    if (!charColor) continue
+    const color = charColor?.bg || charColor
+    const esc = escapeHtml(p.name)
     if (text.includes(esc) && !text.includes(`">${esc}</span>`)) {
-      text = text.replaceAll(
-        esc,
-        `<span style="color:${color};font-weight:bold">${esc}</span>`
-      );
+      text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
     }
   }
-  return text;
+  return text
 }
 
 function formatMessageHtml(msg) {
-  const escaped = escapeHtml(msg.text);
+  const escaped = escapeHtml(msg.text)
 
   if (isPlayerChat(msg)) {
-    const player = playerById.value[msg.player_id];
-    const charColor = CHARACTER_COLORS[player.character];
-    const color = charColor?.bg || charColor;
+    const player = playerById.value[msg.player_id]
+    const charColor = CHARACTER_COLORS[player.character]
+    const color = charColor?.bg || charColor
     if (color) {
-      const nameLen = escapeHtml(player.name).length;
-      const name = escaped.substring(0, nameLen);
-      const rest = escaped.substring(nameLen);
-      return `<span style="color:${color};font-weight:bold">${name}</span>${colorizeNames(
-        rest
-      )}`;
+      const nameLen = escapeHtml(player.name).length
+      const name = escaped.substring(0, nameLen)
+      const rest = escaped.substring(nameLen)
+      return `<span style="color:${color};font-weight:bold">${name}</span>${colorizeNames(rest)}`
     }
   }
 
-  return colorizeNames(escaped);
+  return colorizeNames(escaped)
 }
 
 function msgTag(msg) {
-  const t = msg.text || "";
-  if (t.includes("suggests it was")) return "suggest";
-  if (t.includes("showed a card to") || t.includes("showed you:")) return "show";
-  if (t.includes("accuses")) return "accuse";
-  if (t.includes("No one could disprove")) return "suggest";
-  return null;
+  const t = msg.text || ''
+  if (t.includes('suggests it was')) return 'suggest'
+  if (t.includes('showed a card to') || t.includes('showed you:')) return 'show'
+  if (t.includes('accuses')) return 'accuse'
+  if (t.includes('No one could disprove')) return 'suggest'
+  return null
 }
 
 function msgTagLabel(msg) {
-  const tag = msgTag(msg);
-  if (tag === "suggest") return "suggest";
-  if (tag === "show") return "show";
-  if (tag === "accuse") return "accuse";
-  return "";
+  const tag = msgTag(msg)
+  if (tag === 'suggest') return 'suggest'
+  if (tag === 'show') return 'show'
+  if (tag === 'accuse') return 'accuse'
+  return ''
 }
 
 function formatTime(ts) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function sendMessage() {
-  const text = inputText.value.trim();
-  if (!text) return;
-  emit("send-message", text);
-  inputText.value = "";
+  const text = inputText.value.trim()
+  if (!text) return
+  emit('send-message', text)
+  inputText.value = ''
 }
 
 // Auto-scroll to bottom when new messages arrive
 watch(
   () => props.messages.length,
   async () => {
-    await nextTick();
-    if (activeTab.value === "chat" && chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    await nextTick()
+    if (activeTab.value === 'chat' && chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
     }
-    if (activeTab.value === "log" && logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    if (activeTab.value === 'log' && logContainer.value) {
+      logContainer.value.scrollTop = logContainer.value.scrollHeight
     }
   }
-);
+)
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 .chat-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
 }
 
 .chat-tabs {
@@ -272,7 +249,7 @@ watch(
   border: none;
   border-bottom: 2px solid transparent;
   color: #6a6050;
-  font-family: "Playfair Display", Georgia, serif;
+  font-family: 'Playfair Display', Georgia, serif;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -308,7 +285,7 @@ watch(
   white-space: nowrap;
 }
 
-.filter-label input[type="checkbox"] {
+.filter-label input[type='checkbox'] {
   accent-color: #d4a849;
   width: 12px;
   height: 12px;
@@ -402,7 +379,7 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.12);
   background: rgba(255, 255, 255, 0.03);
   color: #e8dcc8;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   font-size: 0.85rem;
   transition: border-color 0.2s;
   outline: none;
@@ -427,7 +404,7 @@ watch(
   cursor: pointer;
   font-weight: 600;
   font-size: 0.85rem;
-  font-family: "Crimson Text", Georgia, serif;
+  font-family: 'Crimson Text', Georgia, serif;
   transition: all 0.2s;
 }
 
