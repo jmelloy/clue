@@ -75,14 +75,24 @@
 
       <!-- Actions -->
       <div class="actions-section">
-        <button
-          class="deal-btn"
-          :disabled="players.length < 2"
-          @click="startGame"
-        >
-          <span class="deal-icon">&#9830;</span>
-          Deal Cards
-        </button>
+        <div class="action-buttons-row">
+          <button
+            class="add-agent-btn"
+            :disabled="players.length >= 10 || addingAgent"
+            @click="addAgent"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 00-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
+            {{ addingAgent ? 'Adding...' : 'Add Bot' }}
+          </button>
+          <button
+            class="deal-btn"
+            :disabled="players.length < 2"
+            @click="startGame"
+          >
+            <span class="deal-icon">&#9830;</span>
+            Deal Cards
+          </button>
+        </div>
         <p v-if="players.length < 2" class="hint">Need at least 2 players to start</p>
         <p v-if="error" class="error-msg">{{ error }}</p>
       </div>
@@ -109,6 +119,7 @@ const emit = defineEmits(['game-started', 'leave-game'])
 
 const error = ref('')
 const copied = ref(false)
+const addingAgent = ref(false)
 
 function seatHue(idx) {
   return SEAT_HUES[idx % SEAT_HUES.length]
@@ -119,6 +130,22 @@ function copyLink() {
   navigator.clipboard.writeText(url)
   copied.value = true
   setTimeout(() => { copied.value = false }, 2000)
+}
+
+async function addAgent() {
+  error.value = ''
+  addingAgent.value = true
+  try {
+    const res = await fetch(`/holdem/games/${props.gameId}/add_agent`, { method: 'POST' })
+    if (!res.ok) {
+      const data = await res.json()
+      error.value = data.detail ?? 'Failed to add agent'
+    }
+  } catch (e) {
+    error.value = 'Error: ' + e.message
+  } finally {
+    addingAgent.value = false
+  }
 }
 
 async function startGame() {
@@ -435,8 +462,42 @@ h1 {
   text-align: center;
 }
 
+.action-buttons-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-agent-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.8rem 1rem;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.add-agent-btn:hover:not(:disabled) {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(201,168,76,0.06);
+}
+
+.add-agent-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .deal-btn {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
