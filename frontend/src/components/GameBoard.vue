@@ -50,7 +50,7 @@
             'wanderer-legend': p.type === 'wanderer',
             'observer-clickable': isObserver,
             'observer-selected': isObserver && observerPlayerState?.playerId === p.id
-          }" @click="onLegendClick(p)">
+          }" @click.stop="onLegendClick(p)">
             <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
               :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
@@ -64,8 +64,12 @@
             <!-- Shown cards popup -->
             <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
-              <div v-for="card in shownCardsForPlayer" :key="card" class="shown-cards-item">
-                {{ card }}
+              <div class="shown-cards-hand">
+                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)">
+                  <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                  <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
               </div>
             </div>
             <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
@@ -95,48 +99,33 @@
           </h2>
           <div v-if="!cardsCollapsed">
             <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-            <template v-else>
-              <div v-if="suspectCards.length" class="card-group">
-                <h3 class="card-group-label card-group-suspect">Suspects</h3>
-                <div class="card-hand">
-                  <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+            <div v-else class="card-hand">
+              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="weaponCards.length" class="card-group">
-                <h3 class="card-group-label card-group-weapon">Weapons</h3>
-                <div class="card-hand">
-                  <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-weapon" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
+                :class="{ 'card-with-image': hasCardImage(card) }"
+                @click="hasCardImage(card) && showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-weapon" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="roomCards.length" class="card-group">
-                <h3 class="card-group-label card-group-room">Rooms</h3>
-                <div class="card-hand">
-                  <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-room" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-room" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-            </template>
+            </div>
           </div>
         </section>
 
-        <!-- Card Shown notification -->
+        <!-- Card Shown notification (sidebar hint) -->
         <section v-if="cardShown" class="sidebar-panel shown-card-panel">
           <div class="shown-card-notice">
             <span class="shown-card-icon">&#128065;</span>
@@ -312,44 +301,29 @@
           <section v-if="observerPlayerState" class="sidebar-panel cards-panel">
             <h2>{{ observerSelectedPlayerName }}'s Cards</h2>
             <div v-if="!observerCards.length" class="no-cards">No cards</div>
-            <template v-else>
-              <div v-if="observerSuspectCards.length" class="card-group">
-                <h3 class="card-group-label card-group-suspect">Suspects</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+            <div v-else class="card-hand">
+              <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="observerWeaponCards.length" class="card-group">
-                <h3 class="card-group-label card-group-weapon">Weapons</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
-                    :class="{ 'card-with-image': hasCardImage(card) }"
-                    @click="hasCardImage(card) && showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-weapon" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
+                :class="{ 'card-with-image': hasCardImage(card) }"
+                @click="hasCardImage(card) && showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-weapon" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-              <div v-if="observerRoomCards.length" class="card-group">
-                <h3 class="card-group-label card-group-room">Rooms</h3>
-                <div class="card-hand">
-                  <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
-                    @click="showCardPreview(card)">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                      class="card-thumb card-thumb-room" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
+              <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
+                @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-room" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
-            </template>
+            </div>
           </section>
 
           <section v-if="observerSelectedDebug" class="sidebar-panel">
@@ -360,6 +334,65 @@
         </template>
       </div>
     </div>
+
+    <!-- Card Shown Banner Overlay -->
+    <Teleport to="body">
+      <div v-if="cardShown && !cardShownDismissedOnce" class="card-shown-overlay" @click="dismissCardShownOverlay">
+        <div class="card-shown-banner" @click.stop>
+          <div class="card-shown-banner-label">Card Revealed</div>
+          <div class="card-shown-banner-from">{{ playerName(cardShown.by) }} showed you:</div>
+          <div class="card-shown-banner-card" :class="cardCategory(cardShown.card)">
+            <div class="banner-card-frame">
+              <img v-if="hasCardImage(cardShown.card)" :src="cardImageUrl(cardShown.card)" :alt="cardShown.card" class="banner-card-image" />
+              <div v-else class="banner-card-icon-fallback">{{ cardIcon(cardShown.card) }}</div>
+            </div>
+            <div class="banner-card-nameplate">
+              <span class="banner-card-emoji">{{ cardIcon(cardShown.card) }}</span>
+              <span class="banner-card-name">{{ cardShown.card }}</span>
+            </div>
+          </div>
+          <button class="card-shown-banner-dismiss" @click="dismissCardShownOverlay">Got it</button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Game Over Winner Overlay -->
+    <Teleport to="body">
+      <div v-if="showGameOverOverlay" class="game-over-overlay" @click="showGameOverOverlay = false">
+        <div class="game-over-banner" @click.stop>
+          <div class="game-over-trophy">&#127942;</div>
+          <div class="game-over-title">Case Closed!</div>
+          <div class="game-over-winner">{{ winnerName }} wins!</div>
+          <div class="game-over-cards" v-if="gameState?.solution">
+            <div class="game-over-card card-suspect">
+              <div class="game-over-card-type">Suspect</div>
+              <div class="game-over-card-frame">
+                <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" class="game-over-card-image" />
+                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.suspect) }}</div>
+              </div>
+              <div class="game-over-card-name">{{ gameState.solution.suspect }}</div>
+            </div>
+            <div class="game-over-card card-weapon">
+              <div class="game-over-card-type">Weapon</div>
+              <div class="game-over-card-frame">
+                <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" class="game-over-card-image" />
+                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.weapon) }}</div>
+              </div>
+              <div class="game-over-card-name">{{ gameState.solution.weapon }}</div>
+            </div>
+            <div class="game-over-card card-room">
+              <div class="game-over-card-type">Room</div>
+              <div class="game-over-card-frame">
+                <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" class="game-over-card-image" />
+                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.room) }}</div>
+              </div>
+              <div class="game-over-card-name">{{ gameState.solution.room }}</div>
+            </div>
+          </div>
+          <button class="game-over-dismiss" @click="showGameOverOverlay = false">Continue</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Card Preview Overlay -->
     <Teleport to="body">
@@ -568,6 +601,16 @@ function onLegendClick(player) {
   }
 }
 
+// Card shown overlay state
+const cardShownDismissedOnce = ref(false)
+
+function dismissCardShownOverlay() {
+  cardShownDismissedOnce.value = true
+}
+
+// Game over overlay state
+const showGameOverOverlay = ref(false)
+
 // Card preview state
 const previewCard = ref(null)
 
@@ -659,12 +702,25 @@ onUnmounted(() => {
   if (saveNotesTimer) clearTimeout(saveNotesTimer)
 })
 
-// Auto-mark shown cards in detective notes
+// Auto-mark shown cards in detective notes + reset overlay
 watch(
   () => props.cardShown,
   (shown) => {
-    if (shown?.card && notesRef.value) {
-      notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
+    if (shown?.card) {
+      cardShownDismissedOnce.value = false
+      if (notesRef.value) {
+        notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
+      }
+    }
+  }
+)
+
+// Trigger game over overlay when game finishes
+watch(
+  () => props.gameState?.status,
+  (status) => {
+    if (status === 'finished') {
+      showGameOverOverlay.value = true
     }
   }
 )
@@ -952,13 +1008,13 @@ watch(
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
 }
 
-.shown-cards-item {
-  color: #e8dcc8;
-  font-size: 0.75rem;
-  padding: 0.1rem 0;
+.shown-cards-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 /* Sidebar */
@@ -1011,20 +1067,24 @@ watch(
 .card-hand {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .hand-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 4px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1px solid;
-  min-height: 32px;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1.5px solid;
+  width: 80px;
   box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 .card-suspect {
@@ -1074,11 +1134,17 @@ watch(
 }
 
 .card-icon {
-  font-size: 0.85rem;
+  font-size: 1.4rem;
+  margin: 0.3rem 0;
 }
 
 .card-label {
   white-space: nowrap;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.15;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .no-cards {
@@ -1446,21 +1512,20 @@ watch(
 }
 
 .card-with-image:hover {
-  background: rgba(155, 27, 48, 0.28);
-  border-color: rgba(212, 168, 73, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 8px rgba(212, 168, 73, 0.1);
+  border-color: rgba(212, 168, 73, 0.5);
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 168, 73, 0.15);
 }
 
 .card-thumb {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 64px;
+  height: 52px;
+  border-radius: 4px;
   object-fit: cover;
   object-position: center 15%;
-  border: 1.5px solid rgba(212, 168, 73, 0.4);
+  border: 1.5px solid rgba(212, 168, 73, 0.3);
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .card-thumb-room {
@@ -1471,7 +1536,7 @@ watch(
 .card-thumb-weapon {
   border-radius: 4px;
   object-position: center center;
-  border-color: rgba(204, 85, 0, 0.4);
+  border-color: rgba(204, 85, 0, 0.3);
 }
 
 .show-card-thumb {
@@ -1653,10 +1718,321 @@ watch(
   border-color: #d4a849;
 }
 
+/* ================================ */
+/* Card Shown Banner Overlay        */
+/* ================================ */
+.card-shown-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.25s ease;
+}
+
+.card-shown-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 2.5rem;
+  background: linear-gradient(145deg, #2a2018, #1a1408);
+  border: 2px solid rgba(212, 168, 73, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(212, 168, 73, 0.12), 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: bannerSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bannerSlideIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-shown-banner-label {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #d4a849;
+  background: rgba(212, 168, 73, 0.1);
+  padding: 0.25rem 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(212, 168, 73, 0.2);
+}
+
+.card-shown-banner-from {
+  font-size: 1rem;
+  color: #c8bca8;
+}
+
+.card-shown-banner-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.banner-card-frame {
+  width: 180px;
+  height: 140px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 3px solid #d4a849;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(212, 168, 73, 0.1);
+  animation: cardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+.banner-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.banner-card-icon-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: linear-gradient(135deg, rgba(40, 32, 20, 0.9), rgba(25, 18, 10, 0.9));
+}
+
+.banner-card-nameplate {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 1rem;
+  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
+  border: 1px solid rgba(212, 168, 73, 0.2);
+  border-radius: 8px;
+}
+
+.banner-card-emoji {
+  font-size: 1.2rem;
+}
+
+.banner-card-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: #d4a849;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.card-shown-banner-dismiss {
+  margin-top: 0.25rem;
+  padding: 0.5rem 2rem;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.card-shown-banner-dismiss:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 168, 73, 0.3);
+}
+
+/* ================================ */
+/* Game Over Winner Overlay         */
+/* ================================ */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.3s ease;
+}
+
+.game-over-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2.5rem 3rem;
+  background: linear-gradient(145deg, #2a2018 0%, #1a1408 50%, #221a0e 100%);
+  border: 2px solid rgba(212, 168, 73, 0.5);
+  border-radius: 20px;
+  box-shadow: 0 0 60px rgba(212, 168, 73, 0.15), 0 40px 100px rgba(0, 0, 0, 0.7);
+  animation: bannerSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 90vw;
+}
+
+.game-over-trophy {
+  font-size: 3rem;
+  animation: trophyBounce 0.6s ease 0.3s both;
+}
+
+@keyframes trophyBounce {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.game-over-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #d4a849;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 30px rgba(212, 168, 73, 0.2);
+}
+
+.game-over-winner {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e8dcc8;
+  margin-bottom: 0.5rem;
+}
+
+.game-over-cards {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.game-over-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1.5px solid;
+  width: 140px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.game-over-card.card-suspect {
+  border-color: rgba(155, 27, 48, 0.6);
+  background: linear-gradient(145deg, rgba(155, 27, 48, 0.15), rgba(0, 0, 0, 0.3));
+}
+
+.game-over-card.card-weapon {
+  border-color: rgba(26, 58, 107, 0.6);
+  background: linear-gradient(145deg, rgba(26, 58, 107, 0.2), rgba(0, 0, 0, 0.3));
+}
+
+.game-over-card.card-room {
+  border-color: rgba(26, 107, 60, 0.6);
+  background: linear-gradient(145deg, rgba(26, 107, 60, 0.15), rgba(0, 0, 0, 0.3));
+}
+
+.game-over-card:nth-child(1) { animation: cardFlipIn 0.5s ease 0.3s both; }
+.game-over-card:nth-child(2) { animation: cardFlipIn 0.5s ease 0.5s both; }
+.game-over-card:nth-child(3) { animation: cardFlipIn 0.5s ease 0.7s both; }
+
+@keyframes cardFlipIn {
+  0% { opacity: 0; transform: perspective(400px) rotateY(90deg) scale(0.8); }
+  100% { opacity: 1; transform: perspective(400px) rotateY(0) scale(1); }
+}
+
+.game-over-card-type {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #8a7e6b;
+}
+
+.game-over-card-frame {
+  width: 120px;
+  height: 90px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid rgba(212, 168, 73, 0.3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.game-over-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-over-card-icon-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, rgba(40, 32, 20, 0.9), rgba(25, 18, 10, 0.9));
+}
+
+.game-over-card-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e8dcc8;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.game-over-card.card-suspect .game-over-card-name { color: #d4888a; }
+.game-over-card.card-weapon .game-over-card-name { color: #7aa8d4; }
+.game-over-card.card-room .game-over-card-name { color: #7ac89a; }
+
+.game-over-dismiss {
+  margin-top: 0.75rem;
+  padding: 0.6rem 2.5rem;
+  background: linear-gradient(135deg, #d4a849, #b8912e);
+  color: #1a1008;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+
+.game-over-dismiss:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 168, 73, 0.35);
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 500px) {
+  .game-over-cards {
+    gap: 0.75rem;
+  }
+  .game-over-card {
+    width: 100px;
+  }
+  .game-over-card-frame {
+    width: 85px;
+    height: 65px;
+  }
+  .game-over-banner {
+    padding: 1.5rem 1.5rem;
   }
 }
 </style>
