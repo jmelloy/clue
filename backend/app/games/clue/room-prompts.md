@@ -140,7 +140,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, warm gaslight from wall sconces illuminating the wide carpeted stairs. Rich mahogany and deep burgundy tones. A sweeping staircase with ornate carved banisters and a plush crimson runner, ascending into shadow. Oil portraits of stern ancestors lining the wall. A suit of armor standing guard at the landing. Polished brass handrail reflecting the gaslight. Dark wood paneling and a heavy newel post topped with a carved finial.
+> Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, warm gaslight from wall sconces illuminating a wide, straight staircase in grand ballroom style. Rich mahogany and deep burgundy tones. A long central flight with symmetrical carved banisters and a plush crimson runner rises directly to an opulent landing. Crystal chandeliers glint above while oil portraits of stern ancestors line the walls. A suit of armor stands guard at the landing. Polished brass handrails reflect the gaslight against dark wood paneling and a heavy newel post topped with a carved finial.
 
 ---
 
