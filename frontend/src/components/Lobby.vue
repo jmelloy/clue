@@ -1,293 +1,263 @@
 <template>
-  <div class="lobby">
-    <!-- Atmospheric background layers -->
-    <div class="atmosphere">
-      <div class="fog fog-1"></div>
-      <div class="fog fog-2"></div>
-      <div class="vignette"></div>
-    </div>
-
-    <!-- Floating dust particles -->
-    <div class="particles">
-      <span v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)"></span>
+  <div class="lobby" :class="'lobby--' + selectedGame">
+    <!-- Subtle ambient background -->
+    <div class="ambient">
+      <div class="ambient-grain"></div>
+      <div class="ambient-glow"></div>
     </div>
 
     <div class="lobby-content">
-      <!-- Hero title -->
-      <header class="hero">
-        <div class="chandelier">
-          <div class="chain"></div>
-          <div class="light-fixture">
-            <div class="glow"></div>
+      <!-- Header -->
+      <header class="lobby-header">
+        <div class="brand">
+          <div class="brand-mark">
+            <span class="mark-die">&#x2680;</span>
+            <span class="mark-die">&#x2681;</span>
+            <span class="mark-die">&#x2682;</span>
           </div>
-        </div>
-        <div class="title-frame">
-          <div class="frame-corner tl"></div>
-          <div class="frame-corner tr"></div>
-          <div class="frame-corner bl"></div>
-          <div class="frame-corner br"></div>
-          <h1 class="title">CLUE</h1>
-          <p class="tagline">A Mystery Awaits at Tudor Mansion</p>
-        </div>
-        <div class="weapon-icons">
-          <span class="weapon-icon" title="Candlestick">&#x1F56F;</span>
-          <span class="divider-dot"></span>
-          <span class="weapon-icon" title="Knife">&#x1F5E1;</span>
-          <span class="divider-dot"></span>
-          <span class="weapon-icon" title="Revolver">&#x1F52B;</span>
-          <span class="divider-dot"></span>
-          <span class="weapon-icon" title="Rope">&#x1FA62;</span>
-          <span class="divider-dot"></span>
-          <span class="weapon-icon" title="Wrench">&#x1F527;</span>
-          <span class="divider-dot"></span>
-          <span class="weapon-icon" title="Lead Pipe">&#x26CF;</span>
+          <h1 class="brand-title">Game Night</h1>
+          <p class="brand-sub">Pick a game. Gather your players. Let's go.</p>
         </div>
       </header>
 
       <!-- URL-based game join view -->
       <template v-if="urlGameId">
-        <section class="card" v-if="urlGameLoading">
-          <div class="card-inner">
+        <section class="panel" v-if="urlGameLoading">
+          <div class="panel-body">
             <p class="loading-text">
               <span class="loading-spinner"></span>
-              Investigating game {{ urlGameId }}...
+              Looking up game {{ urlGameId }}...
             </p>
           </div>
         </section>
 
-        <section class="card" v-else-if="urlGameError">
-          <div class="card-inner">
+        <section class="panel" v-else-if="urlGameError">
+          <div class="panel-body">
             <p class="error-text">{{ urlGameError }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Back to lobby</button>
           </div>
         </section>
 
-        <section class="card" v-else>
-          <div class="card-inner">
-            <div class="card-header">
-              <span class="card-label">Case File</span>
-              <h2>Game {{ urlGameId }}</h2>
+        <section class="panel" v-else>
+          <div class="panel-body">
+            <div class="panel-header">
+              <span class="panel-label">Game {{ urlGameId }}</span>
+              <h2>{{ urlGameType === 'holdem' ? "Texas Hold'em" : 'Clue' }}</h2>
             </div>
             <p class="status-badge" :class="urlGameState?.status" v-if="urlGameState">
               <span class="status-dot"></span>
               {{ urlGameStatusText }}
               <span v-if="urlGameState.players" class="player-count">
-                {{ urlGameState.players.length }}/6 suspects
+                {{ urlGameState.players.length }}{{ urlGameType !== 'holdem' ? '/6' : '' }} players
               </span>
             </p>
 
             <!-- Rejoin as existing player -->
-            <div v-if="urlGameState?.players?.length" class="suspects-section">
-              <h3 class="section-label">Choose Your Identity</h3>
-              <ul class="suspect-list">
-                <li v-for="p in urlGameState.players" :key="p.id" class="suspect-item" :class="{
+            <div v-if="urlGameState?.players?.length" class="players-section">
+              <h3 class="section-label">Choose a player</h3>
+              <ul class="player-list">
+                <li v-for="p in urlGameState.players" :key="p.id" class="player-item" :class="{
                   eliminated: !p.active && urlGameState.status !== 'waiting'
                 }" @click="rejoinAs(p)">
-                  <div class="suspect-token" :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
+                  <div class="player-token" :class="{ 'has-portrait': CARD_IMAGES[p.character] }"
                     :style="tokenColor(p.character)">
                     <img v-if="CARD_IMAGES[p.character]" :src="CARD_IMAGES[p.character]" :alt="p.character"
-                      class="suspect-portrait" />
-                    <span v-else>{{ charAbbr(p.character) }}</span>
+                      class="player-portrait" />
+                    <span v-else>{{ charAbbr(p.character) || p.name?.charAt(0) || '?' }}</span>
                   </div>
-                  <div class="suspect-info">
-                    <span class="suspect-name">{{ p.name }}</span>
-                    <span class="suspect-character">{{ p.character }}</span>
+                  <div class="player-info">
+                    <span class="player-name">{{ p.name }}</span>
+                    <span v-if="p.character" class="player-character">{{ p.character }}</span>
                   </div>
                   <span v-if="!p.active && urlGameState.status !== 'waiting'"
-                    class="badge badge-eliminated">Eliminated</span>
-                  <span v-else-if="p.type !== 'human'" class="badge badge-agent">{{
+                    class="badge badge-out">Out</span>
+                  <span v-else-if="p.type !== 'human'" class="badge badge-ai">{{
                     agentLabel(p.type)
                     }}</span>
                   <span v-else class="badge badge-human">Human</span>
                 </li>
               </ul>
               <button class="btn-secondary full-width" @click="observeUrlGame">
-                <span class="btn-icon">&#x1F441;</span> Observe as Spectator
+                <span class="btn-icon">&#x1F441;</span> Watch
               </button>
 
-              <details v-if="urlGameCanJoin" class="new-player-details">
-                <summary>Enter as a new suspect...</summary>
-                <div class="form-group">
-                  <div class="input-wrapper">
-                    <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+              <details v-if="urlGameCanJoin" class="join-expand">
+                <summary>Join as new player...</summary>
+                <div class="form-stack">
+                  <div class="input-wrap">
+                    <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
                   </div>
-                  <div class="select-wrapper">
+                  <div class="select-wrap" v-if="urlGameType !== 'holdem'">
                     <select v-model="playerType">
                       <option value="human">Human Player</option>
-                      <option value="agent">Random Agent</option>
+                      <option value="agent">AI Agent</option>
                       <option value="llm_agent">LLM Agent</option>
                     </select>
                   </div>
                   <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
-                    Enter the Mansion
+                    Join Game
                   </button>
                 </div>
               </details>
             </div>
 
             <!-- No players yet -->
-            <div v-else-if="urlGameCanJoin" class="form-group">
-              <div class="input-wrapper">
-                <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
+            <div v-else-if="urlGameCanJoin" class="form-stack">
+              <div class="input-wrap">
+                <input v-model="playerName" placeholder="Your name" @keyup.enter="joinUrlGame" />
               </div>
-              <div class="select-wrapper">
+              <div class="select-wrap" v-if="urlGameType !== 'holdem'">
                 <select v-model="playerType">
                   <option value="human">Human Player</option>
-                  <option value="agent">Random Agent</option>
+                  <option value="agent">AI Agent</option>
                   <option value="llm_agent">LLM Agent</option>
                 </select>
               </div>
               <div class="btn-row">
                 <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
-                  Enter the Mansion
+                  Join Game
                 </button>
                 <button class="btn-secondary" @click="observeUrlGame">
-                  <span class="btn-icon">&#x1F441;</span> Observe
+                  <span class="btn-icon">&#x1F441;</span> Watch
                 </button>
               </div>
             </div>
 
-            <div v-else class="form-group">
+            <div v-else class="form-stack">
               <button class="btn-secondary full-width" @click="observeUrlGame">
-                <span class="btn-icon">&#x1F441;</span> Observe as Spectator
+                <span class="btn-icon">&#x1F441;</span> Watch as spectator
               </button>
             </div>
 
             <p v-if="error" class="error-text">{{ error }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Back to lobby</button>
           </div>
         </section>
       </template>
 
-      <!-- Normal lobby -->
+      <!-- Normal lobby: game selection -->
       <template v-else>
-        <!-- Game Type Selector -->
-        <div class="game-type-selector">
-          <button class="game-type-btn" :class="{ active: gameType === 'clue' }" @click="gameType = 'clue'">
-            <span class="game-type-icon">&#x1F50D;</span>
-            <span class="game-type-label">Clue</span>
+        <!-- Game type cards -->
+        <div class="game-grid">
+          <button
+            class="game-card game-card--clue"
+            :class="{ selected: selectedGame === 'clue' }"
+            @click="selectGame('clue')"
+          >
+            <div class="game-card-visual">
+              <span class="game-card-icon">&#x1F50D;</span>
+            </div>
+            <div class="game-card-text">
+              <h2 class="game-card-title">Clue</h2>
+              <p class="game-card-desc">Deduce the suspect, weapon, and room. 3&ndash;6 players.</p>
+            </div>
+            <div class="game-card-arrow">&rsaquo;</div>
           </button>
-          <button class="game-type-btn" :class="{ active: gameType === 'holdem' }" @click="gameType = 'holdem'">
-            <span class="game-type-icon">&#x1F0CF;</span>
-            <span class="game-type-label">Texas Hold'em</span>
+
+          <button
+            class="game-card game-card--holdem"
+            :class="{ selected: selectedGame === 'holdem' }"
+            @click="selectGame('holdem')"
+          >
+            <div class="game-card-visual">
+              <span class="game-card-icon">&#x1F0CF;</span>
+            </div>
+            <div class="game-card-text">
+              <h2 class="game-card-title">Texas Hold'em</h2>
+              <p class="game-card-desc">No-limit poker. Bet, bluff, and take the pot.</p>
+            </div>
+            <div class="game-card-arrow">&rsaquo;</div>
           </button>
         </div>
 
-        <div class="lobby-grid">
-          <!-- Create Game -->
-          <section class="card card-create">
-            <div class="card-inner">
-              <div class="card-header">
-                <span class="card-label">{{
-                  gameType === 'holdem' ? 'New Table' : 'New Investigation'
-                  }}</span>
-                <h2>Host a Game</h2>
-              </div>
-              <p class="card-desc">
-                {{
-                  gameType === 'holdem'
-                    ? 'Take your seat at the table and test your nerve.'
-                    : "Gather your suspects and uncover the truth. As host, you'll set the stage for murder."
-                }}
-              </p>
-              <div class="form-group">
-                <div class="input-wrapper">
-                  <input v-model="playerName" placeholder="Your alias" @keyup.enter="createGame" />
+        <!-- Action panels (create / join) — shown when a game is selected -->
+        <transition name="slide-fade">
+          <div v-if="selectedGame" class="action-panels">
+            <div class="action-grid">
+              <!-- Create -->
+              <section class="panel panel-create">
+                <div class="panel-body">
+                  <div class="panel-header">
+                    <span class="panel-label">{{ selectedGame === 'holdem' ? 'New Table' : 'New Game' }}</span>
+                    <h2>Create</h2>
+                  </div>
+                  <div class="form-stack">
+                    <div class="input-wrap">
+                      <input v-model="playerName" placeholder="Your name" @keyup.enter="createGame" />
+                    </div>
+                    <div class="select-wrap" v-if="selectedGame === 'clue'">
+                      <select v-model="playerType">
+                        <option value="human">Human Player</option>
+                        <option value="agent">AI Agent</option>
+                        <option value="llm_agent">LLM Agent</option>
+                      </select>
+                    </div>
+                    <template v-if="selectedGame === 'holdem'">
+                      <div class="input-wrap buyin-row">
+                        <label class="input-label">Buy-in</label>
+                        <div class="dollar-input">
+                          <span class="dollar-sign">$</span>
+                          <input v-model.number="holdemBuyIn" type="number" min="1" step="1" placeholder="20" />
+                        </div>
+                      </div>
+                      <label class="checkbox-row">
+                        <input type="checkbox" v-model="holdemAllowRebuys" />
+                        <span class="checkbox-label">Allow rebuys</span>
+                      </label>
+                    </template>
+                    <button class="btn-primary" :disabled="!playerName" @click="createGame">
+                      {{ selectedGame === 'holdem' ? 'Deal Me In' : 'Start Game' }}
+                    </button>
+                  </div>
                 </div>
-                <div class="select-wrapper" v-if="gameType === 'clue'">
-                  <select v-model="playerType">
-                    <option value="human">Human Player</option>
-                    <option value="agent">Random Agent</option>
-                    <option value="llm_agent">LLM Agent</option>
-                  </select>
-                </div>
-                <template v-if="gameType === 'holdem'">
-                  <div class="input-wrapper holdem-buyin-row">
-                    <label class="input-label">Buy-in</label>
-                    <div class="dollar-input">
-                      <span class="dollar-sign">$</span>
-                      <input v-model.number="holdemBuyIn" type="number" min="1" step="1" placeholder="20" />
+              </section>
+
+              <!-- Join -->
+              <section class="panel panel-join">
+                <div class="panel-body">
+                  <div class="panel-header">
+                    <span class="panel-label">Have a code?</span>
+                    <h2>Join</h2>
+                  </div>
+                  <div class="form-stack">
+                    <div class="input-wrap input-code">
+                      <input v-model="joinGameId" placeholder="Game ID (e.g. ABC123)" @keyup.enter="joinGame"
+                        style="text-transform: uppercase; letter-spacing: 0.15em" />
+                    </div>
+                    <div class="input-wrap">
+                      <input v-model="playerName" placeholder="Your name" />
+                    </div>
+                    <div class="select-wrap" v-if="selectedGame === 'clue'">
+                      <select v-model="playerType">
+                        <option value="human">Human Player</option>
+                        <option value="agent">AI Agent</option>
+                        <option value="llm_agent">LLM Agent</option>
+                      </select>
+                    </div>
+                    <div class="btn-row">
+                      <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
+                        Join
+                      </button>
+                      <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
+                        <span class="btn-icon">&#x1F441;</span> Watch
+                      </button>
                     </div>
                   </div>
-                  <label class="checkbox-row">
-                    <input type="checkbox" v-model="holdemAllowRebuys" />
-                    <span class="checkbox-label">Allow rebuys</span>
-                  </label>
-                </template>
-                <button class="btn-primary" :disabled="!playerName" @click="createGame">
-                  {{ gameType === 'holdem' ? 'Deal Me In' : 'Open the Case' }}
-                </button>
-              </div>
-            </div>
-            <div class="card-decoration">
-              <svg viewBox="0 0 120 120" class="deco-magnifier">
-                <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.15" />
-                <line x1="75" y1="75" x2="110" y2="110" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                  opacity="0.15" />
-              </svg>
-            </div>
-          </section>
-
-          <!-- Join Game -->
-          <section class="card card-join">
-            <div class="card-inner">
-              <div class="card-header">
-                <span class="card-label">Active Case</span>
-                <h2>Join a Game</h2>
-              </div>
-              <p class="card-desc">
-                {{
-                  gameType === 'holdem'
-                    ? 'Got a table number? Enter it to take your seat.'
-                    : "You've received an invitation to Tudor Mansion. Enter the case number to join."
-                }}
-              </p>
-              <div class="form-group">
-                <div class="input-wrapper input-code">
-                  <input v-model="joinGameId" placeholder="Game ID (e.g. ABC123)" @keyup.enter="joinGame"
-                    style="text-transform: uppercase; letter-spacing: 0.15em" />
                 </div>
-                <div class="input-wrapper">
-                  <input v-model="playerName" placeholder="Your alias" />
-                </div>
-                <div class="select-wrapper" v-if="gameType === 'clue'">
-                  <select v-model="playerType">
-                    <option value="human">Human Player</option>
-                    <option value="agent">Random Agent</option>
-                    <option value="llm_agent">LLM Agent</option>
-                  </select>
-                </div>
-                <div class="btn-row">
-                  <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
-                    Enter the Mansion
-                  </button>
-                  <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
-                    <span class="btn-icon">&#x1F441;</span> Observe
-                  </button>
-                </div>
-              </div>
+              </section>
             </div>
-            <div class="card-decoration">
-              <svg viewBox="0 0 120 120" class="deco-envelope">
-                <rect x="10" y="30" width="100" height="70" rx="4" fill="none" stroke="currentColor" stroke-width="2"
-                  opacity="0.12" />
-                <polyline points="10,30 60,72 110,30" fill="none" stroke="currentColor" stroke-width="2"
-                  opacity="0.12" />
-              </svg>
-            </div>
-          </section>
-        </div>
+          </div>
+        </transition>
 
         <p v-if="error" class="error-text error-global">{{ error }}</p>
       </template>
 
       <!-- Footer -->
       <footer class="lobby-footer">
-        <div class="footer-line"></div>
+        <div class="footer-rule"></div>
         <div class="footer-theme">
           <ThemeSwitcher />
         </div>
-        <p>&ldquo;The truth is rarely pure and never simple.&rdquo;</p>
         <a href="/admin" class="admin-link">Admin</a>
       </footer>
     </div>
@@ -306,7 +276,7 @@ const emit = defineEmits(['game-joined', 'observe', 'rejoin', 'clear-url-game'])
 
 const playerName = ref('')
 const playerType = ref('human')
-const gameType = ref('clue')
+const selectedGame = ref(null)
 const joinGameId = ref('')
 const error = ref('')
 
@@ -319,9 +289,12 @@ const urlGameState = ref(null)
 const urlGameLoading = ref(false)
 const urlGameError = ref('')
 
-// Imported from shared constants
 import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from '../constants/clue.js'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+
+function selectGame(type) {
+  selectedGame.value = selectedGame.value === type ? null : type
+}
 
 function tokenColor(character) {
   const c = CHARACTER_COLORS[character] || { bg: '#444', text: '#fff' }
@@ -329,7 +302,7 @@ function tokenColor(character) {
 }
 
 function charAbbr(character) {
-  return CHARACTER_ABBR[character] || '??'
+  return CHARACTER_ABBR[character] || ''
 }
 
 function agentLabel(type) {
@@ -339,29 +312,15 @@ function agentLabel(type) {
   return type
 }
 
-function particleStyle(n) {
-  const x = Math.sin(n * 7.3) * 50 + 50
-  const delay = (n * 1.7) % 12
-  const duration = 8 + (n % 5) * 2
-  const size = 1 + (n % 3)
-  return {
-    left: `${x}%`,
-    animationDelay: `${delay}s`,
-    animationDuration: `${duration}s`,
-    width: `${size}px`,
-    height: `${size}px`
-  }
-}
-
 const urlGameCanJoin = computed(() => {
   return urlGameState.value?.status === 'waiting'
 })
 
 const urlGameStatusText = computed(() => {
   const status = urlGameState.value?.status
-  if (status === 'waiting') return 'Awaiting suspects'
-  if (status === 'playing') return 'Investigation in progress'
-  if (status === 'finished') return 'Case closed'
+  if (status === 'waiting') return 'Waiting for players'
+  if (status === 'playing') return 'In progress'
+  if (status === 'finished') return 'Finished'
   return ''
 })
 
@@ -387,14 +346,14 @@ async function fetchUrlGame(gid) {
     const endpoint = props.urlGameType === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
     const res = await fetch(endpoint)
     if (!res.ok) {
-      urlGameError.value = 'Case file not found'
+      urlGameError.value = 'Game not found'
       return
     }
     const state = await res.json()
     urlGameState.value = state
-    if (state.game_type === 'holdem') gameType.value = 'holdem'
+    if (state.game_type === 'holdem') selectedGame.value = 'holdem'
   } catch (e) {
-    urlGameError.value = 'Failed to retrieve case: ' + e.message
+    urlGameError.value = 'Failed to load game: ' + e.message
   } finally {
     urlGameLoading.value = false
   }
@@ -402,7 +361,7 @@ async function fetchUrlGame(gid) {
 
 async function joinUrlGame() {
   error.value = ''
-  if (props.urlGameType === 'holdem' || gameType.value === 'holdem') {
+  if (props.urlGameType === 'holdem' || selectedGame.value === 'holdem') {
     await doJoinHoldem(props.urlGameId)
   } else {
     await doJoin(props.urlGameId)
@@ -420,7 +379,7 @@ function rejoinAs(player) {
 async function createGame() {
   error.value = ''
   try {
-    if (gameType.value === 'holdem') {
+    if (selectedGame.value === 'holdem') {
       const buyInCents = Math.round(holdemBuyIn.value * 100)
       const res = await fetch('/holdem/games', {
         method: 'POST',
@@ -438,13 +397,13 @@ async function createGame() {
       await doJoin(game_id)
     }
   } catch (e) {
-    error.value = 'Failed to open case: ' + e.message
+    error.value = 'Failed to create game: ' + e.message
   }
 }
 
 async function joinGame() {
   error.value = ''
-  if (gameType.value === 'holdem') {
+  if (selectedGame.value === 'holdem') {
     await doJoinHoldem(joinGameId.value.trim().toUpperCase())
   } else {
     await doJoin(joinGameId.value.trim().toUpperCase())
@@ -502,7 +461,7 @@ async function observeGame() {
   try {
     const res = await fetch(`/games/${gid}`)
     if (!res.ok) {
-      error.value = 'Case file not found'
+      error.value = 'Game not found'
       return
     }
     emit('observe', { gameId: gid })
@@ -513,374 +472,313 @@ async function observeGame() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=DM+Sans:wght@400;500;600&display=swap');
 
+/* ==============================
+   LOBBY SHELL
+   ============================== */
 .lobby {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg-page);
+  color: var(--text-primary);
 }
 
-/* === Atmosphere === */
-.atmosphere {
+/* === Ambient background === */
+.ambient {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
 }
 
-.fog {
+.ambient-grain {
   position: absolute;
   inset: 0;
-  opacity: var(--fog-opacity);
-  background: radial-gradient(ellipse at 30% 20%, var(--fog-color-1) 0%, transparent 60%),
-    radial-gradient(ellipse at 70% 80%, var(--fog-color-2) 0%, transparent 50%);
-  animation: fog-drift 20s ease-in-out infinite alternate;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
 }
 
-.fog-2 {
-  opacity: 0.025;
-  background: radial-gradient(ellipse at 60% 40%, #d4a849 0%, transparent 55%),
-    radial-gradient(ellipse at 20% 70%, #4a1a2a 0%, transparent 45%);
-  animation-delay: -10s;
-  animation-direction: alternate-reverse;
-}
-
-@keyframes fog-drift {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-
-  100% {
-    transform: translate(40px, -20px) scale(1.1);
-  }
-}
-
-.vignette {
+.ambient-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 40%, var(--vignette-color) 85%);
+  opacity: var(--fog-opacity, 0.03);
+  background:
+    radial-gradient(ellipse at 25% 0%, var(--lobby-glow-1, rgba(180, 140, 60, 0.15)) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 100%, var(--lobby-glow-2, rgba(60, 90, 140, 0.1)) 0%, transparent 50%);
 }
 
-/* === Particles === */
-.particles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.particle {
-  position: absolute;
-  bottom: -10px;
-  border-radius: 50%;
-  background: rgba(212, 168, 73, 0.15);
-  animation: float-up linear infinite;
-  opacity: 0;
-}
-
-@keyframes float-up {
-  0% {
-    transform: translateY(0) translateX(0);
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 0.6;
-  }
-
-  90% {
-    opacity: 0.2;
-  }
-
-  100% {
-    transform: translateY(-100vh) translateX(30px);
-    opacity: 0;
-  }
-}
-
-/* === Content === */
+/* ==============================
+   CONTENT
+   ============================== */
 .lobby-content {
   position: relative;
   z-index: 2;
-  max-width: 660px;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 3rem;
+  padding: 2.5rem 1.25rem 3rem;
 }
 
-/* === Chandelier === */
-.chandelier {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.chain {
-  width: 1px;
-  height: 40px;
-  background: linear-gradient(to bottom, transparent, #d4a849);
-}
-
-.light-fixture {
-  position: relative;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #d4a849;
-}
-
-.glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 168, 73, 0.15), transparent 70%);
-  animation: pulse-glow 4s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.15);
-  }
-}
-
-/* === Hero === */
-.hero {
+/* ==============================
+   HEADER / BRAND
+   ============================== */
+.brand {
   text-align: center;
   margin-bottom: 2.5rem;
+  animation: brand-in 0.8s ease-out;
 }
 
-.title-frame {
-  position: relative;
-  display: inline-block;
-  padding: 1.5rem 3rem 1.2rem;
+@keyframes brand-in {
+  0% { opacity: 0; transform: translateY(-12px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-.frame-corner {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-color: #d4a849;
-  opacity: 0.4;
-}
-
-.frame-corner.tl {
-  top: 0;
-  left: 0;
-  border-top: 1.5px solid;
-  border-left: 1.5px solid;
-}
-
-.frame-corner.tr {
-  top: 0;
-  right: 0;
-  border-top: 1.5px solid;
-  border-right: 1.5px solid;
-}
-
-.frame-corner.bl {
-  bottom: 0;
-  left: 0;
-  border-bottom: 1.5px solid;
-  border-left: 1.5px solid;
-}
-
-.frame-corner.br {
-  bottom: 0;
-  right: 0;
-  border-bottom: 1.5px solid;
-  border-right: 1.5px solid;
-}
-
-.title {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 4.5rem;
-  font-weight: 900;
-  letter-spacing: 0.35em;
-  color: var(--accent);
-  text-shadow: 0 0 40px var(--accent-glow), 0 2px 0 var(--accent-dark);
-  line-height: 1;
-  margin-right: -0.35em;
-  /* compensate letter-spacing */
-  animation: title-appear 1.2s ease-out;
-}
-
-@keyframes title-appear {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-    letter-spacing: 0.6em;
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    letter-spacing: 0.35em;
-  }
-}
-
-.tagline {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-style: italic;
-  font-size: 1.05rem;
-  color: var(--text-secondary);
-  margin-top: 0.6rem;
-  letter-spacing: 0.08em;
-  animation: fade-in 1.5s ease-out 0.3s both;
-}
-
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.weapon-icons {
+.brand-mark {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.mark-die {
+  font-size: 1.3rem;
+  opacity: 0.25;
+  transition: opacity 0.3s;
+}
+
+.brand:hover .mark-die {
+  opacity: 0.5;
+}
+
+.brand-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.brand-sub {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+/* ==============================
+   GAME CARDS (type selection)
+   ============================== */
+.game-grid {
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1.25rem;
-  animation: fade-in 2s ease-out 0.6s both;
+  margin-bottom: 1.5rem;
+  animation: cards-in 0.6s ease-out 0.15s both;
 }
 
-.weapon-icon {
-  font-size: 1.1rem;
-  filter: grayscale(0.8) brightness(0.5);
-  transition: filter 0.3s;
+@keyframes cards-in {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-.weapon-icon:hover {
-  filter: grayscale(0) brightness(1);
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-card);
+  background: var(--bg-panel);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  position: relative;
+  overflow: hidden;
 }
 
-.divider-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #4a3f2e;
+.game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }
 
-/* === Cards (panels) === */
-.lobby-grid {
+.game-card--clue::before {
+  background: linear-gradient(135deg, rgba(180, 50, 50, 0.04) 0%, rgba(212, 168, 73, 0.04) 100%);
+}
+
+.game-card--holdem::before {
+  background: linear-gradient(135deg, rgba(40, 120, 80, 0.04) 0%, rgba(60, 90, 160, 0.04) 100%);
+}
+
+.game-card:hover {
+  border-color: var(--accent-border-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.game-card:hover::before {
+  opacity: 1;
+}
+
+.game-card.selected {
+  border-color: var(--accent-border-focus);
+  box-shadow: 0 2px 16px var(--accent-glow);
+}
+
+.game-card.selected::before {
+  opacity: 1;
+}
+
+.game-card-visual {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  transition: transform 0.25s;
+}
+
+.game-card:hover .game-card-visual {
+  transform: scale(1.08);
+}
+
+.game-card--clue .game-card-visual {
+  background: linear-gradient(135deg, #c0392b18 0%, #d4a84918 100%);
+}
+
+.game-card--holdem .game-card-visual {
+  background: linear-gradient(135deg, #1a9e3f18 0%, #1a5fb418 100%);
+}
+
+.game-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-card-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.15rem;
+}
+
+.game-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.game-card-arrow {
+  font-size: 1.6rem;
+  color: var(--text-faint);
+  transition: color 0.2s, transform 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.game-card.selected .game-card-arrow {
+  color: var(--accent);
+  transform: rotate(90deg);
+}
+
+/* ==============================
+   ACTION PANELS (Create / Join)
+   ============================== */
+.slide-fade-enter-active {
+  transition: all 0.35s ease;
+}
+.slide-fade-leave-active {
+  transition: all 0.2s ease;
+}
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.action-grid {
   display: grid;
-  gap: 1.25rem;
-  animation: fade-in 1s ease-out 0.4s both;
+  gap: 1rem;
 }
 
-@media (min-width: 580px) {
-  .lobby-grid {
+@media (min-width: 540px) {
+  .action-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-.card {
-  position: relative;
-  border-radius: 8px;
+/* ==============================
+   PANELS (cards)
+   ============================== */
+.panel {
+  border-radius: 10px;
   background: var(--bg-panel);
   border: 1px solid var(--border-card);
   overflow: hidden;
-  transition: border-color 0.4s, box-shadow 0.4s;
-  animation: card-appear 0.6s ease-out both;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.card:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-@keyframes card-appear {
-  0% {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card:hover {
+.panel:hover {
   border-color: var(--accent-border-hover);
-  box-shadow: 0 8px 40px var(--accent-glow);
 }
 
-.card-inner {
-  position: relative;
-  z-index: 1;
-  padding: 1.75rem 1.5rem 1.5rem;
+.panel-body {
+  padding: 1.5rem 1.25rem 1.25rem;
 }
 
-.card-decoration {
-  position: absolute;
-  bottom: -10px;
-  right: -10px;
-  width: 120px;
-  height: 120px;
-  color: #d4a849;
-  pointer-events: none;
-}
-
-.card-header {
+.panel-header {
   margin-bottom: 0.75rem;
 }
 
-.card-label {
+.panel-label {
   display: inline-block;
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--accent);
   opacity: 0.7;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
 }
 
-.card-header h2 {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 1.35rem;
-  font-weight: 700;
+.panel-header h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: 0.03em;
+  letter-spacing: -0.01em;
 }
 
-.card-desc {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.55;
-  margin-bottom: 1.25rem;
-}
-
-/* === Status badge === */
+/* ==============================
+   STATUS BADGE
+   ============================== */
 .status-badge {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.85rem;
-  color: #8a7e6b;
-  margin-bottom: 1.25rem;
-  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  padding: 0.45rem 0.7rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-input);
 }
 
 .status-dot {
@@ -891,114 +789,110 @@ async function observeGame() {
 }
 
 .status-badge.waiting .status-dot {
-  background: #d4a849;
-  box-shadow: 0 0 8px rgba(212, 168, 73, 0.5);
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
 .status-badge.playing .status-dot {
-  background: #4caf50;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
 }
 
 .status-badge.finished .status-dot {
-  background: #666;
+  background: var(--text-dim);
 }
 
 @keyframes pulse-dot {
-
-  0%,
-  100% {
-    opacity: 0.6;
-  }
-
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .player-count {
   margin-left: auto;
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-size: 0.75rem;
+  opacity: 0.65;
 }
 
-/* === Forms === */
-.form-group {
+/* ==============================
+   FORMS
+   ============================== */
+.form-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
-.input-wrapper {
+.input-wrap {
   position: relative;
 }
 
-.input-wrapper input,
-.select-wrapper select {
+.input-wrap input,
+.select-wrap select {
   display: block;
   width: 100%;
-  padding: 0.65rem 0.9rem;
+  padding: 0.6rem 0.85rem;
   border: 1px solid var(--accent-border);
-  border-radius: 5px;
+  border-radius: 6px;
   background: var(--bg-input);
   color: var(--text-primary);
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.95rem;
-  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   outline: none;
 }
 
-.input-wrapper input::placeholder {
+.input-wrap input::placeholder {
   color: var(--text-dim);
-  font-style: italic;
 }
 
-.input-wrapper input:focus,
-.select-wrapper select:focus {
+.input-wrap input:focus,
+.select-wrap select:focus {
   border-color: var(--accent-border-focus);
   background: var(--bg-input-focus);
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
-.select-wrapper {
+.select-wrap {
   position: relative;
 }
 
-.select-wrapper select {
+.select-wrap select {
   appearance: none;
   cursor: pointer;
   padding-right: 2rem;
 }
 
-.select-wrapper::after {
+.select-wrap::after {
   content: '\25BE';
   position: absolute;
-  right: 0.9rem;
+  right: 0.85rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #5a5040;
+  color: var(--text-dim);
   pointer-events: none;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
-/* === Buttons === */
+/* ==============================
+   BUTTONS
+   ============================== */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.7rem 1.5rem;
+  padding: 0.6rem 1.25rem;
   border: none;
-  border-radius: 5px;
+  border-radius: 6px;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: var(--accent-text);
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.95rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
   position: relative;
   overflow: hidden;
 }
@@ -1009,7 +903,7 @@ async function observeGame() {
   inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.25s;
 }
 
 .btn-primary:hover:not(:disabled)::before {
@@ -1017,7 +911,7 @@ async function observeGame() {
 }
 
 .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.25);
+  box-shadow: 0 3px 14px var(--accent-glow);
   transform: translateY(-1px);
 }
 
@@ -1026,7 +920,7 @@ async function observeGame() {
 }
 
 .btn-primary:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -1034,16 +928,16 @@ async function observeGame() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.25rem;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
   border: 1px solid var(--accent-border);
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.9rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -1062,26 +956,27 @@ async function observeGame() {
 }
 
 .btn-icon {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .btn-ghost {
   display: inline-block;
-  margin-top: 1rem;
-  padding: 0.4rem 0;
+  margin-top: 0.75rem;
+  padding: 0.35rem 0;
   background: none;
   border: none;
-  color: #5a5040;
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: color 0.2s;
   text-decoration: underline;
   text-underline-offset: 3px;
+  text-decoration-color: var(--border-card);
 }
 
 .btn-ghost:hover {
-  color: #8a7e6b;
+  color: var(--text-secondary);
 }
 
 .btn-row {
@@ -1093,66 +988,66 @@ async function observeGame() {
   flex: 1;
 }
 
-/* === Suspect list === */
+/* ==============================
+   PLAYER LIST (URL join view)
+   ============================== */
 .section-label {
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #8a7e6b;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+.player-list {
+  list-style: none;
   margin-bottom: 0.75rem;
 }
 
-.suspect-list {
-  list-style: none;
-  margin-bottom: 1rem;
-}
-
-.suspect-item {
+.player-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.5rem 0.65rem;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
-.suspect-item:hover {
-  background: rgba(212, 168, 73, 0.04);
-  border-color: rgba(212, 168, 73, 0.2);
+.player-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-border);
 }
 
-.suspect-item.eliminated {
+.player-item.eliminated {
   opacity: 0.4;
 }
 
-.suspect-token {
-  width: 30px;
-  height: 30px;
+.player-token {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  font-family: 'Crimson Text', Georgia, serif;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.suspect-token.has-portrait {
+.player-token.has-portrait {
   background: none !important;
   border: 2px solid;
   border-color: inherit;
 }
 
-.suspect-portrait {
+.player-portrait {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1161,7 +1056,7 @@ async function observeGame() {
   display: block;
 }
 
-.suspect-info {
+.player-info {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1169,162 +1064,121 @@ async function observeGame() {
   min-width: 0;
 }
 
-.suspect-name {
+.player-name {
   color: var(--text-primary);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
-.suspect-character {
+.player-character {
   color: var(--text-muted);
-  font-size: 0.75rem;
-  font-style: italic;
+  font-size: 0.7rem;
 }
 
 .badge {
-  font-size: 0.65rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.6rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 3px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 600;
   flex-shrink: 0;
 }
 
-.badge-eliminated {
-  background: rgba(139, 42, 42, 0.2);
-  color: #c45050;
+.badge-out {
+  background: var(--error-bg);
+  color: var(--error);
 }
 
-.badge-agent {
-  background: rgba(212, 168, 73, 0.12);
-  color: #d4a849;
+.badge-ai {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 .badge-human {
-  background: rgba(255, 255, 255, 0.05);
-  color: #6a6050;
+  background: var(--bg-input);
+  color: var(--text-dim);
 }
 
-/* === Details/accordion === */
-.new-player-details {
-  margin-top: 0.75rem;
+/* ==============================
+   JOIN EXPAND
+   ============================== */
+.join-expand {
+  margin-top: 0.6rem;
 }
 
-.new-player-details summary {
-  color: #5a5040;
-  font-size: 0.85rem;
-  font-style: italic;
+.join-expand summary {
+  color: var(--text-dim);
+  font-size: 0.8rem;
   cursor: pointer;
-  text-align: left;
   transition: color 0.2s;
 }
 
-.new-player-details summary:hover {
-  color: #8a7e6b;
+.join-expand summary:hover {
+  color: var(--text-secondary);
 }
 
-.new-player-details .form-group {
-  margin-top: 0.75rem;
+.join-expand .form-stack {
+  margin-top: 0.6rem;
 }
 
-/* === Loading === */
+/* ==============================
+   LOADING
+   ============================== */
 .loading-text {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  color: #8a7e6b;
-  font-style: italic;
+  gap: 0.65rem;
+  color: var(--text-muted);
 }
 
 .loading-spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid rgba(212, 168, 73, 0.2);
-  border-top-color: #d4a849;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--accent-border);
+  border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* === Error === */
+/* ==============================
+   ERRORS
+   ============================== */
 .error-text {
   color: var(--error);
-  font-size: 0.9rem;
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 5px;
+  font-size: 0.85rem;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
   background: var(--error-bg);
   border: 1px solid var(--error-border);
 }
 
 .error-global {
   text-align: center;
-  margin-top: 1.25rem;
-  animation: fade-in 0.3s ease-out;
+  margin-top: 1rem;
 }
 
-/* === Footer === */
-.lobby-footer {
-  margin-top: 3rem;
-  text-align: center;
-  animation: fade-in 2s ease-out 1s both;
-}
-
-.footer-line {
-  width: 60px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 168, 73, 0.2), transparent);
-  margin: 0 auto 1rem;
-}
-
-.footer-theme {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-
-.lobby-footer p {
-  color: var(--text-darkest);
-  font-style: italic;
-  font-size: 0.85rem;
-  letter-spacing: 0.03em;
-}
-
-.admin-link {
-  display: inline-block;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: #5a5040;
-  text-decoration: none;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  transition: color 0.3s;
-}
-
-.admin-link:hover {
-  color: #d4a849;
-}
-
-/* === Hold'em Buy-in === */
-.holdem-buyin-row {
+/* ==============================
+   HOLD'EM BUY-IN
+   ============================== */
+.buyin-row {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .input-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #8a7e6b;
+  color: var(--text-muted);
 }
 
 .dollar-input {
@@ -1335,23 +1189,23 @@ async function observeGame() {
 
 .dollar-sign {
   position: absolute;
-  left: 0.75rem;
-  color: #8a7e6b;
-  font-size: 0.95rem;
+  left: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
   pointer-events: none;
 }
 
 .dollar-input input {
   display: block;
   width: 100%;
-  padding: 0.65rem 0.9rem 0.65rem 1.6rem;
-  border: 1px solid rgba(212, 168, 73, 0.15);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e8dcc8;
-  font-family: 'Crimson Text', Georgia, serif;
-  font-size: 0.95rem;
-  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+  padding: 0.6rem 0.85rem 0.6rem 1.5rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.9rem;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   outline: none;
   -moz-appearance: textfield;
 }
@@ -1363,94 +1217,82 @@ async function observeGame() {
 }
 
 .dollar-input input:focus {
-  border-color: rgba(212, 168, 73, 0.4);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 0 3px rgba(212, 168, 73, 0.06);
+  border-color: var(--accent-border-focus);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 .checkbox-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   cursor: pointer;
-  padding: 0.25rem 0;
+  padding: 0.2rem 0;
 }
 
 .checkbox-row input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  accent-color: #d4a849;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .checkbox-label {
-  font-size: 0.9rem;
-  color: #8a7e6b;
-}
-
-/* === Game Type Selector === */
-.game-type-selector {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  animation: fade-in 0.8s ease-out 0.3s both;
-}
-
-.game-type-btn {
-  flex: 1;
-  max-width: 200px;
-  background: var(--bg-panel);
-  border: 1.5px solid var(--border-card);
-  border-radius: 8px;
-  padding: 1rem;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  transition: all 0.3s;
-  font-family: 'Crimson Text', Georgia, serif;
-}
-
-.game-type-btn:hover {
-  border-color: rgba(212, 168, 73, 0.3);
-  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.06);
-}
-
-.game-type-btn.active {
-  border-color: var(--accent-border-focus);
-  background: var(--bg-panel);
-  box-shadow: 0 4px 20px var(--accent-glow);
-}
-
-.game-type-icon {
-  font-size: 1.5rem;
-}
-
-.game-type-label {
   font-size: 0.85rem;
   color: var(--text-muted);
-  font-weight: 600;
-  letter-spacing: 0.05em;
 }
 
-.game-type-btn.active .game-type-label {
+/* ==============================
+   FOOTER
+   ============================== */
+.lobby-footer {
+  margin-top: 2.5rem;
+  text-align: center;
+  animation: fade-in 1.5s ease-out 0.6s both;
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.footer-rule {
+  width: 40px;
+  height: 1px;
+  background: var(--border-card);
+  margin: 0 auto 0.75rem;
+}
+
+.footer-theme {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.admin-link {
+  display: inline-block;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+
+.admin-link:hover {
   color: var(--accent);
 }
 
-/* === Responsive === */
-@media (max-width: 579px) {
-  .title {
-    font-size: 3rem;
+/* ==============================
+   RESPONSIVE
+   ============================== */
+@media (max-width: 539px) {
+  .brand-title {
+    font-size: 2.2rem;
   }
 
-  .title-frame {
-    padding: 1rem 2rem 0.8rem;
-  }
-
-  .card-inner {
-    padding: 1.5rem 1.25rem 1.25rem;
+  .panel-body {
+    padding: 1.25rem 1rem 1rem;
   }
 }
 </style>

@@ -167,16 +167,16 @@ async function startGame() {
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap');
 
 .waiting-scene {
-  --gold: #c9a84c;
-  --gold-bright: #e8c85a;
-  --gold-dim: #8b7635;
-  --bg: #080c12;
-  --bg-raised: #0e1420;
-  --bg-card: #111820;
+  --gold: var(--poker-gold);
+  --gold-bright: var(--poker-gold-bright);
+  --gold-dim: var(--poker-gold-dim);
+  --bg: var(--poker-chrome);
+  --bg-raised: var(--poker-chrome-raised);
+  --bg-card: var(--poker-chrome-alt);
   --felt: #0f5e30;
-  --text: #e4ded4;
-  --text-dim: #6b7280;
-  --text-muted: #3d4452;
+  --text: var(--poker-text);
+  --text-dim: var(--poker-text-dim);
+  --text-muted: var(--poker-text-muted);
 
   font-family: 'Outfit', system-ui, sans-serif;
   color: var(--text);
@@ -214,7 +214,7 @@ async function startGame() {
 .waiting-card {
   position: relative;
   background: var(--bg-raised);
-  border: 1px solid rgba(201, 168, 76, 0.15);
+  border: 1px solid var(--poker-border-strong);
   border-radius: 16px;
   max-width: 440px;
   width: 100%;
@@ -235,7 +235,7 @@ async function startGame() {
 .card-header {
   text-align: center;
   padding: 2rem 2rem 1.25rem;
-  background: linear-gradient(180deg, rgba(201, 168, 76, 0.06) 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--poker-hover) 0%, transparent 100%);
 }
 
 .brand-mark {
@@ -282,8 +282,8 @@ h1 {
   justify-content: space-between;
   margin: 0 1.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--poker-hover);
+  border: 1px solid var(--poker-border);
   border-radius: 10px;
 }
 
@@ -312,8 +312,8 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-bg);
+  border: 1px solid var(--poker-input-border);
   color: var(--text-dim);
   padding: 0.4rem 0.7rem;
   border-radius: 6px;
@@ -331,7 +331,7 @@ h1 {
 
 .copy-btn.copied {
   border-color: var(--felt);
-  color: #8affb0;
+  color: var(--success, #4caf50);
 }
 
 /* ─── Players Section ─── */
@@ -372,15 +372,15 @@ h1 {
   align-items: center;
   gap: 0.65rem;
   padding: 0.5rem 0.65rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--poker-hover);
+  border: 1px solid var(--poker-border);
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .player-row:hover:not(.empty-seat) {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-bg);
+  border-color: var(--poker-input-border);
 }
 
 .player-row.empty-seat {
@@ -404,8 +404,8 @@ h1 {
 }
 
 .player-avatar.empty {
-  background: rgba(255, 255, 255, 0.04);
-  border: 2px dashed rgba(255, 255, 255, 0.1);
+  background: var(--poker-border);
+  border: 2px dashed var(--poker-border-strong);
   color: var(--text-muted);
   font-size: 0.8rem;
 }
@@ -420,7 +420,7 @@ h1 {
 .p-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #eee;
+  color: var(--poker-name);
 }
 
 .p-chips {
@@ -480,9 +480,9 @@ h1 {
   justify-content: center;
   gap: 0.4rem;
   padding: 0.8rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--poker-input-bg);
   color: var(--text-dim);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--poker-input-border);
   border-radius: 10px;
   font-family: 'Outfit', sans-serif;
   font-weight: 500;
@@ -495,7 +495,7 @@ h1 {
 .add-agent-btn:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--gold);
-  background: rgba(201, 168, 76, 0.06);
+  background: var(--poker-hover);
 }
 
 .add-agent-btn:disabled {
@@ -512,7 +512,7 @@ h1 {
   padding: 0.8rem 1.5rem;
   background: linear-gradient(135deg, var(--felt), #1a7a42);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--poker-border-strong);
   border-radius: 10px;
   font-family: 'Outfit', sans-serif;
   font-weight: 600;
@@ -550,7 +550,7 @@ h1 {
 
 .error-msg {
   font-size: 0.8rem;
-  color: #dc2626;
+  color: var(--error, #dc2626);
   margin-top: 0.5rem;
   font-weight: 500;
 }

@@ -816,15 +816,15 @@ watch(
   --rail: #2e1a08;
   --rail-light: #4a2e14;
   --rail-inner: #3d2512;
-  --gold: #c9a84c;
-  --gold-bright: #e8c85a;
-  --gold-dim: #8b7635;
-  --bg: #080c12;
-  --bg-raised: #0e1420;
-  --bg-card: #141c28;
-  --text: #e4ded4;
-  --text-dim: #6b7280;
-  --text-muted: #3d4452;
+  --gold: var(--poker-gold);
+  --gold-bright: var(--poker-gold-bright);
+  --gold-dim: var(--poker-gold-dim);
+  --bg: var(--poker-chrome);
+  --bg-raised: var(--poker-chrome-raised);
+  --bg-card: var(--poker-chrome-alt);
+  --text: var(--poker-text);
+  --text-dim: var(--poker-text-dim);
+  --text-muted: var(--poker-text-muted);
   --red-suit: #dc2626;
   --black-suit: #1c1c2e;
   --card-face: #f5f1e8;
@@ -849,7 +849,7 @@ watch(
   align-items: center;
   padding: 0.5rem 1.25rem;
   background: var(--bg-raised);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--poker-border);
   flex-shrink: 0;
   z-index: 10;
 }
@@ -872,7 +872,7 @@ watch(
   font-family: 'Fira Code', monospace;
   font-size: 0.8rem;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--poker-hover);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   letter-spacing: 0.08em;
@@ -918,13 +918,13 @@ watch(
 .meta-divider {
   width: 1px;
   height: 24px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-border);
 }
 
 .chat-toggle {
   position: relative;
   background: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--poker-border-strong);
   color: var(--text-dim);
   border-radius: 6px;
   padding: 0.35rem;
@@ -965,7 +965,7 @@ watch(
   font-weight: 500;
   color: var(--text-dim);
   background: var(--bg-raised);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--poker-border);
   flex-shrink: 0;
   letter-spacing: 0.02em;
   transition: all 0.3s;
@@ -1124,20 +1124,20 @@ watch(
 }
 
 .info-plate {
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--poker-plate-bg);
   backdrop-filter: blur(6px);
   border-radius: 6px;
   padding: 0.2rem 0.5rem;
   text-align: center;
   min-width: 60px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--poker-border);
 }
 
 .player-name {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #eee;
+  color: var(--poker-name);
   white-space: nowrap;
   max-width: 90px;
   overflow: hidden;
@@ -1178,7 +1178,7 @@ watch(
 }
 
 .status-badge.folded {
-  color: #999;
+  color: var(--poker-text-dim);
   background: rgba(100, 100, 100, 0.3);
 }
 
@@ -1516,7 +1516,7 @@ watch(
 .bottom-dock {
   flex-shrink: 0;
   background: var(--bg-raised);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--poker-border);
   padding: 0.5rem 1.25rem 0.75rem;
   display: flex;
   flex-direction: column;
@@ -1669,7 +1669,7 @@ watch(
 .slider-panel {
   margin-top: 0.4rem;
   background: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--poker-border);
   border-radius: 10px;
   padding: 0.6rem 0.8rem;
 }
@@ -1687,8 +1687,8 @@ watch(
 
 .pill {
   flex: 1;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--poker-hover);
+  border: 1px solid var(--poker-input-border);
   color: var(--text-dim);
   padding: 0.25rem 0.3rem;
   border-radius: 6px;
@@ -1714,7 +1714,7 @@ watch(
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-border);
   border-radius: 2px;
   outline: none;
 }
@@ -1737,8 +1737,8 @@ watch(
 
 .num-input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-bg);
+  border: 1px solid var(--poker-input-border);
   color: var(--text);
   font-family: 'Fira Code', monospace;
   font-size: 0.85rem;
@@ -1839,11 +1839,11 @@ watch(
   bottom: 0;
   width: 300px;
   background: var(--bg-raised);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 1px solid var(--poker-border);
   display: flex;
   flex-direction: column;
   z-index: 50;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 20px var(--poker-shadow);
 }
 
 .chat-header {
@@ -1851,7 +1851,7 @@ watch(
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--poker-border);
   font-weight: 600;
   font-size: 0.85rem;
   color: var(--gold);
@@ -1880,7 +1880,7 @@ watch(
 
 .chat-msg {
   padding: 0.3rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--poker-hover);
   font-size: 0.78rem;
   display: flex;
   justify-content: space-between;
@@ -1918,13 +1918,13 @@ watch(
   display: flex;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--poker-border);
 }
 
 .chat-input-row input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--poker-input-bg);
+  border: 1px solid var(--poker-input-border);
   color: var(--text);
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
@@ -2024,7 +2024,7 @@ watch(
   font-family: 'Cinzel', serif;
   font-size: 1.6rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--poker-text);
   margin-bottom: 0.3rem;
 }
 
@@ -2171,7 +2171,10 @@ watch(
 .winner-banner {
   position: relative;
   flex-shrink: 0;
-  background: linear-gradient(90deg, #1a1200, #2e2000 20%, #3d2a00 50%, #2e2000 80%, #1a1200);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)),
+    color-mix(in srgb, var(--poker-gold-dim) 35%, var(--poker-chrome)),
+    color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)));
   border-top: 1px solid var(--gold-dim);
   border-bottom: 1px solid var(--gold-dim);
   padding: 0.6rem 1.5rem;
@@ -2234,7 +2237,7 @@ watch(
 }
 
 .winner-text strong {
-  color: #fff;
+  color: var(--poker-text);
   font-weight: 700;
 }
 
