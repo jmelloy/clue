@@ -1,93 +1,58 @@
 <template>
-  <div class="poker-game">
-    <!-- Header -->
-    <header class="poker-header">
-      <div class="header-left">
-        <h1>TEXAS HOLD'EM</h1>
-        <span class="game-id">{{ gameId }}</span>
-        <span v-if="isObserver" class="observer-badge">Observer</span>
+  <div class="poker-scene">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <span class="logo">Texas Hold'em</span>
+        <span class="game-code">{{ gameId }}</span>
+        <span v-if="isObserver" class="observer-pill">Spectating</span>
       </div>
-      <div class="header-right">
-        <span class="hand-info">Hand #{{ gameState?.hand_number ?? 0 }}</span>
-        <span class="blind-info">Blinds {{ gameState?.small_blind ?? 10 }}/{{ gameState?.big_blind ?? 20 }}</span>
+      <div class="top-bar-right">
+        <span class="meta-item">
+          <span class="meta-label">Hand</span>
+          <span class="meta-value">#{{ gameState?.hand_number ?? 0 }}</span>
+        </span>
+        <span class="meta-divider"></span>
+        <span class="meta-item">
+          <span class="meta-label">Blinds</span>
+          <span class="meta-value">{{ gameState?.small_blind ?? 10 }}/{{ gameState?.big_blind ?? 20 }}</span>
+        </span>
+        <button class="chat-toggle" @click="chatOpen = !chatOpen" :class="{ active: chatOpen }">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+          <span v-if="unreadChat" class="chat-badge">{{ unreadChat }}</span>
+        </button>
       </div>
     </header>
 
-    <!-- Status Banner -->
-    <div class="status-banner" :class="statusClass">
-      <template v-if="gameState?.status === 'finished'">
-        Game Over! {{ winnerName }} wins the tournament!
-      </template>
-      <template v-else-if="isMyTurn">
-        Your turn — {{ bettingRoundLabel }}
-      </template>
-      <template v-else-if="gameState?.whose_turn">
-        {{ currentTurnName }}'s turn — {{ bettingRoundLabel }}
-      </template>
-      <template v-else>
-        Waiting...
-      </template>
-    </div>
-
-    <!-- Showdown overlay -->
-    <div v-if="showdownData" class="showdown-overlay" @click="dismissShowdown">
-      <div class="showdown-card" @click.stop>
-        <h2>Showdown</h2>
-        <div class="showdown-winners">
-          <span v-for="wid in showdownData.winners" :key="wid" class="winner-name">
-            {{ playerName(wid) }}
-          </span>
-          wins with <strong>{{ showdownData.winning_hand }}</strong>
-        </div>
-        <div class="showdown-pot">Pot: {{ showdownData.pot }}</div>
-        <div class="showdown-hands">
-          <div v-for="(cards, pid) in showdownData.player_hands" :key="pid" class="showdown-hand">
-            <span class="hand-player">{{ playerName(pid) }}:</span>
-            <span class="hand-cards">
-              <span
-                v-for="(c, i) in cards"
-                :key="i"
-                class="card"
-                :class="suitClass(c.suit)"
-              >{{ c.rank }}{{ suitSymbol(c.suit) }}</span>
-            </span>
-          </div>
-        </div>
-        <button class="dismiss-btn" @click="dismissShowdown">OK</button>
+    <!-- Main Table Area -->
+    <div class="table-container">
+      <!-- Turn/Status indicator -->
+      <div class="turn-strip" :class="statusClass">
+        <template v-if="gameState?.status === 'finished'">
+          {{ winnerName }} takes it all
+        </template>
+        <template v-else-if="isMyTurn">
+          Your action &middot; {{ bettingRoundLabel }}
+        </template>
+        <template v-else-if="gameState?.whose_turn">
+          {{ currentTurnName }} &middot; {{ bettingRoundLabel }}
+        </template>
+        <template v-else>
+          Waiting for next hand...
+        </template>
       </div>
-    </div>
 
-    <!-- Table Area -->
-    <div class="table-area">
-      <div class="felt">
-        <!-- Pot -->
-        <div class="pot-display">
-          <span class="pot-label">Pot</span>
-          <span class="pot-amount">{{ gameState?.pot ?? 0 }}</span>
-        </div>
+      <div class="felt-wrapper">
+        <div class="felt" ref="feltRef">
+          <!-- Felt texture overlay -->
+          <div class="felt-texture"></div>
 
-        <!-- Community Cards -->
-        <div class="community-cards">
-          <div
-            v-for="i in 5"
-            :key="i"
-            class="card-slot"
-            :class="{ dealt: communityCards[i - 1] }"
-          >
-            <template v-if="communityCards[i - 1]">
-              <span
-                class="card"
-                :class="suitClass(communityCards[i - 1].suit)"
-              >{{ communityCards[i - 1].rank }}{{ suitSymbol(communityCards[i - 1].suit) }}</span>
-            </template>
-            <template v-else>
-              <span class="card card-back"></span>
-            </template>
-          </div>
-        </div>
+          <!-- Rail -->
+          <div class="rail"></div>
 
-        <!-- Player Seats -->
-        <div class="seats">
+          <!-- Player Seats -->
           <div
             v-for="(p, idx) in activePlayers"
             :key="p.id"
@@ -97,139 +62,248 @@
               'is-folded': p.folded,
               'is-all-in': p.all_in,
               'is-you': p.id === playerId,
+              'is-dealer': idx === gameState?.dealer_index,
             }"
-            :style="seatPosition(idx, activePlayers.length)"
+            :style="getSeatStyle(idx, activePlayers.length)"
           >
-            <div class="seat-token" :style="{ backgroundColor: seatColor(idx) }">
-              {{ p.name.charAt(0).toUpperCase() }}
+            <!-- Dealer Button -->
+            <div v-if="idx === gameState?.dealer_index" class="dealer-btn">D</div>
+
+            <!-- Player bet on felt -->
+            <div v-if="p.current_bet > 0 && !p.folded" class="bet-on-felt" :style="getBetPosition(idx, activePlayers.length)">
+              <div class="chip-icon"></div>
+              <span>{{ p.current_bet }}</span>
             </div>
-            <div class="seat-info">
-              <div class="seat-name">
-                {{ p.name }}
-                <span v-if="idx === gameState?.dealer_index" class="dealer-chip">D</span>
+
+            <!-- Avatar -->
+            <div class="avatar" :style="{ '--seat-hue': seatHue(idx) }">
+              <span class="avatar-letter">{{ p.name.charAt(0).toUpperCase() }}</span>
+              <div v-if="p.id === gameState?.whose_turn" class="turn-ring"></div>
+            </div>
+
+            <!-- Info plate -->
+            <div class="info-plate">
+              <span class="player-name">{{ p.name }}</span>
+              <span class="player-chips">
+                <svg class="chip-svg" width="12" height="12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/></svg>
+                {{ formatChips(p.chips) }}
+              </span>
+            </div>
+
+            <!-- Status badge -->
+            <div v-if="p.folded" class="status-badge folded">Fold</div>
+            <div v-else-if="p.all_in" class="status-badge all-in">All In</div>
+          </div>
+
+          <!-- Center: Pot + Community Cards -->
+          <div class="table-center">
+            <div class="pot-area" v-if="(gameState?.pot ?? 0) > 0">
+              <div class="pot-chips">
+                <div class="chip-stack">
+                  <div class="mini-chip" v-for="n in Math.min(chipStackCount, 8)" :key="n" :style="{ '--i': n }"></div>
+                </div>
               </div>
-              <div class="seat-chips">{{ p.chips }}</div>
-              <div v-if="p.folded" class="seat-status folded">Folded</div>
-              <div v-else-if="p.all_in" class="seat-status all-in">All In</div>
-              <div v-else-if="p.current_bet > 0" class="seat-bet">Bet: {{ p.current_bet }}</div>
+              <div class="pot-amount">
+                <span class="pot-number">{{ formatChips(gameState?.pot ?? 0) }}</span>
+              </div>
+            </div>
+
+            <div class="community-cards">
+              <TransitionGroup name="card-deal">
+                <div
+                  v-for="(card, i) in communityCardSlots"
+                  :key="card.key"
+                  class="card-slot"
+                  :class="{ 'is-dealt': card.dealt }"
+                  :style="{ '--deal-delay': `${i * 0.08}s` }"
+                >
+                  <div v-if="card.dealt" class="playing-card" :class="suitClass(card.suit)">
+                    <span class="card-corner top-left">
+                      <span class="card-rank">{{ card.rank }}</span>
+                      <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
+                    </span>
+                    <span class="card-pip">{{ suitSymbol(card.suit) }}</span>
+                    <span class="card-corner bottom-right">
+                      <span class="card-rank">{{ card.rank }}</span>
+                      <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
+                    </span>
+                  </div>
+                  <div v-else class="playing-card card-back">
+                    <div class="card-back-pattern"></div>
+                  </div>
+                </div>
+              </TransitionGroup>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom Section: Your Cards + Actions + Chat -->
-    <div class="bottom-section">
+    <!-- Bottom Dock: Hole Cards + Actions -->
+    <div class="bottom-dock" v-if="!isObserver">
       <!-- Your Hole Cards -->
-      <div class="hole-cards-section" v-if="!isObserver">
-        <h3>Your Cards</h3>
+      <div class="hole-cards-area">
         <div class="hole-cards">
           <template v-if="yourCards.length">
-            <span
+            <div
               v-for="(c, i) in yourCards"
               :key="i"
-              class="card hole-card"
+              class="playing-card hole-card"
               :class="suitClass(c.suit)"
-            >{{ c.rank }}{{ suitSymbol(c.suit) }}</span>
+              :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }"
+            >
+              <span class="card-corner top-left">
+                <span class="card-rank">{{ c.rank }}</span>
+                <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
+              </span>
+              <span class="card-pip">{{ suitSymbol(c.suit) }}</span>
+              <span class="card-corner bottom-right">
+                <span class="card-rank">{{ c.rank }}</span>
+                <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
+              </span>
+            </div>
           </template>
           <template v-else>
-            <span class="card card-back hole-card"></span>
-            <span class="card card-back hole-card"></span>
+            <div class="playing-card card-back hole-card" :style="{ '--tilt': '-4deg' }">
+              <div class="card-back-pattern"></div>
+            </div>
+            <div class="playing-card card-back hole-card" :style="{ '--tilt': '4deg' }">
+              <div class="card-back-pattern"></div>
+            </div>
           </template>
         </div>
       </div>
 
       <!-- Action Panel -->
-      <div class="action-panel" v-if="!isObserver && gameState?.status === 'playing'">
+      <div class="action-dock" v-if="gameState?.status === 'playing'">
         <template v-if="isMyTurn && availableActions.length">
-          <div class="action-buttons">
+          <div class="action-row">
             <button
               v-if="canFold"
-              class="action-btn fold-btn"
+              class="action-btn fold"
               @click="doAction({ type: 'fold' })"
-            >Fold</button>
+            >
+              <span class="btn-label">Fold</span>
+            </button>
 
             <button
               v-if="canCheck"
-              class="action-btn check-btn"
+              class="action-btn check"
               @click="doAction({ type: 'check' })"
-            >Check</button>
+            >
+              <span class="btn-label">Check</span>
+            </button>
 
             <button
               v-if="canCall"
-              class="action-btn call-btn"
+              class="action-btn call"
               @click="doAction({ type: 'call' })"
-            >Call {{ amountToCall }}</button>
+            >
+              <span class="btn-label">Call</span>
+              <span class="btn-amount">{{ formatChips(amountToCall) }}</span>
+            </button>
 
             <button
               v-if="canBet"
-              class="action-btn bet-btn"
+              class="action-btn bet"
               @click="showBetInput = !showBetInput; showRaiseInput = false"
-            >Bet</button>
+              :class="{ active: showBetInput }"
+            >
+              <span class="btn-label">Bet</span>
+            </button>
 
             <button
               v-if="canRaise"
-              class="action-btn raise-btn"
+              class="action-btn raise"
               @click="showRaiseInput = !showRaiseInput; showBetInput = false"
-            >Raise</button>
+              :class="{ active: showRaiseInput }"
+            >
+              <span class="btn-label">Raise</span>
+            </button>
 
             <button
               v-if="canAllIn"
-              class="action-btn allin-btn"
+              class="action-btn allin"
               @click="doAction({ type: 'all_in' })"
-            >All In ({{ myPlayer?.chips ?? 0 }})</button>
+            >
+              <span class="btn-label">All In</span>
+              <span class="btn-amount">{{ formatChips(myPlayer?.chips ?? 0) }}</span>
+            </button>
           </div>
 
-          <!-- Bet Amount Input -->
-          <div v-if="showBetInput" class="amount-input">
-            <input
-              type="range"
-              :min="gameState?.big_blind ?? 20"
-              :max="myPlayer?.chips ?? 0"
-              :step="gameState?.big_blind ?? 20"
-              v-model.number="betAmount"
-            />
-            <div class="amount-row">
-              <input type="number" v-model.number="betAmount" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0" />
-              <button class="confirm-btn" @click="submitBet">Bet {{ betAmount }}</button>
+          <!-- Bet Slider -->
+          <Transition name="slider-expand">
+            <div v-if="showBetInput" class="slider-panel">
+              <div class="slider-row">
+                <div class="preset-pills">
+                  <button @click="betAmount = gameState?.big_blind ?? 20" class="pill">Min</button>
+                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 3)" class="pill">&frac13;</button>
+                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">&frac12;</button>
+                  <button @click="betAmount = myPlayer?.chips ?? 0" class="pill">Max</button>
+                </div>
+                <div class="range-track">
+                  <input
+                    type="range"
+                    :min="gameState?.big_blind ?? 20"
+                    :max="myPlayer?.chips ?? 0"
+                    :step="gameState?.big_blind ?? 20"
+                    v-model.number="betAmount"
+                    class="range-input"
+                  />
+                </div>
+                <div class="slider-confirm">
+                  <input type="number" v-model.number="betAmount" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0" class="num-input" />
+                  <button class="go-btn" @click="submitBet">Bet {{ formatChips(betAmount) }}</button>
+                </div>
+              </div>
             </div>
-            <div class="preset-buttons">
-              <button @click="betAmount = gameState?.big_blind ?? 20">Min</button>
-              <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 3)">1/3</button>
-              <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 2)">1/2</button>
-              <button @click="betAmount = myPlayer?.chips ?? 0">Max</button>
-            </div>
-          </div>
+          </Transition>
 
-          <!-- Raise Amount Input -->
-          <div v-if="showRaiseInput" class="amount-input">
-            <input
-              type="range"
-              :min="minRaise"
-              :max="myPlayer?.chips ?? 0"
-              :step="gameState?.big_blind ?? 20"
-              v-model.number="raiseAmount"
-            />
-            <div class="amount-row">
-              <input type="number" v-model.number="raiseAmount" :min="minRaise" :max="myPlayer?.chips ?? 0" />
-              <button class="confirm-btn" @click="submitRaise">Raise to {{ raiseAmount }}</button>
+          <!-- Raise Slider -->
+          <Transition name="slider-expand">
+            <div v-if="showRaiseInput" class="slider-panel">
+              <div class="slider-row">
+                <div class="preset-pills">
+                  <button @click="raiseAmount = minRaise" class="pill">Min</button>
+                  <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">&frac12;</button>
+                  <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) * 3 / 4)" class="pill">&frac34;</button>
+                  <button @click="raiseAmount = myPlayer?.chips ?? 0" class="pill">Pot</button>
+                </div>
+                <div class="range-track">
+                  <input
+                    type="range"
+                    :min="minRaise"
+                    :max="myPlayer?.chips ?? 0"
+                    :step="gameState?.big_blind ?? 20"
+                    v-model.number="raiseAmount"
+                    class="range-input"
+                  />
+                </div>
+                <div class="slider-confirm">
+                  <input type="number" v-model.number="raiseAmount" :min="minRaise" :max="myPlayer?.chips ?? 0" class="num-input" />
+                  <button class="go-btn" @click="submitRaise">Raise {{ formatChips(raiseAmount) }}</button>
+                </div>
+              </div>
             </div>
-            <div class="preset-buttons">
-              <button @click="raiseAmount = minRaise">Min</button>
-              <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) / 2)">1/2</button>
-              <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) * 3 / 4)">3/4</button>
-              <button @click="raiseAmount = myPlayer?.chips ?? 0">Max</button>
-            </div>
-          </div>
+          </Transition>
         </template>
-        <div v-else-if="gameState?.status === 'playing'" class="waiting-msg">
-          {{ gameState?.whose_turn ? `Waiting for ${currentTurnName}...` : 'Waiting...' }}
+
+        <div v-else class="waiting-msg">
+          <div class="waiting-dots">
+            <span></span><span></span><span></span>
+          </div>
+          {{ gameState?.whose_turn ? `${currentTurnName} is thinking...` : 'Waiting...' }}
         </div>
       </div>
+    </div>
 
-      <!-- Chat Panel -->
-      <div class="chat-section">
-        <h3>Game Log</h3>
+    <!-- Chat Drawer -->
+    <Transition name="drawer">
+      <div v-if="chatOpen" class="chat-drawer">
+        <div class="chat-header">
+          <span>Table Chat</span>
+          <button class="chat-close" @click="chatOpen = false">&times;</button>
+        </div>
         <ul class="chat-messages" ref="chatContainer">
           <li
             v-for="(msg, i) in chatMessages"
@@ -242,29 +316,68 @@
           </li>
           <li v-if="!chatMessages.length" class="chat-empty">No messages yet.</li>
         </ul>
-        <div class="chat-input">
+        <div class="chat-input-row">
           <input
             v-model="chatInput"
-            placeholder="Type a message..."
+            placeholder="Say something..."
             maxlength="300"
             @keyup.enter="sendChatMessage"
           />
-          <button :disabled="!chatInput.trim()" @click="sendChatMessage">Send</button>
+          <button :disabled="!chatInput.trim()" @click="sendChatMessage">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
         </div>
       </div>
-    </div>
+    </Transition>
+
+    <!-- Showdown Overlay -->
+    <Transition name="showdown-fade">
+      <div v-if="showdownData" class="showdown-backdrop" @click="dismissShowdown">
+        <div class="showdown-modal" @click.stop>
+          <div class="showdown-glow"></div>
+          <div class="showdown-content">
+            <div class="showdown-crown">&#9813;</div>
+            <h2 class="showdown-title">
+              <span v-for="(wid, wi) in showdownData.winners" :key="wid">
+                <span v-if="wi > 0"> &amp; </span>
+                {{ playerName(wid) }}
+              </span>
+              wins
+            </h2>
+            <div class="showdown-hand-type">{{ showdownData.winning_hand }}</div>
+            <div class="showdown-pot-line">
+              <svg class="chip-svg" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/></svg>
+              {{ formatChips(showdownData.pot) }}
+            </div>
+            <div class="showdown-divider"></div>
+            <div class="showdown-hands">
+              <div v-for="(cards, pid) in showdownData.player_hands" :key="pid" class="showdown-player-hand">
+                <span class="sh-name">{{ playerName(pid) }}</span>
+                <div class="sh-cards">
+                  <div
+                    v-for="(c, i) in cards"
+                    :key="i"
+                    class="playing-card mini-card"
+                    :class="suitClass(c.suit)"
+                  >
+                    <span class="card-corner top-left">
+                      <span class="card-rank">{{ c.rank }}</span>
+                      <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="showdown-dismiss" @click="dismissShowdown">Continue</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-
-const SEAT_COLORS = [
-  '#e74c3c', '#f39c12', '#27ae60', '#2980b9', '#8e44ad',
-  '#e67e22', '#1abc9c', '#e84393', '#00b894', '#6c5ce7',
-]
-
-const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
 
 const props = defineProps({
   gameId: String,
@@ -277,16 +390,47 @@ const props = defineProps({
 })
 const emit = defineEmits(['action', 'send-chat'])
 
+const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
+
+// Seat hue wheel — evenly spaced warm/cool tones
+const SEAT_HUES = [0, 35, 120, 210, 270, 330, 55, 170, 300, 85]
+
 const showBetInput = ref(false)
 const showRaiseInput = ref(false)
 const betAmount = ref(20)
 const raiseAmount = ref(40)
 const chatInput = ref('')
 const chatContainer = ref(null)
+const chatOpen = ref(false)
 const showdownData = ref(null)
+const feltRef = ref(null)
+const unreadChat = ref(0)
+const lastReadChat = ref(0)
 
 const communityCards = computed(() => props.gameState?.community_cards ?? [])
 const activePlayers = computed(() => props.gameState?.players ?? [])
+
+const communityCardSlots = computed(() => {
+  const cards = communityCards.value
+  const slots = []
+  for (let i = 0; i < 5; i++) {
+    if (cards[i]) {
+      slots.push({ ...cards[i], dealt: true, key: `card-${i}-${cards[i].rank}-${cards[i].suit}` })
+    } else {
+      slots.push({ dealt: false, key: `empty-${i}` })
+    }
+  }
+  return slots
+})
+
+const chipStackCount = computed(() => {
+  const pot = props.gameState?.pot ?? 0
+  if (pot <= 0) return 0
+  if (pot < 50) return 2
+  if (pot < 200) return 4
+  if (pot < 500) return 6
+  return 8
+})
 
 const myPlayer = computed(() =>
   activePlayers.value.find(p => p.id === props.playerId)
@@ -345,20 +489,50 @@ function playerName(pid) {
   return p?.name ?? pid
 }
 
-function seatColor(idx) {
-  return SEAT_COLORS[idx % SEAT_COLORS.length]
+function seatHue(idx) {
+  return SEAT_HUES[idx % SEAT_HUES.length]
 }
 
-function seatPosition(idx, total) {
-  // Distribute seats in an oval around the table
-  const angle = (idx / total) * 2 * Math.PI - Math.PI / 2
-  const rx = 42 // % horizontal radius
-  const ry = 36 // % vertical radius
-  const cx = 50
-  const cy = 50
-  const x = cx + rx * Math.cos(angle)
-  const y = cy + ry * Math.sin(angle)
-  return { left: `${x}%`, top: `${y}%` }
+function formatChips(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
+  if (n >= 10000) return (n / 1000).toFixed(1) + 'K'
+  return n.toLocaleString()
+}
+
+// Position seats around an ellipse
+// Places the current player ("you") at the bottom center
+function getSeatStyle(idx, total) {
+  // Seat layout positions (percentage-based)
+  // Pre-computed positions for common player counts to get ideal spacing
+  const positions = getSeatPositions(total)
+  const pos = positions[idx]
+  return { left: `${pos.x}%`, top: `${pos.y}%` }
+}
+
+function getSeatPositions(total) {
+  // Place seats around an oval, with seat 0 at bottom
+  // We want the user's seat at bottom-center
+  const positions = []
+  for (let i = 0; i < total; i++) {
+    // Start from bottom (Math.PI/2) and go clockwise
+    const angle = (Math.PI / 2) + (i / total) * 2 * Math.PI
+    const rx = 46 // horizontal radius %
+    const ry = 42 // vertical radius %
+    const x = 50 + rx * Math.cos(angle)
+    const y = 50 + ry * Math.sin(angle)
+    positions.push({ x, y })
+  }
+  return positions
+}
+
+function getBetPosition(idx, total) {
+  // Place bets closer to center than the seat
+  const positions = getSeatPositions(total)
+  const pos = positions[idx]
+  const cx = 50, cy = 50
+  const x = cx + (pos.x - cx) * 0.55
+  const y = cy + (pos.y - cy) * 0.55
+  return { left: `${x}%`, top: `${y}%`, position: 'absolute', transform: 'translate(-50%, -50%)' }
 }
 
 function suitSymbol(suit) {
@@ -414,10 +588,13 @@ watch(isMyTurn, (isTurn) => {
   }
 })
 
-// Auto-scroll chat
+// Auto-scroll chat + unread counter
 watch(
   () => props.chatMessages.length,
-  async () => {
+  async (len) => {
+    if (!chatOpen.value && len > lastReadChat.value) {
+      unreadChat.value = len - lastReadChat.value
+    }
     await nextTick()
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
@@ -425,7 +602,13 @@ watch(
   }
 )
 
-// Expose showdown handler so parent can call it
+watch(chatOpen, (open) => {
+  if (open) {
+    unreadChat.value = 0
+    lastReadChat.value = props.chatMessages.length
+  }
+})
+
 defineExpose({
   onShowdown(data) {
     showdownData.value = data
@@ -434,603 +617,1182 @@ defineExpose({
 </script>
 
 <style scoped>
-.poker-game {
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap');
+
+/* ─── Design Tokens ─── */
+.poker-scene {
+  --felt: #0f5e30;
+  --felt-light: #1a7a42;
+  --felt-dark: #0a4020;
+  --rail: #2e1a08;
+  --rail-light: #4a2e14;
+  --rail-inner: #3d2512;
+  --gold: #c9a84c;
+  --gold-bright: #e8c85a;
+  --gold-dim: #8b7635;
+  --bg: #080c12;
+  --bg-raised: #0e1420;
+  --bg-card: #141c28;
+  --text: #e4ded4;
+  --text-dim: #6b7280;
+  --text-muted: #3d4452;
+  --red-suit: #dc2626;
+  --black-suit: #1c1c2e;
+  --card-face: #f5f1e8;
+  --card-shadow: rgba(0, 0, 0, 0.35);
+
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
 }
 
-/* Header */
-.poker-header {
+/* ─── Top Bar ─── */
+.top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.5rem 1.25rem;
+  background: var(--bg-raised);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+  z-index: 10;
 }
 
-.poker-header h1 {
-  font-size: 1.4rem;
-  color: #27ae60;
-  letter-spacing: 0.1em;
-  margin: 0;
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.game-id {
-  color: #667;
-  font-family: monospace;
-  font-size: 0.8rem;
-  margin-left: 0.75rem;
+.logo {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--gold);
+  letter-spacing: 0.06em;
 }
 
-.observer-badge {
-  background: #e67e22;
-  color: #fff;
+.game-code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.04);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.7rem;
-  margin-left: 0.5rem;
+  letter-spacing: 0.08em;
 }
 
-.header-left {
+.observer-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--gold);
+  padding: 0.12rem 0.5rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.top-bar-right {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
 }
 
-.header-right {
-  display: flex;
-  gap: 1rem;
-  color: #8899aa;
-  font-size: 0.85rem;
-}
-
-/* Status Banner */
-.status-banner {
-  text-align: center;
-  padding: 0.5rem;
-  border-radius: 6px;
-  background: #16213e;
-  color: #aab;
-  font-size: 0.9rem;
-}
-
-.status-banner.your-turn {
-  background: #27ae60;
-  color: #fff;
-  font-weight: bold;
-}
-
-.status-banner.finished {
-  background: #c9a84c;
-  color: #1a1a2e;
-  font-weight: bold;
-}
-
-/* Showdown Overlay */
-.showdown-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.showdown-card {
-  background: #16213e;
-  border: 2px solid #c9a84c;
-  border-radius: 12px;
-  padding: 2rem;
-  text-align: center;
-  max-width: 500px;
-  width: 90%;
-}
-
-.showdown-card h2 {
-  color: #c9a84c;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
-}
-
-.showdown-winners {
-  font-size: 1.1rem;
-  margin-bottom: 0.75rem;
-}
-
-.winner-name {
-  color: #27ae60;
-  font-weight: bold;
-}
-
-.showdown-pot {
-  color: #c9a84c;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-}
-
-.showdown-hands {
+.meta-item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  align-items: flex-end;
+  line-height: 1.1;
 }
 
-.showdown-hand {
+.meta-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.meta-value {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.meta-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255,255,255,0.08);
+}
+
+.chat-toggle {
+  position: relative;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 0.35rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  transition: all 0.2s;
 }
 
-.hand-player {
-  color: #aab;
-  min-width: 80px;
-  text-align: right;
+.chat-toggle:hover,
+.chat-toggle.active {
+  border-color: var(--gold-dim);
+  color: var(--gold);
 }
 
-.hand-cards {
+.chat-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: var(--red-suit);
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   display: flex;
-  gap: 0.25rem;
-}
-
-.dismiss-btn {
-  background: #27ae60;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 2rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.dismiss-btn:hover {
-  background: #229954;
-}
-
-/* Table Area */
-.table-area {
-  display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 0.5rem 0;
+}
+
+/* ─── Turn Strip ─── */
+.turn-strip {
+  text-align: center;
+  padding: 0.35rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--bg-raised);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  transition: all 0.3s;
+}
+
+.turn-strip.your-turn {
+  background: linear-gradient(90deg, var(--felt-dark), var(--felt), var(--felt-dark));
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.turn-strip.finished {
+  background: linear-gradient(90deg, #2a1a00, #3d2800, #2a1a00);
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+
+/* ─── Table Container ─── */
+.table-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.felt-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  min-height: 0;
 }
 
 .felt {
   position: relative;
   width: 100%;
-  max-width: 700px;
+  max-width: 800px;
   aspect-ratio: 16 / 9;
-  background: radial-gradient(ellipse at center, #1a6b3c 0%, #0d4a27 60%, #0a3a1e 100%);
-  border-radius: 120px;
-  border: 6px solid #5a3e1b;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4), 0 4px 20px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 2rem;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-light) 0%, var(--felt) 40%, var(--felt-dark) 100%);
+  border-radius: 50%;
+  overflow: visible;
 }
 
-/* Pot */
-.pot-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-}
-
-.pot-label {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.pot-amount {
-  color: #c9a84c;
-  font-size: 1.4rem;
-  font-weight: bold;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
-/* Community Cards */
-.community-cards {
-  display: flex;
-  gap: 0.4rem;
-  justify-content: center;
-}
-
-.card-slot {
-  width: 52px;
-  height: 72px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.card-slot.dealt {
-  transform: scale(1);
-}
-
-.card {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 72px;
-  background: #fff;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: bold;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.card-back {
-  background: linear-gradient(135deg, #2c3e50, #34495e);
-  border: 2px solid #1a252f;
-  color: transparent;
-}
-
-.card-back::after {
-  content: '\2660';
-  color: rgba(255, 255, 255, 0.15);
-  font-size: 1.5rem;
-}
-
-.suit-hearts, .suit-diamonds {
-  color: #e74c3c;
-}
-
-.suit-clubs, .suit-spades {
-  color: #2c3e50;
-}
-
-/* Player Seats */
-.seats {
+.felt-texture {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
+.rail {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 10px solid var(--rail);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.6),
+    inset 0 0 0 2px var(--rail-light);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Player Seats ─── */
 .seat {
   position: absolute;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  min-width: 70px;
-  transition: all 0.3s ease;
-}
-
-.seat.is-turn {
-  filter: drop-shadow(0 0 8px rgba(39, 174, 96, 0.6));
+  gap: 0.15rem;
+  z-index: 5;
+  transition: opacity 0.3s;
 }
 
 .seat.is-folded {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
-.seat.is-you .seat-token {
-  box-shadow: 0 0 0 3px #c9a84c;
-}
-
-.seat-token {
-  width: 36px;
-  height: 36px;
+.avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  background: hsl(var(--seat-hue), 55%, 35%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  border: 2px solid hsl(var(--seat-hue), 55%, 50%);
+  transition: all 0.3s;
+}
+
+.seat.is-you .avatar {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-dim), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.avatar-letter {
+  font-weight: 700;
+  font-size: 1rem;
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
-.seat-info {
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 6px;
-  padding: 0.2rem 0.5rem;
-  text-align: center;
-  min-width: 60px;
+.turn-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-bright);
+  animation: pulse-ring 1.5s ease-in-out infinite;
 }
 
-.seat-name {
-  font-size: 0.7rem;
-  color: #eee;
-  font-weight: bold;
-  white-space: nowrap;
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
-.dealer-chip {
-  display: inline-flex;
+.dealer-btn {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--bg);
+  font-size: 0.55rem;
+  font-weight: 800;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #c9a84c;
-  color: #1a1a2e;
-  font-size: 0.55rem;
-  font-weight: bold;
-  margin-left: 0.2rem;
-  vertical-align: middle;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  z-index: 6;
 }
 
-.seat-chips {
+.info-plate {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+  text-align: center;
+  min-width: 56px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.player-name {
+  display: block;
   font-size: 0.65rem;
-  color: #c9a84c;
+  font-weight: 600;
+  color: #eee;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.seat-status {
+.player-chips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font-family: 'Fira Code', monospace;
   font-size: 0.6rem;
-  font-weight: bold;
+  color: var(--gold);
+}
+
+.chip-svg { flex-shrink: 0; }
+
+.status-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.08rem 0.35rem;
+  border-radius: 3px;
 }
 
-.seat-status.folded { color: #e74c3c; }
-.seat-status.all-in { color: #e67e22; }
+.status-badge.folded {
+  color: #999;
+  background: rgba(100,100,100,0.3);
+}
 
-.seat-bet {
+.status-badge.all-in {
+  color: #fff;
+  background: linear-gradient(135deg, #c83232, #e04848);
+  animation: all-in-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes all-in-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200,50,50,0.4); }
+  50% { box-shadow: 0 0 8px 2px rgba(200,50,50,0.3); }
+}
+
+/* Bet chips on felt */
+.bet-on-felt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.08rem;
+  z-index: 4;
+}
+
+.chip-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--gold-dim);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.bet-on-felt span {
+  font-family: 'Fira Code', monospace;
   font-size: 0.6rem;
-  color: #3498db;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 
-/* Bottom Section */
-.bottom-section {
-  display: grid;
-  grid-template-columns: 180px 1fr 280px;
-  gap: 0.75rem;
-  align-items: start;
+/* ─── Table Center ─── */
+.table-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  z-index: 3;
 }
 
-/* Hole Cards */
-.hole-cards-section {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 0.75rem;
+.pot-area {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.hole-cards-section h3 {
-  color: #c9a84c;
-  font-size: 0.8rem;
-  margin-bottom: 0.5rem;
+.chip-stack {
+  position: relative;
+  width: 16px;
+  height: 24px;
+}
+
+.mini-chip {
+  position: absolute;
+  bottom: calc(var(--i) * 2px);
+  left: 0;
+  width: 16px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1px solid var(--gold-dim);
+}
+
+.pot-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pot-number {
+  font-family: 'Fira Code', monospace;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--gold-bright);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ─── Cards ─── */
+.community-cards {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.card-slot {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-slot.is-dealt {
+  animation: card-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--deal-delay, 0s);
+}
+
+@keyframes card-pop {
+  from { transform: scale(0.8) translateY(-8px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.playing-card {
+  position: relative;
+  width: 48px;
+  height: 68px;
+  background: var(--card-face);
+  border-radius: 5px;
+  box-shadow: 0 2px 6px var(--card-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.playing-card.suit-hearts,
+.playing-card.suit-diamonds {
+  color: var(--red-suit);
+}
+
+.playing-card.suit-clubs,
+.playing-card.suit-spades {
+  color: var(--black-suit);
+}
+
+.card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.card-corner.top-left {
+  top: 3px;
+  left: 4px;
+}
+
+.card-corner.bottom-right {
+  bottom: 3px;
+  right: 4px;
+  transform: rotate(180deg);
+}
+
+.card-rank {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+.card-suit-small {
+  font-size: 0.55rem;
+  line-height: 1;
+}
+
+.card-pip {
+  font-size: 1.3rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.card-back {
+  background: #1a2540;
+  border: 1px solid #2a3555;
+}
+
+.card-back-pattern {
+  position: absolute;
+  inset: 3px;
+  border-radius: 3px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(201, 168, 76, 0.05) 3px,
+    rgba(201, 168, 76, 0.05) 4px
+  );
+}
+
+.card-back-pattern::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 2px;
+}
+
+/* Transition group */
+.card-deal-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card-deal-enter-from {
+  opacity: 0;
+  transform: scale(0.5) translateY(-20px);
+}
+
+/* ─── Bottom Dock ─── */
+.bottom-dock {
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border-top: 1px solid rgba(255,255,255,0.04);
+  padding: 0.5rem 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hole-cards-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .hole-cards {
   display: flex;
-  gap: 0.4rem;
-  justify-content: center;
+  gap: 0.3rem;
 }
 
 .hole-card {
-  width: 60px;
-  height: 84px;
-  font-size: 1.1rem;
+  width: 56px;
+  height: 80px;
+  transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0px));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: default;
 }
 
-/* Action Panel */
-.action-panel {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 0.75rem;
+.hole-card:hover {
+  transform: rotate(0deg) translateY(-4px) scale(1.08);
+  z-index: 2;
 }
 
-.action-buttons {
+.hole-card .card-rank {
+  font-size: 0.75rem;
+}
+
+.hole-card .card-pip {
+  font-size: 1.6rem;
+}
+
+/* ─── Action Buttons ─── */
+.action-dock {
+  width: 100%;
+  max-width: 640px;
+}
+
+.action-row {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.4rem;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .action-btn {
-  padding: 0.5rem 1rem;
+  position: relative;
+  padding: 0.5rem 1.1rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
   font-size: 0.85rem;
   transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  min-width: 72px;
 }
 
-.fold-btn { background: #555; color: #eee; }
-.fold-btn:hover { background: #666; }
+.btn-label { font-size: 0.85rem; }
+.btn-amount {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
 
-.check-btn { background: #3498db; color: #fff; }
-.check-btn:hover { background: #2980b9; }
+.action-btn.fold {
+  background: #2a2a35;
+  color: #aaa;
+  border: 1px solid #3a3a45;
+}
+.action-btn.fold:hover { background: #3a3a45; color: #ddd; }
 
-.call-btn { background: #27ae60; color: #fff; }
-.call-btn:hover { background: #229954; }
+.action-btn.check {
+  background: #164e6e;
+  color: #8ad8ff;
+  border: 1px solid #1a6080;
+}
+.action-btn.check:hover { background: #1a6080; }
 
-.bet-btn { background: #e67e22; color: #fff; }
-.bet-btn:hover { background: #d35400; }
+.action-btn.call {
+  background: #1a5a32;
+  color: #8affb0;
+  border: 1px solid #1f7040;
+}
+.action-btn.call:hover { background: #1f7040; }
 
-.raise-btn { background: #e74c3c; color: #fff; }
-.raise-btn:hover { background: #c0392b; }
+.action-btn.bet {
+  background: #5a3800;
+  color: var(--gold-bright);
+  border: 1px solid #7a4e10;
+}
+.action-btn.bet:hover,
+.action-btn.bet.active { background: #7a4e10; }
 
-.allin-btn { background: #8e44ad; color: #fff; }
-.allin-btn:hover { background: #7d3c98; }
+.action-btn.raise {
+  background: #6a1a1a;
+  color: #ff8a8a;
+  border: 1px solid #8a2a2a;
+}
+.action-btn.raise:hover,
+.action-btn.raise.active { background: #8a2a2a; }
 
-.amount-input {
-  margin-top: 0.5rem;
+.action-btn.allin {
+  background: linear-gradient(135deg, #6a1a1a, #8a2a2a);
+  color: #fff;
+  border: 1px solid #aa3a3a;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.action-btn.allin:hover {
+  background: linear-gradient(135deg, #7a2222, #9a3535);
+  box-shadow: 0 0 12px rgba(200,50,50,0.3);
+}
+
+/* ─── Slider Panel ─── */
+.slider-panel {
+  margin-top: 0.4rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+}
+
+.slider-row {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.amount-input input[type="range"] {
-  width: 100%;
-  accent-color: #27ae60;
-}
-
-.amount-row {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.amount-row input[type="number"] {
-  flex: 1;
-  padding: 0.35rem 0.5rem;
-  border-radius: 5px;
-  border: 1px solid #334;
-  background: #0f3460;
-  color: #eee;
-  font-size: 0.9rem;
-}
-
-.confirm-btn {
-  background: #27ae60;
-  color: #fff;
-  border: none;
-  padding: 0.35rem 0.8rem;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.confirm-btn:hover { background: #229954; }
-
-.preset-buttons {
+.preset-pills {
   display: flex;
   gap: 0.3rem;
 }
 
-.preset-buttons button {
+.pill {
   flex: 1;
-  background: #0f3460;
-  color: #aab;
-  border: 1px solid #334;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-dim);
   padding: 0.25rem 0.3rem;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  font-family: 'Outfit', sans-serif;
   font-size: 0.75rem;
+  font-weight: 500;
   transition: all 0.15s;
 }
 
-.preset-buttons button:hover {
-  border-color: #27ae60;
-  color: #27ae60;
+.pill:hover {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+  background: rgba(201,168,76,0.08);
 }
 
+.range-track {
+  padding: 0 0.25rem;
+}
+
+.range-input {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  outline: none;
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 2px solid var(--gold-bright);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.slider-confirm {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.num-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.num-input:focus {
+  border-color: var(--gold-dim);
+}
+
+.go-btn {
+  background: var(--felt);
+  color: #fff;
+  border: 1px solid var(--felt-light);
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.go-btn:hover {
+  background: var(--felt-light);
+}
+
+.slider-expand-enter-active,
+.slider-expand-leave-active {
+  transition: all 0.2s ease;
+}
+.slider-expand-enter-from,
+.slider-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+  padding: 0 0.8rem;
+  overflow: hidden;
+}
+
+/* ─── Waiting Message ─── */
 .waiting-msg {
-  color: #667;
-  text-align: center;
-  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
   padding: 0.5rem;
 }
 
-/* Chat Section */
-.chat-section {
-  background: #16213e;
-  border-radius: 8px;
-  padding: 0.75rem;
+.waiting-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.waiting-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: dot-bounce 1.2s infinite;
+}
+
+.waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Chat Drawer ─── */
+.chat-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: var(--bg-raised);
+  border-left: 1px solid rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
-  max-height: 250px;
+  z-index: 50;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.4);
 }
 
-.chat-section h3 {
-  color: #c9a84c;
-  font-size: 0.8rem;
-  margin-bottom: 0.4rem;
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--gold);
 }
+
+.chat-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.chat-close:hover { color: var(--text); }
 
 .chat-messages {
-  list-style: none;
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 0.4rem;
-  max-height: 160px;
+  padding: 0.5rem 0.75rem;
+  list-style: none;
 }
 
 .chat-msg {
-  padding: 0.15rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  font-size: 0.75rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  font-size: 0.78rem;
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
 }
 
 .chat-msg.system {
-  color: #8899aa;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .chat-text {
   flex: 1;
   word-break: break-word;
+  line-height: 1.4;
 }
 
 .chat-time {
-  color: #556;
-  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.6rem;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chat-empty {
-  color: #556;
+  color: var(--text-muted);
   font-style: italic;
-  font-size: 0.75rem;
-  padding: 0.5rem 0;
+  font-size: 0.78rem;
+  padding: 1rem 0;
+  text-align: center;
 }
 
-.chat-input {
+.chat-input-row {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
-.chat-input input {
+.chat-input-row input {
   flex: 1;
-  padding: 0.3rem 0.5rem;
-  border-radius: 5px;
-  border: 1px solid #334;
-  background: #0f3460;
-  color: #eee;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-family: 'Outfit', sans-serif;
   font-size: 0.8rem;
+  outline: none;
 }
 
-.chat-input input::placeholder { color: #557; }
+.chat-input-row input::placeholder { color: var(--text-muted); }
+.chat-input-row input:focus { border-color: var(--gold-dim); }
 
-.chat-input button {
-  background: #c9a84c;
-  color: #1a1a2e;
+.chat-input-row button {
+  background: var(--gold-dim);
+  color: var(--bg);
   border: none;
-  padding: 0.3rem 0.6rem;
-  border-radius: 5px;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s;
 }
 
-.chat-input button:hover:not(:disabled) { background: #d4b85c; }
-.chat-input button:disabled { opacity: 0.4; cursor: not-allowed; }
+.chat-input-row button:hover:not(:disabled) { background: var(--gold); }
+.chat-input-row button:disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* Responsive */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: transform 0.25s ease;
+}
+.drawer-enter-from,
+.drawer-leave-to {
+  transform: translateX(100%);
+}
+
+/* ─── Showdown Overlay ─── */
+.showdown-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.showdown-modal {
+  position: relative;
+  background: var(--bg-raised);
+  border: 1px solid var(--gold-dim);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  max-width: 480px;
+  width: 92%;
+  overflow: hidden;
+}
+
+.showdown-glow {
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(201,168,76,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.showdown-content {
+  position: relative;
+  text-align: center;
+}
+
+.showdown-crown {
+  font-size: 2.5rem;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 0 20px rgba(201,168,76,0.4);
+}
+
+.showdown-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.3rem;
+}
+
+.showdown-hand-type {
+  font-size: 0.95rem;
+  color: var(--gold);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.03em;
+}
+
+.showdown-pot-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 1.1rem;
+  color: var(--gold-bright);
+  margin-bottom: 1rem;
+}
+
+.showdown-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  margin-bottom: 1rem;
+}
+
+.showdown-hands {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.showdown-player-hand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.sh-name {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  min-width: 70px;
+  text-align: right;
+}
+
+.sh-cards {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.mini-card {
+  width: 34px;
+  height: 48px;
+  font-size: 0.7rem;
+}
+
+.mini-card .card-rank { font-size: 0.5rem; }
+.mini-card .card-suit-small { font-size: 0.4rem; }
+.mini-card .card-pip { display: none; }
+
+.showdown-dismiss {
+  background: var(--gold);
+  color: var(--bg);
+  border: none;
+  padding: 0.55rem 2rem;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.showdown-dismiss:hover {
+  background: var(--gold-bright);
+  box-shadow: 0 0 16px rgba(201,168,76,0.3);
+}
+
+.showdown-fade-enter-active { transition: all 0.3s ease; }
+.showdown-fade-leave-active { transition: all 0.2s ease; }
+.showdown-fade-enter-from { opacity: 0; }
+.showdown-fade-leave-to { opacity: 0; }
+.showdown-fade-enter-from .showdown-modal { transform: scale(0.9) translateY(20px); }
+
+/* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .bottom-section {
-    grid-template-columns: 1fr;
-  }
-
-  .hole-cards-section {
-    order: -1;
-  }
-
   .felt {
-    border-radius: 60px;
+    aspect-ratio: 4 / 3;
+  }
+
+  .playing-card {
+    width: 40px;
+    height: 56px;
+  }
+
+  .hole-card {
+    width: 48px;
+    height: 68px;
+  }
+
+  .card-rank { font-size: 0.55rem; }
+  .card-pip { font-size: 1rem; }
+
+  .action-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    min-width: 60px;
+  }
+
+  .chat-drawer {
+    width: 260px;
+  }
+
+  .seat {
+    gap: 0.1rem;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .avatar-letter {
+    font-size: 0.8rem;
+  }
+
+  .info-plate {
+    padding: 0.1rem 0.3rem;
+    min-width: 48px;
+  }
+
+  .player-name {
+    font-size: 0.55rem;
+    max-width: 60px;
+  }
+
+  .player-chips {
+    font-size: 0.5rem;
+  }
+
+  .pot-number {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 0.35rem 0.75rem;
+  }
+
+  .logo { font-size: 0.85rem; }
+  .meta-item { display: none; }
+  .meta-divider { display: none; }
+
+  .felt-wrapper {
+    padding: 0.5rem;
+  }
+
+  .bottom-dock {
+    padding: 0.35rem 0.75rem 0.5rem;
+  }
+
+  .action-btn {
+    padding: 0.35rem 0.6rem;
+    min-width: 52px;
+    font-size: 0.75rem;
   }
 }
 </style>
