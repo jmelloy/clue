@@ -41,7 +41,13 @@ async def game(redis):
 async def _add_two_players(game: ClueGame):
     p1 = await game.add_player("P1", "Alice", "human")
     p2 = await game.add_player("P2", "Bob", "human")
-    return p1, p2
+    # Assign deterministic characters so P1 (Miss Scarlett) always goes first
+    # and P2 (Colonel Mustard) is next in the official turn order.
+    state = await game._load_state()
+    state.players[0].character = "Miss Scarlett"
+    state.players[1].character = "Colonel Mustard"
+    await game._save_state(state)
+    return state.players[0], state.players[1]
 
 
 async def _advance_turn(game: ClueGame, player_id: str):
@@ -121,7 +127,9 @@ async def test_start_game_deals_cards(game: ClueGame):
     state = await game.start()
 
     assert state.status == "playing"
-    assert state.whose_turn in ("P1", "P2")
+    # Miss Scarlett always goes first (official rules)
+    scarlett = next(p for p in state.players if p.character == "Miss Scarlett")
+    assert state.whose_turn == scarlett.id
 
     solution = await game._load_solution()
     solution_cards = {solution.suspect, solution.weapon, solution.room}
@@ -281,7 +289,10 @@ async def test_end_turn_advances_player(game: ClueGame):
     state = await game.start()
 
     first_player = state.whose_turn
-    second_player = "P2" if first_player == "P1" else "P1"
+    # Next player is the next active player in character order
+    active = [p for p in state.players if p.active]
+    idx = next(i for i, p in enumerate(active) if p.id == first_player)
+    second_player = active[(idx + 1) % len(active)].id
 
     # Player must roll and move before ending turn
     await game.process_action(first_player, {"type": "roll"})
@@ -415,7 +426,10 @@ async def test_available_actions_after_suggest_pending_show(game: ClueGame):
     elif card in WEAPONS:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
     else:
-        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+        # card is a room — place the player there so suggestion is valid
+        room = card
+        await _place_player_in_room(game, whose_turn, room)
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room}
 
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}
@@ -453,7 +467,10 @@ async def test_show_card_action(game: ClueGame):
     elif card in WEAPONS:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
     else:
-        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+        # card is a room — place the player there so suggestion is valid
+        room = card
+        await _place_player_in_room(game, whose_turn, room)
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room}
 
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}

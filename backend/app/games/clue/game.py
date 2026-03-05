@@ -356,8 +356,15 @@ class ClueGame:
         for pid, cards in dealt.items():
             await self._save_player_cards(pid, cards)
 
+        # Sort players by canonical clockwise seating order (Miss Scarlett first)
+        suspect_order = {name: i for i, name in enumerate(SUSPECTS)}
+        state.players.sort(key=lambda p: suspect_order.get(p.character, len(SUSPECTS)))
+        players = state.players
+
         state.status = "playing"
-        state.whose_turn = players[0].id
+        # Miss Scarlett always goes first (official rules)
+        scarlett = next((p for p in players if p.character == "Miss Scarlett"), players[0])
+        state.whose_turn = scarlett.id
         state.turn_number = 1
         state.dice_rolled = False
 

@@ -108,6 +108,20 @@ async def _join_game(
     return resp.json()["player_id"]
 
 
+async def _assign_characters(redis, game_id: str, assignments: dict[str, str]):
+    """Assign specific characters to players via Redis for deterministic ordering.
+
+    assignments: {player_id: character_name}
+    Call after joining but before starting the game.
+    """
+    raw = await redis.get(f"game:{game_id}")
+    state = json.loads(raw)
+    for p in state["players"]:
+        if p["id"] in assignments:
+            p["character"] = assignments[p["id"]]
+    await redis.set(f"game:{game_id}", json.dumps(state), ex=86400)
+
+
 async def _start_game(http: AsyncClient, game_id: str) -> dict:
     resp = await http.post(f"/games/{game_id}/start")
     assert resp.status_code == 200
@@ -339,10 +353,14 @@ class TestGameStartBroadcast:
 class TestActionBroadcasts:
     """Test that game actions produce correct WebSocket broadcasts."""
 
-    async def _setup_two_player_game(self, http):
+    async def _setup_two_player_game(self, http, redis=None):
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
+        if redis:
+            await _assign_characters(redis, game_id, {
+                pid1: "Miss Scarlett", pid2: "Colonel Mustard",
+            })
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
         state = await _start_game(http, game_id)
@@ -353,7 +371,7 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_move_broadcasts_player_moved(self, http, redis):
         """A roll+move action broadcasts player_moved to all connected players."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
         whose_turn = state["whose_turn"]
 
         await _submit_action(http, game_id, whose_turn, {"type": "roll"})
@@ -373,7 +391,7 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_move_sends_your_turn_to_mover(self, http, redis):
         """After moving to a room, the active player gets a your_turn with suggest available."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
         whose_turn = state["whose_turn"]
         active_ws = ws1 if whose_turn == pid1 else ws2
 
@@ -389,7 +407,7 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_suggestion_broadcasts(self, http, redis):
         """A suggestion broadcasts suggestion_made to all players."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
         whose_turn = state["whose_turn"]
 
         # Place player in room directly for suggestion test
@@ -419,7 +437,7 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_end_turn_broadcasts_game_state(self, http, redis):
         """Ending a turn broadcasts game_state with the next player's turn."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
 
@@ -440,7 +458,7 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_your_turn_sent_to_next_player_only(self, http, redis):
         """After end_turn, only the next player gets a your_turn message."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
         other_ws = ws2 if whose_turn == pid1 else ws1
@@ -480,6 +498,9 @@ class TestShowCardFlow:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
+        await _assign_characters(redis, game_id, {
+            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
+        })
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
@@ -537,6 +558,9 @@ class TestShowCardFlow:
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
         pid3 = await _join_game(http, game_id, "Agent-3")
+        await _assign_characters(redis, game_id, {
+            pid1: "Miss Scarlett", pid2: "Colonel Mustard", pid3: "Mrs. White",
+        })
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         all_pids = [pid1, pid2, pid3]
@@ -752,6 +776,9 @@ class TestGameOverBroadcast:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
+        await _assign_characters(redis, game_id, {
+            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
+        })
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
@@ -826,6 +853,9 @@ class TestChatIntegration:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
+        await _assign_characters(redis, game_id, {
+            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
+        })
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
 
