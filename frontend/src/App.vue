@@ -745,7 +745,7 @@ body {
   min-height: 100vh;
 }
 #clue-app {
-  max-width: 1280px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 0.75rem;
 }
