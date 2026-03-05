@@ -67,9 +67,9 @@
 <script setup>
 import { computed } from "vue";
 import {
-  CHARACTER_COLORS,
-  CHARACTER_ABBR,
   CARD_IMAGES,
+  abbr,
+  characterColors,
 } from "../constants/clue.js";
 
 // ── Board layout data (matches backend board.py) ──
@@ -347,10 +347,6 @@ const playerTokens = computed(() => {
   return tokens;
 });
 
-function abbr(character) {
-  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?";
-}
-
 function cellClasses(cell) {
   const cls = ["cell", `cell-${cell.type}`];
   if (cell.isCenter) cls.push("cell-center");
@@ -432,17 +428,14 @@ function overlayPos(row, col) {
 }
 
 function tokenStyle(token) {
-  const colors = CHARACTER_COLORS[token.character] ?? {
-    bg: "#666",
-    text: "#fff",
-  };
+  const { bg, text } = characterColors(token.character);
   const style = {
     left: `${(token.col / 24) * 100}%`,
     top: `${(token.row / 25) * 100}%`,
     transform: "translate(-50%, -50%)",
-    backgroundColor: colors.bg,
-    color: colors.text,
-    "--token-border": colors.bg,
+    backgroundColor: bg,
+    color: text,
+    "--token-border": bg,
   };
   if (token.type === "wanderer") {
     style.opacity = 0.85;

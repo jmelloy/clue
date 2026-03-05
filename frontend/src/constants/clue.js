@@ -113,3 +113,13 @@ export function hasCardImage(card) {
 export function cardImageUrl(card) {
   return CARD_IMAGES[card] || "";
 }
+
+/** Returns the abbreviation for a character name (e.g. "Sc" for "Miss Scarlett"). */
+export function abbr(character) {
+  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?";
+}
+
+/** Returns the `{ bg, text }` color pair for a character. Falls back to a neutral gray. */
+export function characterColors(character) {
+  return CHARACTER_COLORS[character] ?? { bg: "#666", text: "#fff" };
+}
