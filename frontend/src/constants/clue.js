@@ -52,9 +52,9 @@ export const CARD_ICONS = {
   // Weapons
   Candlestick: '\u{1F56F}', // 🕯️
   Knife: '\u{1F5E1}', // 🗡️
-  'Lead Pipe': '\u{2560}', // ╠
+  'Lead Pipe': '\u{1F529}', // 🔩
   Revolver: '\u{1F52B}', // 🔫
-  Rope: '\u{27B0}', // ➰
+  Rope: '\u{1FAA2}', // 🪢
   Wrench: '\u{1F527}', // 🔧
   // Rooms
   Kitchen: '\u{1F373}', // 🍳
