@@ -903,7 +903,7 @@ watch(
 }
 
 .legend-status {
-  color: #c45050;
+  color: var(--error);
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -929,7 +929,7 @@ watch(
 }
 
 .legend-wanderer-label {
-  color: #4a4030;
+  color: var(--text-faint);
   font-size: 0.6rem;
   font-style: italic;
 }
@@ -1002,7 +1002,7 @@ watch(
 .collapse-indicator {
   font-size: 0.6rem;
   transition: transform 0.2s ease;
-  color: #5a5040;
+  color: var(--text-dim);
 }
 
 .collapse-indicator.collapsed {
@@ -1047,6 +1047,24 @@ watch(
   color: #7ac89a;
 }
 
+[data-theme="light"] .card-suspect {
+  background: rgba(155, 27, 48, 0.08);
+  border-color: rgba(155, 27, 48, 0.25);
+  color: #9b1b30;
+}
+
+[data-theme="light"] .card-weapon {
+  background: rgba(26, 58, 107, 0.08);
+  border-color: rgba(26, 58, 107, 0.25);
+  color: #1a3a6b;
+}
+
+[data-theme="light"] .card-room {
+  background: rgba(26, 107, 60, 0.08);
+  border-color: rgba(26, 107, 60, 0.25);
+  color: #1a6b3c;
+}
+
 .card-group {
   margin-bottom: 0.5rem;
 }
@@ -1075,6 +1093,18 @@ watch(
   color: #7ac89a;
 }
 
+[data-theme="light"] .card-group-suspect {
+  color: #9b1b30;
+}
+
+[data-theme="light"] .card-group-weapon {
+  color: #1a3a6b;
+}
+
+[data-theme="light"] .card-group-room {
+  color: #1a6b3c;
+}
+
 .card-icon {
   font-size: 0.85rem;
 }
@@ -1084,7 +1114,7 @@ watch(
 }
 
 .no-cards {
-  color: #4a4030;
+  color: var(--text-faint);
   font-style: italic;
   font-size: 0.85rem;
 }
@@ -1092,7 +1122,7 @@ watch(
 /* Card shown notification */
 .shown-card-panel {
   border-color: rgba(26, 58, 107, 0.4);
-  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), rgba(18, 14, 10, 0.95));
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), var(--bg-panel-solid));
 }
 
 .shown-card-notice {
@@ -1100,7 +1130,7 @@ watch(
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .shown-card-icon {
@@ -1113,10 +1143,14 @@ watch(
   font-weight: bold;
 }
 
+[data-theme="light"] .shown-card-name {
+  color: #1a3a6b;
+}
+
 .dismiss-btn {
   background: none;
   border: none;
-  color: #5a5040;
+  color: var(--text-dim);
   font-size: 1.2rem;
   cursor: pointer;
   padding: 0;
@@ -1125,13 +1159,13 @@ watch(
 }
 
 .dismiss-btn:hover {
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 /* Show card request */
 .show-card-request-panel {
   border: 1.5px solid rgba(155, 27, 48, 0.6);
-  background: linear-gradient(135deg, rgba(155, 27, 48, 0.1), rgba(18, 14, 10, 0.95));
+  background: linear-gradient(135deg, rgba(155, 27, 48, 0.1), var(--bg-panel-solid));
   animation: pulse-border 2s ease-in-out infinite;
 }
 
@@ -1152,7 +1186,7 @@ watch(
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
   line-height: 1.4;
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 /* Card type color highlights */
@@ -1171,9 +1205,21 @@ watch(
   font-weight: bold;
 }
 
+[data-theme="light"] .highlight-suspect {
+  color: #9b1b30;
+}
+
+[data-theme="light"] .highlight-weapon {
+  color: #1a3a6b;
+}
+
+[data-theme="light"] .highlight-room {
+  color: #1a6b3c;
+}
+
 .show-card-prompt {
   font-size: 0.8rem;
-  color: #6a6050;
+  color: var(--text-muted);
   margin-bottom: 0.4rem;
 }
 
@@ -1223,14 +1269,14 @@ watch(
 
 .action-group h3 {
   font-size: 0.8rem;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   margin-bottom: 0.3rem;
   font-weight: 600;
 }
 
 .action-hint {
   font-size: 0.75rem;
-  color: #5a5040;
+  color: var(--text-dim);
   margin-bottom: 0.3rem;
 }
 
@@ -1284,7 +1330,7 @@ watch(
 
 .passage-btn {
   background: linear-gradient(135deg, #5c2d82, #4a2268);
-  color: #e8dcc8;
+  color: #f0e8f8;
 }
 
 .passage-btn:hover {
@@ -1314,7 +1360,7 @@ watch(
 
 .suggest-btn {
   background: linear-gradient(135deg, #1a3a6b, #153058);
-  color: #e8dcc8;
+  color: #e8f0f8;
 }
 
 .suggest-btn:not(:disabled):hover {
@@ -1325,18 +1371,18 @@ watch(
 .toggle-accuse-btn {
   background: transparent;
   border: 1px solid rgba(155, 27, 48, 0.2);
-  color: #6a6050;
+  color: var(--text-muted);
   font-weight: normal;
 }
 
 .toggle-accuse-btn:hover {
   border-color: rgba(155, 27, 48, 0.5);
-  color: #c45050;
+  color: var(--error);
 }
 
 .action-warning {
   font-size: 0.75rem;
-  color: #c45050;
+  color: var(--error);
   margin-bottom: 0.4rem;
   font-style: italic;
 }
@@ -1348,7 +1394,7 @@ watch(
 
 .accuse-btn {
   background: linear-gradient(135deg, #9b1b30, #7a1525);
-  color: #e8dcc8;
+  color: #f8e8e8;
   flex: 1;
 }
 
@@ -1358,20 +1404,20 @@ watch(
 }
 
 .cancel-btn {
-  background: rgba(255, 255, 255, 0.05);
-  color: #6a6050;
+  background: var(--bg-input);
+  color: var(--text-muted);
   flex: 0;
   white-space: nowrap;
 }
 
 .cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #8a7e6b;
+  background: var(--bg-input-focus);
+  color: var(--text-secondary);
 }
 
 .end-turn-btn {
   background: linear-gradient(135deg, #1a6b3c, #14562e);
-  color: #e8dcc8;
+  color: #e8f8ee;
 }
 
 .end-turn-btn:hover {
@@ -1416,7 +1462,7 @@ watch(
 
 .waiting-message {
   padding: 0.5rem;
-  color: #6a6050;
+  color: var(--text-muted);
   font-size: 0.9rem;
   font-style: italic;
 }
