@@ -71,7 +71,15 @@
 
             <!-- Player bet on felt -->
             <div v-if="p.current_bet > 0 && !p.folded" class="bet-on-felt" :style="getBetPosition(idx, activePlayers.length)">
-              <div class="chip-icon"></div>
+              <div class="bet-chip-stacks">
+                <div
+                  v-for="(chip, ci) in chipStackVisual(p.current_bet, 6)"
+                  :key="ci"
+                  class="bet-chip"
+                  :class="`chip-${chip}`"
+                  :style="{ '--bi': ci }"
+                ></div>
+              </div>
               <span>{{ p.current_bet }}</span>
             </div>
 
@@ -85,16 +93,26 @@
             <div class="info-plate">
               <span class="player-name">{{ p.name }}</span>
               <span class="player-chips">
-                <svg class="chip-svg" width="12" height="12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/></svg>
+                <span class="chip-dot" :class="`chip-${(chipBreakdown(p.chips)[0] || { color: 'white' }).color}`"></span>
                 {{ formatChips(p.chips) }}
               </span>
             </div>
 
             <!-- Chip stack indicator for active players -->
             <div v-if="!p.folded && p.chips > 0" class="player-chip-stack">
-              <div class="pcs-chip"></div>
-              <div class="pcs-chip"></div>
-              <div class="pcs-chip"></div>
+              <div
+                v-for="(stack, si) in chipBreakdown(p.chips).slice(0, 4)"
+                :key="si"
+                class="pcs-stack"
+              >
+                <div
+                  v-for="n in Math.min(stack.count, 5)"
+                  :key="n"
+                  class="pcs-chip"
+                  :class="`chip-${stack.color}`"
+                  :style="{ '--si': n - 1 }"
+                ></div>
+              </div>
             </div>
 
             <!-- Status badge -->
@@ -106,8 +124,18 @@
           <div class="table-center">
             <div class="pot-area" v-if="(gameState?.pot ?? 0) > 0">
               <div class="pot-chips">
-                <div class="chip-stack">
-                  <div class="mini-chip" v-for="n in Math.min(chipStackCount, 8)" :key="n" :style="{ '--i': n }"></div>
+                <div
+                  v-for="(stack, si) in chipBreakdown(gameState?.pot ?? 0).slice(0, 4)"
+                  :key="si"
+                  class="chip-stack"
+                >
+                  <div
+                    v-for="n in Math.min(stack.count, 6)"
+                    :key="n"
+                    class="mini-chip"
+                    :class="`chip-${stack.color}`"
+                    :style="{ '--i': n }"
+                  ></div>
                 </div>
               </div>
               <div class="pot-amount">
@@ -417,6 +445,45 @@ const emit = defineEmits(['action', 'send-chat'])
 
 const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
 
+// Chip denominations: value, color name (used as CSS class), and display color
+const CHIP_DENOMS = [
+  { value: 500, color: 'green' },
+  { value: 100, color: 'blue' },
+  { value: 25, color: 'red' },
+  { value: 10, color: 'white' },
+]
+
+// Break an amount into chip denominations, returns array of { color, count }
+function chipBreakdown(amount) {
+  const result = []
+  let remaining = amount
+  for (const denom of CHIP_DENOMS) {
+    const count = Math.floor(remaining / denom.value)
+    if (count > 0) {
+      result.push({ color: denom.color, count })
+      remaining -= count * denom.value
+    }
+  }
+  // Any remainder goes on white chips
+  if (remaining > 0 && result.length === 0) {
+    result.push({ color: 'white', count: 1 })
+  }
+  return result
+}
+
+// Build visual chip stacks for display (max chips per stack, returns flat list of chip colors)
+function chipStackVisual(amount, maxChips = 10) {
+  const breakdown = chipBreakdown(amount)
+  const chips = []
+  for (const { color, count } of breakdown) {
+    for (let i = 0; i < Math.min(count, maxChips); i++) {
+      chips.push(color)
+      if (chips.length >= maxChips) return chips
+    }
+  }
+  return chips
+}
+
 // Seat hue wheel — evenly spaced warm/cool tones
 const SEAT_HUES = [0, 35, 120, 210, 270, 330, 55, 170, 300, 85]
 
@@ -447,15 +514,6 @@ const communityCardSlots = computed(() => {
     }
   }
   return slots
-})
-
-const chipStackCount = computed(() => {
-  const pot = props.gameState?.pot ?? 0
-  if (pot <= 0) return 0
-  if (pot < 50) return 2
-  if (pot < 200) return 4
-  if (pot < 500) return 6
-  return 8
 })
 
 const myPlayer = computed(() =>
@@ -993,6 +1051,16 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .chip-svg { flex-shrink: 0; }
 
+.chip-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0,0,0,0.3);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25);
+}
+
 .status-badge {
   font-size: 0.65rem;
   font-weight: 700;
@@ -1018,22 +1086,36 @@ watch(() => props.gameState?.betting_round, (round) => {
   50% { box-shadow: 0 0 8px 2px rgba(200,50,50,0.3); }
 }
 
+/* ─── Chip denomination colors ─── */
+.chip-white { background: #e8e8e8; border-color: #bbb; }
+.chip-red { background: #cc3333; border-color: #991e1e; }
+.chip-blue { background: #2255cc; border-color: #193d99; }
+.chip-green { background: #22884e; border-color: #196638; }
+
 /* Bet chips on felt */
 .bet-on-felt {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.08rem;
+  gap: 0.15rem;
   z-index: 4;
 }
 
-.chip-icon {
-  width: 14px;
-  height: 14px;
+.bet-chip-stacks {
+  position: relative;
+  width: 16px;
+  height: 20px;
+}
+
+.bet-chip {
+  position: absolute;
+  bottom: calc(var(--bi) * 2.5px);
+  left: 0;
+  width: 16px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--gold);
-  border: 2px solid var(--gold-dim);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,0,0,0.3);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
 .bet-on-felt span {
@@ -1062,21 +1144,27 @@ watch(() => props.gameState?.betting_round, (round) => {
   gap: 0.5rem;
 }
 
+.pot-chips {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+}
+
 .chip-stack {
   position: relative;
-  width: 16px;
+  width: 18px;
   height: 24px;
 }
 
 .mini-chip {
   position: absolute;
-  bottom: calc(var(--i) * 2px);
+  bottom: calc(var(--i) * 2.5px);
   left: 0;
-  width: 16px;
-  height: 4px;
+  width: 18px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--gold);
-  border: 1px solid var(--gold-dim);
+  border: 1px solid rgba(0,0,0,0.3);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
 }
 
 .pot-amount {
@@ -1759,25 +1847,28 @@ watch(() => props.gameState?.betting_round, (round) => {
 /* ─── Player Chip Stack (in front of active players) ─── */
 .player-chip-stack {
   display: flex;
-  gap: 2px;
+  gap: 3px;
   margin-top: -2px;
+  align-items: flex-end;
+}
+
+.pcs-stack {
+  position: relative;
+  width: 12px;
 }
 
 .pcs-chip {
-  width: 10px;
-  height: 10px;
+  position: relative;
+  width: 12px;
+  height: 3px;
   border-radius: 50%;
-  background: var(--gold);
-  border: 1.5px solid var(--gold-dim);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  border: 1px solid rgba(0,0,0,0.25);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  margin-top: -1px;
 }
 
-.pcs-chip:nth-child(2) {
-  background: #b89842;
-}
-
-.pcs-chip:nth-child(3) {
-  background: #a88838;
+.pcs-chip:first-child {
+  margin-top: 0;
 }
 
 /* ─── Winner Banner ─── */
