@@ -269,8 +269,9 @@ async def test_move_logging(game: ClueGame):
     assert any(entry.type == "move" for entry in log)
     move_entry = next(e for e in log if e.type == "move")
     assert move_entry.player_id == whose_turn
-    # Room may be None if the dice roll wasn't enough to reach it
-    assert move_entry.room == room or move_entry.room is None
+    # Room may be None (hallway) or an intermediate room if the dice roll
+    # wasn't enough to reach the target directly
+    assert move_entry.room is None or move_entry.room in ROOMS
 
 
 @pytest.mark.asyncio
