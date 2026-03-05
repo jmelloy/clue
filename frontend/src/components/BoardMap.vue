@@ -461,7 +461,7 @@ function tokenStyle(token) {
 .board-container {
   position: relative;
   width: 100%;
-  max-width: 576px;
+  max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
   background: #1a1510;
@@ -657,7 +657,7 @@ function tokenStyle(token) {
   position: absolute;
   color: #f0e0b0;
   font-family: "Crimson Text", Georgia, serif;
-  font-size: clamp(7px, 1.2vw, 11px);
+  font-size: clamp(8px, 1.4vw, 13px);
   font-weight: 600;
   white-space: nowrap;
   text-align: center;
@@ -673,7 +673,7 @@ function tokenStyle(token) {
   position: absolute;
   color: #d4a849;
   font-family: "Playfair Display", Georgia, serif;
-  font-size: clamp(12px, 2.5vw, 22px);
+  font-size: clamp(14px, 2.8vw, 26px);
   font-weight: 900;
   letter-spacing: 0.3em;
   text-shadow: 0 0 15px rgba(212, 168, 73, 0.4);
@@ -711,13 +711,13 @@ function tokenStyle(token) {
 /* ── Player tokens ── */
 .player-token {
   position: absolute;
-  width: clamp(18px, 3vw, 28px);
-  height: clamp(18px, 3vw, 28px);
+  width: clamp(20px, 3.5vw, 34px);
+  height: clamp(20px, 3.5vw, 34px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(7px, 1.1vw, 10px);
+  font-size: clamp(8px, 1.3vw, 12px);
   font-weight: bold;
   font-family: "Crimson Text", Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.5);
