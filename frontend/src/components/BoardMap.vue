@@ -855,7 +855,7 @@ function tokenStyle(token) {
 /* Center dead space (staircase area) */
 .cell-wall.cell-center {
   background: var(--board-center);
-  border: 0.5px solid rgba(80, 65, 40, 0.3);
+  border: none;
 }
 
 [data-theme="vintage"] .cell-wall.cell-center {

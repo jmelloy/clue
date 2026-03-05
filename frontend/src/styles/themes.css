@@ -51,7 +51,7 @@
   --board-room: #1a1610;
   --board-hallway: #c8b88a;
   --board-wall: #2a2a1e;
-  --board-center: #3a2e1e;
+  --board-center: #4a3d2a;
   --board-room-filter: saturate(0.35) brightness(0.9);
   --mansion-edge: rgba(180, 150, 80, 0.6);
   --mansion-glow: rgba(180, 150, 80, 0.15);
@@ -146,7 +146,7 @@
   --board-room: #ddd5c2;
   --board-hallway: #d8cca0;
   --board-wall: #c8c0b0;
-  --board-center: #d0c8b0;
+  --board-center: #ddd5c2;
   --board-room-filter: saturate(0.5) brightness(1.1);
   --mansion-edge: rgba(100, 70, 30, 0.45);
   --mansion-glow: rgba(100, 70, 30, 0.08);
