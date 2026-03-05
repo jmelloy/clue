@@ -46,15 +46,15 @@
 
   /* Board */
   --board-bg: #1a1510;
-  --board-frame: #3a1515;
   --board-border: #8b1a1a;
-  --board-border-width: 6px;
   --board-grid-line: #15110c;
   --board-room: #1a1610;
   --board-hallway: #c8b88a;
-  --board-wall: #4a1818;
+  --board-wall: #2a2218;
   --board-center: #3a2e1e;
   --board-room-filter: saturate(0.35) brightness(0.9);
+  --mansion-border-color: #8b1a1a;
+  --mansion-border-width: 3px;
 
   /* Board overlay text */
   --board-label-color: #f0e0b0;
@@ -118,15 +118,15 @@
 
   /* Board */
   --board-bg: #e8e0d0;
-  --board-frame: #6a2020;
   --board-border: #8b1a1a;
-  --board-border-width: 6px;
   --board-grid-line: #d8d0c0;
   --board-room: #ddd5c2;
   --board-hallway: #d8cca0;
-  --board-wall: #8b2a2a;
+  --board-wall: #c8c0b0;
   --board-center: #d0c8b0;
   --board-room-filter: saturate(0.5) brightness(1.1);
+  --mansion-border-color: #8b1a1a;
+  --mansion-border-width: 3px;
 
   /* Board overlay text */
   --board-label-color: #3a3020;

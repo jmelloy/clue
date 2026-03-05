@@ -216,6 +216,30 @@ for (let r = 0; r < 25; r++) {
   }
 }
 
+// ── Precompute exterior borders for mansion cells ──
+// A mansion cell (room/hallway/door/start) gets a thick border on any edge
+// that faces a wall cell or the grid boundary.
+const cellLookup = new Map()
+for (const cell of CELL_DATA) {
+  cellLookup.set(`${cell.row},${cell.col}`, cell)
+}
+
+function isWallOrEdge(r, c) {
+  if (r < 0 || r >= 25 || c < 0 || c >= 24) return true
+  const cell = cellLookup.get(`${r},${c}`)
+  return cell && cell.type === 'wall'
+}
+
+for (const cell of CELL_DATA) {
+  if (cell.type === 'wall') continue
+  const borders = []
+  if (isWallOrEdge(cell.row - 1, cell.col)) borders.push('top')
+  if (isWallOrEdge(cell.row + 1, cell.col)) borders.push('bottom')
+  if (isWallOrEdge(cell.row, cell.col - 1)) borders.push('left')
+  if (isWallOrEdge(cell.row, cell.col + 1)) borders.push('right')
+  if (borders.length > 0) cell.borders = borders
+}
+
 // ── Component ──
 
 const props = defineProps({
@@ -465,6 +489,10 @@ function cellClasses(cell) {
       cls.push('reachable-door')
     }
   }
+  // Add exterior border classes for mansion outline
+  if (cell.borders) {
+    for (const dir of cell.borders) cls.push(`mansion-border-${dir}`)
+  }
   return cls
 }
 
@@ -550,11 +578,11 @@ function tokenStyle(token) {
   max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: var(--board-frame, var(--board-bg));
+  background: var(--board-wall);
   border-radius: 6px;
   overflow: hidden;
-  border: var(--board-border-width, 4px) solid var(--board-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
+  border: 2px solid var(--board-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
 /* Vintage theme: full board image (PNG with transparent edges) as background.
@@ -591,7 +619,7 @@ function tokenStyle(token) {
   grid-template-columns: repeat(24, 1fr);
   grid-template-rows: repeat(25, 1fr);
   position: absolute;
-  inset: 0.6%;
+  inset: 0;
   gap: 0;
   z-index: 1;
   background: var(--board-bg);
@@ -623,6 +651,32 @@ function tokenStyle(token) {
   bottom: 5.0%;
   width: auto;
   height: auto;
+}
+
+/* ── Mansion outline borders ── */
+/* Thick borders on mansion cells that face walls or the grid edge */
+.mansion-border-top {
+  border-top: var(--mansion-border-width, 3px) solid var(--mansion-border-color, #8b1a1a);
+}
+
+.mansion-border-bottom {
+  border-bottom: var(--mansion-border-width, 3px) solid var(--mansion-border-color, #8b1a1a);
+}
+
+.mansion-border-left {
+  border-left: var(--mansion-border-width, 3px) solid var(--mansion-border-color, #8b1a1a);
+}
+
+.mansion-border-right {
+  border-right: var(--mansion-border-width, 3px) solid var(--mansion-border-color, #8b1a1a);
+}
+
+/* Hide mansion borders in vintage mode — the board image has its own */
+[data-theme="vintage"] .mansion-border-top,
+[data-theme="vintage"] .mansion-border-bottom,
+[data-theme="vintage"] .mansion-border-left,
+[data-theme="vintage"] .mansion-border-right {
+  border-color: transparent;
 }
 
 /* ── Cell types ── */
@@ -819,7 +873,7 @@ function tokenStyle(token) {
 /* ── Overlay ── */
 .board-overlay {
   position: absolute;
-  inset: 0.6%;
+  inset: 0;
   pointer-events: none;
 }
 
