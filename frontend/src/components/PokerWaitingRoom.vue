@@ -22,11 +22,30 @@
         </div>
         <button class="copy-btn" @click="copyLink" :class="{ copied: copied }">
           <template v-if="copied">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
             Copied
           </template>
           <template v-else>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+            </svg>
             Copy Link
           </template>
         </button>
@@ -40,18 +59,23 @@
         </div>
         <div class="player-list">
           <TransitionGroup name="player-item">
-            <div
-              v-for="(p, idx) in players"
-              :key="p.id"
-              class="player-row"
-            >
+            <div v-for="(p, idx) in players" :key="p.id" class="player-row">
               <div class="player-avatar" :style="{ '--hue': seatHue(idx) }">
                 {{ p.name.charAt(0).toUpperCase() }}
               </div>
               <div class="player-details">
                 <span class="p-name">{{ p.name }}</span>
                 <span class="p-chips">
-                  <svg width="10" height="10" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#c9a84c" stroke="#8b7635" stroke-width="2"/></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      fill="#c9a84c"
+                      stroke="#8b7635"
+                      stroke-width="2"
+                    />
+                  </svg>
                   {{ p.chips.toLocaleString() }}
                 </span>
               </div>
@@ -81,14 +105,22 @@
             :disabled="players.length >= 10 || addingAgent"
             @click="addAgent"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 00-16 0"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
-            {{ addingAgent ? 'Adding...' : 'Add Bot' }}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="8" r="4" />
+              <path d="M20 21a8 8 0 00-16 0" />
+              <line x1="20" y1="8" x2="20" y2="14" />
+              <line x1="17" y1="11" x2="23" y2="11" />
+            </svg>
+            {{ addingAgent ? "Adding..." : "Add Bot" }}
           </button>
-          <button
-            class="deal-btn"
-            :disabled="players.length < 2"
-            @click="startGame"
-          >
+          <button class="deal-btn" :disabled="players.length < 2" @click="startGame">
             <span class="deal-icon">&#9830;</span>
             Deal Cards
           </button>
@@ -106,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue"
 
 const SEAT_HUES = [0, 35, 120, 210, 270, 330, 55, 170, 300, 85]
 
@@ -115,9 +147,9 @@ const props = defineProps({
   playerId: String,
   players: Array,
 })
-const emit = defineEmits(['game-started', 'leave-game'])
+const emit = defineEmits(["game-started", "leave-game"])
 
-const error = ref('')
+const error = ref("")
 const copied = ref(false)
 const addingAgent = ref(false)
 
@@ -129,44 +161,46 @@ function copyLink() {
   const url = `${window.location.origin}/holdem/${props.gameId}`
   navigator.clipboard.writeText(url)
   copied.value = true
-  setTimeout(() => { copied.value = false }, 2000)
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
 }
 
 async function addAgent() {
-  error.value = ''
+  error.value = ""
   addingAgent.value = true
   try {
-    const res = await fetch(`/holdem/games/${props.gameId}/add_agent`, { method: 'POST' })
+    const res = await fetch(`/holdem/games/${props.gameId}/add_agent`, { method: "POST" })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? 'Failed to add agent'
+      error.value = data.detail ?? "Failed to add agent"
     }
   } catch (e) {
-    error.value = 'Error: ' + e.message
+    error.value = "Error: " + e.message
   } finally {
     addingAgent.value = false
   }
 }
 
 async function startGame() {
-  error.value = ''
+  error.value = ""
   try {
-    const res = await fetch(`/holdem/games/${props.gameId}/start`, { method: 'POST' })
+    const res = await fetch(`/holdem/games/${props.gameId}/start`, { method: "POST" })
     if (!res.ok) {
       const data = await res.json()
-      error.value = data.detail ?? 'Failed to start'
+      error.value = data.detail ?? "Failed to start"
       return
     }
     const state = await res.json()
-    emit('game-started', state)
+    emit("game-started", state)
   } catch (e) {
-    error.value = 'Error: ' + e.message
+    error.value = "Error: " + e.message
   }
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap");
 
 .waiting-scene {
   --gold: #c9a84c;
@@ -180,7 +214,7 @@ async function startGame() {
   --text-dim: #6b7280;
   --text-muted: #3d4452;
 
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: "Outfit", system-ui, sans-serif;
   color: var(--text);
   min-height: 100vh;
   display: flex;
@@ -196,14 +230,17 @@ async function startGame() {
 .bg-pattern {
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(ellipse at 30% 20%, rgba(201, 168, 76, 0.04) 0%, transparent 50%),
+  background-image: radial-gradient(
+      ellipse at 30% 20%,
+      rgba(201, 168, 76, 0.04) 0%,
+      transparent 50%
+    ),
     radial-gradient(ellipse at 70% 80%, rgba(15, 94, 48, 0.06) 0%, transparent 50%);
   pointer-events: none;
 }
 
 .bg-pattern::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 5 L35 25 L55 30 L35 35 L30 55 L25 35 L5 30 L25 25 Z' fill='none' stroke='rgba(201,168,76,0.03)' stroke-width='0.5'/%3E%3C/svg%3E");
@@ -223,7 +260,7 @@ async function startGame() {
 }
 
 .waiting-card::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -236,7 +273,7 @@ async function startGame() {
 .card-header {
   text-align: center;
   padding: 2rem 2rem 1.25rem;
-  background: linear-gradient(180deg, rgba(201,168,76,0.06) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(201, 168, 76, 0.06) 0%, transparent 100%);
 }
 
 .brand-mark {
@@ -251,11 +288,15 @@ async function startGame() {
   opacity: 0.25;
 }
 
-.suit-deco:first-child { color: var(--text); }
-.suit-deco:last-child { color: #dc2626; }
+.suit-deco:first-child {
+  color: var(--text);
+}
+.suit-deco:last-child {
+  color: #dc2626;
+}
 
 h1 {
-  font-family: 'Cinzel', serif;
+  font-family: "Cinzel", serif;
   font-weight: 700;
   font-size: 1.6rem;
   color: var(--gold);
@@ -278,8 +319,8 @@ h1 {
   justify-content: space-between;
   margin: 0 1.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 10px;
 }
 
@@ -297,7 +338,7 @@ h1 {
 }
 
 .id-value {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 1.15rem;
   font-weight: 500;
   color: var(--gold);
@@ -308,13 +349,13 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-dim);
   padding: 0.4rem 0.7rem;
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.2s;
@@ -348,7 +389,7 @@ h1 {
 }
 
 .player-count {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
   color: var(--text);
 }
@@ -368,15 +409,15 @@ h1 {
   align-items: center;
   gap: 0.65rem;
   padding: 0.5rem 0.65rem;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .player-row:hover:not(.empty-seat) {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .player-row.empty-seat {
@@ -400,8 +441,8 @@ h1 {
 }
 
 .player-avatar.empty {
-  background: rgba(255,255,255,0.04);
-  border: 2px dashed rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
   color: var(--text-muted);
   font-size: 0.8rem;
 }
@@ -423,7 +464,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.7rem;
   color: var(--gold);
 }
@@ -435,7 +476,7 @@ h1 {
 }
 
 .seat-num {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.65rem;
   color: var(--text-muted);
 }
@@ -473,11 +514,11 @@ h1 {
   justify-content: center;
   gap: 0.4rem;
   padding: 0.8rem 1rem;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-dim);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-weight: 500;
   font-size: 0.9rem;
   cursor: pointer;
@@ -488,7 +529,7 @@ h1 {
 .add-agent-btn:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--gold);
-  background: rgba(201,168,76,0.06);
+  background: rgba(201, 168, 76, 0.06);
 }
 
 .add-agent-btn:disabled {
@@ -505,9 +546,9 @@ h1 {
   padding: 0.8rem 1.5rem;
   background: linear-gradient(135deg, var(--felt), #1a7a42);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
@@ -517,7 +558,7 @@ h1 {
 
 .deal-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #1a7a42, #22965a);
-  box-shadow: 0 4px 20px rgba(15,94,48,0.3);
+  box-shadow: 0 4px 20px rgba(15, 94, 48, 0.3);
   transform: translateY(-1px);
 }
 
@@ -558,7 +599,7 @@ h1 {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.25rem 0.5rem;
@@ -579,7 +620,9 @@ h1 {
     padding: 1.5rem 1.25rem 1rem;
   }
 
-  h1 { font-size: 1.3rem; }
+  h1 {
+    font-size: 1.3rem;
+  }
 
   .game-id-row {
     margin: 0 1rem;

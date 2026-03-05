@@ -4,7 +4,7 @@
       <h1 class="admin-title">Game Administration</h1>
       <div class="admin-actions">
         <button class="refresh-btn" @click="fetchGames" :disabled="loading">
-          {{ loading ? 'Loading...' : 'Refresh' }}
+          {{ loading ? "Loading..." : "Refresh" }}
         </button>
         <button class="back-btn" @click="$emit('go-home')">Back to Lobby</button>
       </div>
@@ -43,9 +43,7 @@
       </button>
     </div>
 
-    <div v-if="!loading && filteredGames.length === 0" class="empty-state">
-      No games found.
-    </div>
+    <div v-if="!loading && filteredGames.length === 0" class="empty-state">No games found.</div>
 
     <div class="games-grid">
       <div
@@ -58,14 +56,16 @@
         <div class="game-card-header">
           <span class="game-id">{{ game.game_id }}</span>
           <span class="game-type-badge" :class="game.game_type">
-            {{ game.game_type === 'clue' ? 'Clue' : "Hold'em" }}
+            {{ game.game_type === "clue" ? "Clue" : "Hold'em" }}
           </span>
         </div>
 
         <div class="game-status-row">
           <span class="status-dot" :class="game.status"></span>
           <span class="status-text">{{ game.status }}</span>
-          <span v-if="game.winner" class="winner-text">Winner: {{ playerName(game, game.winner) }}</span>
+          <span v-if="game.winner" class="winner-text"
+            >Winner: {{ playerName(game, game.winner) }}</span
+          >
         </div>
 
         <div class="players-list">
@@ -73,7 +73,9 @@
             <span class="player-name">{{ p.name }}</span>
             <span class="player-type" :class="p.type">{{ p.type }}</span>
             <span v-if="p.character" class="player-character">{{ p.character }}</span>
-            <span v-if="p.chips != null" class="player-chips">${{ (p.chips / 100).toFixed(2) }}</span>
+            <span v-if="p.chips != null" class="player-chips"
+              >${{ (p.chips / 100).toFixed(2) }}</span
+            >
           </div>
         </div>
 
@@ -89,15 +91,24 @@
     <div v-if="selectedGame" class="modal-overlay" @click.self="selectedGame = null">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>{{ selectedGame.game_id }} <span class="game-type-badge" :class="selectedGame.game_type">{{ selectedGame.game_type === 'clue' ? 'Clue' : "Hold'em" }}</span></h2>
+          <h2>
+            {{ selectedGame.game_id }}
+            <span class="game-type-badge" :class="selectedGame.game_type">{{
+              selectedGame.game_type === "clue" ? "Clue" : "Hold'em"
+            }}</span>
+          </h2>
           <button class="close-btn" @click="selectedGame = null">&times;</button>
         </div>
         <div v-if="detailLoading" class="modal-loading">Loading details...</div>
         <div v-else-if="gameDetail" class="modal-body">
           <h3>State</h3>
           <pre class="json-view">{{ JSON.stringify(gameDetail.state, null, 2) }}</pre>
-          <h3 v-if="gameDetail.log && gameDetail.log.length">Log ({{ gameDetail.log.length }} entries)</h3>
-          <pre v-if="gameDetail.log && gameDetail.log.length" class="json-view log-view">{{ JSON.stringify(gameDetail.log.slice(-20), null, 2) }}</pre>
+          <h3 v-if="gameDetail.log && gameDetail.log.length">
+            Log ({{ gameDetail.log.length }} entries)
+          </h3>
+          <pre v-if="gameDetail.log && gameDetail.log.length" class="json-view log-view">{{
+            JSON.stringify(gameDetail.log.slice(-20), null, 2)
+          }}</pre>
         </div>
         <div class="modal-footer">
           <button class="observe-btn" @click="observeGame(selectedGame)">Observe Game</button>
@@ -108,17 +119,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue"
 
-const emit = defineEmits(["go-home", "observe-game"]);
+const emit = defineEmits(["go-home", "observe-game"])
 
-const games = ref([]);
-const loading = ref(false);
-const error = ref(null);
-const activeFilter = ref("all");
-const selectedGame = ref(null);
-const gameDetail = ref(null);
-const detailLoading = ref(false);
+const games = ref([])
+const loading = ref(false)
+const error = ref(null)
+const activeFilter = ref("all")
+const selectedGame = ref(null)
+const gameDetail = ref(null)
+const detailLoading = ref(false)
 
 const filters = [
   { label: "All", value: "all" },
@@ -127,60 +138,60 @@ const filters = [
   { label: "Finished", value: "finished" },
   { label: "Clue", value: "clue" },
   { label: "Hold'em", value: "holdem" },
-];
+]
 
-const playingCount = computed(() => games.value.filter((g) => g.status === "playing").length);
-const waitingCount = computed(() => games.value.filter((g) => g.status === "waiting").length);
-const finishedCount = computed(() => games.value.filter((g) => g.status === "finished").length);
+const playingCount = computed(() => games.value.filter((g) => g.status === "playing").length)
+const waitingCount = computed(() => games.value.filter((g) => g.status === "waiting").length)
+const finishedCount = computed(() => games.value.filter((g) => g.status === "finished").length)
 
 const filteredGames = computed(() => {
-  if (activeFilter.value === "all") return games.value;
+  if (activeFilter.value === "all") return games.value
   if (["clue", "holdem"].includes(activeFilter.value)) {
-    return games.value.filter((g) => g.game_type === activeFilter.value);
+    return games.value.filter((g) => g.game_type === activeFilter.value)
   }
-  return games.value.filter((g) => g.status === activeFilter.value);
-});
+  return games.value.filter((g) => g.status === activeFilter.value)
+})
 
 function playerName(game, playerId) {
-  const p = game.players.find((pl) => pl.name === playerId);
-  return p ? p.name : playerId;
+  const p = game.players.find((pl) => pl.name === playerId)
+  return p ? p.name : playerId
 }
 
 async function fetchGames() {
-  loading.value = true;
-  error.value = null;
+  loading.value = true
+  error.value = null
   try {
-    const res = await fetch("/admin/games");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    games.value = data.games;
+    const res = await fetch("/admin/games")
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    games.value = data.games
   } catch (e) {
-    error.value = `Failed to load games: ${e.message}`;
+    error.value = `Failed to load games: ${e.message}`
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 async function openGame(game) {
-  selectedGame.value = game;
-  detailLoading.value = true;
-  gameDetail.value = null;
+  selectedGame.value = game
+  detailLoading.value = true
+  gameDetail.value = null
   try {
-    const res = await fetch(`/admin/games/${game.game_id}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    gameDetail.value = await res.json();
+    const res = await fetch(`/admin/games/${game.game_id}`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    gameDetail.value = await res.json()
   } catch (e) {
-    error.value = `Failed to load game details: ${e.message}`;
+    error.value = `Failed to load game details: ${e.message}`
   } finally {
-    detailLoading.value = false;
+    detailLoading.value = false
   }
 }
 
 function observeGame(game) {
-  emit("observe-game", { gameId: game.game_id, gameType: game.game_type });
+  emit("observe-game", { gameId: game.game_id, gameType: game.game_type })
 }
 
-onMounted(fetchGames);
+onMounted(fetchGames)
 </script>
 
 <style scoped>

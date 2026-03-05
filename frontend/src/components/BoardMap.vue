@@ -56,7 +56,7 @@
           />
           <span v-else>{{ abbr(token.character) }}</span>
           <span class="token-tooltip">
-            {{ token.type === 'wanderer' ? token.character : `${token.name} (${token.character})` }}
+            {{ token.type === "wanderer" ? token.character : `${token.name} (${token.character})` }}
           </span>
         </div>
       </div>
@@ -65,12 +65,8 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
-import {
-  CARD_IMAGES,
-  abbr,
-  characterColors,
-} from "../constants/clue.js";
+import { computed } from "vue"
+import { CARD_IMAGES, abbr, characterColors } from "../constants/clue.js"
 
 // ── Board layout data (matches backend board.py) ──
 
@@ -100,7 +96,7 @@ const BOARD_ROWS = [
   "cccccc..aaaaaaaa..kkkkkk",
   "cccccc ...aaaa... kkkkkk",
   "         .    .         ",
-];
+]
 
 const ROOM_KEY_MAP = {
   s: "Study",
@@ -112,7 +108,7 @@ const ROOM_KEY_MAP = {
   c: "Conservatory",
   a: "Ballroom",
   k: "Kitchen",
-};
+}
 
 const DOORS = {
   "3,6": "Study",
@@ -132,7 +128,7 @@ const DOORS = {
   "19,8": "Ballroom",
   "19,15": "Ballroom",
   "18,19": "Kitchen",
-};
+}
 
 const DOOR_DIRECTIONS = {
   "3,6": "south",
@@ -152,7 +148,7 @@ const DOOR_DIRECTIONS = {
   "19,8": "west",
   "19,15": "east",
   "18,19": "north",
-};
+}
 
 const STARTS = {
   "24,9": "Scarlet",
@@ -161,7 +157,7 @@ const STARTS = {
   "0,16": "Green",
   "5,0": "Plum",
   "18,0": "Peacock",
-};
+}
 
 const ROOM_COLORS = {
   Study: "#2a2218",
@@ -173,16 +169,15 @@ const ROOM_COLORS = {
   Conservatory: "#2a2218",
   Ballroom: "#2a2218",
   Kitchen: "#2a2218",
-};
-
+}
 
 // ── Pre-compute room info from board layout ──
 
-const ROOM_INFO = {};
+const ROOM_INFO = {}
 for (let r = 0; r < 25; r++) {
-  const line = (BOARD_ROWS[r] || "").padEnd(24);
+  const line = (BOARD_ROWS[r] || "").padEnd(24)
   for (let c = 0; c < 24; c++) {
-    const room = ROOM_KEY_MAP[line[c]];
+    const room = ROOM_KEY_MAP[line[c]]
     if (room) {
       if (!ROOM_INFO[room]) {
         ROOM_INFO[room] = {
@@ -191,31 +186,31 @@ for (let r = 0; r < 25; r++) {
           maxRow: r,
           minCol: c,
           maxCol: c,
-        };
+        }
       } else {
-        ROOM_INFO[room].minRow = Math.min(ROOM_INFO[room].minRow, r);
-        ROOM_INFO[room].maxRow = Math.max(ROOM_INFO[room].maxRow, r);
-        ROOM_INFO[room].minCol = Math.min(ROOM_INFO[room].minCol, c);
-        ROOM_INFO[room].maxCol = Math.max(ROOM_INFO[room].maxCol, c);
+        ROOM_INFO[room].minRow = Math.min(ROOM_INFO[room].minRow, r)
+        ROOM_INFO[room].maxRow = Math.max(ROOM_INFO[room].maxRow, r)
+        ROOM_INFO[room].minCol = Math.min(ROOM_INFO[room].minCol, c)
+        ROOM_INFO[room].maxCol = Math.max(ROOM_INFO[room].maxCol, c)
       }
     }
   }
 }
 for (const room of Object.values(ROOM_INFO)) {
-  room.centerRow = (room.minRow + room.maxRow) / 2;
-  room.centerCol = (room.minCol + room.maxCol) / 2;
+  room.centerRow = (room.minRow + room.maxRow) / 2
+  room.centerCol = (room.minCol + room.maxCol) / 2
 }
 
 // ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
 
-const CELL_DATA = [];
+const CELL_DATA = []
 for (let r = 0; r < 25; r++) {
-  const line = (BOARD_ROWS[r] || "").padEnd(24);
+  const line = (BOARD_ROWS[r] || "").padEnd(24)
   for (let c = 0; c < 24; c++) {
-    const key = `${r},${c}`;
-    const ch = line[c];
-    const doorRoom = DOORS[key];
-    const startChar = STARTS[key];
+    const key = `${r},${c}`
+    const ch = line[c]
+    const doorRoom = DOORS[key]
+    const startChar = STARTS[key]
 
     if (doorRoom) {
       CELL_DATA.push({
@@ -224,9 +219,9 @@ for (let r = 0; r < 25; r++) {
         type: "door",
         room: doorRoom,
         doorDir: DOOR_DIRECTIONS[key],
-      });
+      })
     } else if (ROOM_KEY_MAP[ch]) {
-      CELL_DATA.push({ row: r, col: c, type: "room", room: ROOM_KEY_MAP[ch] });
+      CELL_DATA.push({ row: r, col: c, type: "room", room: ROOM_KEY_MAP[ch] })
     } else if (ch === ".") {
       CELL_DATA.push({
         row: r,
@@ -234,10 +229,10 @@ for (let r = 0; r < 25; r++) {
         type: startChar ? "start" : "hallway",
         room: null,
         startChar,
-      });
+      })
     } else {
-      const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14;
-      CELL_DATA.push({ row: r, col: c, type: "wall", room: null, isCenter });
+      const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
+      CELL_DATA.push({ row: r, col: c, type: "wall", room: null, isCenter })
     }
   }
 }
@@ -251,29 +246,27 @@ const props = defineProps({
   selectable: Boolean,
   reachableRooms: { type: Array, default: () => [] },
   reachablePositions: { type: Array, default: () => [] },
-});
+})
 
-const emit = defineEmits(["select-room", "select-position"]);
+const emit = defineEmits(["select-room", "select-position"])
 
-const cells = CELL_DATA;
+const cells = CELL_DATA
 
-const currentRoom = computed(
-  () => props.gameState?.current_room?.[props.playerId] ?? null
-);
+const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
 const reachablePositionSet = computed(() => {
-  const set = new Set();
+  const set = new Set()
   for (const pos of props.reachablePositions) {
-    set.add(`${pos[0]},${pos[1]}`);
+    set.add(`${pos[0]},${pos[1]}`)
   }
-  return set;
-});
+  return set
+})
 
 const hasReachableData = computed(
   () => props.reachableRooms.length > 0 || props.reachablePositions.length > 0
-);
+)
 
-const roomLabels = computed(() => Object.values(ROOM_INFO));
+const roomLabels = computed(() => Object.values(ROOM_INFO))
 
 const secretPassages = [
   {
@@ -300,122 +293,112 @@ const secretPassages = [
     row: ROOM_INFO["Conservatory"].maxRow - 0.3,
     col: ROOM_INFO["Conservatory"].minCol + 1.5,
   },
-];
+]
 
 const playerTokens = computed(() => {
-  const players = props.gameState?.players ?? [];
-  const roomMap = props.gameState?.current_room ?? {};
-  const posMap = props.gameState?.player_positions ?? {};
-  const tokens = [];
+  const players = props.gameState?.players ?? []
+  const roomMap = props.gameState?.current_room ?? {}
+  const posMap = props.gameState?.player_positions ?? {}
+  const tokens = []
 
   // Group players by room
-  const byRoom = {};
-  const hallway = [];
+  const byRoom = {}
+  const hallway = []
   for (const p of players) {
-    const room = roomMap[p.id];
+    const room = roomMap[p.id]
     if (room && ROOM_INFO[room]) {
-      if (!byRoom[room]) byRoom[room] = [];
-      byRoom[room].push(p);
+      if (!byRoom[room]) byRoom[room] = []
+      byRoom[room].push(p)
     } else if (posMap[p.id]) {
-      hallway.push(p);
+      hallway.push(p)
     }
   }
 
   // Distribute players within each room
   for (const [roomName, rPlayers] of Object.entries(byRoom)) {
-    const info = ROOM_INFO[roomName];
-    const cR = info.centerRow + 0.8;
-    const cC = info.centerCol + 0.5;
-    const n = rPlayers.length;
-    const roomW = info.maxCol - info.minCol + 1;
-    const spacing = Math.min(
-      1.8,
-      Math.max(1.2, (roomW - 2) / Math.max(1, n - 1))
-    );
-    const startC = cC - (spacing * (n - 1)) / 2;
+    const info = ROOM_INFO[roomName]
+    const cR = info.centerRow + 0.8
+    const cC = info.centerCol + 0.5
+    const n = rPlayers.length
+    const roomW = info.maxCol - info.minCol + 1
+    const spacing = Math.min(1.8, Math.max(1.2, (roomW - 2) / Math.max(1, n - 1)))
+    const startC = cC - (spacing * (n - 1)) / 2
     for (let i = 0; i < n; i++) {
-      tokens.push({ ...rPlayers[i], row: cR, col: startC + i * spacing });
+      tokens.push({ ...rPlayers[i], row: cR, col: startC + i * spacing })
     }
   }
 
   // Hallway players at exact position
   for (const p of hallway) {
-    const pos = posMap[p.id];
-    tokens.push({ ...p, row: pos[0] + 0.5, col: pos[1] + 0.5 });
+    const pos = posMap[p.id]
+    tokens.push({ ...p, row: pos[0] + 0.5, col: pos[1] + 0.5 })
   }
 
-  return tokens;
-});
+  return tokens
+})
 
 function cellClasses(cell) {
-  const cls = ["cell", `cell-${cell.type}`];
-  if (cell.isCenter) cls.push("cell-center");
+  const cls = ["cell", `cell-${cell.type}`]
+  if (cell.isCenter) cls.push("cell-center")
   if (cell.room) {
-    if (props.selectable) cls.push("clickable");
-    if (props.selectedRoom === cell.room) cls.push("selected");
-    if (currentRoom.value === cell.room) cls.push("my-room");
+    if (props.selectable) cls.push("clickable")
+    if (props.selectedRoom === cell.room) cls.push("selected")
+    if (currentRoom.value === cell.room) cls.push("my-room")
     // Highlight reachable/unreachable rooms when selectable
     if (props.selectable && hasReachableData.value) {
       if (props.reachableRooms.includes(cell.room)) {
-        cls.push("reachable");
+        cls.push("reachable")
       } else {
-        cls.push("unreachable");
+        cls.push("unreachable")
       }
     }
-  } else if (
-    (cell.type === "hallway" || cell.type === "start") &&
-    props.selectable
-  ) {
-    cls.push("clickable");
+  } else if ((cell.type === "hallway" || cell.type === "start") && props.selectable) {
+    cls.push("clickable")
     // Highlight reachable hallway positions
     if (hasReachableData.value) {
-      const key = `${cell.row},${cell.col}`;
+      const key = `${cell.row},${cell.col}`
       if (reachablePositionSet.value.has(key)) {
-        cls.push("reachable");
+        cls.push("reachable")
       }
     }
-  } else if (
-    cell.type === "door" &&
-    props.selectable &&
-    hasReachableData.value
-  ) {
+  } else if (cell.type === "door" && props.selectable && hasReachableData.value) {
     // Highlight doors of reachable rooms
     if (props.reachableRooms.includes(cell.room)) {
-      cls.push("reachable-door");
+      cls.push("reachable-door")
     }
   }
-  return cls;
+  return cls
 }
 
 function cellStyle(cell) {
   if (cell.room) {
-    const img = CARD_IMAGES[cell.room];
-    const info = ROOM_INFO[cell.room];
+    const img = CARD_IMAGES[cell.room]
+    const info = ROOM_INFO[cell.room]
     if (img && info) {
-      const roomCols = info.maxCol - info.minCol + 1;
-      const roomRows = info.maxRow - info.minRow + 1;
-      const dc = cell.col - info.minCol;
-      const dr = cell.row - info.minRow;
-      const posX = roomCols > 1 ? (dc / (roomCols - 1)) * 100 : 50;
-      const posY = roomRows > 1 ? (dr / (roomRows - 1)) * 100 : 50;
+      const roomCols = info.maxCol - info.minCol + 1
+      const roomRows = info.maxRow - info.minRow + 1
+      const dc = cell.col - info.minCol
+      const dr = cell.row - info.minRow
+      const posX = roomCols > 1 ? (dc / (roomCols - 1)) * 100 : 50
+      const posY = roomRows > 1 ? (dr / (roomRows - 1)) * 100 : 50
       return {
         backgroundImage: `url(${img})`,
         backgroundSize: `${roomCols * 100}% ${roomRows * 100}%`,
         backgroundPosition: `${posX}% ${posY}%`,
-        backgroundColor: '#1a1610',
-      };
+        backgroundColor: "#1a1610",
+      }
     }
-    return { backgroundColor: '#1a1610' };
+    return { backgroundColor: "#1a1610" }
   }
-  return {};
+  return {}
 }
 
 function handleCellClick(cell) {
-  if (!props.selectable) return;
+  if (!props.selectable) return
   if (cell.room) {
-    emit("select-room", cell.room);
+    emit("select-room", cell.room)
   } else if (cell.type === "hallway" || cell.type === "start") {
-    emit("select-position", [cell.row, cell.col]);
+    emit("select-position", [cell.row, cell.col])
   }
 }
 
@@ -424,11 +407,11 @@ function overlayPos(row, col) {
     left: `${((col + 0.5) / 24) * 100}%`,
     top: `${((row + 0.5) / 25) * 100}%`,
     transform: "translate(-50%, -50%)",
-  };
+  }
 }
 
 function tokenStyle(token) {
-  const { bg, text } = characterColors(token.character);
+  const { bg, text } = characterColors(token.character)
   const style = {
     left: `${(token.col / 24) * 100}%`,
     top: `${(token.row / 25) * 100}%`,
@@ -436,11 +419,11 @@ function tokenStyle(token) {
     backgroundColor: bg,
     color: text,
     "--token-border": bg,
-  };
-  if (token.type === "wanderer") {
-    style.opacity = 0.85;
   }
-  return style;
+  if (token.type === "wanderer") {
+    style.opacity = 0.85
+  }
+  return style
 }
 </script>
 
@@ -575,7 +558,7 @@ function tokenStyle(token) {
 
 .cell-room.clickable:hover,
 .cell-door.clickable:hover {
-  filter: saturate(0.45) brightness(1.0);
+  filter: saturate(0.45) brightness(1);
 }
 
 .cell-hallway.clickable:hover,
@@ -620,7 +603,7 @@ function tokenStyle(token) {
 }
 
 .cell.reachable-door {
-  filter: saturate(0.4) brightness(1.0);
+  filter: saturate(0.4) brightness(1);
   outline: 1px solid rgba(76, 175, 80, 0.7);
   z-index: 2;
   animation: reachable-glow 2s ease-in-out infinite;
@@ -765,24 +748,20 @@ function tokenStyle(token) {
 @keyframes token-pulse {
   0%,
   100% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8),
-      0 0 4px 1px rgba(212, 168, 73, 0.5);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 4px 1px rgba(212, 168, 73, 0.5);
   }
   50% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8),
-      0 0 10px 5px rgba(212, 168, 73, 0.7);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 10px 5px rgba(212, 168, 73, 0.7);
   }
 }
 
 @keyframes token-pulse-img {
   0%,
   100% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9),
-      0 0 4px 1px rgba(212, 168, 73, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 4px 1px rgba(212, 168, 73, 0.5);
   }
   50% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9),
-      0 0 10px 5px rgba(212, 168, 73, 0.7);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 10px 5px rgba(212, 168, 73, 0.7);
   }
 }
 

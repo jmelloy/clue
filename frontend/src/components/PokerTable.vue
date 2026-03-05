@@ -15,11 +15,20 @@
         <span class="meta-divider"></span>
         <span class="meta-item">
           <span class="meta-label">Blinds</span>
-          <span class="meta-value">{{ gameState?.small_blind ?? 10 }}/{{ gameState?.big_blind ?? 20 }}</span>
+          <span class="meta-value"
+            >{{ gameState?.small_blind ?? 10 }}/{{ gameState?.big_blind ?? 20 }}</span
+          >
         </span>
         <button class="chat-toggle" @click="chatOpen = !chatOpen" :class="{ active: chatOpen }">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
           </svg>
           <span v-if="unreadChat" class="chat-badge">{{ unreadChat }}</span>
         </button>
@@ -30,18 +39,12 @@
     <div class="table-container">
       <!-- Turn/Status indicator -->
       <div class="turn-strip" :class="statusClass">
-        <template v-if="gameState?.status === 'finished'">
-          {{ winnerName }} takes it all
-        </template>
-        <template v-else-if="isMyTurn">
-          Your action &middot; {{ bettingRoundLabel }}
-        </template>
+        <template v-if="gameState?.status === 'finished'"> {{ winnerName }} takes it all </template>
+        <template v-else-if="isMyTurn"> Your action &middot; {{ bettingRoundLabel }} </template>
         <template v-else-if="gameState?.whose_turn">
           {{ currentTurnName }} &middot; {{ bettingRoundLabel }}
         </template>
-        <template v-else>
-          Waiting for next hand...
-        </template>
+        <template v-else> Waiting for next hand... </template>
       </div>
 
       <div class="felt-wrapper">
@@ -70,7 +73,11 @@
             <div v-if="idx === gameState?.dealer_index" class="dealer-btn">D</div>
 
             <!-- Player bet on felt -->
-            <div v-if="p.current_bet > 0 && !p.folded" class="bet-on-felt" :style="getBetPosition(idx, activePlayers.length)">
+            <div
+              v-if="p.current_bet > 0 && !p.folded"
+              class="bet-on-felt"
+              :style="getBetPosition(idx, activePlayers.length)"
+            >
               <div class="bet-chip-stacks">
                 <div
                   v-for="(chip, ci) in chipStackVisual(p.current_bet, 6)"
@@ -93,7 +100,10 @@
             <div class="info-plate">
               <span class="player-name">{{ p.name }}</span>
               <span class="player-chips">
-                <span class="chip-dot" :class="`chip-${(chipBreakdown(p.chips)[0] || { color: 'white' }).color}`"></span>
+                <span
+                  class="chip-dot"
+                  :class="`chip-${(chipBreakdown(p.chips)[0] || { color: 'white' }).color}`"
+                ></span>
                 {{ formatChips(p.chips) }}
               </span>
             </div>
@@ -165,8 +175,16 @@
                         v-for="(pos, pi) in pipPositions(card.rank)"
                         :key="pi"
                         class="pip"
-                        :style="{ top: pos[0] + '%', left: pos[1] + '%', transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)' }"
-                      >{{ suitSymbol(card.suit) }}</span>
+                        :style="{
+                          top: pos[0] + '%',
+                          left: pos[1] + '%',
+                          transform:
+                            pos[0] > 50
+                              ? 'translate(-50%,-50%) rotate(180deg)'
+                              : 'translate(-50%,-50%)',
+                        }"
+                        >{{ suitSymbol(card.suit) }}</span
+                      >
                     </div>
                     <span class="card-corner bottom-right">
                       <span class="card-rank">{{ card.rank }}</span>
@@ -194,7 +212,16 @@
             <strong>{{ winnerBanner.names }}</strong> takes the pot
           </span>
           <span class="winner-pot">
-            <svg class="chip-svg" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/></svg>
+            <svg class="chip-svg" width="14" height="14" viewBox="0 0 24 24">
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                fill="var(--gold)"
+                stroke="var(--gold-dim)"
+                stroke-width="2"
+              />
+            </svg>
             {{ formatChips(winnerBanner.pot) }}
           </span>
           <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
@@ -227,8 +254,13 @@
                   v-for="(pos, pi) in pipPositions(c.rank)"
                   :key="pi"
                   class="pip"
-                  :style="{ gridRow: pos[0] + 1, gridColumn: pos[1] + 1, transform: pos[0] > 2 ? 'rotate(180deg)' : '' }"
-                >{{ suitSymbol(c.suit) }}</span>
+                  :style="{
+                    gridRow: pos[0] + 1,
+                    gridColumn: pos[1] + 1,
+                    transform: pos[0] > 2 ? 'rotate(180deg)' : '',
+                  }"
+                  >{{ suitSymbol(c.suit) }}</span
+                >
               </div>
               <span class="card-corner bottom-right">
                 <span class="card-rank">{{ c.rank }}</span>
@@ -251,27 +283,15 @@
       <div class="action-dock" v-if="gameState?.status === 'playing'">
         <template v-if="isMyTurn && availableActions.length">
           <div class="action-row">
-            <button
-              v-if="canFold"
-              class="action-btn fold"
-              @click="doAction({ type: 'fold' })"
-            >
+            <button v-if="canFold" class="action-btn fold" @click="doAction({ type: 'fold' })">
               <span class="btn-label">Fold</span>
             </button>
 
-            <button
-              v-if="canCheck"
-              class="action-btn check"
-              @click="doAction({ type: 'check' })"
-            >
+            <button v-if="canCheck" class="action-btn check" @click="doAction({ type: 'check' })">
               <span class="btn-label">Check</span>
             </button>
 
-            <button
-              v-if="canCall"
-              class="action-btn call"
-              @click="doAction({ type: 'call' })"
-            >
+            <button v-if="canCall" class="action-btn call" @click="doAction({ type: 'call' })">
               <span class="btn-label">Call</span>
               <span class="btn-amount">{{ formatChips(amountToCall) }}</span>
             </button>
@@ -279,7 +299,10 @@
             <button
               v-if="canBet"
               class="action-btn bet"
-              @click="showBetInput = !showBetInput; showRaiseInput = false"
+              @click="
+                showBetInput = !showBetInput
+                showRaiseInput = false
+              "
               :class="{ active: showBetInput }"
             >
               <span class="btn-label">Bet</span>
@@ -288,17 +311,16 @@
             <button
               v-if="canRaise"
               class="action-btn raise"
-              @click="showRaiseInput = !showRaiseInput; showBetInput = false"
+              @click="
+                showRaiseInput = !showRaiseInput
+                showBetInput = false
+              "
               :class="{ active: showRaiseInput }"
             >
               <span class="btn-label">Raise</span>
             </button>
 
-            <button
-              v-if="canAllIn"
-              class="action-btn allin"
-              @click="doAction({ type: 'all_in' })"
-            >
+            <button v-if="canAllIn" class="action-btn allin" @click="doAction({ type: 'all_in' })">
               <span class="btn-label">All In</span>
               <span class="btn-amount">{{ formatChips(myPlayer?.chips ?? 0) }}</span>
             </button>
@@ -310,8 +332,12 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="betAmount = gameState?.big_blind ?? 20" class="pill">Min</button>
-                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 3)" class="pill">&frac13;</button>
-                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">&frac12;</button>
+                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 3)" class="pill">
+                    &frac13;
+                  </button>
+                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">
+                    &frac12;
+                  </button>
                   <button @click="betAmount = myPlayer?.chips ?? 0" class="pill">Max</button>
                 </div>
                 <div class="range-track">
@@ -325,8 +351,16 @@
                   />
                 </div>
                 <div class="slider-confirm">
-                  <input type="number" v-model.number="betAmount" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0" class="num-input" />
-                  <button class="go-btn" @click="submitBet">Bet {{ formatChips(betAmount) }}</button>
+                  <input
+                    type="number"
+                    v-model.number="betAmount"
+                    :min="gameState?.big_blind ?? 20"
+                    :max="myPlayer?.chips ?? 0"
+                    class="num-input"
+                  />
+                  <button class="go-btn" @click="submitBet">
+                    Bet {{ formatChips(betAmount) }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -338,8 +372,18 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="raiseAmount = minRaise" class="pill">Min</button>
-                  <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">&frac12;</button>
-                  <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) * 3 / 4)" class="pill">&frac34;</button>
+                  <button
+                    @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) / 2)"
+                    class="pill"
+                  >
+                    &frac12;
+                  </button>
+                  <button
+                    @click="raiseAmount = Math.floor(((myPlayer?.chips ?? 0) * 3) / 4)"
+                    class="pill"
+                  >
+                    &frac34;
+                  </button>
                   <button @click="raiseAmount = myPlayer?.chips ?? 0" class="pill">Pot</button>
                 </div>
                 <div class="range-track">
@@ -353,8 +397,16 @@
                   />
                 </div>
                 <div class="slider-confirm">
-                  <input type="number" v-model.number="raiseAmount" :min="minRaise" :max="myPlayer?.chips ?? 0" class="num-input" />
-                  <button class="go-btn" @click="submitRaise">Raise {{ formatChips(raiseAmount) }}</button>
+                  <input
+                    type="number"
+                    v-model.number="raiseAmount"
+                    :min="minRaise"
+                    :max="myPlayer?.chips ?? 0"
+                    class="num-input"
+                  />
+                  <button class="go-btn" @click="submitRaise">
+                    Raise {{ formatChips(raiseAmount) }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -362,10 +414,8 @@
         </template>
 
         <div v-else class="waiting-msg">
-          <div class="waiting-dots">
-            <span></span><span></span><span></span>
-          </div>
-          {{ gameState?.whose_turn ? `${currentTurnName} is thinking...` : 'Waiting...' }}
+          <div class="waiting-dots"><span></span><span></span><span></span></div>
+          {{ gameState?.whose_turn ? `${currentTurnName} is thinking...` : "Waiting..." }}
         </div>
       </div>
     </div>
@@ -397,7 +447,9 @@
             @keyup.enter="sendChatMessage"
           />
           <button :disabled="!chatInput.trim()" @click="sendChatMessage">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
           </button>
         </div>
       </div>
@@ -419,12 +471,33 @@
             </h2>
             <div class="showdown-hand-type">{{ showdownData.winning_hand }}</div>
             <div class="showdown-pot-line">
-              <svg class="chip-svg" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2"/><circle cx="12" cy="12" r="6" fill="none" stroke="var(--gold-dim)" stroke-width="1.5"/></svg>
+              <svg class="chip-svg" width="16" height="16" viewBox="0 0 24 24">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="var(--gold)"
+                  stroke="var(--gold-dim)"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="6"
+                  fill="none"
+                  stroke="var(--gold-dim)"
+                  stroke-width="1.5"
+                />
+              </svg>
               {{ formatChips(showdownData.pot) }}
             </div>
             <div class="showdown-divider"></div>
             <div class="showdown-hands">
-              <div v-for="(cards, pid) in showdownData.player_hands" :key="pid" class="showdown-player-hand">
+              <div
+                v-for="(cards, pid) in showdownData.player_hands"
+                :key="pid"
+                class="showdown-player-hand"
+              >
                 <span class="sh-name">{{ playerName(pid) }}</span>
                 <div class="sh-cards">
                   <div
@@ -450,7 +523,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from "vue"
 
 const props = defineProps({
   gameId: String,
@@ -461,16 +534,16 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
 })
-const emit = defineEmits(['action', 'send-chat'])
+const emit = defineEmits(["action", "send-chat"])
 
-const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
+const SUIT_SYMBOLS = { hearts: "\u2665", diamonds: "\u2666", clubs: "\u2663", spades: "\u2660" }
 
 // Chip denominations: value, color name (used as CSS class), and display color
 const CHIP_DENOMS = [
-  { value: 500, color: 'green' },
-  { value: 100, color: 'blue' },
-  { value: 25, color: 'red' },
-  { value: 10, color: 'white' },
+  { value: 500, color: "green" },
+  { value: 100, color: "blue" },
+  { value: 25, color: "red" },
+  { value: 10, color: "white" },
 ]
 
 // Break an amount into chip denominations, returns array of { color, count }
@@ -486,7 +559,7 @@ function chipBreakdown(amount) {
   }
   // Any remainder goes on white chips
   if (remaining > 0 && result.length === 0) {
-    result.push({ color: 'white', count: 1 })
+    result.push({ color: "white", count: 1 })
   }
   return result
 }
@@ -511,7 +584,7 @@ const showBetInput = ref(false)
 const showRaiseInput = ref(false)
 const betAmount = ref(20)
 const raiseAmount = ref(40)
-const chatInput = ref('')
+const chatInput = ref("")
 const chatContainer = ref(null)
 const chatOpen = ref(false)
 const showdownData = ref(null)
@@ -536,13 +609,9 @@ const communityCardSlots = computed(() => {
   return slots
 })
 
-const myPlayer = computed(() =>
-  activePlayers.value.find(p => p.id === props.playerId)
-)
+const myPlayer = computed(() => activePlayers.value.find((p) => p.id === props.playerId))
 
-const isMyTurn = computed(() =>
-  props.gameState?.whose_turn === props.playerId
-)
+const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
 
 const amountToCall = computed(() => {
   if (!myPlayer.value || !props.gameState) return 0
@@ -555,41 +624,41 @@ const minRaise = computed(() => {
   return call + bb
 })
 
-const canFold = computed(() => props.availableActions.includes('fold'))
-const canCheck = computed(() => props.availableActions.includes('check'))
-const canCall = computed(() => props.availableActions.includes('call'))
-const canBet = computed(() => props.availableActions.includes('bet'))
-const canRaise = computed(() => props.availableActions.includes('raise'))
-const canAllIn = computed(() => props.availableActions.includes('all_in'))
+const canFold = computed(() => props.availableActions.includes("fold"))
+const canCheck = computed(() => props.availableActions.includes("check"))
+const canCall = computed(() => props.availableActions.includes("call"))
+const canBet = computed(() => props.availableActions.includes("bet"))
+const canRaise = computed(() => props.availableActions.includes("raise"))
+const canAllIn = computed(() => props.availableActions.includes("all_in"))
 
 const bettingRoundLabel = computed(() => {
   const round = props.gameState?.betting_round
-  if (round === 'preflop') return 'Pre-Flop'
-  if (round === 'flop') return 'Flop'
-  if (round === 'turn') return 'Turn'
-  if (round === 'river') return 'River'
-  if (round === 'showdown') return 'Showdown'
-  return ''
+  if (round === "preflop") return "Pre-Flop"
+  if (round === "flop") return "Flop"
+  if (round === "turn") return "Turn"
+  if (round === "river") return "River"
+  if (round === "showdown") return "Showdown"
+  return ""
 })
 
 const statusClass = computed(() => {
-  if (props.gameState?.status === 'finished') return 'finished'
-  if (isMyTurn.value) return 'your-turn'
-  return ''
+  if (props.gameState?.status === "finished") return "finished"
+  if (isMyTurn.value) return "your-turn"
+  return ""
 })
 
 const winnerName = computed(() => {
-  if (!props.gameState?.winner) return '?'
+  if (!props.gameState?.winner) return "?"
   return playerName(props.gameState.winner)
 })
 
 const currentTurnName = computed(() => {
-  if (!props.gameState?.whose_turn) return '?'
+  if (!props.gameState?.whose_turn) return "?"
   return playerName(props.gameState.whose_turn)
 })
 
 function playerName(pid) {
-  const p = activePlayers.value.find(p => p.id === pid)
+  const p = activePlayers.value.find((p) => p.id === pid)
   return p?.name ?? pid
 }
 
@@ -598,8 +667,8 @@ function seatHue(idx) {
 }
 
 function formatChips(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
-  if (n >= 10000) return (n / 1000).toFixed(1) + 'K'
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M"
+  if (n >= 10000) return (n / 1000).toFixed(1) + "K"
   return n.toLocaleString()
 }
 
@@ -619,7 +688,7 @@ function getSeatPositions(total) {
   const positions = []
   for (let i = 0; i < total; i++) {
     // Start from bottom (Math.PI/2) and go clockwise
-    const angle = (Math.PI / 2) + (i / total) * 2 * Math.PI
+    const angle = Math.PI / 2 + (i / total) * 2 * Math.PI
     const rx = 46 // horizontal radius %
     const ry = 42 // vertical radius %
     const x = 50 + rx * Math.cos(angle)
@@ -633,46 +702,110 @@ function getBetPosition(idx, total) {
   // Place bets closer to center than the seat
   const positions = getSeatPositions(total)
   const pos = positions[idx]
-  const cx = 50, cy = 50
+  const cx = 50,
+    cy = 50
   const x = cx + (pos.x - cx) * 0.55
   const y = cy + (pos.y - cy) * 0.55
-  return { left: `${x}%`, top: `${y}%`, position: 'absolute', transform: 'translate(-50%, -50%)' }
+  return { left: `${x}%`, top: `${y}%`, position: "absolute", transform: "translate(-50%, -50%)" }
 }
 
 function suitSymbol(suit) {
-  return SUIT_SYMBOLS[suit] ?? suit?.[0]?.toUpperCase() ?? ''
+  return SUIT_SYMBOLS[suit] ?? suit?.[0]?.toUpperCase() ?? ""
 }
 
 function suitClass(suit) {
   return `suit-${suit}`
 }
 
-const FACE_SYMBOLS = { J: '\u265E', Q: '\u2655', K: '\u2654' }
+const FACE_SYMBOLS = { J: "\u265E", Q: "\u2655", K: "\u2654" }
 
 function pipCount(rank) {
   const n = parseInt(rank)
   if (!isNaN(n) && n >= 2 && n <= 10) return n
-  if (rank === 'A') return 1
+  if (rank === "A") return 1
   return 0 // face cards
 }
 
 function isFaceCard(rank) {
-  return rank === 'J' || rank === 'Q' || rank === 'K'
+  return rank === "J" || rank === "Q" || rank === "K"
 }
 
 // Pip positions as [top%, left%] percentages within the pip area
 // Based on standard playing card pip layouts
 const PIP_LAYOUTS = {
   1: [[50, 50]],
-  2: [[18, 50], [82, 50]],
-  3: [[18, 50], [50, 50], [82, 50]],
-  4: [[18, 28], [18, 72], [82, 28], [82, 72]],
-  5: [[18, 28], [18, 72], [50, 50], [82, 28], [82, 72]],
-  6: [[18, 28], [18, 72], [50, 28], [50, 72], [82, 28], [82, 72]],
-  7: [[18, 28], [18, 72], [34, 50], [50, 28], [50, 72], [82, 28], [82, 72]],
-  8: [[18, 28], [18, 72], [34, 50], [50, 28], [50, 72], [66, 50], [82, 28], [82, 72]],
-  9: [[18, 28], [18, 72], [38, 28], [38, 72], [50, 50], [62, 28], [62, 72], [82, 28], [82, 72]],
-  10: [[18, 28], [18, 72], [30, 50], [38, 28], [38, 72], [62, 28], [62, 72], [70, 50], [82, 28], [82, 72]],
+  2: [
+    [18, 50],
+    [82, 50],
+  ],
+  3: [
+    [18, 50],
+    [50, 50],
+    [82, 50],
+  ],
+  4: [
+    [18, 28],
+    [18, 72],
+    [82, 28],
+    [82, 72],
+  ],
+  5: [
+    [18, 28],
+    [18, 72],
+    [50, 50],
+    [82, 28],
+    [82, 72],
+  ],
+  6: [
+    [18, 28],
+    [18, 72],
+    [50, 28],
+    [50, 72],
+    [82, 28],
+    [82, 72],
+  ],
+  7: [
+    [18, 28],
+    [18, 72],
+    [34, 50],
+    [50, 28],
+    [50, 72],
+    [82, 28],
+    [82, 72],
+  ],
+  8: [
+    [18, 28],
+    [18, 72],
+    [34, 50],
+    [50, 28],
+    [50, 72],
+    [66, 50],
+    [82, 28],
+    [82, 72],
+  ],
+  9: [
+    [18, 28],
+    [18, 72],
+    [38, 28],
+    [38, 72],
+    [50, 50],
+    [62, 28],
+    [62, 72],
+    [82, 28],
+    [82, 72],
+  ],
+  10: [
+    [18, 28],
+    [18, 72],
+    [30, 50],
+    [38, 28],
+    [38, 72],
+    [62, 28],
+    [62, 72],
+    [70, 50],
+    [82, 28],
+    [82, 72],
+  ],
 }
 
 function pipPositions(rank) {
@@ -681,30 +814,30 @@ function pipPositions(rank) {
 }
 
 function formatTime(ts) {
-  if (!ts) return ''
+  if (!ts) return ""
   const d = new Date(ts)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
 function doAction(action) {
   showBetInput.value = false
   showRaiseInput.value = false
-  emit('action', action)
+  emit("action", action)
 }
 
 function submitBet() {
-  doAction({ type: 'bet', amount: betAmount.value })
+  doAction({ type: "bet", amount: betAmount.value })
 }
 
 function submitRaise() {
-  doAction({ type: 'raise', amount: raiseAmount.value })
+  doAction({ type: "raise", amount: raiseAmount.value })
 }
 
 function sendChatMessage() {
   const text = chatInput.value.trim()
   if (!text) return
-  emit('send-chat', text)
-  chatInput.value = ''
+  emit("send-chat", text)
+  chatInput.value = ""
 }
 
 function dismissShowdown() {
@@ -712,10 +845,13 @@ function dismissShowdown() {
 }
 
 // Reset bet/raise inputs when turn changes
-watch(() => props.gameState?.whose_turn, () => {
-  showBetInput.value = false
-  showRaiseInput.value = false
-})
+watch(
+  () => props.gameState?.whose_turn,
+  () => {
+    showBetInput.value = false
+    showRaiseInput.value = false
+  }
+)
 
 // Initialize bet amounts when it's our turn
 watch(isMyTurn, (isTurn) => {
@@ -750,25 +886,28 @@ defineExpose({
   onShowdown(data) {
     showdownData.value = data
     // Set persistent banner
-    const names = data.winners.map(wid => playerName(wid)).join(' & ')
+    const names = data.winners.map((wid) => playerName(wid)).join(" & ")
     winnerBanner.value = {
       names,
       pot: data.pot,
       hand: data.winning_hand,
     }
-  }
+  },
 })
 
 // Clear winner banner when a new hand starts (betting_round changes from showdown)
-watch(() => props.gameState?.betting_round, (round) => {
-  if (round && round !== 'showdown') {
-    winnerBanner.value = null
+watch(
+  () => props.gameState?.betting_round,
+  (round) => {
+    if (round && round !== "showdown") {
+      winnerBanner.value = null
+    }
   }
-})
+)
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@300;400;500;600&family=Fira+Code:wght@400;500&display=swap");
 
 /* ─── Design Tokens ─── */
 .poker-scene {
@@ -792,7 +931,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   --card-face: #f5f1e8;
   --card-shadow: rgba(0, 0, 0, 0.35);
 
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: "Outfit", system-ui, sans-serif;
   font-size: 15px;
   color: var(--text);
   background: var(--bg);
@@ -811,7 +950,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   align-items: center;
   padding: 0.5rem 1.25rem;
   background: var(--bg-raised);
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
   z-index: 10;
 }
@@ -823,7 +962,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .logo {
-  font-family: 'Cinzel', serif;
+  font-family: "Cinzel", serif;
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--gold);
@@ -831,10 +970,10 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .game-code {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
   color: var(--text-dim);
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.04);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   letter-spacing: 0.08em;
@@ -872,7 +1011,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .meta-value {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.9rem;
   color: var(--text);
 }
@@ -880,13 +1019,13 @@ watch(() => props.gameState?.betting_round, (round) => {
 .meta-divider {
   width: 1px;
   height: 24px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .chat-toggle {
   position: relative;
   background: none;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-dim);
   border-radius: 6px;
   padding: 0.35rem;
@@ -927,7 +1066,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   font-weight: 500;
   color: var(--text-dim);
   background: var(--bg-raised);
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   flex-shrink: 0;
   letter-spacing: 0.02em;
   transition: all 0.3s;
@@ -937,7 +1076,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   background: linear-gradient(90deg, var(--felt-dark), var(--felt), var(--felt-dark));
   color: #fff;
   font-weight: 600;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .turn-strip.finished {
@@ -970,7 +1109,12 @@ watch(() => props.gameState?.betting_round, (round) => {
   width: 100%;
   max-width: 800px;
   aspect-ratio: 16 / 9;
-  background: radial-gradient(ellipse 80% 70% at 50% 45%, var(--felt-light) 0%, var(--felt) 40%, var(--felt-dark) 100%);
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 45%,
+    var(--felt-light) 0%,
+    var(--felt) 40%,
+    var(--felt-dark) 100%
+  );
   border-radius: 50%;
   overflow: visible;
 }
@@ -990,9 +1134,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   inset: -8px;
   border-radius: 50%;
   border: 10px solid var(--rail);
-  box-shadow:
-    inset 0 2px 6px rgba(0,0,0,0.5),
-    0 2px 8px rgba(0,0,0,0.6),
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.6),
     inset 0 0 0 2px var(--rail-light);
   pointer-events: none;
   z-index: 1;
@@ -1023,21 +1165,21 @@ watch(() => props.gameState?.betting_round, (round) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   border: 2px solid hsl(var(--seat-hue), 55%, 50%);
   transition: all 0.3s;
 }
 
 .seat.is-you .avatar {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px var(--gold-dim), 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 2px var(--gold-dim), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .avatar-letter {
   font-weight: 700;
   font-size: 1rem;
   color: #fff;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .turn-ring {
@@ -1049,8 +1191,15 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 @keyframes pulse-ring {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }
 
 .dealer-btn {
@@ -1067,7 +1216,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   z-index: 6;
 }
 
@@ -1078,7 +1227,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   padding: 0.2rem 0.5rem;
   text-align: center;
   min-width: 60px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .player-name {
@@ -1097,21 +1246,23 @@ watch(() => props.gameState?.betting_round, (round) => {
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.7rem;
   color: var(--gold);
 }
 
-.chip-svg { flex-shrink: 0; }
+.chip-svg {
+  flex-shrink: 0;
+}
 
 .chip-dot {
   display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0,0,0,0.3);
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
 }
 
 .status-badge {
@@ -1125,7 +1276,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .status-badge.folded {
   color: #999;
-  background: rgba(100,100,100,0.3);
+  background: rgba(100, 100, 100, 0.3);
 }
 
 .status-badge.all-in {
@@ -1135,15 +1286,32 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 @keyframes all-in-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(200,50,50,0.4); }
-  50% { box-shadow: 0 0 8px 2px rgba(200,50,50,0.3); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 50, 50, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(200, 50, 50, 0.3);
+  }
 }
 
 /* ─── Chip denomination colors ─── */
-.chip-white { background: #e8e8e8; border-color: #bbb; }
-.chip-red { background: #cc3333; border-color: #991e1e; }
-.chip-blue { background: #2255cc; border-color: #193d99; }
-.chip-green { background: #22884e; border-color: #196638; }
+.chip-white {
+  background: #e8e8e8;
+  border-color: #bbb;
+}
+.chip-red {
+  background: #cc3333;
+  border-color: #991e1e;
+}
+.chip-blue {
+  background: #2255cc;
+  border-color: #193d99;
+}
+.chip-green {
+  background: #22884e;
+  border-color: #196638;
+}
 
 /* Bet chips on felt */
 .bet-on-felt {
@@ -1167,15 +1335,15 @@ watch(() => props.gameState?.betting_round, (round) => {
   width: 16px;
   height: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.3);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .bet-on-felt span {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.7rem;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* ─── Table Center ─── */
@@ -1216,8 +1384,8 @@ watch(() => props.gameState?.betting_round, (round) => {
   width: 18px;
   height: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.3);
-  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
 .pot-amount {
@@ -1227,11 +1395,11 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .pot-number {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--gold-bright);
-  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* ─── Cards ─── */
@@ -1250,8 +1418,14 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 @keyframes card-pop {
-  from { transform: scale(0.8) translateY(-8px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+  from {
+    transform: scale(0.8) translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 .playing-card {
@@ -1297,7 +1471,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .card-rank {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -1322,8 +1496,13 @@ watch(() => props.gameState?.betting_round, (round) => {
   opacity: 0.9;
 }
 
-.pips-1 .pip { font-size: 1.6rem; }
-.pips-2 .pip, .pips-3 .pip { font-size: 0.85rem; }
+.pips-1 .pip {
+  font-size: 1.6rem;
+}
+.pips-2 .pip,
+.pips-3 .pip {
+  font-size: 0.85rem;
+}
 
 .card-face-center {
   display: flex;
@@ -1357,7 +1536,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 }
 
 .card-back-pattern::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 4px;
   border: 1px solid rgba(201, 168, 76, 0.15);
@@ -1377,7 +1556,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 .bottom-dock {
   flex-shrink: 0;
   background: var(--bg-raised);
-  border-top: 1px solid rgba(255,255,255,0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0.5rem 1.25rem 0.75rem;
   display: flex;
   flex-direction: column;
@@ -1413,8 +1592,12 @@ watch(() => props.gameState?.betting_round, (round) => {
   font-size: 0.9rem;
 }
 
-.hole-card .pips-1 .pip { font-size: 1.8rem; }
-.hole-card .card-face-center { font-size: 2rem; }
+.hole-card .pips-1 .pip {
+  font-size: 1.8rem;
+}
+.hole-card .card-face-center {
+  font-size: 2rem;
+}
 
 /* ─── Action Buttons ─── */
 .action-dock {
@@ -1435,7 +1618,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-weight: 600;
   font-size: 0.95rem;
   transition: all 0.15s;
@@ -1446,9 +1629,11 @@ watch(() => props.gameState?.betting_round, (round) => {
   min-width: 78px;
 }
 
-.btn-label { font-size: 0.95rem; }
+.btn-label {
+  font-size: 0.95rem;
+}
 .btn-amount {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
   opacity: 0.8;
 }
@@ -1458,21 +1643,28 @@ watch(() => props.gameState?.betting_round, (round) => {
   color: #aaa;
   border: 1px solid #3a3a45;
 }
-.action-btn.fold:hover { background: #3a3a45; color: #ddd; }
+.action-btn.fold:hover {
+  background: #3a3a45;
+  color: #ddd;
+}
 
 .action-btn.check {
   background: #164e6e;
   color: #8ad8ff;
   border: 1px solid #1a6080;
 }
-.action-btn.check:hover { background: #1a6080; }
+.action-btn.check:hover {
+  background: #1a6080;
+}
 
 .action-btn.call {
   background: #1a5a32;
   color: #8affb0;
   border: 1px solid #1f7040;
 }
-.action-btn.call:hover { background: #1f7040; }
+.action-btn.call:hover {
+  background: #1f7040;
+}
 
 .action-btn.bet {
   background: #5a3800;
@@ -1480,7 +1672,9 @@ watch(() => props.gameState?.betting_round, (round) => {
   border: 1px solid #7a4e10;
 }
 .action-btn.bet:hover,
-.action-btn.bet.active { background: #7a4e10; }
+.action-btn.bet.active {
+  background: #7a4e10;
+}
 
 .action-btn.raise {
   background: #6a1a1a;
@@ -1488,24 +1682,26 @@ watch(() => props.gameState?.betting_round, (round) => {
   border: 1px solid #8a2a2a;
 }
 .action-btn.raise:hover,
-.action-btn.raise.active { background: #8a2a2a; }
+.action-btn.raise.active {
+  background: #8a2a2a;
+}
 
 .action-btn.allin {
   background: linear-gradient(135deg, #6a1a1a, #8a2a2a);
   color: #fff;
   border: 1px solid #aa3a3a;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .action-btn.allin:hover {
   background: linear-gradient(135deg, #7a2222, #9a3535);
-  box-shadow: 0 0 12px rgba(200,50,50,0.3);
+  box-shadow: 0 0 12px rgba(200, 50, 50, 0.3);
 }
 
 /* ─── Slider Panel ─── */
 .slider-panel {
   margin-top: 0.4rem;
   background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 0.6rem 0.8rem;
 }
@@ -1523,13 +1719,13 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .pill {
   flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-dim);
   padding: 0.25rem 0.3rem;
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.15s;
@@ -1538,7 +1734,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 .pill:hover {
   border-color: var(--gold-dim);
   color: var(--gold);
-  background: rgba(201,168,76,0.08);
+  background: rgba(201, 168, 76, 0.08);
 }
 
 .range-track {
@@ -1550,7 +1746,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   height: 4px;
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 2px;
   outline: none;
 }
@@ -1563,7 +1759,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   background: var(--gold);
   border: 2px solid var(--gold-bright);
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .slider-confirm {
@@ -1573,10 +1769,10 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .num-input {
   flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.85rem;
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
@@ -1595,7 +1791,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   padding: 0.35rem 0.8rem;
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-weight: 600;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -1643,12 +1839,24 @@ watch(() => props.gameState?.betting_round, (round) => {
   animation: dot-bounce 1.2s infinite;
 }
 
-.waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
-.waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+.waiting-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.waiting-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes dot-bounce {
-  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ─── Chat Drawer ─── */
@@ -1659,11 +1867,11 @@ watch(() => props.gameState?.betting_round, (round) => {
   bottom: 0;
   width: 300px;
   background: var(--bg-raised);
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   z-index: 50;
-  box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
 }
 
 .chat-header {
@@ -1671,7 +1879,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   font-weight: 600;
   font-size: 0.85rem;
   color: var(--gold);
@@ -1687,7 +1895,9 @@ watch(() => props.gameState?.betting_round, (round) => {
   line-height: 1;
 }
 
-.chat-close:hover { color: var(--text); }
+.chat-close:hover {
+  color: var(--text);
+}
 
 .chat-messages {
   flex: 1;
@@ -1698,7 +1908,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .chat-msg {
   padding: 0.3rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
   font-size: 0.78rem;
   display: flex;
   justify-content: space-between;
@@ -1718,7 +1928,7 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .chat-time {
   color: var(--text-muted);
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.6rem;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1736,23 +1946,27 @@ watch(() => props.gameState?.betting_round, (round) => {
   display: flex;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .chat-input-row input {
   flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-size: 0.8rem;
   outline: none;
 }
 
-.chat-input-row input::placeholder { color: var(--text-muted); }
-.chat-input-row input:focus { border-color: var(--gold-dim); }
+.chat-input-row input::placeholder {
+  color: var(--text-muted);
+}
+.chat-input-row input:focus {
+  border-color: var(--gold-dim);
+}
 
 .chat-input-row button {
   background: var(--gold-dim);
@@ -1766,8 +1980,13 @@ watch(() => props.gameState?.betting_round, (round) => {
   transition: background 0.15s;
 }
 
-.chat-input-row button:hover:not(:disabled) { background: var(--gold); }
-.chat-input-row button:disabled { opacity: 0.3; cursor: not-allowed; }
+.chat-input-row button:hover:not(:disabled) {
+  background: var(--gold);
+}
+.chat-input-row button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .drawer-enter-active,
 .drawer-leave-active {
@@ -1808,7 +2027,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   transform: translateX(-50%);
   width: 200%;
   height: 100%;
-  background: radial-gradient(ellipse at center, rgba(201,168,76,0.12) 0%, transparent 60%);
+  background: radial-gradient(ellipse at center, rgba(201, 168, 76, 0.12) 0%, transparent 60%);
   pointer-events: none;
 }
 
@@ -1822,12 +2041,12 @@ watch(() => props.gameState?.betting_round, (round) => {
   color: var(--gold);
   line-height: 1;
   margin-bottom: 0.25rem;
-  text-shadow: 0 0 20px rgba(201,168,76,0.4);
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.4);
   animation: crown-bob 1.5s ease-in-out infinite;
 }
 
 .showdown-title {
-  font-family: 'Cinzel', serif;
+  font-family: "Cinzel", serif;
   font-size: 1.6rem;
   font-weight: 700;
   color: #fff;
@@ -1847,7 +2066,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 1.3rem;
   color: var(--gold-bright);
   margin-bottom: 1rem;
@@ -1891,10 +2110,18 @@ watch(() => props.gameState?.betting_round, (round) => {
   font-size: 0.75rem;
 }
 
-.mini-card .card-rank { font-size: 0.6rem; }
-.mini-card .card-suit-small { font-size: 0.5rem; }
-.mini-card .card-pips { display: none; }
-.mini-card .card-face-center { display: none; }
+.mini-card .card-rank {
+  font-size: 0.6rem;
+}
+.mini-card .card-suit-small {
+  font-size: 0.5rem;
+}
+.mini-card .card-pips {
+  display: none;
+}
+.mini-card .card-face-center {
+  display: none;
+}
 
 .showdown-dismiss {
   background: var(--gold);
@@ -1902,7 +2129,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   border: none;
   padding: 0.6rem 2.5rem;
   border-radius: 8px;
-  font-family: 'Outfit', sans-serif;
+  font-family: "Outfit", sans-serif;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
@@ -1912,14 +2139,24 @@ watch(() => props.gameState?.betting_round, (round) => {
 
 .showdown-dismiss:hover {
   background: var(--gold-bright);
-  box-shadow: 0 0 16px rgba(201,168,76,0.3);
+  box-shadow: 0 0 16px rgba(201, 168, 76, 0.3);
 }
 
-.showdown-fade-enter-active { transition: all 0.3s ease; }
-.showdown-fade-leave-active { transition: all 0.2s ease; }
-.showdown-fade-enter-from { opacity: 0; }
-.showdown-fade-leave-to { opacity: 0; }
-.showdown-fade-enter-from .showdown-modal { transform: scale(0.9) translateY(20px); }
+.showdown-fade-enter-active {
+  transition: all 0.3s ease;
+}
+.showdown-fade-leave-active {
+  transition: all 0.2s ease;
+}
+.showdown-fade-enter-from {
+  opacity: 0;
+}
+.showdown-fade-leave-to {
+  opacity: 0;
+}
+.showdown-fade-enter-from .showdown-modal {
+  transform: scale(0.9) translateY(20px);
+}
 
 /* ─── Player Chip Stack (in front of active players) ─── */
 .player-chip-stack {
@@ -1939,8 +2176,8 @@ watch(() => props.gameState?.betting_round, (round) => {
   width: 12px;
   height: 3px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.25);
-  box-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
   margin-top: -1px;
 }
 
@@ -1963,14 +2200,19 @@ watch(() => props.gameState?.betting_round, (round) => {
 .winner-banner-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgba(201,168,76,0.15) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 50%, rgba(201, 168, 76, 0.15) 0%, transparent 70%);
   pointer-events: none;
   animation: banner-glow-pulse 2s ease-in-out infinite;
 }
 
 @keyframes banner-glow-pulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .winner-banner-content {
@@ -1985,13 +2227,18 @@ watch(() => props.gameState?.betting_round, (round) => {
 .winner-crown {
   font-size: 1.4rem;
   color: var(--gold);
-  text-shadow: 0 0 12px rgba(201,168,76,0.5);
+  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
   animation: crown-bob 1.5s ease-in-out infinite;
 }
 
 @keyframes crown-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
 }
 
 .winner-text {
@@ -2009,7 +2256,7 @@ watch(() => props.gameState?.betting_round, (round) => {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 1rem;
   font-weight: 600;
   color: var(--gold-bright);
@@ -2058,9 +2305,15 @@ watch(() => props.gameState?.betting_round, (round) => {
     height: 82px;
   }
 
-  .card-rank { font-size: 0.65rem; }
-  .pip { font-size: 0.55rem; }
-  .pips-1 .pip { font-size: 1.2rem; }
+  .card-rank {
+    font-size: 0.65rem;
+  }
+  .pip {
+    font-size: 0.55rem;
+  }
+  .pips-1 .pip {
+    font-size: 1.2rem;
+  }
 
   .action-btn {
     padding: 0.45rem 0.9rem;
@@ -2068,7 +2321,9 @@ watch(() => props.gameState?.betting_round, (round) => {
     min-width: 64px;
   }
 
-  .btn-label { font-size: 0.85rem; }
+  .btn-label {
+    font-size: 0.85rem;
+  }
 
   .chat-drawer {
     width: 260px;
@@ -2109,8 +2364,12 @@ watch(() => props.gameState?.betting_round, (round) => {
     gap: 0.4rem;
   }
 
-  .winner-text { font-size: 0.9rem; }
-  .winner-pot { font-size: 0.9rem; }
+  .winner-text {
+    font-size: 0.9rem;
+  }
+  .winner-pot {
+    font-size: 0.9rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2118,9 +2377,15 @@ watch(() => props.gameState?.betting_round, (round) => {
     padding: 0.35rem 0.75rem;
   }
 
-  .logo { font-size: 0.95rem; }
-  .meta-item { display: none; }
-  .meta-divider { display: none; }
+  .logo {
+    font-size: 0.95rem;
+  }
+  .meta-item {
+    display: none;
+  }
+  .meta-divider {
+    display: none;
+  }
 
   .felt-wrapper {
     padding: 0.5rem;
@@ -2146,10 +2411,18 @@ watch(() => props.gameState?.betting_round, (round) => {
     font-size: 0.8rem;
   }
 
-  .btn-label { font-size: 0.8rem; }
+  .btn-label {
+    font-size: 0.8rem;
+  }
 
-  .winner-text { font-size: 0.85rem; }
-  .winner-pot { font-size: 0.85rem; }
-  .winner-crown { font-size: 1.1rem; }
+  .winner-text {
+    font-size: 0.85rem;
+  }
+  .winner-pot {
+    font-size: 0.85rem;
+  }
+  .winner-crown {
+    font-size: 1.1rem;
+  }
 }
 </style>
