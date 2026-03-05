@@ -128,11 +128,19 @@ class AgentRunner:
                 )
             elif ptype == "wanderer":
                 agent = WandererAgent(
-                    player_id=pid, character=info["character"], cards=info["cards"]
+                    player_id=pid,
+                    character=info["character"],
+                    cards=info["cards"],
+                    redis_client=self.redis,
+                    game_id=game_id,
                 )
             else:
                 agent = RandomAgent(
-                    player_id=pid, character=info["character"], cards=info["cards"]
+                    player_id=pid,
+                    character=info["character"],
+                    cards=info["cards"],
+                    redis_client=self.redis,
+                    game_id=game_id,
                 )
 
             if ptype == "llm_agent":
