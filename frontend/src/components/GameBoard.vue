@@ -1331,6 +1331,27 @@ watch(
   color: #e8dcc8;
 }
 
+[data-theme="light"] .show-card-btn.card-suspect,
+[data-theme="vintage"] .show-card-btn.card-suspect {
+  background: rgba(155, 27, 48, 0.12);
+  color: #7a1525;
+  border: 1.5px solid rgba(155, 27, 48, 0.4);
+}
+
+[data-theme="light"] .show-card-btn.card-weapon,
+[data-theme="vintage"] .show-card-btn.card-weapon {
+  background: rgba(26, 58, 107, 0.12);
+  color: #1a3a6b;
+  border: 1.5px solid rgba(26, 58, 107, 0.4);
+}
+
+[data-theme="light"] .show-card-btn.card-room,
+[data-theme="vintage"] .show-card-btn.card-room {
+  background: rgba(26, 107, 60, 0.12);
+  color: #145430;
+  border: 1.5px solid rgba(26, 107, 60, 0.4);
+}
+
 /* Actions */
 .action-group {
   margin-bottom: 0.75rem;
@@ -1921,6 +1942,13 @@ watch(
   max-width: 90vw;
 }
 
+[data-theme="light"] .game-over-banner,
+[data-theme="vintage"] .game-over-banner {
+  background: linear-gradient(145deg, var(--bg-panel-solid) 0%, var(--bg-page) 100%);
+  border-color: var(--accent-border-hover);
+  box-shadow: 0 0 40px var(--accent-glow), 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
 .game-over-trophy {
   font-size: 3rem;
   animation: trophyBounce 0.6s ease 0.3s both;
@@ -1949,6 +1977,11 @@ watch(
   margin-bottom: 0.5rem;
 }
 
+[data-theme="light"] .game-over-winner,
+[data-theme="vintage"] .game-over-winner {
+  color: var(--text-primary);
+}
+
 .game-over-cards {
   display: flex;
   gap: 1.25rem;
@@ -1969,6 +2002,12 @@ watch(
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
+[data-theme="light"] .game-over-card,
+[data-theme="vintage"] .game-over-card {
+  background: var(--bg-panel-solid);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
 .game-over-card.card-suspect {
   border-color: rgba(155, 27, 48, 0.6);
   background: linear-gradient(145deg, rgba(155, 27, 48, 0.15), rgba(0, 0, 0, 0.3));
@@ -1982,6 +2021,24 @@ watch(
 .game-over-card.card-room {
   border-color: rgba(26, 107, 60, 0.6);
   background: linear-gradient(145deg, rgba(26, 107, 60, 0.15), rgba(0, 0, 0, 0.3));
+}
+
+[data-theme="light"] .game-over-card.card-suspect,
+[data-theme="vintage"] .game-over-card.card-suspect {
+  border-color: rgba(155, 27, 48, 0.5);
+  background: linear-gradient(145deg, rgba(155, 27, 48, 0.08), rgba(155, 27, 48, 0.04));
+}
+
+[data-theme="light"] .game-over-card.card-weapon,
+[data-theme="vintage"] .game-over-card.card-weapon {
+  border-color: rgba(26, 58, 107, 0.5);
+  background: linear-gradient(145deg, rgba(26, 58, 107, 0.1), rgba(26, 58, 107, 0.04));
+}
+
+[data-theme="light"] .game-over-card.card-room,
+[data-theme="vintage"] .game-over-card.card-room {
+  border-color: rgba(26, 107, 60, 0.5);
+  background: linear-gradient(145deg, rgba(26, 107, 60, 0.08), rgba(26, 107, 60, 0.04));
 }
 
 .game-over-card:nth-child(1) { animation: cardFlipIn 0.5s ease 0.3s both; }
@@ -2027,6 +2084,11 @@ watch(
   background: linear-gradient(135deg, rgba(40, 32, 20, 0.9), rgba(25, 18, 10, 0.9));
 }
 
+[data-theme="light"] .game-over-card-icon-fallback,
+[data-theme="vintage"] .game-over-card-icon-fallback {
+  background: linear-gradient(135deg, rgba(200, 190, 170, 0.5), rgba(220, 210, 190, 0.5));
+}
+
 .game-over-card-name {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 0.85rem;
@@ -2036,9 +2098,21 @@ watch(
   line-height: 1.2;
 }
 
+[data-theme="light"] .game-over-card-name,
+[data-theme="vintage"] .game-over-card-name {
+  color: var(--text-primary);
+}
+
 .game-over-card.card-suspect .game-over-card-name { color: #d4888a; }
 .game-over-card.card-weapon .game-over-card-name { color: #7aa8d4; }
 .game-over-card.card-room .game-over-card-name { color: #7ac89a; }
+
+[data-theme="light"] .game-over-card.card-suspect .game-over-card-name,
+[data-theme="vintage"] .game-over-card.card-suspect .game-over-card-name { color: #9b1b30; }
+[data-theme="light"] .game-over-card.card-weapon .game-over-card-name,
+[data-theme="vintage"] .game-over-card.card-weapon .game-over-card-name { color: #1a3a6b; }
+[data-theme="light"] .game-over-card.card-room .game-over-card-name,
+[data-theme="vintage"] .game-over-card.card-room .game-over-card-name { color: #1a6b3c; }
 
 .game-over-dismiss {
   margin-top: 0.75rem;

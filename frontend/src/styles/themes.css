@@ -97,6 +97,8 @@
   --poker-name: #eee;
   --poker-plate-bg: rgba(0, 0, 0, 0.65);
   --poker-shadow: rgba(0, 0, 0, 0.4);
+  --poker-card-back: #1a2540;
+  --poker-card-back-border: #2a3555;
 }
 
 /* ── Light theme ── */
@@ -192,6 +194,8 @@
   --poker-name: #2c2418;
   --poker-plate-bg: rgba(255, 255, 255, 0.85);
   --poker-shadow: rgba(0, 0, 0, 0.12);
+  --poker-card-back: #1e3a6e;
+  --poker-card-back-border: #2e4d8a;
 }
 
 /* ── Vintage theme (light-ish, parchment aesthetic) ── */
@@ -284,4 +288,6 @@
   --poker-name: #3a2810;
   --poker-plate-bg: rgba(240, 232, 212, 0.85);
   --poker-shadow: rgba(0, 0, 0, 0.15);
+  --poker-card-back: #4a1a10;
+  --poker-card-back-border: #6a2a18;
 }
