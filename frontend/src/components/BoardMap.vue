@@ -453,6 +453,7 @@ function tokenStyle(token) {
 
 .board-container {
   position: relative;
+  box-sizing: content-box;
   width: 100%;
   max-width: 690px;
   margin: 0 auto;
