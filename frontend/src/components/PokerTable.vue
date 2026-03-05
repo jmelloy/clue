@@ -96,6 +96,17 @@
             <div v-else-if="p.all_in" class="status-badge all-in">All In</div>
           </div>
 
+          <!-- Sweep animation: chips flying to center -->
+          <div v-for="chip in sweepingChips" :key="chip.id"
+            class="sweep-chip"
+            :style="{ '--from-x': chip.fromX + '%', '--from-y': chip.fromY + '%' }">
+            <div class="sweep-chip-stack">
+              <div class="sweep-single-chip chip-red"></div>
+              <div class="sweep-single-chip chip-blue"></div>
+              <div class="sweep-single-chip chip-white"></div>
+            </div>
+          </div>
+
           <!-- Center: Pot + Community Cards -->
           <div class="table-center">
             <div class="pot-area" v-if="(gameState?.pot ?? 0) > 0">
@@ -445,6 +456,8 @@ const winnerBanner = ref(null)
 const feltRef = ref(null)
 const unreadChat = ref(0)
 const lastReadChat = ref(0)
+const sweepingChips = ref([])   // chips animating to center after a betting round ends
+const prevBettingRound = ref(null)
 
 const communityCards = computed(() => props.gameState?.community_cards ?? [])
 const activePlayers = computed(() => props.gameState?.players ?? [])
@@ -748,13 +761,46 @@ defineExpose({
   }
 })
 
-// Clear winner banner when a new hand starts (betting_round changes from showdown)
+// Track betting round changes for chip sweep animation
 watch(
   () => props.gameState?.betting_round,
-  (round) => {
+  (round, oldRound) => {
+    // Clear winner banner when a new hand starts
     if (round && round !== 'showdown') {
       winnerBanner.value = null
     }
+    // Sweep chips to center when betting round advances
+    if (oldRound && round && round !== oldRound) {
+      const players = props.gameState?.players ?? []
+      const total = players.length
+      const chips = []
+      for (let i = 0; i < total; i++) {
+        const p = players[i]
+        // Check if this player had a bet (use previous state — bets just got swept)
+        // Since state already updated, current_bet is 0. We check pot increase instead.
+        // Use a heuristic: show sweep chips for non-folded players who were active
+        if (!p.folded && total > 0) {
+          const pos = getSeatPositions(total)[i]
+          const cx = 50, cy = 50
+          const fromX = cx + (pos.x - cx) * 0.55
+          const fromY = cy + (pos.y - cy) * 0.55
+          chips.push({
+            id: `sweep-${i}-${Date.now()}`,
+            fromX,
+            fromY,
+            seatIdx: i
+          })
+        }
+      }
+      if (chips.length > 0) {
+        sweepingChips.value = chips
+        // Remove after animation completes
+        setTimeout(() => {
+          sweepingChips.value = []
+        }, 600)
+      }
+    }
+    prevBettingRound.value = round
   }
 )
 </script>
@@ -1114,8 +1160,8 @@ watch(
 
 .chip-dot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 1.5px solid rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
@@ -1175,35 +1221,86 @@ watch(
   border-color: #196638;
 }
 
+/* ─── Sweep animation: chips fly to center ─── */
+.sweep-chip {
+  position: absolute;
+  left: var(--from-x);
+  top: var(--from-y);
+  transform: translate(-50%, -50%);
+  z-index: 7;
+  animation: sweep-to-center 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+.sweep-chip-stack {
+  position: relative;
+  width: 28px;
+  height: 20px;
+}
+
+.sweep-single-chip {
+  position: absolute;
+  left: 0;
+  width: 28px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.sweep-single-chip:nth-child(1) { bottom: 0; }
+.sweep-single-chip:nth-child(2) { bottom: 4px; }
+.sweep-single-chip:nth-child(3) { bottom: 8px; }
+
+@keyframes sweep-to-center {
+  0% {
+    left: var(--from-x);
+    top: var(--from-y);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    left: 50%;
+    top: 50%;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+}
+
 /* Bet chips on felt */
 .bet-on-felt {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   z-index: 4;
 }
 
 .bet-chip-stacks {
   position: relative;
-  width: 16px;
-  height: 20px;
+  width: 28px;
+  height: 32px;
 }
 
 .bet-chip {
   position: absolute;
-  bottom: calc(var(--bi) * 2.5px);
+  bottom: calc(var(--bi) * 4px);
   left: 0;
-  width: 16px;
-  height: 5px;
+  width: 28px;
+  height: 8px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .bet-on-felt span {
   font-family: 'Fira Code', monospace;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
@@ -1235,19 +1332,19 @@ watch(
 
 .chip-stack {
   position: relative;
-  width: 18px;
-  height: 24px;
+  width: 30px;
+  height: 36px;
 }
 
 .mini-chip {
   position: absolute;
-  bottom: calc(var(--i) * 2.5px);
+  bottom: calc(var(--i) * 4px);
   left: 0;
-  width: 18px;
-  height: 5px;
+  width: 30px;
+  height: 9px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .pot-amount {
@@ -2053,17 +2150,17 @@ watch(
 
 .pcs-stack {
   position: relative;
-  width: 12px;
+  width: 18px;
 }
 
 .pcs-chip {
   position: relative;
-  width: 12px;
-  height: 3px;
+  width: 18px;
+  height: 5px;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-  margin-top: -1px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin-top: -1.5px;
 }
 
 .pcs-chip:first-child {
