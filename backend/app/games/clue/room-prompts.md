@@ -92,7 +92,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 3:2
 
-> Colored pencil art. Atmospheric victorian Cluedo mansion — the Library. Top view from the bottom, nighttime, cold moonlight casting long shadows through bay windows on the left wall. Forest green and aged leather tones. Towering shelves packed with leather-bound volumes, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the window, scattered notes and a magnifying glass on a side table.
+> Colored pencil art. Atmospheric victorian Cluedo mansion — the Library. Top view from the bottom, nighttime, cold moonlight casting long shadows through bay windows on the left wall. Door on the right wall. Forest green and aged leather tones. Towering shelves packed with leather-bound volumes, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the window, scattered notes and a magnifying glass on a side table.
 
 ---
 
@@ -100,7 +100,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Smoky victorian Cluedo mansion — the Billiard Room. Top view from the bottom, nighttime, a sliver of moonlight through tall windows on the left wall. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game, cue rack on the wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, mounted trophy heads faintly visible on wood-paneled walls.
+> Colored pencil art. Smoky victorian Cluedo mansion — the Billiard Room. Top view from the bottom/south, nighttime, a sliver of moonlight through tall windows on the left wall. Door on the back wall on the left side. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game, cue rack on the wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, mounted trophy heads faintly visible on wood-paneled walls.
 
 ---
 
@@ -116,7 +116,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Lush victorian Cluedo mansion — the Conservatory. Top view from the bottom, nighttime, moonlight flooding through tall windows on the left wall and glass panes behind the camera. Warm sage green and terracotta tones. Potted palms and exotic ferns, a wrought-iron garden bench, stone tile floor with moss in the cracks, a watering can, scattered gardening tools, and a vine creeping along the window frame.
+> Colored pencil art. Lush victorian Cluedo mansion — the Conservatory. Top view from the bottom/south, nighttime, moonlight flooding through tall windows on the left wall and glass panes behind the camera. Door on the back wall on the right side. Warm sage green and terracotta tones. Potted palms and exotic ferns, a wrought-iron garden bench, stone tile floor with moss in the cracks, a watering can, scattered gardening tools, and a vine creeping along the window frame.
 
 ---
 

@@ -26,11 +26,11 @@
           'wanderer-token': token.type === 'wanderer',
           'weapon-token': token.isWeapon,
           'is-turn': token.id === gameState?.whose_turn,
-          'has-image': !!CARD_IMAGES[token.character]
+          'has-image': !token.isWeapon && !!CARD_IMAGES[token.character]
         }" :style="tokenStyle(token)">
-          <img v-if="CARD_IMAGES[token.character]" :src="CARD_IMAGES[token.character]" :alt="token.character"
+          <span v-if="token.isWeapon" class="weapon-emoji">{{ CARD_ICONS[token.name] || token.name.charAt(0) }}</span>
+          <img v-else-if="CARD_IMAGES[token.character]" :src="CARD_IMAGES[token.character]" :alt="token.character"
             class="token-portrait" />
-          <span v-else-if="token.isWeapon">{{ WEAPON_ABBR[token.name] || token.name.charAt(0) }}</span>
           <span v-else>{{ abbr(token.character) }}</span>
           <span class="token-tooltip">{{ token.isWeapon ? token.name : (token.type === 'wanderer' ? token.character : `${token.name} (${token.character})`) }}</span>
         </div>
@@ -43,23 +43,6 @@
 import { computed } from 'vue'
 import { CARD_IMAGES, CARD_ICONS, WEAPONS, abbr, characterColors } from '../constants/clue.js'
 
-const WEAPON_COLORS = {
-  Candlestick: { bg: '#c9a84c', text: '#1a1a2e' },
-  Knife: { bg: '#8a8a8a', text: '#fff' },
-  'Lead Pipe': { bg: '#5a6a7a', text: '#fff' },
-  Revolver: { bg: '#4a3a2a', text: '#fff' },
-  Rope: { bg: '#a0855a', text: '#1a1a2e' },
-  Wrench: { bg: '#6a6a6a', text: '#fff' }
-}
-
-const WEAPON_ABBR = {
-  Candlestick: 'Ca',
-  Knife: 'Kn',
-  'Lead Pipe': 'LP',
-  Revolver: 'Rv',
-  Rope: 'Ro',
-  Wrench: 'Wr'
-}
 
 // ── Board layout data (matches backend board.py) ──
 
@@ -524,14 +507,10 @@ function overlayPos(row, col) {
 
 function tokenStyle(token) {
   if (token.isWeapon) {
-    const colors = WEAPON_COLORS[token.name] ?? { bg: '#666', text: '#fff' }
     return {
       left: `${(token.col / 24) * 100}%`,
       top: `${(token.row / 25) * 100}%`,
-      transform: 'translate(-50%, -50%)',
-      backgroundColor: colors.bg,
-      color: colors.text,
-      '--token-border': colors.bg
+      transform: 'translate(-50%, -50%)'
     }
   }
   const { bg, text } = characterColors(token.character)
@@ -566,7 +545,7 @@ function tokenStyle(token) {
   aspect-ratio: 24 / 25;
   background: #1a1510;
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
   border: 4px solid #8b1a1a;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
@@ -825,7 +804,7 @@ function tokenStyle(token) {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.5);
   z-index: 10;
   transition: left 0.4s ease, top 0.4s ease;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .player-token.has-image {
@@ -842,6 +821,7 @@ function tokenStyle(token) {
   object-position: center 15%;
   border-radius: 50%;
   display: block;
+  clip-path: circle(50%);
 }
 
 .player-token.my-token {
@@ -863,21 +843,20 @@ function tokenStyle(token) {
 }
 
 .player-token.weapon-token {
-  width: clamp(16px, 2.8vw, 28px);
-  height: clamp(16px, 2.8vw, 28px);
+  width: clamp(20px, 3.2vw, 32px);
+  height: clamp(20px, 3.2vw, 32px);
   border-radius: 4px;
   z-index: 8;
   font-size: clamp(7px, 1.1vw, 10px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 0 1.5px rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 30, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
-.player-token.weapon-token.has-image {
-  border-radius: 4px;
-  border-width: 2px;
-}
-
-.player-token.weapon-token .token-portrait {
-  border-radius: 3px;
+.player-token.weapon-token .weapon-emoji {
+  font-size: clamp(12px, 2vw, 20px);
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
 .player-token.is-turn {
@@ -933,6 +912,10 @@ function tokenStyle(token) {
 
 .player-token {
   pointer-events: auto;
+}
+
+.player-token:hover {
+  z-index: 50;
 }
 
 .player-token:hover .token-tooltip {
