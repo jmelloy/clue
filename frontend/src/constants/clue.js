@@ -26,7 +26,7 @@ export const ROOMS = [
 export const CHARACTER_COLORS = {
   'Miss Scarlett': { bg: '#c0392b', text: '#fff' },
   'Colonel Mustard': { bg: '#e8b812', text: '#1a1a2e' },
-  'Mrs. White': { bg: '#e8e8e8', text: '#1a1a2e' },
+  'Mrs. White': { bg: '#e8e8e8', text: '#1a1a2e', name: '#9e9e9e' },
   'Reverend Green': { bg: '#1a9e3f', text: '#fff' },
   'Mrs. Peacock': { bg: '#1a5fb4', text: '#fff' },
   'Professor Plum': { bg: '#7b2d8e', text: '#fff' }

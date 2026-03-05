@@ -144,7 +144,7 @@ const filteredLog = computed(() => {
 function colorizeNames(text) {
   const entries = Object.entries(CHARACTER_COLORS).sort((a, b) => b[0].length - a[0].length)
   for (const [name, charColor] of entries) {
-    const color = charColor?.bg || charColor
+    const color = charColor?.name || charColor?.bg || charColor
     const esc = escapeHtml(name)
     if (text.includes(esc)) {
       text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
@@ -153,7 +153,7 @@ function colorizeNames(text) {
   for (const p of props.players) {
     const charColor = CHARACTER_COLORS[p.character]
     if (!charColor) continue
-    const color = charColor?.bg || charColor
+    const color = charColor?.name || charColor?.bg || charColor
     const esc = escapeHtml(p.name)
     if (text.includes(esc) && !text.includes(`">${esc}</span>`)) {
       text = text.replaceAll(esc, `<span style="color:${color};font-weight:bold">${esc}</span>`)
@@ -168,7 +168,7 @@ function formatMessageHtml(msg) {
   if (isPlayerChat(msg)) {
     const player = playerById.value[msg.player_id]
     const charColor = CHARACTER_COLORS[player.character]
-    const color = charColor?.bg || charColor
+    const color = charColor?.name || charColor?.bg || charColor
     if (color) {
       const nameLen = escapeHtml(player.name).length
       const name = escaped.substring(0, nameLen)

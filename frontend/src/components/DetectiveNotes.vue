@@ -119,7 +119,7 @@ watch(notes, () => emitNotesChanged(), { deep: true })
 function suspectStyle(card) {
   const state = notes[card] ?? ''
   if (state === 'have' || state === 'no' || state === 'seen') return {}
-  const color = CHARACTER_COLORS[card]?.bg
+  const color = CHARACTER_COLORS[card]?.name || CHARACTER_COLORS[card]?.bg
   if (!color) return {}
   // Default and 'maybe' states show the suspect's color
   return { color }
