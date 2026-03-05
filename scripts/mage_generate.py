@@ -406,9 +406,9 @@ async def main():
             # Select model once per model batch
             await select_model(page, model_name)
             await page.wait_for_timeout(500)
+            batch += 1
 
             for entry in prompts:
-                batch += 1
                 for run in range(1, count + 1):
                     gen_num += 1
                     print(
