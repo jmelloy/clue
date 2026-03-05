@@ -135,10 +135,10 @@ DOORS = {
 
 # Start positions (row, col)
 START_POSITIONS = {
-    "Scarlet": (24, 9),  # bottom, between Conservatory & Ballroom
+    "Scarlet": (0, 16),  # top, between Hall & Lounge
     "Mustard": (7, 23),  # right side
     "White": (24, 14),  # bottom, between Ballroom & Kitchen
-    "Green": (0, 16),  # top, between Hall & Lounge
+    "Green": (24, 9),  # bottom, between Conservatory & Ballroom
     "Plum": (5, 0),  # left side, between Study & Library
     "Peacock": (18, 0),  # left side, between Billiard & Conservatory
 }
