@@ -435,6 +435,65 @@ class TestActionBroadcasts:
             assert sugg[0]["room"] == "Kitchen"
 
     @pytest.mark.asyncio
+    async def test_suggestion_moving_suspect_broadcasts_current_room(self, http, redis):
+        """When a suggestion names a suspect played by another player, the
+        suggestion_made broadcast must include the updated current_room so the
+        frontend knows the moved player's new room (not just their position)."""
+        game_id = await _create_game(http)
+        pid1 = await _join_game(http, game_id, "Agent-1")
+        pid2 = await _join_game(http, game_id, "Agent-2")
+        # pid1 = Miss Scarlett (first turn), pid2 = Colonel Mustard
+        await _assign_characters(redis, game_id, {
+            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
+        })
+        ws1 = await _connect_mock_ws(game_id, pid1)
+        ws2 = await _connect_mock_ws(game_id, pid2)
+        state = await _start_game(http, game_id)
+        ws1.drain()
+        ws2.drain()
+
+        whose_turn = state["whose_turn"]
+        other_pid = pid2 if whose_turn == pid1 else pid1
+
+        # Place the suggesting player in the Kitchen
+        await _place_in_room(redis, game_id, whose_turn, "Kitchen")
+        # Place the other player in a different room (Dining Room)
+        game = ClueGame(game_id, redis)
+        gs = await game.get_state()
+        gs.current_room[other_pid] = "Dining Room"
+        gs.player_positions[other_pid] = list(ROOM_CENTERS["Dining Room"])
+        await game._save_state(gs)
+
+        ws1.drain()
+        ws2.drain()
+
+        # Suggest the other player's character — this should move them to Kitchen
+        other_character = "Colonel Mustard" if other_pid == pid2 else "Miss Scarlett"
+        await _submit_action(
+            http,
+            game_id,
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": other_character,
+                "weapon": WEAPONS[0],
+                "room": "Kitchen",
+            },
+        )
+
+        # Both players should see suggestion_made with current_room included
+        for ws in (ws1, ws2):
+            sugg = [m for m in ws.sent if m["type"] == "suggestion_made"]
+            assert len(sugg) >= 1
+            msg = sugg[0]
+            assert msg["moved_suspect_player"] == other_pid
+            # current_room must be present and show the moved player in Kitchen
+            assert msg.get("current_room") is not None, (
+                "suggestion_made must include current_room when a suspect is moved"
+            )
+            assert msg["current_room"][other_pid] == "Kitchen"
+
+    @pytest.mark.asyncio
     async def test_end_turn_broadcasts_game_state(self, http, redis):
         """Ending a turn broadcasts game_state with the next player's turn."""
         game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
