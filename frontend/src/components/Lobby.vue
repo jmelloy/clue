@@ -386,6 +386,7 @@
       <footer class="lobby-footer">
         <div class="footer-line"></div>
         <p>&ldquo;The truth is rarely pure and never simple.&rdquo;</p>
+        <a href="/admin" class="admin-link">Admin</a>
       </footer>
     </div>
   </div>
@@ -1392,6 +1393,21 @@ async function observeGame() {
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
+}
+
+.admin-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #5a5040;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+.admin-link:hover {
+  color: #d4a849;
 }
 
 /* === Hold'em Buy-in === */
