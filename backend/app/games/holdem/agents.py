@@ -29,6 +29,67 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Personality presets — classic poker archetypes
+# ---------------------------------------------------------------------------
+
+PERSONALITIES: dict[str, dict] = {
+    "Rock": {
+        "aggression": 0.15,
+        "tightness": 0.75,
+        "bluff_frequency": 0.03,
+        "slowplay_frequency": 0.05,
+        "chat_frequency": 0.15,
+    },
+    "Maniac": {
+        "aggression": 0.90,
+        "tightness": 0.10,
+        "bluff_frequency": 0.45,
+        "slowplay_frequency": 0.0,
+        "chat_frequency": 0.60,
+    },
+    "Shark": {
+        "aggression": 0.70,
+        "tightness": 0.55,
+        "bluff_frequency": 0.18,
+        "slowplay_frequency": 0.20,
+        "chat_frequency": 0.25,
+    },
+    "Fish": {
+        "aggression": 0.25,
+        "tightness": 0.20,
+        "bluff_frequency": 0.05,
+        "slowplay_frequency": 0.0,
+        "chat_frequency": 0.40,
+    },
+    "Nit": {
+        "aggression": 0.10,
+        "tightness": 0.90,
+        "bluff_frequency": 0.01,
+        "slowplay_frequency": 0.05,
+        "chat_frequency": 0.10,
+    },
+    "LAG": {
+        "aggression": 0.80,
+        "tightness": 0.25,
+        "bluff_frequency": 0.30,
+        "slowplay_frequency": 0.10,
+        "chat_frequency": 0.35,
+    },
+}
+
+PERSONALITY_NAMES = list(PERSONALITIES.keys())
+
+
+def get_personality(name: str | None = None) -> tuple[str, dict]:
+    """Return (personality_name, config_dict). Picks randomly if name is None."""
+    if name and name in PERSONALITIES:
+        return name, dict(PERSONALITIES[name])
+    return random.choice(PERSONALITY_NAMES), dict(
+        PERSONALITIES[random.choice(PERSONALITY_NAMES)]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Preflop hand strength — simple lookup for starting hand categories
 # ---------------------------------------------------------------------------
 
@@ -156,19 +217,22 @@ class HoldemAgent:
         bluff_frequency: float = 0.15,
         slowplay_frequency: float = 0.1,
         chat_frequency: float = 0.3,
+        personality: str | None = None,
     ):
         self.player_id = player_id
         self.name = name
+        self.personality = personality
         self.aggression = max(0.0, min(1.0, aggression))
         self.tightness = max(0.0, min(1.0, tightness))
         self.bluff_frequency = max(0.0, min(1.0, bluff_frequency))
         self.slowplay_frequency = max(0.0, min(1.0, slowplay_frequency))
         self.chat_frequency = max(0.0, min(1.0, chat_frequency))
         logger.info(
-            "[holdem_agent] Created agent %s (%s) aggression=%.2f tightness=%.2f "
-            "bluff=%.2f slowplay=%.2f chat=%.2f",
+            "[holdem_agent] Created agent %s (%s) personality=%s aggression=%.2f "
+            "tightness=%.2f bluff=%.2f slowplay=%.2f chat=%.2f",
             player_id,
             name,
+            personality or "default",
             self.aggression,
             self.tightness,
             self.bluff_frequency,
@@ -347,42 +411,80 @@ class HoldemAgent:
         return amount
 
     def generate_chat(self, action_type: str, **kwargs) -> str | None:
-        """Occasionally generate a chat message after an action."""
+        """Occasionally generate a personality-flavored chat message."""
         if random.random() > self.chat_frequency:
             return None
 
-        messages = {
-            "fold": [
-                "Not my hand.",
-                "I'll sit this one out.",
-                "Too rich for my blood.",
-            ],
-            "check": [
-                "Check.",
-                "I'll check here.",
-                "Let's see what comes.",
-            ],
-            "call": [
-                "I'll call.",
-                "I'm in.",
-                "Let's see the next card.",
-            ],
-            "bet": [
-                "Putting some chips out there.",
-                "Let's make it interesting.",
-                "I like what I see.",
-            ],
-            "raise": [
-                "Raising it up.",
-                "Let's go bigger.",
-                "I think I've got something here.",
-            ],
-            "all_in": [
-                "All in!",
-                "Going for it all!",
-                "Let's gamble!",
-            ],
-        }
+        options = _PERSONALITY_CHAT.get(
+            self.personality, _DEFAULT_CHAT
+        ).get(action_type)
 
-        options = messages.get(action_type, ["Hmm..."])
+        if not options:
+            options = _DEFAULT_CHAT.get(action_type, ["Hmm..."])
+
         return random.choice(options)
+
+
+# ---------------------------------------------------------------------------
+# Per-personality chat lines
+# ---------------------------------------------------------------------------
+
+_DEFAULT_CHAT: dict[str, list[str]] = {
+    "fold": ["Not my hand.", "I'll sit this one out.", "Too rich for my blood."],
+    "check": ["Check.", "I'll check here.", "Let's see what comes."],
+    "call": ["I'll call.", "I'm in.", "Let's see the next card."],
+    "bet": ["Putting some chips out there.", "Let's make it interesting.", "I like what I see."],
+    "raise": ["Raising it up.", "Let's go bigger.", "I think I've got something here."],
+    "all_in": ["All in!", "Going for it all!", "Let's gamble!"],
+}
+
+_PERSONALITY_CHAT: dict[str, dict[str, list[str]]] = {
+    "Rock": {
+        "fold": ["I'll wait for a better spot.", "Patience pays.", "Not worth the risk."],
+        "check": ["Check.", "No need to rush."],
+        "call": ["I'll see it.", "Alright, I'll call."],
+        "bet": ["I've got something here.", "Time to value bet."],
+        "raise": ["Premium hand. Raising.", "You're going to pay for that."],
+        "all_in": ["I've got the goods. All in.", "Nuts. All in."],
+    },
+    "Maniac": {
+        "fold": ["Fine, FINE. I fold.", "You got lucky.", "Whatever."],
+        "check": ["Check… for now.", "I'm setting a trap!"],
+        "call": ["Yeah yeah, I call.", "Can't scare me off."],
+        "bet": ["BOOM! Bet!", "Let's gooo!", "Chips go in!"],
+        "raise": ["RAISE! Let's party!", "You can't handle this!", "Scared yet?"],
+        "all_in": ["ALL IN BABY!", "YOLO!", "Ship it! ALL IN!"],
+    },
+    "Shark": {
+        "fold": ["Not this time.", "I'll pick a better spot."],
+        "check": ["Check.", "Let's see the next card."],
+        "call": ["Pot odds say call.", "I'll call."],
+        "bet": ["Betting for value.", "Let's build the pot."],
+        "raise": ["Raising.", "I like my equity here."],
+        "all_in": ["All in. Your move.", "I'm putting you to the test."],
+    },
+    "Fish": {
+        "fold": ["Aww, okay.", "I guess I'll fold…", "This game is hard."],
+        "check": ["Check!", "I'll check, I guess?"],
+        "call": ["Ooh, I'll call!", "I wanna see!", "Sounds fun, call!"],
+        "bet": ["Let me try betting!", "I'll put some in.", "Bet!"],
+        "raise": ["Raise! Is that right?", "More chips!", "I'm raising!"],
+        "all_in": ["All in! Wheee!", "I'm going for it!", "All my chips!"],
+    },
+    "Nit": {
+        "fold": ["Fold.", "Easy fold.", "Not even close."],
+        "check": ["Check.", "Checking."],
+        "call": ["…Fine. Call.", "I suppose I'll call."],
+        "bet": ["Betting.", "I have a strong hand."],
+        "raise": ["Raise. I have it.", "Big hand. Raising."],
+        "all_in": ["I have the nuts. All in.", "All in."],
+    },
+    "LAG": {
+        "fold": ["Alright, you got me.", "Nice hand.", "I'll let this one go."],
+        "check": ["Check. For now.", "Trapping…"],
+        "call": ["Call. Let's dance.", "I'm not going anywhere."],
+        "bet": ["Bet. Put up or shut up.", "Applying pressure.", "Let's go."],
+        "raise": ["Raise! Keep up.", "Re-raise. Your move.", "Putting you to the test."],
+        "all_in": ["All in. Do you have it?", "Shove. Call me if you dare."],
+    },
+}

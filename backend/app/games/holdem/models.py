@@ -357,11 +357,12 @@ class HoldemChatMessagesResponse(BaseModel):
 
 class HoldemAddAgentRequest(BaseModel):
     name: str = ""
-    aggression: float = 0.5
-    tightness: float = 0.5
-    bluff_frequency: float = 0.15
-    slowplay_frequency: float = 0.1
-    chat_frequency: float = 0.3
+    personality: str = ""
+    aggression: float | None = None
+    tightness: float | None = None
+    bluff_frequency: float | None = None
+    slowplay_frequency: float | None = None
+    chat_frequency: float | None = None
 
 
 class OkResponse(BaseModel):
