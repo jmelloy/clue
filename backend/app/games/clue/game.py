@@ -681,6 +681,14 @@ class ClueGame:
         if room not in ROOMS:
             raise ValueError(f"Invalid room: {room}")
 
+        # Rule: you must be in the room you are suggesting
+        current_room = state.current_room.get(player_id)
+        if current_room != room:
+            raise ValueError(
+                f"You must be in the room you are suggesting "
+                f"(you are in {current_room!r}, suggested {room!r})"
+            )
+
         players = state.players
         # Find who shows a card (ask players in turn, starting after suggesting player)
         idx = next(i for i, p in enumerate(players) if p.id == player_id)
