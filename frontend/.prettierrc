@@ -4,5 +4,13 @@
   "trailingComma": "none",
   "printWidth": 100,
   "tabWidth": 2,
-  "vueIndentScriptAndStyle": true
+  "vueIndentScriptAndStyle": true,
+  "overrides": [
+    {
+      "files": ["*.js", "*.ts", "*.jsx", "*.tsx", "*.mjs", "*.cjs"],
+      "options": {
+        "parser": "babel-ts"
+      }
+    }
+  ]
 }

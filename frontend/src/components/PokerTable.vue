@@ -224,17 +224,13 @@
               <span class="btn-amount">{{ formatChips(amountToCall) }}</span>
             </button>
 
-            <button v-if="canBet" class="action-btn bet" @click="
-              showBetInput = !showBetInput
-            showRaiseInput = false
-              " :class="{ active: showBetInput }">
+            <button v-if="canBet" class="action-btn bet" @click="showBetInput = !showBetInput; showRaiseInput = false"
+              :class="{ active: showBetInput }">
               <span class="btn-label">Bet</span>
             </button>
 
-            <button v-if="canRaise" class="action-btn raise" @click="
-              showRaiseInput = !showRaiseInput
-            showBetInput = false
-              " :class="{ active: showRaiseInput }">
+            <button v-if="canRaise" class="action-btn raise"
+              @click="showRaiseInput = !showRaiseInput; showBetInput = false" :class="{ active: showRaiseInput }">
               <span class="btn-label">Raise</span>
             </button>
 
