@@ -53,6 +53,8 @@
   --board-wall: #2a2a1e;
   --board-center: #3a2e1e;
   --board-room-filter: saturate(0.35) brightness(0.9);
+  --mansion-edge: rgba(180, 150, 80, 0.6);
+  --mansion-glow: rgba(180, 150, 80, 0.15);
 
   /* Board overlay text */
   --board-label-color: #f0e0b0;
@@ -72,6 +74,29 @@
 
   /* Vintage board overlay — hidden in dark */
   --board-image-opacity: 0;
+
+  /* Lobby ambient */
+  --lobby-glow-1: rgba(180, 140, 60, 0.12);
+  --lobby-glow-2: rgba(100, 50, 50, 0.08);
+
+  /* Poker chrome (UI around the felt table) */
+  --poker-chrome: #080c12;
+  --poker-chrome-raised: #0e1420;
+  --poker-chrome-alt: #141c28;
+  --poker-border: rgba(255, 255, 255, 0.06);
+  --poker-border-strong: rgba(255, 255, 255, 0.1);
+  --poker-hover: rgba(255, 255, 255, 0.04);
+  --poker-input-bg: rgba(255, 255, 255, 0.04);
+  --poker-input-border: rgba(255, 255, 255, 0.08);
+  --poker-gold: #c9a84c;
+  --poker-gold-bright: #e8c85a;
+  --poker-gold-dim: #8b7635;
+  --poker-text: #e4ded4;
+  --poker-text-dim: #6b7280;
+  --poker-text-muted: #3d4452;
+  --poker-name: #eee;
+  --poker-plate-bg: rgba(0, 0, 0, 0.65);
+  --poker-shadow: rgba(0, 0, 0, 0.4);
 }
 
 /* ── Light theme ── */
@@ -123,6 +148,8 @@
   --board-wall: #c8c0b0;
   --board-center: #d0c8b0;
   --board-room-filter: saturate(0.5) brightness(1.1);
+  --mansion-edge: rgba(100, 70, 30, 0.45);
+  --mansion-glow: rgba(100, 70, 30, 0.08);
 
   /* Board overlay text */
   --board-label-color: #3a3020;
@@ -142,6 +169,29 @@
 
   /* Vintage board overlay — hidden in light */
   --board-image-opacity: 0;
+
+  /* Lobby ambient */
+  --lobby-glow-1: rgba(180, 140, 60, 0.08);
+  --lobby-glow-2: rgba(60, 100, 160, 0.06);
+
+  /* Poker chrome */
+  --poker-chrome: #f0ebe3;
+  --poker-chrome-raised: #faf7f2;
+  --poker-chrome-alt: #f0ebe3;
+  --poker-border: rgba(0, 0, 0, 0.08);
+  --poker-border-strong: rgba(0, 0, 0, 0.15);
+  --poker-hover: rgba(0, 0, 0, 0.04);
+  --poker-input-bg: rgba(0, 0, 0, 0.04);
+  --poker-input-border: rgba(0, 0, 0, 0.12);
+  --poker-gold: #9a7228;
+  --poker-gold-bright: #b88a30;
+  --poker-gold-dim: #7a5a18;
+  --poker-text: #2c2418;
+  --poker-text-dim: #6a5d4d;
+  --poker-text-muted: #b0a490;
+  --poker-name: #2c2418;
+  --poker-plate-bg: rgba(255, 255, 255, 0.85);
+  --poker-shadow: rgba(0, 0, 0, 0.12);
 }
 
 /* ── Vintage theme (light-ish, parchment aesthetic) ── */
@@ -193,6 +243,8 @@
   --board-wall: transparent;
   --board-center: transparent;
   --board-room-filter: none;
+  --mansion-edge: transparent;
+  --mansion-glow: transparent;
 
   /* Board overlay text — dark on light board */
   --board-label-color: #3a2810;
@@ -209,4 +261,27 @@
   --fog-color-1: #c89838;
   --fog-color-2: #8b2a2a;
   --vignette-color: #f0e8d4;
+
+  /* Lobby ambient */
+  --lobby-glow-1: rgba(160, 120, 40, 0.1);
+  --lobby-glow-2: rgba(139, 32, 32, 0.06);
+
+  /* Poker chrome */
+  --poker-chrome: #ede5d0;
+  --poker-chrome-raised: #f5edd8;
+  --poker-chrome-alt: #ebe3cc;
+  --poker-border: rgba(80, 50, 20, 0.1);
+  --poker-border-strong: rgba(80, 50, 20, 0.18);
+  --poker-hover: rgba(80, 50, 20, 0.05);
+  --poker-input-bg: rgba(80, 50, 20, 0.05);
+  --poker-input-border: rgba(80, 50, 20, 0.15);
+  --poker-gold: #8b6020;
+  --poker-gold-bright: #a87828;
+  --poker-gold-dim: #6a4810;
+  --poker-text: #3a2810;
+  --poker-text-dim: #6a5535;
+  --poker-text-muted: #b0a080;
+  --poker-name: #3a2810;
+  --poker-plate-bg: rgba(240, 232, 212, 0.85);
+  --poker-shadow: rgba(0, 0, 0, 0.15);
 }

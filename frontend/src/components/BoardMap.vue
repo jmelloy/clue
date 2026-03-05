@@ -182,6 +182,29 @@ for (const room of Object.values(ROOM_INFO)) {
 
 // ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
 
+// First pass: determine cell types in a 2D grid for neighbor lookups
+const GRID_TYPES = []
+for (let r = 0; r < 25; r++) {
+  const line = (BOARD_ROWS[r] || '').padEnd(24)
+  const row = []
+  for (let c = 0; c < 24; c++) {
+    const key = `${r},${c}`
+    const ch = line[c]
+    const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
+    if (DOORS[key] || ROOM_KEY_MAP[ch] || ch === '.' || isCenter) {
+      row.push('usable')
+    } else {
+      row.push('wall')
+    }
+  }
+  GRID_TYPES.push(row)
+}
+
+function isWallOrEdge(r, c) {
+  if (r < 0 || r >= 25 || c < 0 || c >= 24) return true
+  return GRID_TYPES[r][c] === 'wall'
+}
+
 const CELL_DATA = []
 for (let r = 0; r < 25; r++) {
   const line = (BOARD_ROWS[r] || '').padEnd(24)
@@ -191,27 +214,57 @@ for (let r = 0; r < 25; r++) {
     const doorRoom = DOORS[key]
     const startChar = STARTS[key]
 
+    // Compute exposed edges for usable cells
+    const edges = {
+      top: isWallOrEdge(r - 1, c),
+      right: isWallOrEdge(r, c + 1),
+      bottom: isWallOrEdge(r + 1, c),
+      left: isWallOrEdge(r, c - 1)
+    }
+
     if (doorRoom) {
       CELL_DATA.push({
         row: r,
         col: c,
         type: 'door',
         room: doorRoom,
-        doorDir: DOOR_DIRECTIONS[key]
+        doorDir: DOOR_DIRECTIONS[key],
+        edges
       })
     } else if (ROOM_KEY_MAP[ch]) {
-      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch] })
+      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch], edges })
     } else if (ch === '.') {
       CELL_DATA.push({
         row: r,
         col: c,
         type: startChar ? 'start' : 'hallway',
         room: null,
-        startChar
+        startChar,
+        edges
       })
     } else {
       const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
-      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null, isCenter })
+      // Garden cells: non-center walls near usable cells (direct or diagonal neighbors)
+      let gardenRing = 0
+      if (!isCenter) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue
+            if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 1; break }
+          }
+          if (gardenRing) break
+        }
+        // Second ring: within 2 cells of usable space
+        if (!gardenRing) {
+          outer: for (let dr = -2; dr <= 2; dr++) {
+            for (let dc = -2; dc <= 2; dc++) {
+              if (dr === 0 && dc === 0) continue
+              if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 2; break outer }
+            }
+          }
+        }
+      }
+      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null, isCenter, gardenRing, edges })
     }
   }
 }
@@ -438,6 +491,16 @@ const playerTokens = computed(() => {
 function cellClasses(cell) {
   const cls = ['cell', `cell-${cell.type}`]
   if (cell.isCenter) cls.push('cell-center')
+  if (cell.gardenRing === 1) cls.push('cell-garden')
+  else if (cell.gardenRing === 2) cls.push('cell-garden-far')
+  if (cell.startChar) cls.push('cell-start-' + cell.startChar.toLowerCase())
+  // Add edge classes for mansion border (usable cells + center)
+  if ((cell.type !== 'wall' || cell.isCenter) && cell.edges) {
+    if (cell.edges.top) cls.push('edge-top')
+    if (cell.edges.right) cls.push('edge-right')
+    if (cell.edges.bottom) cls.push('edge-bottom')
+    if (cell.edges.left) cls.push('edge-left')
+  }
   if (cell.room) {
     if (props.selectable) cls.push('clickable')
     if (props.selectedRoom === cell.room) cls.push('selected')
@@ -550,11 +613,9 @@ function tokenStyle(token) {
   max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: var(--board-bg);
+  background: transparent;
   border-radius: 6px;
   overflow: hidden;
-  border: 4px solid var(--board-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
 
 /* Vintage theme: full board image (PNG with transparent edges) as background.
@@ -594,10 +655,7 @@ function tokenStyle(token) {
   inset: 0;
   gap: 0;
   z-index: 1;
-  background: var(--board-bg);
-  background-image: linear-gradient(to right, var(--board-grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--board-grid-line) 1px, transparent 1px);
-  background-size: calc(100% / 24) 100%, 100% calc(100% / 25);
+  background: transparent;
 }
 
 /* In vintage mode, make the grid transparent so the board image shows through,
@@ -718,11 +776,77 @@ function tokenStyle(token) {
 }
 
 .cell-wall {
-  background: var(--board-wall);
+  background: transparent;
 }
 
-[data-theme="vintage"] .cell-wall {
+/* Garden cells — greenery/shrubs around the mansion exterior */
+.cell-garden {
+  background:
+    radial-gradient(ellipse 80% 70% at 20% 30%, rgba(30, 70, 20, 0.5) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 80% at 75% 65%, rgba(25, 65, 18, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 50% 15%, rgba(40, 85, 30, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 85% 25%, rgba(20, 55, 15, 0.4) 0%, transparent 45%),
+    radial-gradient(circle at 40% 70%, rgba(35, 80, 25, 0.3) 0%, transparent 40%);
+}
+
+.cell-garden-far {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(25, 60, 18, 0.2) 0%, transparent 70%),
+    radial-gradient(circle at 30% 40%, rgba(20, 50, 15, 0.15) 0%, transparent 50%);
+}
+
+[data-theme="light"] .cell-garden {
+  background:
+    radial-gradient(ellipse 80% 70% at 20% 30%, rgba(40, 100, 30, 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 80% at 75% 65%, rgba(35, 90, 25, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 50% 15%, rgba(50, 110, 40, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 85% 25%, rgba(30, 80, 22, 0.25) 0%, transparent 45%),
+    radial-gradient(circle at 40% 70%, rgba(45, 105, 35, 0.18) 0%, transparent 40%);
+}
+
+[data-theme="light"] .cell-garden-far {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, rgba(35, 85, 25, 0.12) 0%, transparent 70%),
+    radial-gradient(circle at 30% 40%, rgba(30, 75, 22, 0.08) 0%, transparent 50%);
+}
+
+[data-theme="vintage"] .cell-garden,
+[data-theme="vintage"] .cell-garden-far {
   background: transparent;
+}
+
+/* ── Starting position color splashes ── */
+.cell-start-scarlet { background: radial-gradient(circle, rgba(192, 57, 43, 0.4) 0%, rgba(192, 57, 43, 0.15) 50%, var(--board-hallway) 85%); }
+.cell-start-mustard { background: radial-gradient(circle, rgba(232, 184, 18, 0.4) 0%, rgba(232, 184, 18, 0.15) 50%, var(--board-hallway) 85%); }
+.cell-start-white { background: radial-gradient(circle, rgba(220, 220, 220, 0.45) 0%, rgba(200, 200, 200, 0.15) 50%, var(--board-hallway) 85%); }
+.cell-start-green { background: radial-gradient(circle, rgba(26, 158, 63, 0.4) 0%, rgba(26, 158, 63, 0.15) 50%, var(--board-hallway) 85%); }
+.cell-start-peacock { background: radial-gradient(circle, rgba(26, 95, 180, 0.4) 0%, rgba(26, 95, 180, 0.15) 50%, var(--board-hallway) 85%); }
+.cell-start-plum { background: radial-gradient(circle, rgba(123, 45, 142, 0.4) 0%, rgba(123, 45, 142, 0.15) 50%, var(--board-hallway) 85%); }
+
+.cell-start-scarlet::after { background: rgba(192, 57, 43, 0.5); box-shadow: 0 0 3px rgba(192, 57, 43, 0.6); }
+.cell-start-mustard::after { background: rgba(232, 184, 18, 0.5); box-shadow: 0 0 3px rgba(232, 184, 18, 0.6); }
+.cell-start-white::after { background: rgba(220, 220, 220, 0.55); box-shadow: 0 0 3px rgba(200, 200, 200, 0.5); }
+.cell-start-green::after { background: rgba(26, 158, 63, 0.5); box-shadow: 0 0 3px rgba(26, 158, 63, 0.6); }
+.cell-start-peacock::after { background: rgba(26, 95, 180, 0.5); box-shadow: 0 0 3px rgba(26, 95, 180, 0.6); }
+.cell-start-plum::after { background: rgba(123, 45, 142, 0.5); box-shadow: 0 0 3px rgba(123, 45, 142, 0.6); }
+
+[data-theme="vintage"] .cell-start-scarlet,
+[data-theme="vintage"] .cell-start-mustard,
+[data-theme="vintage"] .cell-start-white,
+[data-theme="vintage"] .cell-start-green,
+[data-theme="vintage"] .cell-start-peacock,
+[data-theme="vintage"] .cell-start-plum {
+  background: transparent;
+}
+
+[data-theme="vintage"] .cell-start-scarlet::after,
+[data-theme="vintage"] .cell-start-mustard::after,
+[data-theme="vintage"] .cell-start-white::after,
+[data-theme="vintage"] .cell-start-green::after,
+[data-theme="vintage"] .cell-start-peacock::after,
+[data-theme="vintage"] .cell-start-plum::after {
+  background: transparent;
+  box-shadow: none;
 }
 
 /* Center dead space (staircase area) */
@@ -734,6 +858,46 @@ function tokenStyle(token) {
 [data-theme="vintage"] .cell-wall.cell-center {
   background: transparent;
   border-color: transparent;
+}
+
+/* ── Mansion edge borders (rendered via ::before to sit on top of room images,
+      ::after is reserved for door direction indicators) ── */
+.edge-top,
+.edge-right,
+.edge-bottom,
+.edge-left {
+  position: relative;
+}
+
+.edge-top::before,
+.edge-right::before,
+.edge-bottom::before,
+.edge-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border: 0 solid var(--mansion-edge);
+}
+
+.edge-top::before { border-top-width: 3px; box-shadow: 0 -4px 8px var(--mansion-glow); }
+.edge-right::before { border-right-width: 3px; box-shadow: 4px 0 8px var(--mansion-glow); }
+.edge-bottom::before { border-bottom-width: 3px; box-shadow: 0 4px 8px var(--mansion-glow); }
+.edge-left::before { border-left-width: 3px; box-shadow: -4px 0 8px var(--mansion-glow); }
+
+/* Corner cells — combine shadows */
+.edge-top.edge-left::before { border-top-width: 3px; border-left-width: 3px; box-shadow: 0 -4px 8px var(--mansion-glow), -4px 0 8px var(--mansion-glow); }
+.edge-top.edge-right::before { border-top-width: 3px; border-right-width: 3px; box-shadow: 0 -4px 8px var(--mansion-glow), 4px 0 8px var(--mansion-glow); }
+.edge-bottom.edge-left::before { border-bottom-width: 3px; border-left-width: 3px; box-shadow: 0 4px 8px var(--mansion-glow), -4px 0 8px var(--mansion-glow); }
+.edge-bottom.edge-right::before { border-bottom-width: 3px; border-right-width: 3px; box-shadow: 0 4px 8px var(--mansion-glow), 4px 0 8px var(--mansion-glow); }
+
+[data-theme="vintage"] .edge-top::before,
+[data-theme="vintage"] .edge-right::before,
+[data-theme="vintage"] .edge-bottom::before,
+[data-theme="vintage"] .edge-left::before {
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* ── Interactive states ── */
