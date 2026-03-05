@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "frontend/public/images/**"
-    branches: [main]
+    
 
 concurrency:
   group: resize-images
