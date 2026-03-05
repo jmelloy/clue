@@ -557,17 +557,20 @@ function tokenStyle(token) {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
 
-/* Vintage theme: full board image as background, cropped to align grid.
-   The source image is 1440x1440 (square) with a green border.
-   Our grid is 24 cols x 25 rows (aspect-ratio 24/25, nearly square).
-   We scale past the green border and nudge so the 4 heavy red
-   corner rooms (Study, Lounge, Conservatory, Kitchen) land on the
-   grid corners. */
+/* Vintage theme: full board image (PNG with transparent edges) as background.
+   The board image is 1440x1440 (square). The playable 24x25 grid sits inside
+   the decorative red border. We show the full image and position the CSS grid
+   over just the playable area using inset values on .board-grid. */
 .board-container.vintage-board {
-  background-image: url('/images/clue/board.jpg');
-  background-size: 119% 117%;
-  background-position: 48% 47%;
+  background-image: url('/images/clue/board.png');
+  background-size: 100% 100%;
+  background-position: center;
   background-repeat: no-repeat;
+  border: none;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  background-color: transparent;
+  /* Override aspect ratio to match the square image with decorative border */
+  aspect-ratio: 1 / 1;
 }
 
 /* Hide overlay labels in vintage — the board image has its own */
@@ -597,10 +600,29 @@ function tokenStyle(token) {
   background-size: calc(100% / 24) 100%, 100% calc(100% / 25);
 }
 
-/* In vintage mode, make the grid transparent so the board image shows through */
+/* In vintage mode, make the grid transparent so the board image shows through,
+   and position it over just the playable area (inside the decorative border).
+   Measured from the 1440x1440 board.png via pixel scanning:
+   - Tile pitch: ~53.7px wide × ~51.7px tall (24 cols × 25 rows)
+   - Grid origin: ~(79, 74), Grid end: ~(1369, 1367)
+   - Insets tuned visually with Playwright debug overlay */
 [data-theme="vintage"] .board-grid {
   background: transparent;
   background-image: none;
+  top: 5.0%;
+  left: 5.5%;
+  right: 5.0%;
+  bottom: 5.0%;
+}
+
+/* In vintage mode, the overlay also needs matching inset */
+[data-theme="vintage"] .board-overlay {
+  top: 5.0%;
+  left: 5.5%;
+  right: 5.0%;
+  bottom: 5.0%;
+  width: auto;
+  height: auto;
 }
 
 /* ── Cell types ── */
