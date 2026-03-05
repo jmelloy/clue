@@ -18,7 +18,7 @@ Prompts for generating illustrations for the Clue board game.
 ---
 
 ### Hall
-**Ratio:** 1:1
+**Ratio:** 4:5
 
 > Colored pencil art. Grand victorian Cluedo mansion — the Hall. Top view from the bottom, moonlight pouring through a high arched window onto the floor. Warm amber and ivory tones. Black-and-white checkerboard marble floor, a sweeping staircase banister visible at the edge, ornate chandelier shadow cast from above, a tall grandfather clock, coat rack with a top hat and cane. Candlelight sconces on wallpapered walls.
 
