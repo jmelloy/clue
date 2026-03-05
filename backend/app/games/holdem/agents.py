@@ -84,11 +84,8 @@ def get_personality(name: str | None = None) -> tuple[str, dict]:
     """Return (personality_name, config_dict). Picks randomly if name is None."""
     if name and name in PERSONALITIES:
         return name, dict(PERSONALITIES[name])
-    return random.choice(PERSONALITY_NAMES), dict(
-        PERSONALITIES[random.choice(PERSONALITY_NAMES)]
-    )
-
-
+    chosen_name = random.choice(PERSONALITY_NAMES)
+    return chosen_name, dict(PERSONALITIES[chosen_name])
 # ---------------------------------------------------------------------------
 # Preflop hand strength — simple lookup for starting hand categories
 # ---------------------------------------------------------------------------
