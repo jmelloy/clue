@@ -256,6 +256,7 @@ class SuggestionMadeMessage(WSMessage):
     pending_show_by: Optional[str] = None
     moved_suspect_player: Optional[str] = None
     player_positions: Optional[dict[str, list[int]]] = None
+    current_room: Optional[dict[str, str]] = None
     players_without_match: list[str] = Field(default_factory=list)
 
 

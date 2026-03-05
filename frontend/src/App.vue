@@ -327,8 +327,9 @@ function handleMessage(msg) {
             }
           ]
         }
-        // Update player positions if a suspect player was moved
+        // Update player positions and room assignments if a suspect player was moved
         if (msg.player_positions) suggUpdate.player_positions = msg.player_positions
+        if (msg.current_room) suggUpdate.current_room = msg.current_room
         gameState.value = { ...gameState.value, ...suggUpdate }
       }
       break
