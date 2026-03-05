@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Automate image generation on mage.space using Playwright.
+Automate image generation on mage.space/advanced using Playwright.
 
 Usage:
     # Single prompt
     python scripts/mage_generate.py "a cozy cabin in the mountains at sunset"
 
     # With options
-    python scripts/mage_generate.py "a dragon flying over a castle" --model "Flux" --ratio "16:9"
+    python scripts/mage_generate.py "a dragon flying over a castle" --model "Flux.2" --ratio "16:9"
 
     # Batch from markdown file (parses room-prompts.md format)
     python scripts/mage_generate.py --batch room-prompts.md
@@ -22,11 +22,12 @@ Batch mode reads a markdown file with entries like:
 
     > Prompt text here...
 
-Each prompt is generated 3x with FLUX.2 Dev, then 2x with Z-Image Turbo.
+Each prompt is generated 3x with Flux.2 Dev, then 2x with Z-Image Turbo.
 
 Prerequisites:
     pip install playwright
     playwright install webkit
+
 
 The script uses your existing browser session (persistent context) so you
 stay logged in to mage.space across runs.
@@ -37,7 +38,6 @@ import asyncio
 import functools
 import os
 import re
-import sys
 import time
 from pathlib import Path
 
@@ -47,8 +47,23 @@ print = functools.partial(print, flush=True)
 from playwright.async_api import async_playwright
 
 
-MAGE_URL = "https://www.mage.space/explore"
+MAGE_URL = "https://www.mage.space/advanced"
 USER_DATA_DIR = os.path.expanduser("~/.mage-playwright-profile")
+
+# Maps user-facing model names to the architecture card name.
+# Only the architecture is clicked — clicking the model triggers a preset.
+MODEL_MAP = {
+    "FLUX.2 Dev": "Flux.2",
+    "Z-Image Turbo": "Z-Image",
+    "Z-Image": "Z-Image",
+    "Mango": "Mango",
+    "SDXL": "SDXL",
+    "Flux": "Flux",
+    "Chroma": "Chroma",
+    "HiDream": "HiDream",
+    "Qwen": "Qwen",
+    "Selfie": "Selfie",
+}
 
 
 def parse_batch_markdown(filepath: str) -> list[dict]:
@@ -89,78 +104,62 @@ def parse_batch_markdown(filepath: str) -> list[dict]:
 
 
 async def wait_for_page_ready(page, timeout=60000):
-    """Wait for the mage.space explore page to be fully loaded."""
+    """Wait for the mage.space advanced page to be fully loaded."""
     await page.wait_for_load_state("domcontentloaded", timeout=timeout)
-    # Wait for either the prompt input or login link to appear
-    await page.locator(
-        "img[alt='Send'], a[href='/profile']:has-text('Login')"
-    ).first.wait_for(state="visible", timeout=timeout)
+    # Wait for the prompt Send button to appear
+    await page.locator("img[alt='Send']").wait_for(state="visible", timeout=timeout)
 
 
 async def select_model(page, model_name: str):
-    """Click the model selector and choose a model by opening the model dialog."""
-    # The model button is the first button in the row next to the Send button.
-    # Find it by locating the Send img and navigating to sibling buttons.
-    send_img = page.locator("img[alt='Send']")
-    await send_img.wait_for(state="visible", timeout=10000)
+    """Select a model by clicking the architecture card.
 
-    # The prompt bar contains the Send button. The model button is a sibling
-    # button in the same container row.
-    prompt_bar = send_img.locator("xpath=ancestor::*[2]")
-    model_btn = prompt_bar.locator("button").first
-    try:
-        await model_btn.scroll_into_view_if_needed()
-        await model_btn.click(timeout=5000)
-    except Exception as e:
-        print(f"  Warning: Could not click model button: {e}")
-        return
-    await page.wait_for_timeout(500)
+    1. Type first 2 chars of the architecture name in the architecture Search box
+    2. Click the architecture card (h5 heading)
 
-    # Wait for the model dialog to appear
-    dialog = page.locator("dialog")
-    try:
-        await dialog.wait_for(state="visible", timeout=5000)
-    except Exception:
-        print(f"  Warning: Model dialog did not appear")
-        await page.keyboard.press("Escape")
-        return
+    Only the architecture is clicked — clicking the model would trigger a preset.
+    """
+    arch_name = MODEL_MAP.get(model_name, model_name)
 
-    # Find and click the model within the dialog
-    model_option = dialog.locator(f"text={model_name}").first
+    # Step 1: Filter architectures by typing in the architecture search bar (top one)
+    # The architecture search has placeholder "Search..." while the model search
+    # has "Search models..." — use exact match to target the right one
+    arch_search = page.get_by_placeholder("Search...", exact=True)
     try:
-        await model_option.click(timeout=5000)
+        await arch_search.click(timeout=5000)
+        await arch_search.fill(arch_name[:2])
         await page.wait_for_timeout(500)
+    except Exception as e:
+        print(f"  Warning: Could not use architecture search: {e}")
+        return
+
+    # Step 2: Click the architecture card (h5 heading)
+    arch_heading = page.get_by_role("heading", name=arch_name, level=5, exact=True)
+    try:
+        await arch_heading.click(timeout=5000)
+        await page.wait_for_timeout(500)
+        print(f"  Selected architecture: {arch_name}")
     except Exception:
-        print(f"  Warning: Could not find model '{model_name}', using default")
-        await page.keyboard.press("Escape")
+        print(f"  Warning: Could not find architecture '{arch_name}'")
+        await arch_search.fill("")
+        return
+
+    # Clear the architecture search
+    await arch_search.fill("")
+    await page.wait_for_timeout(200)
 
 
 async def select_aspect_ratio(page, ratio: str):
-    """Click the aspect ratio selector and choose a ratio from the dialog."""
-    # The ratio button is in the bottom prompt bar, shows current ratio like "4:5"
-    ratio_btn = page.locator(
-        "button:has-text('4:5'), button:has-text('1:1'), button:has-text('16:9'), button:has-text('9:16'), button:has-text('3:2'), button:has-text('2:3'), button:has-text('5:4')"
-    ).first
-    await ratio_btn.click()
-    await page.wait_for_timeout(500)
+    """Select an aspect ratio by clicking the named button on the advanced page.
 
-    # Wait for the aspect ratio dialog
-    dialog = page.locator("dialog")
+    Buttons are labeled like "16:9 cinema", "1:1 square", "4:5 portrait", etc.
+    """
+    ratio_btn = page.get_by_role("button", name=re.compile(rf"^{re.escape(ratio)}\s"))
     try:
-        await dialog.wait_for(state="visible", timeout=5000)
-    except Exception:
-        print(f"  Warning: Ratio dialog did not appear")
-        await page.keyboard.press("Escape")
-        return
-
-    # Find and click the ratio button within the dialog
-    ratio_option = dialog.get_by_role("button", name=ratio, exact=True)
-    try:
-        await ratio_option.click(timeout=3000)
-        await page.wait_for_timeout(500)
-    except Exception:
-        print(f"  Warning: Could not find ratio '{ratio}', using default")
-        await page.keyboard.press("Escape")
+        await ratio_btn.click(timeout=5000)
+        await page.wait_for_timeout(200)
+        print(f"  Selected ratio: {ratio}")
+    except Exception as e:
+        print(f"  Warning: Could not select ratio '{ratio}': {e}")
 
 
 async def generate_image(
@@ -188,7 +187,6 @@ async def generate_image(
         await select_aspect_ratio(page, ratio)
 
     # Clear and type the prompt — the input is a contenteditable paragraph
-    # Try multiple selectors to find the prompt input
     prompt_el = None
     selectors = [
         "div[contenteditable='true']",
@@ -201,7 +199,6 @@ async def generate_image(
         loc = page.locator(sel).first
         if await loc.count() > 0 and await loc.is_visible():
             prompt_el = loc
-            print(f"  Found prompt input via: {sel}")
             break
 
     if not prompt_el:
@@ -209,9 +206,7 @@ async def generate_image(
         print("  Using fallback: clicking near Send button")
         send_box = await page.locator("img[alt='Send']").bounding_box()
         if send_box:
-            # Click to the left of the send button (in the prompt area)
             await page.mouse.click(send_box["x"] - 200, send_box["y"])
-            prompt_el = None  # we already clicked
         else:
             raise RuntimeError("Cannot find prompt input or Send button")
     else:
@@ -233,7 +228,6 @@ async def generate_image(
     print("  Submitted, waiting for generation...")
 
     # Wait for generation to complete by watching the "Generating: X / 10" text
-    # First wait for it to appear (confirms generation started)
     generating_text = page.get_by_text("Generating:")
     try:
         await generating_text.first.wait_for(state="visible", timeout=15000)
@@ -241,14 +235,14 @@ async def generate_image(
     except Exception:
         print("  Warning: Generation may not have started, checking sidebar...")
 
-    # Now wait for it to disappear (generation complete) — up to 5 minutes for slow models
+    # Now wait for it to disappear (generation complete) — up to 5 minutes
     try:
         await generating_text.first.wait_for(state="hidden", timeout=300000)
     except Exception:
         print("  Warning: Generation may have timed out after 5 min")
         return None
 
-    # Also wait for the sidebar image to confirm
+    # Wait for the sidebar image to confirm
     sidebar_img = page.locator("img[alt='Mage media']")
     try:
         await sidebar_img.first.wait_for(state="visible", timeout=10000)
@@ -267,7 +261,6 @@ async def generate_image(
         # Click "Save" to save it to your mage.space account
         save_btn = page.get_by_role("button", name="Save")
         await save_btn.click(timeout=5000)
-        # Wait for the button to change to "Success"
         await page.get_by_text("Success").first.wait_for(state="visible", timeout=10000)
         print("  Saved to mage.space account!")
 
@@ -294,7 +287,7 @@ async def generate_image(
                 filepath.write_bytes(body)
                 print(f"  Downloaded: {filepath}")
 
-        # Close the detail view with Escape (Close button may not be visible)
+        # Close the detail view
         await page.keyboard.press("Escape")
         await page.wait_for_timeout(500)
 
@@ -302,7 +295,6 @@ async def generate_image(
 
     except Exception as e:
         print(f"  Warning: Could not save/download image: {e}")
-        # Try to close any open detail view
         try:
             await page.keyboard.press("Escape")
         except Exception:
@@ -322,7 +314,7 @@ async def main():
     parser.add_argument(
         "--model",
         type=str,
-        help="Model name for single-prompt mode (batch mode uses FLUX.2 Dev 3x + Z-Image Turbo 2x)",
+        help="Model name for single-prompt mode (batch mode uses Flux.2 + Z-Image Turbo)",
     )
     parser.add_argument(
         "--ratio", type=str, help="Aspect ratio (e.g. '1:1', '16:9', '4:5')"
@@ -363,10 +355,11 @@ async def main():
     output_dir = Path(args.output)
 
     # Build generation plan: each prompt N times per model
+    # Model names must match keys in MODEL_MAP
     MODELS = [
-        ("Flux 2 Dev", 1),
+        ("FLUX.2 Dev", 1),
         ("Z-Image Turbo", 1),
-        ("Flux 2 Dev", 2),
+        ("FLUX.2 Dev", 2),
     ]
 
     total_generations = len(prompts) * sum(count for _, count in MODELS)
@@ -391,7 +384,7 @@ async def main():
         await wait_for_page_ready(page)
         print("Page ready!")
 
-        # Check if logged in by looking for the Send button (only visible when logged in)
+        # Check if logged in
         send_visible = await page.locator("img[alt='Send']").is_visible()
         if not send_visible:
             print("\nNot logged in! Please log in manually in the browser window.")

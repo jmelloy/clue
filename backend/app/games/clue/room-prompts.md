@@ -158,7 +158,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ### Mrs. Peacock
 **Ratio:** 2:3
 
-> Colored pencil art. Dark victorian noir Cluedo suspect portrait — Mrs. Peacock. A regal older woman in an elaborate royal blue gown with a peacock-feather brooch at the collar. Silver hair in a perfect chignon, sharp aristocratic features, an icy stare. Sapphire blue and midnight indigo tones. A folded silk fan in one hand, the other resting on the back of a gilded chair. Grand parlour background with oil paintings and velvet drapes. Moonlight through a leaded window. Commanding, haughty, calculating.
+> Colored pencil art. Dark victorian noir Cluedo suspect portrait — Mrs. Peacock. A regal woman in an elaborate royal blue gown with a peacock-feather brooch at the collar. Hair in a perfect chignon, sharp aristocratic features, an icy stare. Sapphire blue and midnight indigo tones. A folded silk fan in one hand, the other resting on the back of a gilded chair. Grand parlour background with oil paintings and velvet drapes. Moonlight through a leaded window. Commanding, haughty, calculating.
 
 ---
 
