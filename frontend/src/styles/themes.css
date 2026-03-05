@@ -7,34 +7,34 @@
 :root,
 [data-theme="dark"] {
   /* Page backgrounds */
-  --bg-page: #1c1812;
-  --bg-panel: linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
-  --bg-panel-solid: #1e1810;
-  --bg-input: rgba(255, 255, 255, 0.03);
-  --bg-input-focus: rgba(255, 255, 255, 0.05);
-  --bg-hover: rgba(212, 168, 73, 0.04);
+  --bg-page: #252018;
+  --bg-panel: linear-gradient(135deg, rgba(38, 30, 20, 0.95) 0%, rgba(26, 20, 14, 0.97) 100%);
+  --bg-panel-solid: #2a2318;
+  --bg-input: rgba(255, 255, 255, 0.06);
+  --bg-input-focus: rgba(255, 255, 255, 0.09);
+  --bg-hover: rgba(212, 168, 73, 0.07);
 
   /* Text */
-  --text-primary: #e8dcc8;
-  --text-secondary: #8a7e6b;
-  --text-muted: #6a6050;
-  --text-dim: #5a5040;
-  --text-faint: #4a4030;
-  --text-darkest: #3a3528;
+  --text-primary: #ede2cc;
+  --text-secondary: #9a8e7a;
+  --text-muted: #7a6e5c;
+  --text-dim: #655a4a;
+  --text-faint: #554a3c;
+  --text-darkest: #453e30;
 
   /* Accent / gold */
   --accent: #d4a849;
   --accent-dark: #b8912e;
   --accent-text: #1a1008;
   --accent-glow: rgba(212, 168, 73, 0.15);
-  --accent-border: rgba(212, 168, 73, 0.12);
-  --accent-border-hover: rgba(212, 168, 73, 0.25);
-  --accent-border-focus: rgba(212, 168, 73, 0.4);
-  --accent-bg: rgba(212, 168, 73, 0.06);
+  --accent-border: rgba(212, 168, 73, 0.18);
+  --accent-border-hover: rgba(212, 168, 73, 0.32);
+  --accent-border-focus: rgba(212, 168, 73, 0.5);
+  --accent-bg: rgba(212, 168, 73, 0.09);
 
   /* Borders */
-  --border-panel: rgba(212, 168, 73, 0.08);
-  --border-card: rgba(212, 168, 73, 0.12);
+  --border-panel: rgba(212, 168, 73, 0.13);
+  --border-card: rgba(212, 168, 73, 0.18);
 
   /* Errors */
   --error: #c45050;
@@ -45,16 +45,16 @@
   --success: #4caf50;
 
   /* Board */
-  --board-bg: #1a1510;
+  --board-bg: #1e1812;
   --board-border: #8b1a1a;
-  --board-grid-line: #15110c;
-  --board-room: #1a1610;
+  --board-grid-line: #19140f;
+  --board-room: #1e1a12;
   --board-hallway: #c8b88a;
   --board-wall: #2a2a1e;
   --board-center: #4a3d2a;
-  --board-room-filter: saturate(0.35) brightness(0.9);
-  --mansion-edge: rgba(180, 150, 80, 0.6);
-  --mansion-glow: rgba(180, 150, 80, 0.15);
+  --board-room-filter: saturate(0.45) brightness(0.95);
+  --mansion-edge: rgba(180, 150, 80, 0.65);
+  --mansion-glow: rgba(180, 150, 80, 0.18);
 
   /* Board overlay text */
   --board-label-color: #f0e0b0;
@@ -70,30 +70,30 @@
   --fog-opacity: 0.035;
   --fog-color-1: #d4a849;
   --fog-color-2: #8b2a2a;
-  --vignette-color: #1c1812;
+  --vignette-color: #252018;
 
   /* Vintage board overlay — hidden in dark */
   --board-image-opacity: 0;
 
   /* Lobby ambient */
-  --lobby-glow-1: rgba(180, 140, 60, 0.12);
-  --lobby-glow-2: rgba(100, 50, 50, 0.08);
+  --lobby-glow-1: rgba(180, 140, 60, 0.15);
+  --lobby-glow-2: rgba(100, 50, 50, 0.1);
 
   /* Poker chrome (UI around the felt table) */
-  --poker-chrome: #080c12;
-  --poker-chrome-raised: #0e1420;
-  --poker-chrome-alt: #141c28;
-  --poker-border: rgba(255, 255, 255, 0.06);
-  --poker-border-strong: rgba(255, 255, 255, 0.1);
-  --poker-hover: rgba(255, 255, 255, 0.04);
-  --poker-input-bg: rgba(255, 255, 255, 0.04);
-  --poker-input-border: rgba(255, 255, 255, 0.08);
+  --poker-chrome: #0f1520;
+  --poker-chrome-raised: #15202e;
+  --poker-chrome-alt: #1b2838;
+  --poker-border: rgba(255, 255, 255, 0.09);
+  --poker-border-strong: rgba(255, 255, 255, 0.15);
+  --poker-hover: rgba(255, 255, 255, 0.06);
+  --poker-input-bg: rgba(255, 255, 255, 0.06);
+  --poker-input-border: rgba(255, 255, 255, 0.12);
   --poker-gold: #c9a84c;
   --poker-gold-bright: #e8c85a;
   --poker-gold-dim: #8b7635;
   --poker-text: #e4ded4;
-  --poker-text-dim: #6b7280;
-  --poker-text-muted: #3d4452;
+  --poker-text-dim: #7d8694;
+  --poker-text-muted: #4d5564;
   --poker-name: #eee;
   --poker-plate-bg: rgba(0, 0, 0, 0.65);
   --poker-shadow: rgba(0, 0, 0, 0.4);
