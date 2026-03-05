@@ -27,6 +27,8 @@ spec:
               value: http://backend:8000
             - name: AGENT_POLL_INTERVAL
               value: "2"
+            - name: AGENT_TRACE
+              value: "true"
             - name: LOG_LEVEL
               value: "DEBUG"
             - name: LLM_TRACE_LOG_LEVEL

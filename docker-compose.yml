@@ -16,6 +16,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-5-mini}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_TRACE_LOG_LEVEL=${LLM_TRACE_LOG_LEVEL:-info}
+      - AGENT_TRACE=true
       - AGENT_MODE=external
     ports:
       - "8000:8000"
@@ -37,6 +38,7 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-5-mini}
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_TRACE_LOG_LEVEL=${LLM_TRACE_LOG_LEVEL:-info}
+      - AGENT_TRACE=true
       - AGENT_POLL_INTERVAL=2
     volumes:
       - ./backend:/app

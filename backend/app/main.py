@@ -193,8 +193,16 @@ _holdem_agents: dict[str, dict[str, HoldemAgent]] = {}
 _holdem_agent_tasks: dict[str, asyncio.Task] = {}
 
 _HOLDEM_AGENT_NAMES = [
-    "Ace", "Bluff", "Chip", "Dealer", "Edge",
-    "Flop", "Gambit", "High Card", "Jackpot", "Kicker",
+    "Ace",
+    "Bluff",
+    "Chip",
+    "Dealer",
+    "Edge",
+    "Flop",
+    "Gambit",
+    "High Card",
+    "Jackpot",
+    "Kicker",
 ]
 
 
@@ -421,7 +429,11 @@ async def _execute_action(
             )
         else:
             roll_parts = state.last_roll or []
-            roll_text = f"{result.dice} ({'+'.join(str(d) for d in roll_parts)})" if len(roll_parts) > 1 else str(result.dice)
+            roll_text = (
+                f"{result.dice} ({'+'.join(str(d) for d in roll_parts)})"
+                if len(roll_parts) > 1
+                else str(result.dice)
+            )
             await _broadcast_chat(
                 game_id,
                 f"{actor_name} rolled {roll_text}.",
@@ -652,9 +664,7 @@ async def _execute_action(
             game_id,
             suggesting_pid,
             YourTurnMessage(
-                available_actions=game.get_available_actions(
-                    suggesting_pid, state
-                ),
+                available_actions=game.get_available_actions(suggesting_pid, state),
             ),
         )
 
@@ -854,7 +864,40 @@ async def _broadcast_agent_debug(
         decided_action=decided_action,
         game_state=game_state,
     )
+    debug_info = await _attach_llm_memory(game_id, debug_info)
     await manager.broadcast(game_id, AgentDebugMessage(**debug_info))
+
+
+async def _get_llm_memory_by_player(
+    game_id: str, player_ids: set[str]
+) -> dict[str, list[str]]:
+    """Load persisted LLM memory entries for the given players."""
+    out: dict[str, list[str]] = {}
+    for player_id in sorted(player_ids):
+        key = f"game:{game_id}:memory:{player_id}"
+        out[player_id] = await redis_client.lrange(key, 0, -1)
+    return out
+
+
+async def _attach_llm_memory(
+    game_id: str,
+    debug_info: dict,
+    memory_by_player: dict[str, list[str]] | None = None,
+) -> dict:
+    """Ensure LLM debug payload includes persisted memory entries."""
+    player_id = debug_info.get("player_id")
+    if not player_id:
+        return debug_info
+
+    if memory_by_player is not None and player_id in memory_by_player:
+        debug_info["memory"] = memory_by_player[player_id]
+        return debug_info
+
+    if debug_info.get("agent_type") == "llm":
+        key = f"game:{game_id}:memory:{player_id}"
+        debug_info["memory"] = await redis_client.lrange(key, 0, -1)
+
+    return debug_info
 
 
 # ---------------------------------------------------------------------------
@@ -894,13 +937,17 @@ async def _run_agent_loop(game_id: str):
                 matching = pending.matching_cards
                 suggesting_pid = pending.suggesting_player_id
                 await _broadcast_agent_debug(
-                    game_id, agent, "thinking",
+                    game_id,
+                    agent,
+                    "thinking",
                     f"Deciding which card to show from {matching}",
                     game_state=state,
                 )
                 card = await agent.decide_show_card(matching, suggesting_pid)
                 await _broadcast_agent_debug(
-                    game_id, agent, "decided",
+                    game_id,
+                    agent,
+                    "decided",
                     f"Showing card to disprove suggestion",
                     decided_action={"type": "show_card", "card": card},
                     game_state=state,
@@ -935,7 +982,9 @@ async def _run_agent_loop(game_id: str):
                 agent = agents[pid]
                 player_state = await game.get_player_state(pid)
                 await _broadcast_agent_debug(
-                    game_id, agent, "thinking",
+                    game_id,
+                    agent,
+                    "thinking",
                     f"Deciding next action (available: {', '.join(player_state.available_actions)})",
                     game_state=state,
                 )
@@ -955,7 +1004,10 @@ async def _run_agent_loop(game_id: str):
                 elif action.type == "secret_passage":
                     action_desc = "Using secret passage"
                 await _broadcast_agent_debug(
-                    game_id, agent, "decided", action_desc,
+                    game_id,
+                    agent,
+                    "decided",
+                    action_desc,
                     decided_action=action_d,
                     game_state=state,
                 )
@@ -975,7 +1027,9 @@ async def _run_agent_loop(game_id: str):
                         suspect=action_d.get("suspect", ""),
                         weapon=action_d.get("weapon", ""),
                     )
-                    chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+                    chat_msg = agent.generate_chat(
+                        action.type, chat_context.model_dump()
+                    )
                     if chat_msg:
                         name = _player_name(state, pid) if state else pid
                         await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
@@ -991,7 +1045,9 @@ async def _run_agent_loop(game_id: str):
                         suspect=action_d.get("suspect", ""),
                         weapon=action_d.get("weapon", ""),
                     )
-                    chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+                    chat_msg = agent.generate_chat(
+                        action.type, chat_context.model_dump()
+                    )
                     if chat_msg:
                         s = await game.get_state()
                         name = _player_name(s, pid) if s else pid
@@ -1054,18 +1110,24 @@ async def admin_list_games():
             state = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             continue
-        games.append({
-            "game_id": game_id,
-            "game_type": "clue",
-            "status": state.get("status", "unknown"),
-            "players": [
-                {"name": p.get("name", "?"), "type": p.get("type", "human"), "character": p.get("character")}
-                for p in state.get("players", [])
-            ],
-            "turn_number": state.get("turn_number", 0),
-            "whose_turn": state.get("whose_turn"),
-            "winner": state.get("winner"),
-        })
+        games.append(
+            {
+                "game_id": game_id,
+                "game_type": "clue",
+                "status": state.get("status", "unknown"),
+                "players": [
+                    {
+                        "name": p.get("name", "?"),
+                        "type": p.get("type", "human"),
+                        "character": p.get("character"),
+                    }
+                    for p in state.get("players", [])
+                ],
+                "turn_number": state.get("turn_number", 0),
+                "whose_turn": state.get("whose_turn"),
+                "winner": state.get("winner"),
+            }
+        )
 
     # Scan for Hold'em games (keys like "holdem:{id}")
     async for key in redis_client.scan_iter(match="holdem:*", count=200):
@@ -1081,19 +1143,25 @@ async def admin_list_games():
             state = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
             continue
-        games.append({
-            "game_id": game_id,
-            "game_type": "holdem",
-            "status": state.get("status", "unknown"),
-            "players": [
-                {"name": p.get("name", "?"), "type": p.get("type", "human"), "chips": p.get("chips")}
-                for p in state.get("players", [])
-            ],
-            "hand_number": state.get("hand_number", 0),
-            "pot": state.get("pot", 0),
-            "whose_turn": state.get("whose_turn"),
-            "winner": state.get("winner"),
-        })
+        games.append(
+            {
+                "game_id": game_id,
+                "game_type": "holdem",
+                "status": state.get("status", "unknown"),
+                "players": [
+                    {
+                        "name": p.get("name", "?"),
+                        "type": p.get("type", "human"),
+                        "chips": p.get("chips"),
+                    }
+                    for p in state.get("players", [])
+                ],
+                "hand_number": state.get("hand_number", 0),
+                "pot": state.get("pot", 0),
+                "whose_turn": state.get("whose_turn"),
+                "winner": state.get("winner"),
+            }
+        )
 
     # Sort: playing first, then waiting, then finished
     status_order = {"playing": 0, "waiting": 1, "finished": 2}
@@ -1139,9 +1207,7 @@ async def get_board():
             }
             for room, (c1, r1, c2, r2) in ROOM_BOUNDS.items()
         },
-        "starts": {
-            f"{r},{c}": name for name, (r, c) in START_POSITIONS.items()
-        },
+        "starts": {f"{r},{c}": name for name, (r, c) in START_POSITIONS.items()},
         "secret_passages": {
             src.value: dst.value for src, dst in SECRET_PASSAGES.items()
         },
@@ -1173,26 +1239,57 @@ async def get_agent_debug(game_id: str):
     state = await game.get_state()
 
     result = []
+    llm_player_ids: set[str] = set()
+    if state:
+        llm_player_ids = {p.id for p in state.players if p.type == "llm_agent" and p.id}
+    memory_by_player = await _get_llm_memory_by_player(game_id, llm_player_ids)
+
     # Include in-memory agents with game state
     agents = _game_agents.get(game_id, {})
     if agents:
         for pid, agent in agents.items():
-            result.append(agent.get_debug_info(status="idle", game_state=state))
+            info = agent.get_debug_info(status="idle", game_state=state)
+            result.append(await _attach_llm_memory(game_id, info, memory_by_player))
 
     # Fall back to Redis-stored debug data (external mode) if no in-memory agents
     if not agents:
         raw = await redis_client.get(f"game:{game_id}:agent_debug")
         if raw:
             import json as _json
-            debug_map = _json.loads(raw)
-            result.extend(debug_map.values())
 
-    # Add position/room info for human players
+            debug_map = _json.loads(raw)
+            for info in debug_map.values():
+                result.append(await _attach_llm_memory(game_id, info, memory_by_player))
+
+    # Ensure non-human players appear even before first debug event (external mode)
     if state:
         agent_pids = {r["player_id"] for r in result}
         for player in state.players:
-            if player.id not in agent_pids:
-                result.append({
+            if player.id in agent_pids:
+                continue
+
+            if player.type in {"agent", "llm_agent", "wanderer"}:
+                agent_type = {
+                    "agent": "random",
+                    "llm_agent": "llm",
+                    "wanderer": "wanderer",
+                }.get(player.type, player.type)
+                result.append(
+                    {
+                        "player_id": player.id,
+                        "agent_type": agent_type,
+                        "character": player.character,
+                        "status": "idle",
+                        "memory": memory_by_player.get(player.id, []),
+                        "position": state.player_positions.get(player.id),
+                        "room": state.current_room.get(player.id),
+                        "reachable_rooms": None,
+                    }
+                )
+                continue
+
+            result.append(
+                {
                     "player_id": player.id,
                     "agent_type": "human",
                     "character": player.character,
@@ -1200,7 +1297,8 @@ async def get_agent_debug(game_id: str):
                     "position": state.player_positions.get(player.id),
                     "room": state.current_room.get(player.id),
                     "reachable_rooms": None,
-                })
+                }
+            )
 
     return {"agents": result}
 
@@ -1213,8 +1311,11 @@ async def post_agent_debug(game_id: str, request: Request):
     if not player_id:
         raise HTTPException(status_code=400, detail="player_id required")
 
+    data = await _attach_llm_memory(game_id, data)
+
     # Store in Redis (merge into per-game debug map)
     import json as _json
+
     key = f"game:{game_id}:agent_debug"
     raw = await redis_client.get(key)
     debug_map = _json.loads(raw) if raw else {}
@@ -1416,7 +1517,8 @@ async def start_game(game_id: str):
                 )
             # Show one random card from a real player's hand to each wanderer
             real_agents = {
-                pid: a for pid, a in agents.items()
+                pid: a
+                for pid, a in agents.items()
                 if a.agent_type != "wanderer" and a.own_cards
             }
             if real_agents:
@@ -1580,9 +1682,7 @@ def _holdem_player_name(state, player_id: str) -> str:
     return player.name if player else player_id
 
 
-async def _holdem_broadcast_chat(
-    game_id: str, text: str, player_id: str | None = None
-):
+async def _holdem_broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message for a Hold'em game."""
     timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
     message = HoldemChatMessage(player_id=player_id, text=text, timestamp=timestamp)
@@ -1602,8 +1702,10 @@ async def holdem_create_game(req: HoldemCreateGameRequest | None = None):
     allow_rebuys = req.allow_rebuys if req else False
     state = await game.create(buy_in=buy_in, allow_rebuys=allow_rebuys)
     return HoldemCreateGameResponse(
-        game_id=game_id, status=state.status,
-        buy_in=state.buy_in, allow_rebuys=state.allow_rebuys,
+        game_id=game_id,
+        status=state.status,
+        buy_in=state.buy_in,
+        allow_rebuys=state.allow_rebuys,
     )
 
 
@@ -1682,6 +1784,7 @@ async def holdem_start_game(game_id: str):
     agent_players = [p for p in state.players if p.player_type == "holdem_agent"]
     if agent_players:
         import json as _json
+
         agents: dict[str, HoldemAgent] = {}
         for player in agent_players:
             # Load per-agent config from Redis (set during add_agent)
@@ -1701,7 +1804,9 @@ async def holdem_start_game(game_id: str):
             )
             logger.info(
                 "Created holdem agent for player %s (%s) in game %s",
-                player.id, player.name, game_id,
+                player.id,
+                player.name,
+                game_id,
             )
         _holdem_agents[game_id] = agents
         _holdem_agent_tasks[game_id] = asyncio.create_task(
@@ -1785,9 +1890,7 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
                     player_hands=player_hands,
                 ),
             )
-            winner_names = ", ".join(
-                _holdem_player_name(state, w) for w in sd.winners
-            )
+            winner_names = ", ".join(_holdem_player_name(state, w) for w in sd.winners)
             await _holdem_broadcast_chat(
                 game_id,
                 f"{winner_names} wins the pot ({sd.pot}) with {sd.winning_hand}!",
@@ -1808,9 +1911,7 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
             game_id,
             state.whose_turn,
             HoldemYourTurnMessage(
-                available_actions=game.get_available_actions(
-                    state.whose_turn, state
-                ),
+                available_actions=game.get_available_actions(state.whose_turn, state),
             ),
         )
 
@@ -1827,16 +1928,12 @@ async def holdem_submit_action(game_id: str, req: HoldemActionRequest):
     state = await game.get_state()
     response = result.model_dump()
     if state:
-        response["available_actions"] = game.get_available_actions(
-            req.player_id, state
-        )
+        response["available_actions"] = game.get_available_actions(req.player_id, state)
     return response
 
 
 @app.websocket("/ws/holdem/{game_id}/{player_id}")
-async def holdem_websocket_endpoint(
-    websocket: WebSocket, game_id: str, player_id: str
-):
+async def holdem_websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str):
     await manager.connect(game_id, player_id, websocket)
     game = HoldemGame(game_id, redis_client)
     try:
@@ -1915,7 +2012,8 @@ async def _run_holdem_agent_loop(game_id: str):
 
     logger.info(
         "Holdem agent loop started for game %s with %d agent(s)",
-        game_id, len(agents),
+        game_id,
+        len(agents),
     )
 
     try:
@@ -1946,24 +2044,20 @@ async def _run_holdem_agent_loop(game_id: str):
                 action = agent.decide_action(state, player_state)
                 logger.info(
                     "Holdem agent %s taking action %s in game %s",
-                    whose_turn, action.type, game_id,
+                    whose_turn,
+                    action.type,
+                    game_id,
                 )
 
                 try:
                     await _holdem_execute_action(game_id, whose_turn, action)
                 except ValueError as exc:
-                    logger.warning(
-                        "Holdem agent %s action failed: %s", whose_turn, exc
-                    )
+                    logger.warning("Holdem agent %s action failed: %s", whose_turn, exc)
                     # Fallback: check or fold
                     if "check" in player_state.available_actions:
-                        await _holdem_execute_action(
-                            game_id, whose_turn, CheckAction()
-                        )
+                        await _holdem_execute_action(game_id, whose_turn, CheckAction())
                     elif "fold" in player_state.available_actions:
-                        await _holdem_execute_action(
-                            game_id, whose_turn, FoldAction()
-                        )
+                        await _holdem_execute_action(game_id, whose_turn, FoldAction())
 
                 # Chat
                 chat_msg = agent.generate_chat(action.type)
@@ -2000,11 +2094,31 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
     )
 
     # Explicit params override personality defaults
-    aggression = req.aggression if (req and req.aggression is not None) else personality_defaults["aggression"]
-    tightness = req.tightness if (req and req.tightness is not None) else personality_defaults["tightness"]
-    bluff_frequency = req.bluff_frequency if (req and req.bluff_frequency is not None) else personality_defaults["bluff_frequency"]
-    slowplay_frequency = req.slowplay_frequency if (req and req.slowplay_frequency is not None) else personality_defaults["slowplay_frequency"]
-    chat_frequency = req.chat_frequency if (req and req.chat_frequency is not None) else personality_defaults["chat_frequency"]
+    aggression = (
+        req.aggression
+        if (req and req.aggression is not None)
+        else personality_defaults["aggression"]
+    )
+    tightness = (
+        req.tightness
+        if (req and req.tightness is not None)
+        else personality_defaults["tightness"]
+    )
+    bluff_frequency = (
+        req.bluff_frequency
+        if (req and req.bluff_frequency is not None)
+        else personality_defaults["bluff_frequency"]
+    )
+    slowplay_frequency = (
+        req.slowplay_frequency
+        if (req and req.slowplay_frequency is not None)
+        else personality_defaults["slowplay_frequency"]
+    )
+    chat_frequency = (
+        req.chat_frequency
+        if (req and req.chat_frequency is not None)
+        else personality_defaults["chat_frequency"]
+    )
 
     # Pick a name
     taken_names = {p.name for p in state.players}
@@ -2019,14 +2133,13 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
 
     player_id = _new_player_id()
     try:
-        player = await game.add_player(
-            player_id, name, player_type="holdem_agent"
-        )
+        player = await game.add_player(player_id, name, player_type="holdem_agent")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     # Store agent config in Redis so it can be used at game start
     import json as _json
+
     agent_config = {
         "personality": personality_name,
         "aggression": aggression,

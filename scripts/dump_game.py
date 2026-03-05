@@ -12,6 +12,7 @@ Examples:
     python scripts/dump_game.py --list-games --json
     python scripts/dump_game.py ABC123 --show-chat --show-cards
     python scripts/dump_game.py ABC123 --show-memory
+    python scripts/dump_game.py ABC123 --show-trace --trace-limit 100
     REDIS_URL=redis://localhost:6379 python scripts/dump_game.py ABC123 --show-solution
 """
 
@@ -62,6 +63,17 @@ def _parse_args() -> argparse.Namespace:
         "--show-memory",
         action="store_true",
         help="Include LLM agent memory entries from game:{id}:memory:{player_id}",
+    )
+    parser.add_argument(
+        "--show-trace",
+        action="store_true",
+        help="Include agent trace entries from game:{id}:agent_trace",
+    )
+    parser.add_argument(
+        "--trace-limit",
+        type=int,
+        default=200,
+        help="Max number of recent trace entries to include when --show-trace is set (default: 200)",
     )
     parser.add_argument(
         "--json",
@@ -132,7 +144,9 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
         for player in state.get("players", []):
             pid = player.get("id")
             if pid:
-                player_characters[pid] = player.get("character") or player.get("name") or pid
+                player_characters[pid] = (
+                    player.get("character") or player.get("name") or pid
+                )
 
     log_entries = output.get("log", [])
     print(f"Log entries: {len(log_entries)}")
@@ -146,7 +160,11 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
             entry_type = entry.get("type", "-")
             player_id = entry.get("player_id", "")
             character = player_characters.get(player_id, player_id)
-            rest = {k: v for k, v in entry.items() if k not in {"timestamp", "type", "player_id"}}
+            rest = {
+                k: v
+                for k, v in entry.items()
+                if k not in {"timestamp", "type", "player_id"}
+            }
             rest_str = f" {_pretty_json(rest)}" if rest else ""
             actor_str = f"{player_id}:{character} - " if player_id else ""
             print(
@@ -190,6 +208,43 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
             for index, entry in enumerate(data.get("entries", []), start=1):
                 print(f"      {index:>3}. {entry}")
 
+    if "agent_trace" in output:
+        trace_entries = output["agent_trace"]
+        trace_total = output.get("agent_trace_total", len(trace_entries))
+        print(
+            f"Agent trace entries: showing {len(trace_entries)} of {trace_total} (most recent first)"
+        )
+        for index, entry in enumerate(trace_entries, start=1):
+            if isinstance(entry, dict):
+                raw_ts = entry.get("timestamp", "-")
+                try:
+                    timestamp = raw_ts.split("T")[1].split("+")[0].split(".")[0]
+                except (IndexError, AttributeError):
+                    timestamp = raw_ts
+                event = entry.get("event", "-")
+                player_id = entry.get("player_id", "")
+                actor = f"{player_id}:{entry.get('character', '')}" if player_id else ""
+                rest = {
+                    k: v
+                    for k, v in entry.items()
+                    if k
+                    not in {
+                        "timestamp",
+                        "event",
+                        "player_id",
+                        "character",
+                        "game_id",
+                        "agent_type",
+                    }
+                }
+                rest_str = f" {_pretty_json(rest)}" if rest else ""
+                actor_str = f" {actor}" if actor else ""
+                print(
+                    f"  {index:>3}. [{timestamp}]{actor_str} {event}{rest_str}".rstrip()
+                )
+            else:
+                print(f"  {index:>3}. {entry}")
+
 
 def _print_list_games_text(redis_url: str, games: list[dict[str, Any]]) -> None:
     print(f"Redis: {redis_url}")
@@ -217,6 +272,10 @@ async def _get_json(redis_client: Any, key: str) -> Any | None:
 
 async def _get_json_list(redis_client: Any, key: str) -> list[Any]:
     rows = await redis_client.lrange(key, 0, -1)
+    return _decode_json_rows(rows)
+
+
+def _decode_json_rows(rows: list[str]) -> list[Any]:
     out: list[Any] = []
     for row in rows:
         try:
@@ -226,6 +285,15 @@ async def _get_json_list(redis_client: Any, key: str) -> list[Any]:
     return out
 
 
+async def _get_json_list_tail(redis_client: Any, key: str, limit: int) -> list[Any]:
+    if limit <= 0:
+        return []
+    rows = await redis_client.lrange(key, -limit, -1)
+    decoded = _decode_json_rows(rows)
+    decoded.reverse()
+    return decoded
+
+
 async def dump_game(
     game_id: str,
     redis_url: str,
@@ -233,6 +301,8 @@ async def dump_game(
     show_solution: bool,
     show_cards: bool,
     show_memory: bool,
+    show_trace: bool,
+    trace_limit: int,
     as_json: bool,
 ) -> int:
     try:
@@ -250,6 +320,7 @@ async def dump_game(
     solution_key = f"game:{game_id}:solution"
     log_key = f"game:{game_id}:log"
     chat_key = f"game:{game_id}:chat"
+    trace_key = f"game:{game_id}:agent_trace"
 
     try:
         state = await _get_json(redis_client, state_key)
@@ -270,12 +341,14 @@ async def dump_game(
                 "log": log_key,
                 "chat": chat_key,
                 "solution": solution_key,
+                "trace": trace_key,
             },
             "ttl_seconds": {
                 "state": await redis_client.ttl(state_key),
                 "log": await redis_client.ttl(log_key),
                 "chat": await redis_client.ttl(chat_key),
                 "solution": await redis_client.ttl(solution_key),
+                "trace": await redis_client.ttl(trace_key),
             },
             "state": state,
             "log": log_entries,
@@ -330,6 +403,12 @@ async def dump_game(
                 }
 
             output["memory_by_player"] = memory_by_player
+
+        if show_trace:
+            output["agent_trace_total"] = await redis_client.llen(trace_key)
+            output["agent_trace"] = await _get_json_list_tail(
+                redis_client, trace_key, trace_limit
+            )
 
         if as_json:
             print(json.dumps(output, indent=2, sort_keys=True))
@@ -407,6 +486,8 @@ async def _main() -> int:
         show_solution=args.show_solution,
         show_cards=args.show_cards,
         show_memory=args.show_memory,
+        show_trace=args.show_trace,
+        trace_limit=args.trace_limit,
         as_json=args.json,
     )
 
