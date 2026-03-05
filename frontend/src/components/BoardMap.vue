@@ -550,10 +550,10 @@ function tokenStyle(token) {
   max-width: 690px;
   margin: 0 auto;
   aspect-ratio: 24 / 25;
-  background: var(--board-bg);
+  background: var(--board-frame, var(--board-bg));
   border-radius: 6px;
   overflow: hidden;
-  border: 4px solid var(--board-border);
+  border: var(--board-border-width, 4px) solid var(--board-border);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 0 0 2px rgba(139, 26, 26, 0.3);
 }
 
@@ -591,7 +591,7 @@ function tokenStyle(token) {
   grid-template-columns: repeat(24, 1fr);
   grid-template-rows: repeat(25, 1fr);
   position: absolute;
-  inset: 0;
+  inset: 0.6%;
   gap: 0;
   z-index: 1;
   background: var(--board-bg);
@@ -819,10 +819,7 @@ function tokenStyle(token) {
 /* ── Overlay ── */
 .board-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0.6%;
   pointer-events: none;
 }
 
