@@ -357,8 +357,8 @@ async def main():
     # Build generation plan: each prompt N times per model
     # Model names must match keys in MODEL_MAP
     MODELS = [
+        ("Z-Image Turbo", 3),
         ("FLUX.2 Dev", 2),
-        ("Z-Image Turbo", 1),
     ]
 
     total_generations = len(prompts) * sum(count for _, count in MODELS)
@@ -397,7 +397,7 @@ async def main():
 
         results = []
         gen_num = 0
-
+        batch = 0
         for model_name, count in MODELS:
             print(f"\n{'='*60}")
             print(f"MODEL: {model_name} ({count}x per prompt)")
@@ -408,6 +408,7 @@ async def main():
             await page.wait_for_timeout(500)
 
             for entry in prompts:
+                batch += 1
                 for run in range(1, count + 1):
                     gen_num += 1
                     print(
@@ -423,7 +424,7 @@ async def main():
                             entry["prompt"],
                             model=None,  # already selected above
                             ratio=entry["ratio"],
-                            output_dir=output_dir,
+                            output_dir=output_dir / f"{batch} - {model_name}",
                             name=entry.get("name"),
                         )
                     except Exception as e:
