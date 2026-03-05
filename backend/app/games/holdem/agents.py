@@ -136,7 +136,13 @@ class HoldemAgent:
     """Rule-based Texas Hold'em agent.
 
     Uses hand-strength evaluation to make betting decisions.
-    Aggression controls how often it bets/raises vs. checks/calls.
+
+    Personality parameters (all 0.0–1.0):
+    - aggression: how often it bets/raises vs. checks/calls
+    - tightness: how selective with starting hands (high = fewer hands played)
+    - bluff_frequency: how often it bets/raises with weak holdings
+    - slowplay_frequency: how often it traps with strong hands (check/call)
+    - chat_frequency: how often it sends chat messages after actions
     """
 
     agent_type: str = "holdem_agent"
@@ -146,15 +152,28 @@ class HoldemAgent:
         player_id: str,
         name: str,
         aggression: float = 0.5,
+        tightness: float = 0.5,
+        bluff_frequency: float = 0.15,
+        slowplay_frequency: float = 0.1,
+        chat_frequency: float = 0.3,
     ):
         self.player_id = player_id
         self.name = name
         self.aggression = max(0.0, min(1.0, aggression))
+        self.tightness = max(0.0, min(1.0, tightness))
+        self.bluff_frequency = max(0.0, min(1.0, bluff_frequency))
+        self.slowplay_frequency = max(0.0, min(1.0, slowplay_frequency))
+        self.chat_frequency = max(0.0, min(1.0, chat_frequency))
         logger.info(
-            "[holdem_agent] Created agent %s (%s) aggression=%.2f",
+            "[holdem_agent] Created agent %s (%s) aggression=%.2f tightness=%.2f "
+            "bluff=%.2f slowplay=%.2f chat=%.2f",
             player_id,
             name,
             self.aggression,
+            self.tightness,
+            self.bluff_frequency,
+            self.slowplay_frequency,
+            self.chat_frequency,
         )
 
     def decide_action(
@@ -188,13 +207,30 @@ class HoldemAgent:
         # Pot odds: what fraction of the new pot are we risking?
         pot_odds = amount_to_call / (pot + amount_to_call) if (pot + amount_to_call) > 0 else 0
 
+        # Tightness adjustment: tight players perceive their hands as weaker
+        # (raises the bar for playing), loose players perceive them as stronger
+        tightness_shift = (self.tightness - 0.5) * -0.15
+        adjusted_strength = strength + tightness_shift
+
         # Add some randomness scaled by aggression
-        effective_strength = strength + (random.random() * 0.15 - 0.05) * (1 + self.aggression)
+        effective_strength = adjusted_strength + (random.random() * 0.15 - 0.05) * (1 + self.aggression)
         effective_strength = max(0.0, min(1.0, effective_strength))
+
+        # Bluff check: occasionally inflate perceived strength with a weak hand
+        bluffing = False
+        if strength < 0.35 and random.random() < self.bluff_frequency:
+            effective_strength = 0.55 + random.random() * 0.30  # pretend decent-to-strong
+            bluffing = True
+
+        # Slowplay check: occasionally deflate perceived strength with a strong hand
+        slowplaying = False
+        if strength >= 0.70 and random.random() < self.slowplay_frequency:
+            effective_strength = 0.40 + random.random() * 0.10  # pretend medium
+            slowplaying = True
 
         logger.debug(
             "[holdem_agent:%s] strength=%.2f effective=%.2f pot_odds=%.2f "
-            "to_call=%d pot=%d available=%s round=%s",
+            "to_call=%d pot=%d available=%s round=%s bluff=%s slowplay=%s",
             self.player_id,
             strength,
             effective_strength,
@@ -203,6 +239,8 @@ class HoldemAgent:
             pot,
             available,
             state.betting_round,
+            bluffing,
+            slowplaying,
         )
 
         return self._choose_action(
@@ -310,8 +348,7 @@ class HoldemAgent:
 
     def generate_chat(self, action_type: str, **kwargs) -> str | None:
         """Occasionally generate a chat message after an action."""
-        # 30% chance of chatting
-        if random.random() > 0.30:
+        if random.random() > self.chat_frequency:
             return None
 
         messages = {

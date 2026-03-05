@@ -112,11 +112,39 @@ class TestHoldemAgentDecisions:
         assert agent.name == "TestBot"
         assert agent.aggression == 0.5
 
+    def test_agent_creation_all_params(self):
+        agent = HoldemAgent(
+            "P1", "TestBot",
+            aggression=0.8,
+            tightness=0.7,
+            bluff_frequency=0.2,
+            slowplay_frequency=0.3,
+            chat_frequency=0.5,
+        )
+        assert agent.aggression == 0.8
+        assert agent.tightness == 0.7
+        assert agent.bluff_frequency == 0.2
+        assert agent.slowplay_frequency == 0.3
+        assert agent.chat_frequency == 0.5
+
     def test_aggression_clamped(self):
         agent = HoldemAgent("P1", "TestBot", aggression=2.0)
         assert agent.aggression == 1.0
         agent2 = HoldemAgent("P2", "TestBot2", aggression=-1.0)
         assert agent2.aggression == 0.0
+
+    def test_all_params_clamped(self):
+        agent = HoldemAgent(
+            "P1", "TestBot",
+            tightness=5.0,
+            bluff_frequency=-1.0,
+            slowplay_frequency=2.0,
+            chat_frequency=-0.5,
+        )
+        assert agent.tightness == 1.0
+        assert agent.bluff_frequency == 0.0
+        assert agent.slowplay_frequency == 1.0
+        assert agent.chat_frequency == 0.0
 
     def test_generate_chat_sometimes_returns_none(self):
         """Chat generation is probabilistic — just verify it returns string or None."""
@@ -127,6 +155,16 @@ class TestHoldemAgentDecisions:
             results.add(type(result))
         # Should get both None and str across many tries
         assert type(None) in results or str in results
+
+    def test_chat_frequency_zero_never_chats(self):
+        agent = HoldemAgent("P1", "TestBot", chat_frequency=0.0)
+        for _ in range(50):
+            assert agent.generate_chat("fold") is None
+
+    def test_chat_frequency_one_always_chats(self):
+        agent = HoldemAgent("P1", "TestBot", chat_frequency=1.0)
+        for _ in range(50):
+            assert agent.generate_chat("fold") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -190,9 +228,9 @@ async def test_three_agent_game_completes(redis):
     state = await game.start()
 
     agents = {
-        "P0": HoldemAgent("P0", "Bot1", aggression=0.6),
-        "P1": HoldemAgent("P1", "Bot2", aggression=0.7),
-        "P2": HoldemAgent("P2", "Bot3", aggression=0.8),
+        "P0": HoldemAgent("P0", "Bot1", aggression=0.6, tightness=0.3, bluff_frequency=0.2),
+        "P1": HoldemAgent("P1", "Bot2", aggression=0.7, tightness=0.5, slowplay_frequency=0.3),
+        "P2": HoldemAgent("P2", "Bot3", aggression=0.8, tightness=0.8, bluff_frequency=0.05),
     }
 
     max_actions = 1500

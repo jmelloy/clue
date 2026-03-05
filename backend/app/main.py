@@ -1550,12 +1550,22 @@ async def holdem_start_game(game_id: str):
     # Create agent instances and launch loop for agent players
     agent_players = [p for p in state.players if p.player_type == "holdem_agent"]
     if agent_players:
+        import json as _json
         agents: dict[str, HoldemAgent] = {}
         for player in agent_players:
+            # Load per-agent config from Redis (set during add_agent)
+            config_raw = await redis_client.get(
+                f"holdem:{game_id}:agent_config:{player.id}"
+            )
+            config = _json.loads(config_raw) if config_raw else {}
             agents[player.id] = HoldemAgent(
                 player_id=player.id,
                 name=player.name,
-                aggression=0.5,
+                aggression=config.get("aggression", 0.5),
+                tightness=config.get("tightness", 0.5),
+                bluff_frequency=config.get("bluff_frequency", 0.15),
+                slowplay_frequency=config.get("slowplay_frequency", 0.1),
+                chat_frequency=config.get("chat_frequency", 0.3),
             )
             logger.info(
                 "Created holdem agent for player %s (%s) in game %s",
@@ -1852,6 +1862,10 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
         raise HTTPException(status_code=404, detail="Game not found")
 
     aggression = req.aggression if req else 0.5
+    tightness = req.tightness if req else 0.5
+    bluff_frequency = req.bluff_frequency if req else 0.15
+    slowplay_frequency = req.slowplay_frequency if req else 0.1
+    chat_frequency = req.chat_frequency if req else 0.3
 
     # Pick a name
     taken_names = {p.name for p in state.players}
@@ -1871,6 +1885,21 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # Store agent config in Redis so it can be used at game start
+    import json as _json
+    agent_config = {
+        "aggression": aggression,
+        "tightness": tightness,
+        "bluff_frequency": bluff_frequency,
+        "slowplay_frequency": slowplay_frequency,
+        "chat_frequency": chat_frequency,
+    }
+    await redis_client.set(
+        f"holdem:{game_id}:agent_config:{player_id}",
+        _json.dumps(agent_config),
+        ex=86400,
+    )
 
     state = await game.get_state()
     await manager.broadcast(
