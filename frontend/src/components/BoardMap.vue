@@ -914,6 +914,10 @@ function tokenStyle(token) {
   pointer-events: auto;
 }
 
+.player-token:hover {
+  z-index: 50;
+}
+
 .player-token:hover .token-tooltip {
   display: block;
 }
