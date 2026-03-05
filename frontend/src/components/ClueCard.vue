@@ -165,23 +165,23 @@ const imageUrl = computed(() => {
 
 /* === Large size === */
 .clue-card--large {
-  width: 220px;
-  padding: 16px;
-  gap: 12px;
-  border-radius: 12px;
+  width: 280px;
+  padding: 20px;
+  gap: 14px;
+  border-radius: 14px;
   border-width: 3px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .clue-card--large .clue-card__frame--suspect {
-  width: 170px;
-  height: 170px;
+  width: 220px;
+  height: 220px;
   border-width: 4px;
 }
 
 .clue-card--large .clue-card__frame--weapon {
-  width: 150px;
-  height: 150px;
+  width: 190px;
+  height: 190px;
   border-width: 4px;
 }
 
@@ -191,18 +191,18 @@ const imageUrl = computed(() => {
 }
 
 .clue-card--large .clue-card__frame--room {
-  width: 190px;
-  height: 140px;
+  width: 250px;
+  height: 180px;
   border-width: 3px;
   border-radius: 6px;
 }
 
 .clue-card--large .clue-card__icon {
-  font-size: 4rem;
+  font-size: 5rem;
 }
 
 .clue-card--large .clue-card__label {
-  font-size: 1.15rem;
+  font-size: 1.4rem;
   letter-spacing: 0.04em;
 }
 </style>
