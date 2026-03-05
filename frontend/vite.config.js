@@ -1,8 +1,8 @@
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
+import { defineConfig } from "vite"
+import vue from "@vitejs/plugin-vue"
 
-const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
-const backendWsUrl = backendUrl.replace(/^http/, "ws");
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+const backendWsUrl = backendUrl.replace(/^http/, "ws")
 
 export default defineConfig({
   plugins: [vue()],
@@ -15,7 +15,8 @@ export default defineConfig({
       "/games": backendUrl,
       "/board": backendUrl,
       "/holdem/games": backendUrl,
+      "/admin/games": backendUrl,
       "/ws": { target: backendWsUrl, ws: true },
     },
   },
-});
+})

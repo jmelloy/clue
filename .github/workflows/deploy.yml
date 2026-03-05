@@ -69,14 +69,14 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
-      
+
       - name: Determine image tag
         id: tag
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Verify cluster connectivity
         run: kubectl cluster-info
-        
+
       - name: Create namespace
         run: kubectl apply -f k8s/namespace.yaml
 

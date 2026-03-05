@@ -7,16 +7,9 @@ export const SUSPECTS = [
   "Reverend Green",
   "Mrs. Peacock",
   "Professor Plum",
-];
+]
 
-export const WEAPONS = [
-  "Candlestick",
-  "Knife",
-  "Lead Pipe",
-  "Revolver",
-  "Rope",
-  "Wrench",
-];
+export const WEAPONS = ["Candlestick", "Knife", "Lead Pipe", "Revolver", "Rope", "Wrench"]
 
 export const ROOMS = [
   "Kitchen",
@@ -28,7 +21,7 @@ export const ROOMS = [
   "Hall",
   "Lounge",
   "Dining Room",
-];
+]
 
 export const CHARACTER_COLORS = {
   "Miss Scarlett": { bg: "#c0392b", text: "#fff" },
@@ -37,7 +30,7 @@ export const CHARACTER_COLORS = {
   "Reverend Green": { bg: "#1a9e3f", text: "#fff" },
   "Mrs. Peacock": { bg: "#1a5fb4", text: "#fff" },
   "Professor Plum": { bg: "#7b2d8e", text: "#fff" },
-};
+}
 
 export const CHARACTER_ABBR = {
   "Miss Scarlett": "Sc",
@@ -46,7 +39,7 @@ export const CHARACTER_ABBR = {
   "Reverend Green": "Gr",
   "Mrs. Peacock": "Pe",
   "Professor Plum": "Pl",
-};
+}
 
 export const CARD_ICONS = {
   // Suspects
@@ -73,7 +66,7 @@ export const CARD_ICONS = {
   Hall: "\u{1F6AA}", // 🚪
   Lounge: "\u{1F6CB}", // 🛋️
   "Dining Room": "\u{1F37D}", // 🍽️
-};
+}
 
 export const CARD_IMAGES = {
   // Suspects
@@ -100,26 +93,26 @@ export const CARD_IMAGES = {
   Hall: "/images/clue/rooms/thumbnails/Hall.jpg",
   Lounge: "/images/clue/rooms/thumbnails/Lounge.jpg",
   "Dining Room": "/images/clue/rooms/thumbnails/DiningRoom.jpg",
-};
+}
 
 export function cardIcon(card) {
-  return CARD_ICONS[card] || "\u{1F0CF}";
+  return CARD_ICONS[card] || "\u{1F0CF}"
 }
 
 export function hasCardImage(card) {
-  return !!CARD_IMAGES[card];
+  return !!CARD_IMAGES[card]
 }
 
 export function cardImageUrl(card) {
-  return CARD_IMAGES[card] || "";
+  return CARD_IMAGES[card] || ""
 }
 
 /** Returns the abbreviation for a character name (e.g. "Sc" for "Miss Scarlett"). */
 export function abbr(character) {
-  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?";
+  return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? "?"
 }
 
 /** Returns the `{ bg, text }` color pair for a character. Falls back to a neutral gray. */
 export function characterColors(character) {
-  return CHARACTER_COLORS[character] ?? { bg: "#666", text: "#fff" };
+  return CHARACTER_COLORS[character] ?? { bg: "#666", text: "#fff" }
 }

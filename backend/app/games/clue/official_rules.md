@@ -112,4 +112,4 @@ You win the game if your Accusation is completely correct — that is, if you fi
 
 ---
 
-*© 1986, 1998, 2002 Hasbro. All rights reserved.*
+_© 1986, 1998, 2002 Hasbro. All rights reserved._

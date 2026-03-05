@@ -7,19 +7,12 @@
         <span class="game-id-label">Case {{ gameId }}</span>
       </div>
       <div class="header-center">
-        <div
-          v-if="gameState?.status === 'finished'"
-          class="status-banner winner"
-        >
+        <div v-if="gameState?.status === 'finished'" class="status-banner winner">
           Case Closed! {{ winnerName }} wins!
           <div v-if="gameState.solution" class="solution-detail">
-            <span class="highlight-suspect">{{
-              gameState.solution.suspect
-            }}</span>
+            <span class="highlight-suspect">{{ gameState.solution.suspect }}</span>
             with the
-            <span class="highlight-weapon">{{
-              gameState.solution.weapon
-            }}</span>
+            <span class="highlight-weapon">{{ gameState.solution.weapon }}</span>
             in the
             <span class="highlight-room">{{ gameState.solution.room }}</span>
           </div>
@@ -36,17 +29,8 @@
       </div>
       <div class="header-right">
         <div v-if="isObserver" class="observer-badge">Observer</div>
-        <div
-          v-if="gameState?.last_roll"
-          class="dice-display"
-          title="Last dice roll"
-        >
-          <span
-            class="dice"
-            v-for="(die, idx) in gameState.last_roll"
-            :key="idx"
-            >{{ die }}</span
-          >
+        <div v-if="gameState?.last_roll" class="dice-display" title="Last dice roll">
+          <span class="dice" v-for="(die, idx) in gameState.last_roll" :key="idx">{{ die }}</span>
         </div>
       </div>
     </header>
@@ -78,8 +62,7 @@
               'is-me': p.id === playerId,
               'wanderer-legend': p.type === 'wanderer',
               'observer-clickable': isObserver,
-              'observer-selected':
-                isObserver && observerPlayerState?.playerId === p.id,
+              'observer-selected': isObserver && observerPlayerState?.playerId === p.id,
             }"
             @click="onLegendClick(p)"
           >
@@ -90,19 +73,13 @@
               >{{ abbr(p.character) }}</span
             >
             <span class="legend-name">{{ p.name }}</span>
-            <span v-if="p.type !== 'wanderer'" class="legend-character">{{
-              p.character
-            }}</span>
+            <span v-if="p.type !== 'wanderer'" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
               gameState.current_room[p.id]
             }}</span>
             <span v-if="!p.active" class="legend-status">eliminated</span>
-            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label"
-              >wandering</span
-            >
-            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn"
-              >turn</span
-            >
+            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
+            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
             <!-- Shown cards popup -->
             <div
               v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length"
@@ -129,21 +106,12 @@
       <div class="sidebar-column">
         <!-- Your Cards -->
         <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2
-            class="collapsible-header"
-            @click="cardsCollapsed = !cardsCollapsed"
-          >
+          <h2 class="collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
             <span>Your Cards</span>
-            <span
-              class="collapse-indicator"
-              :class="{ collapsed: cardsCollapsed }"
-              >&#9660;</span
-            >
+            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
           </h2>
           <div v-if="!cardsCollapsed">
-            <div v-if="!yourCards.length" class="no-cards">
-              No cards dealt yet
-            </div>
+            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
             <template v-else>
               <div v-if="suspectCards.length" class="card-group">
                 <h3 class="card-group-label card-group-suspect">Suspects</h3>
@@ -218,22 +186,15 @@
               <strong>{{ playerName(cardShown.by) }}</strong> showed you:
               <span class="shown-card-name">{{ cardShown.card }}</span>
             </div>
-            <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">
-              &times;
-            </button>
+            <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">&times;</button>
           </div>
         </section>
 
         <!-- Show Card Request (must respond) -->
-        <section
-          v-if="showCardRequest"
-          class="sidebar-panel show-card-request-panel"
-        >
+        <section v-if="showCardRequest" class="sidebar-panel show-card-request-panel">
           <h2>You Must Show a Card</h2>
           <p class="show-card-desc">
-            <strong>{{
-              playerName(showCardRequest.suggestingPlayerId)
-            }}</strong>
+            <strong>{{ playerName(showCardRequest.suggestingPlayerId) }}</strong>
             suggested:
             <span class="highlight-suspect">{{ showCardRequest.suspect }}</span>
             with the
@@ -265,12 +226,7 @@
 
         <!-- Actions -->
         <section
-          v-if="
-            isMyTurn &&
-            !showCardRequest &&
-            gameState?.status === 'playing' &&
-            !isObserver
-          "
+          v-if="isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
           class="sidebar-panel actions-panel"
         >
           <h2>Actions</h2>
@@ -278,9 +234,7 @@
           <!-- Secret Passage -->
           <div v-if="canSecretPassage" class="action-group">
             <h3>Secret Passage</h3>
-            <p class="action-hint">
-              You're in {{ myCurrentRoom }} — take the secret passage?
-            </p>
+            <p class="action-hint">You're in {{ myCurrentRoom }} — take the secret passage?</p>
             <button class="action-btn passage-btn" @click="doSecretPassage">
               Use Passage to {{ passageDestination }}
             </button>
@@ -289,9 +243,7 @@
           <!-- Roll Dice -->
           <div v-if="canRoll" class="action-group">
             <h3>Roll Dice</h3>
-            <button class="action-btn roll-btn" @click="doRoll">
-              Roll Dice
-            </button>
+            <button class="action-btn roll-btn" @click="doRoll">Roll Dice</button>
           </div>
 
           <!-- Move (choose room after rolling) -->
@@ -320,11 +272,7 @@
                 {{ room }}{{ reachableRooms.includes(room) ? " ✓" : "" }}
               </option>
             </select>
-            <button
-              class="action-btn move-btn"
-              :disabled="!targetRoom"
-              @click="doMove"
-            >
+            <button class="action-btn move-btn" :disabled="!targetRoom" @click="doMove">
               Move{{ targetRoom ? " to " + targetRoom : "" }}
             </button>
           </div>
@@ -390,10 +338,7 @@
                 >
                   Accuse!
                 </button>
-                <button
-                  class="action-btn cancel-btn"
-                  @click="showAccuseForm = false"
-                >
+                <button class="action-btn cancel-btn" @click="showAccuseForm = false">
                   Cancel
                 </button>
               </div>
@@ -407,30 +352,19 @@
                 <div
                   class="timer-bar-fill"
                   :style="{
-                    width:
-                      (countdown / (props.autoEndTimer?.seconds || 15)) * 100 +
-                      '%',
+                    width: (countdown / (props.autoEndTimer?.seconds || 15)) * 100 + '%',
                   }"
                 ></div>
               </div>
-              <span class="timer-text"
-                >Auto-ending turn in {{ countdown }}s</span
-              >
+              <span class="timer-text">Auto-ending turn in {{ countdown }}s</span>
             </div>
-            <button class="action-btn end-turn-btn" @click="doEndTurn">
-              End Turn
-            </button>
+            <button class="action-btn end-turn-btn" @click="doEndTurn">End Turn</button>
           </div>
         </section>
 
         <!-- Waiting message when not your turn -->
         <section
-          v-if="
-            !isMyTurn &&
-            !showCardRequest &&
-            gameState?.status === 'playing' &&
-            !isObserver
-          "
+          v-if="!isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
           class="sidebar-panel waiting-panel"
         >
           <div class="waiting-message">
@@ -451,13 +385,9 @@
 
         <!-- Observer: Selected Player Info -->
         <template v-if="isObserver">
-          <section
-            v-if="!observerPlayerState"
-            class="sidebar-panel observer-hint-panel"
-          >
+          <section v-if="!observerPlayerState" class="sidebar-panel observer-hint-panel">
             <div class="observer-hint">
-              Click a player below the board to inspect their cards and debug
-              info.
+              Click a player below the board to inspect their cards and debug info.
             </div>
           </section>
 
@@ -553,18 +483,12 @@
           <div class="card-preview-ornament top-right"></div>
           <div class="card-preview-ornament bottom-left"></div>
           <div class="card-preview-ornament bottom-right"></div>
-          <img
-            :src="cardImageUrl(previewCard)"
-            :alt="previewCard"
-            class="card-preview-image"
-          />
+          <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
           <div class="card-preview-nameplate">
             <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
             <span class="card-preview-name">{{ previewCard }}</span>
           </div>
-          <button class="card-preview-close" @click="closePreview">
-            &times;
-          </button>
+          <button class="card-preview-close" @click="closePreview">&times;</button>
         </div>
       </div>
     </Teleport>
@@ -583,11 +507,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import BoardMap from "./BoardMap.vue";
-import ChatPanel from "./ChatPanel.vue";
-import DetectiveNotes from "./DetectiveNotes.vue";
-import AgentDebugPanel from "./AgentDebugPanel.vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue"
+import BoardMap from "./BoardMap.vue"
+import ChatPanel from "./ChatPanel.vue"
+import DetectiveNotes from "./DetectiveNotes.vue"
+import AgentDebugPanel from "./AgentDebugPanel.vue"
 import {
   SUSPECTS,
   WEAPONS,
@@ -599,7 +523,7 @@ import {
   cardImageUrl,
   abbr,
   characterColors,
-} from "../constants/clue.js";
+} from "../constants/clue.js"
 
 const props = defineProps({
   gameId: String,
@@ -617,219 +541,193 @@ const props = defineProps({
   savedNotes: { type: Object, default: null },
   agentDebugData: { type: Object, default: () => ({}) },
   observerPlayerState: { type: Object, default: null },
-});
+})
 
-const emit = defineEmits([
-  "action",
-  "send-chat",
-  "dismiss-card-shown",
-  "select-player",
-]);
+const emit = defineEmits(["action", "send-chat", "dismiss-card-shown", "select-player"])
 
-const notesRef = ref(null);
+const notesRef = ref(null)
 
 // Form state
-const targetRoom = ref("");
-const suggestSuspect = ref("");
-const suggestWeapon = ref("");
-const accuseSuspect = ref("");
-const accuseWeapon = ref("");
-const accuseRoom = ref("");
-const showAccuseForm = ref(false);
-const cardsCollapsed = ref(false);
+const targetRoom = ref("")
+const suggestSuspect = ref("")
+const suggestWeapon = ref("")
+const accuseSuspect = ref("")
+const accuseWeapon = ref("")
+const accuseRoom = ref("")
+const showAccuseForm = ref(false)
+const cardsCollapsed = ref(false)
 
 // Auto-end timer countdown
-const countdown = ref(null);
-let countdownInterval = null;
+const countdown = ref(null)
+let countdownInterval = null
 
 function clearCountdown() {
   if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
+    clearInterval(countdownInterval)
+    countdownInterval = null
   }
-  countdown.value = null;
+  countdown.value = null
 }
 
 watch(
   () => props.autoEndTimer,
   (timer) => {
-    clearCountdown();
+    clearCountdown()
     if (timer && timer.seconds > 0) {
       const updateCountdown = () => {
-        const elapsed = (Date.now() - timer.startedAt) / 1000;
-        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed));
-        countdown.value = remaining;
-        if (remaining <= 0) clearCountdown();
-      };
-      updateCountdown();
-      countdownInterval = setInterval(updateCountdown, 1000);
+        const elapsed = (Date.now() - timer.startedAt) / 1000
+        const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed))
+        countdown.value = remaining
+        if (remaining <= 0) clearCountdown()
+      }
+      updateCountdown()
+      countdownInterval = setInterval(updateCountdown, 1000)
     }
   },
   { immediate: true }
-);
+)
 
-onUnmounted(() => clearCountdown());
+onUnmounted(() => clearCountdown())
 
 const timerForMe = computed(
-  () =>
-    countdown.value !== null && props.autoEndTimer?.playerId === props.playerId
-);
+  () => countdown.value !== null && props.autoEndTimer?.playerId === props.playerId
+)
 
 // Computed
-const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId);
-const myCurrentRoom = computed(
-  () => props.gameState?.current_room?.[props.playerId] ?? null
-);
+const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
+const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
-const canSecretPassage = computed(() =>
-  props.availableActions.includes("secret_passage")
-);
-const canRoll = computed(() => props.availableActions.includes("roll"));
-const canMove = computed(() => props.availableActions.includes("move"));
-const canSuggest = computed(() => props.availableActions.includes("suggest"));
-const canAccuse = computed(() => props.availableActions.includes("accuse"));
-const canEndTurn = computed(() => props.availableActions.includes("end_turn"));
+const canSecretPassage = computed(() => props.availableActions.includes("secret_passage"))
+const canRoll = computed(() => props.availableActions.includes("roll"))
+const canMove = computed(() => props.availableActions.includes("move"))
+const canSuggest = computed(() => props.availableActions.includes("suggest"))
+const canAccuse = computed(() => props.availableActions.includes("accuse"))
+const canEndTurn = computed(() => props.availableActions.includes("end_turn"))
 
 const SECRET_PASSAGES = {
   Study: "Kitchen",
   Kitchen: "Study",
   Lounge: "Conservatory",
   Conservatory: "Lounge",
-};
-const passageDestination = computed(
-  () => SECRET_PASSAGES[myCurrentRoom.value] ?? "?"
-);
+}
+const passageDestination = computed(() => SECRET_PASSAGES[myCurrentRoom.value] ?? "?")
 
 const currentPlayerName = computed(() => {
-  return playerName(props.gameState?.whose_turn);
-});
+  return playerName(props.gameState?.whose_turn)
+})
 
 const winnerName = computed(() => {
-  return playerName(props.gameState?.winner);
-});
+  return playerName(props.gameState?.winner)
+})
 
-const suspectCards = computed(() =>
-  props.yourCards.filter((c) => SUSPECTS.includes(c))
-);
-const weaponCards = computed(() =>
-  props.yourCards.filter((c) => WEAPONS.includes(c))
-);
-const roomCards = computed(() =>
-  props.yourCards.filter((c) => ROOMS.includes(c))
-);
+const suspectCards = computed(() => props.yourCards.filter((c) => SUSPECTS.includes(c)))
+const weaponCards = computed(() => props.yourCards.filter((c) => WEAPONS.includes(c)))
+const roomCards = computed(() => props.yourCards.filter((c) => ROOMS.includes(c)))
 
 // Observer selected player computeds
-const observerCards = computed(
-  () => props.observerPlayerState?.your_cards ?? []
-);
-const observerSuspectCards = computed(() =>
-  observerCards.value.filter((c) => SUSPECTS.includes(c))
-);
-const observerWeaponCards = computed(() =>
-  observerCards.value.filter((c) => WEAPONS.includes(c))
-);
-const observerRoomCards = computed(() =>
-  observerCards.value.filter((c) => ROOMS.includes(c))
-);
+const observerCards = computed(() => props.observerPlayerState?.your_cards ?? [])
+const observerSuspectCards = computed(() => observerCards.value.filter((c) => SUSPECTS.includes(c)))
+const observerWeaponCards = computed(() => observerCards.value.filter((c) => WEAPONS.includes(c)))
+const observerRoomCards = computed(() => observerCards.value.filter((c) => ROOMS.includes(c)))
 const observerSelectedPlayerName = computed(() => {
-  if (!props.observerPlayerState) return "";
-  return playerName(props.observerPlayerState.playerId);
-});
+  if (!props.observerPlayerState) return ""
+  return playerName(props.observerPlayerState.playerId)
+})
 const observerSelectedDebug = computed(() => {
-  if (!props.observerPlayerState) return null;
-  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null;
-});
+  if (!props.observerPlayerState) return null
+  return props.agentDebugData?.[props.observerPlayerState.playerId] ?? null
+})
 
 const matchingCards = computed(() => {
-  if (!props.showCardRequest) return [];
+  if (!props.showCardRequest) return []
   const suggestion = [
     props.showCardRequest.suspect,
     props.showCardRequest.weapon,
     props.showCardRequest.room,
-  ];
-  return props.yourCards.filter((c) => suggestion.includes(c));
-});
+  ]
+  return props.yourCards.filter((c) => suggestion.includes(c))
+})
 
 function playerName(pid) {
-  if (!pid) return "?";
-  const p = props.gameState?.players?.find((pl) => pl.id === pid);
-  return p ? p.name : pid;
+  if (!pid) return "?"
+  const p = props.gameState?.players?.find((pl) => pl.id === pid)
+  return p ? p.name : pid
 }
 
 function tokenStyle(player) {
-  const { bg, text } = characterColors(player.character);
-  const style = { backgroundColor: bg, color: text };
-  if (player.type === "wanderer") style.opacity = 0.5;
-  return style;
+  const { bg, text } = characterColors(player.character)
+  const style = { backgroundColor: bg, color: text }
+  if (player.type === "wanderer") style.opacity = 0.5
+  return style
 }
 
 function cardCategory(card) {
-  if (SUSPECTS.includes(card)) return "card-suspect";
-  if (WEAPONS.includes(card)) return "card-weapon";
-  if (ROOMS.includes(card)) return "card-room";
-  return "";
+  if (SUSPECTS.includes(card)) return "card-suspect"
+  if (WEAPONS.includes(card)) return "card-weapon"
+  if (ROOMS.includes(card)) return "card-room"
+  return ""
 }
 
 // Per-card emoji icons
 
 // Shown cards popup state
-const shownCardsPlayerId = ref(null);
+const shownCardsPlayerId = ref(null)
 const shownCardsForPlayer = computed(() => {
-  if (!shownCardsPlayerId.value || !notesRef.value) return [];
-  const pName = playerName(shownCardsPlayerId.value);
-  return notesRef.value.getCardsShownBy(pName);
-});
+  if (!shownCardsPlayerId.value || !notesRef.value) return []
+  const pName = playerName(shownCardsPlayerId.value)
+  return notesRef.value.getCardsShownBy(pName)
+})
 
 function onLegendClick(player) {
   if (props.isObserver) {
-    emit('select-player', player.id);
-    return;
+    emit("select-player", player.id)
+    return
   }
   // Toggle shown cards popup for this player
   if (shownCardsPlayerId.value === player.id) {
-    shownCardsPlayerId.value = null;
+    shownCardsPlayerId.value = null
   } else {
-    shownCardsPlayerId.value = player.id;
+    shownCardsPlayerId.value = player.id
   }
 }
 
 // Card preview state
-const previewCard = ref(null);
+const previewCard = ref(null)
 
 function showCardPreview(card) {
-  previewCard.value = previewCard.value === card ? null : card;
+  previewCard.value = previewCard.value === card ? null : card
 }
 
 function closePreview() {
-  previewCard.value = null;
+  previewCard.value = null
 }
 
 // Actions
 function onRoomSelected(room) {
   if (canMove.value) {
-    targetRoom.value = room;
-    emit("action", { type: "move", room });
-    targetRoom.value = "";
+    targetRoom.value = room
+    emit("action", { type: "move", room })
+    targetRoom.value = ""
   }
 }
 
 function onPositionSelected(position) {
   if (canMove.value) {
-    emit("action", { type: "move", position });
+    emit("action", { type: "move", position })
   }
 }
 
 function doSecretPassage() {
-  emit("action", { type: "secret_passage" });
+  emit("action", { type: "secret_passage" })
 }
 
 function doRoll() {
-  emit("action", { type: "roll" });
+  emit("action", { type: "roll" })
 }
 
 function doMove() {
-  emit("action", { type: "move", room: targetRoom.value });
-  targetRoom.value = "";
+  emit("action", { type: "move", room: targetRoom.value })
+  targetRoom.value = ""
 }
 
 function doSuggest() {
@@ -838,13 +736,13 @@ function doSuggest() {
     suspect: suggestSuspect.value,
     weapon: suggestWeapon.value,
     room: myCurrentRoom.value,
-  });
-  suggestSuspect.value = "";
-  suggestWeapon.value = "";
+  })
+  suggestSuspect.value = ""
+  suggestWeapon.value = ""
 }
 
 function doShowCard(card) {
-  emit("action", { type: "show_card", card });
+  emit("action", { type: "show_card", card })
 }
 
 function doAccuse() {
@@ -853,54 +751,54 @@ function doAccuse() {
     suspect: accuseSuspect.value,
     weapon: accuseWeapon.value,
     room: accuseRoom.value,
-  });
-  showAccuseForm.value = false;
+  })
+  showAccuseForm.value = false
 }
 
 function doEndTurn() {
-  emit("action", { type: "end_turn" });
+  emit("action", { type: "end_turn" })
 }
 
 // Debounced save of detective notes to backend
-let saveNotesTimer = null;
+let saveNotesTimer = null
 function onNotesChanged(notesData) {
-  if (saveNotesTimer) clearTimeout(saveNotesTimer);
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
   saveNotesTimer = setTimeout(() => {
     fetch(`/games/${props.gameId}/notes`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_id: props.playerId, notes: notesData }),
-    }).catch(() => {});
-  }, 500);
+    }).catch(() => {})
+  }, 500)
 }
 
 // Close shown cards popup when clicking outside
 function onDocClick() {
-  shownCardsPlayerId.value = null;
+  shownCardsPlayerId.value = null
 }
-onMounted(() => document.addEventListener("click", onDocClick));
+onMounted(() => document.addEventListener("click", onDocClick))
 onUnmounted(() => {
-  document.removeEventListener("click", onDocClick);
-  if (saveNotesTimer) clearTimeout(saveNotesTimer);
-});
+  document.removeEventListener("click", onDocClick)
+  if (saveNotesTimer) clearTimeout(saveNotesTimer)
+})
 
 // Auto-mark shown cards in detective notes
 watch(
   () => props.cardShown,
   (shown) => {
     if (shown?.card && notesRef.value) {
-      notesRef.value.markCard(shown.card, "seen", playerName(shown.by));
+      notesRef.value.markCard(shown.card, "seen", playerName(shown.by))
     }
   }
-);
+)
 
 // Reset accuse form on turn change
 watch(
   () => props.gameState?.whose_turn,
   () => {
-    showAccuseForm.value = false;
+    showAccuseForm.value = false
   }
-);
+)
 </script>
 
 <style scoped>
@@ -918,11 +816,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
   border: 1px solid rgba(212, 168, 73, 0.1);
   border-radius: 8px;
   padding: 0.6rem 1.2rem;
@@ -1042,11 +936,7 @@ watch(
 
 /* Player legend */
 .player-legend {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.9),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.9), rgba(18, 14, 10, 0.95));
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
@@ -1203,11 +1093,7 @@ watch(
 }
 
 .sidebar-panel {
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
@@ -1326,11 +1212,7 @@ watch(
 /* Card shown notification */
 .shown-card-panel {
   border-color: rgba(26, 58, 107, 0.4);
-  background: linear-gradient(
-    135deg,
-    rgba(26, 58, 107, 0.15),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(26, 58, 107, 0.15), rgba(18, 14, 10, 0.95));
 }
 
 .shown-card-notice {
@@ -1369,11 +1251,7 @@ watch(
 /* Show card request */
 .show-card-request-panel {
   border: 1.5px solid rgba(155, 27, 48, 0.6);
-  background: linear-gradient(
-    135deg,
-    rgba(155, 27, 48, 0.1),
-    rgba(18, 14, 10, 0.95)
-  );
+  background: linear-gradient(135deg, rgba(155, 27, 48, 0.1), rgba(18, 14, 10, 0.95));
   animation: pulse-border 2s ease-in-out infinite;
 }
 
@@ -1671,11 +1549,7 @@ watch(
 
 .chat-panel-wrapper {
   flex: 1;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95),
-    rgba(18, 14, 10, 0.97)
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
   border: 1px solid rgba(212, 168, 73, 0.08);
   border-radius: 6px;
   padding: 0.8rem;
@@ -1848,11 +1722,7 @@ watch(
   text-align: center;
   margin-top: 10px;
   padding: 6px 12px;
-  background: linear-gradient(
-    135deg,
-    rgba(212, 168, 73, 0.1),
-    rgba(212, 168, 73, 0.05)
-  );
+  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
   border: 1px solid rgba(212, 168, 73, 0.2);
   border-radius: 6px;
   display: flex;

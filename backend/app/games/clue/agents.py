@@ -6,6 +6,7 @@ WandererAgent just moves to a random room and ends its turn (no suggestions/accu
 LLMAgent delegates decisions to an LLM API (with RandomAgent fallback).
 """
 
+import datetime as dt
 import json
 import logging
 import os
@@ -14,7 +15,7 @@ from abc import ABC, abstractmethod
 
 import httpx
 
-from .game import SUSPECTS, WEAPONS, ROOMS, SECRET_PASSAGE_MAP
+from .game import SUSPECTS, WEAPONS, ROOMS, SECRET_PASSAGE_MAP, EXPIRY
 from .board import (
     Room,
     ROOM_NAME_TO_ENUM,
@@ -37,7 +38,9 @@ from .models import (
 
 
 logger = logging.getLogger(__name__)
-llm_trace_logger = logging.getLogger(f"{__name__}.trace")
+
+# Global flag — set via AGENT_TRACE=1 env var to enable for all games
+_GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in ("1", "true", "yes")
 
 
 def _compute_room_distances(
@@ -468,13 +471,20 @@ class BaseAgent(ABC):
 
     agent_type: str = "base"
 
-    def __init__(self, player_id: str, character: str, cards: list[str]):
+    def __init__(
+        self,
+        player_id: str,
+        character: str,
+        cards: list[str],
+        redis_client=None,
+        game_id: str = "",
+    ):
         self.own_cards: set[str] = set(cards)
         self.seen_cards: set[str] = set(cards)
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
-        self.character: str = ""
+        self.character: str = character
         self._pending_chat: str | None = None
 
         self.player_id: str = player_id
@@ -487,7 +497,90 @@ class BaseAgent(ABC):
         self.suggestion_log: list[dict] = []
         # Accumulate inference notifications for LLM agents to consume
         self._pending_inferences: list[str] = []
-        logger.info("[%s] Agent instance created", self.agent_type)
+
+        # Trace infrastructure — writes debug entries to Redis + log
+        self._redis = redis_client
+        self._game_id = game_id
+        self._trace_enabled: bool | None = None  # None = check game state / env
+
+        self.agent_trace("agent_created", cards=sorted(cards))
+
+    # ------------------------------------------------------------------
+    # Trace method — centralized debug logging + Redis persistence
+    # ------------------------------------------------------------------
+
+    def _is_trace_enabled(self) -> bool:
+        """Check whether tracing is enabled (global env or per-game flag)."""
+        if _GLOBAL_AGENT_TRACE:
+            return True
+        if self._trace_enabled is not None:
+            return self._trace_enabled
+        return False
+
+    def set_trace_from_game_state(self, game_state: GameState):
+        """Cache the per-game trace flag from the game state."""
+        self._trace_enabled = game_state.agent_trace_enabled
+
+    def agent_trace(self, event: str, **details):
+        """Write a trace entry to the debug log and (if enabled) to Redis.
+
+        Always emits a debug-level log line.  When tracing is enabled
+        (globally via ``AGENT_TRACE`` env var, or per-game via
+        ``GameState.agent_trace_enabled``), also pushes a JSON entry to
+        the Redis list ``game:{id}:agent_trace``.
+
+        Parameters
+        ----------
+        event : str
+            Short event label, e.g. ``"llm_request"``, ``"decide_action"``.
+        **details
+            Arbitrary key/value pairs included in the trace entry.
+        """
+        # Build the log message
+        detail_str = " | ".join(f"{k}={v}" for k, v in details.items()) if details else ""
+        log_msg = f"[{self.agent_type}:{self.player_id}] {event}"
+        if detail_str:
+            log_msg += f" | {detail_str}"
+        logger.debug(log_msg)
+
+        if not self._is_trace_enabled():
+            return
+        if not self._redis or not self._game_id:
+            return
+
+        entry = {
+            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "game_id": self._game_id,
+            "player_id": self.player_id,
+            "agent_type": self.agent_type,
+            "character": self.character,
+            "event": event,
+            **details,
+        }
+        # Fire-and-forget push to Redis — we don't await here because
+        # agent_trace is called from sync contexts too.  The caller can
+        # await _flush_trace() periodically if needed, but typically
+        # the async runtime will schedule this coroutine promptly.
+        self._enqueue_trace(entry)
+
+    def _enqueue_trace(self, entry: dict):
+        """Push a trace entry to Redis in a fire-and-forget manner."""
+        import asyncio
+
+        key = f"game:{self._game_id}:agent_trace"
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._write_trace(key, entry))
+        except RuntimeError:
+            pass  # No running loop — skip Redis write
+
+    async def _write_trace(self, key: str, entry: dict):
+        """Actually write the trace entry to Redis."""
+        try:
+            await self._redis.rpush(key, json.dumps(entry, default=str))
+            await self._redis.expire(key, EXPIRY)
+        except Exception:
+            pass  # Best-effort — don't crash the agent
 
     # ------------------------------------------------------------------
     # Observations (shared by all agent types)
@@ -499,20 +592,14 @@ class BaseAgent(ABC):
         self.seen_cards.add(card)
         if shown_by:
             self.player_has_cards.setdefault(shown_by, set()).add(card)
-        logger.info(
-            "[%s] Card shown by %s: '%s' (new_info=%s, total_seen=%d)",
-            self.agent_type,
-            shown_by,
-            card,
-            is_new,
-            len(self.seen_cards),
+        self.agent_trace(
+            "observe_shown_card",
+            card=card,
+            shown_by=shown_by,
+            is_new=is_new,
+            total_seen=len(self.seen_cards),
         )
         if is_new:
-            by_text = f" by {shown_by}" if shown_by else ""
-            # self._pending_inferences.append(
-            #     f"CARD SHOWN: '{card}' was shown to me{by_text}. "
-            #     f"This card is NOT the solution."
-            # )
             self._run_inference()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
@@ -524,13 +611,12 @@ class BaseAgent(ABC):
             f"UNREFUTED: My suggestion of {suspect}/{weapon}/{room} was not "
             f"disproved by anyone! These could all be the solution."
         )
-        logger.info(
-            "[%s] Unrefuted suggestion: %s / %s / %s (total_unrefuted=%d)",
-            self.agent_type,
-            suspect,
-            weapon,
-            room,
-            len(self.unrefuted_suggestions),
+        self.agent_trace(
+            "observe_suggestion_no_show",
+            suspect=suspect,
+            weapon=weapon,
+            room=room,
+            total_unrefuted=len(self.unrefuted_suggestions),
         )
 
     def observe_card_shown_to_other(
@@ -546,15 +632,13 @@ class BaseAgent(ABC):
         """
         inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
         if inferred:
-            logger.info(
-                "[%s:%s] INFERRED: %s has '%s' (deduced from suggestion %s/%s/%s)",
-                self.agent_type,
-                self.player_id,
-                shown_by,
-                inferred,
-                suspect,
-                weapon,
-                room,
+            self.agent_trace(
+                "inferred_card",
+                shown_by=shown_by,
+                inferred_card=inferred,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
             )
             self._pending_inferences.append(
                 f"DEDUCED: {self._name(shown_by)} showed a card to {self._name(shown_to)} for "
@@ -566,17 +650,14 @@ class BaseAgent(ABC):
         else:
             suggested_cards = {suspect, weapon, room}
             possible = self._possible_cards_for_player(shown_by, suggested_cards)
-            logger.debug(
-                "[%s:%s] Observed: %s showed a card to %s for %s/%s/%s "
-                "(%d possible cards, cannot deduce)",
-                self.agent_type,
-                self.player_id,
-                shown_by,
-                shown_to,
-                suspect,
-                weapon,
-                room,
-                len(possible),
+            self.agent_trace(
+                "observe_card_shown_to_other",
+                shown_by=shown_by,
+                shown_to=shown_to,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+                possible_cards=len(possible),
             )
 
     def _possible_cards_for_player(
@@ -661,16 +742,14 @@ class BaseAgent(ABC):
                 f"for {suspect}/{weapon}/{room}."
             )
 
-        logger.debug(
-            "[%s] Observed suggestion: %s suggested %s/%s/%s, shown_by=%s, "
-            "%d players couldn't show",
-            self.agent_type,
-            suggesting_player_id,
-            suspect,
-            weapon,
-            room,
-            shown_by,
-            len(players_without_match),
+        self.agent_trace(
+            "observe_suggestion",
+            suggesting_player_id=suggesting_player_id,
+            suspect=suspect,
+            weapon=weapon,
+            room=room,
+            shown_by=shown_by,
+            players_without_match=players_without_match,
         )
 
     def _run_inference(self):
@@ -709,15 +788,13 @@ class BaseAgent(ABC):
 
                 inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
                 if inferred:
-                    logger.info(
-                        "[%s:%s] INFERRED (cascade): %s has '%s' from %s/%s/%s",
-                        self.agent_type,
-                        self.player_id,
-                        shown_by,
-                        inferred,
-                        suspect,
-                        weapon,
-                        room,
+                    self.agent_trace(
+                        "inferred_card_cascade",
+                        shown_by=shown_by,
+                        inferred_card=inferred,
+                        suspect=suspect,
+                        weapon=weapon,
+                        room=room,
                     )
                     self._pending_inferences.append(
                         f"DEDUCED (chain): From earlier suggestion "
@@ -869,12 +946,20 @@ class RandomAgent(BaseAgent):
         player_id: str,
         character: str,
         cards: list[str],
+        redis_client=None,
+        game_id: str = "",
         *,
         secret_passage_chance: float | None = None,
         explore_chance: float | None = None,
         chat_frequency: float | None = None,
     ):
-        super().__init__(player_id=player_id, character=character, cards=cards)
+        super().__init__(
+            player_id=player_id,
+            character=character,
+            cards=cards,
+            redis_client=redis_client,
+            game_id=game_id,
+        )
         self.secret_passage_chance = (
             secret_passage_chance
             if secret_passage_chance is not None
@@ -890,13 +975,11 @@ class RandomAgent(BaseAgent):
             if chat_frequency is not None
             else random.choice(self._STYLE_TIERS)
         )
-        logger.info(
-            "[%s:%s] Style params | secret_passage=%.2f | explore=%.2f | chat=%.2f",
-            self.agent_type,
-            player_id,
-            self.secret_passage_chance,
-            self.explore_chance,
-            self.chat_frequency,
+        self.agent_trace(
+            "style_params",
+            secret_passage=self.secret_passage_chance,
+            explore=self.explore_chance,
+            chat=self.chat_frequency,
         )
 
     # ------------------------------------------------------------------
@@ -913,19 +996,17 @@ class RandomAgent(BaseAgent):
         available = player_state.available_actions
 
         self.seen_cards.update(known_cards)
+        self.set_trace_from_game_state(game_state)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
 
-        logger.info(
-            "[%s:%s] Deciding action | available=%s | dice_rolled=%s | "
-            "unknown: suspects=%d weapons=%d rooms=%d | seen_total=%d",
-            self.agent_type,
-            player_id,
-            available,
-            dice_rolled,
-            len(unknown_suspects),
-            len(unknown_weapons),
-            len(unknown_rooms),
-            len(self.seen_cards),
+        self.agent_trace(
+            "decide_action",
+            available=available,
+            dice_rolled=dice_rolled,
+            unknown_suspects=len(unknown_suspects),
+            unknown_weapons=len(unknown_weapons),
+            unknown_rooms=len(unknown_rooms),
+            seen_total=len(self.seen_cards),
         )
 
         # Accuse if we've narrowed to exactly one per category
@@ -935,13 +1016,11 @@ class RandomAgent(BaseAgent):
             and len(unknown_rooms) == 1
             and "accuse" in available
         ):
-            logger.info(
-                "[%s:%s] ACCUSING — narrowed to: %s / %s / %s",
-                self.agent_type,
-                player_id,
-                unknown_suspects[0],
-                unknown_weapons[0],
-                unknown_rooms[0],
+            self.agent_trace(
+                "accuse",
+                suspect=unknown_suspects[0],
+                weapon=unknown_weapons[0],
+                room=unknown_rooms[0],
             )
             return AccuseAction(
                 suspect=unknown_suspects[0],
@@ -955,13 +1034,12 @@ class RandomAgent(BaseAgent):
             suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
             weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
             self.rooms_suggested_in.add(room)
-            logger.info(
-                "[%s:%s] Suggesting %s / %s / %s (prioritized)",
-                self.agent_type,
-                player_id,
-                suspect,
-                weapon,
-                room,
+            self.agent_trace(
+                "suggest",
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+                reason="prioritized",
             )
             return SuggestAction(suspect=suspect, weapon=weapon, room=room)
 
@@ -973,18 +1051,16 @@ class RandomAgent(BaseAgent):
             my_room = current_room.get(player_id)
             dest_room = SECRET_PASSAGE_MAP.get(my_room) if my_room else None
             if dest_room:
-                logger.info(
-                    "[%s:%s] Using secret passage from %s to %s (coin flip)",
-                    self.agent_type,
-                    player_id,
-                    my_room,
-                    dest_room,
+                self.agent_trace(
+                    "secret_passage",
+                    from_room=my_room,
+                    to_room=dest_room,
                 )
                 return SecretPassageAction()
 
         # Phase 3: roll dice
         if "roll" in available:
-            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            self.agent_trace("roll")
             return RollAction()
 
         # Phase 4: choose room to move toward (dice already rolled)
@@ -1005,94 +1081,58 @@ class RandomAgent(BaseAgent):
             unknown_reachable = [r for r in reachable_rooms if r in unknown_rooms]
 
             if unknown_reachable:
-                # Prioritize reachable rooms that are still unknown
                 target_room = random.choice(unknown_reachable)
-                logger.info(
-                    "[%s:%s] Moving to '%s' (unknown & reachable, dice=%d)",
-                    self.agent_type,
-                    player_id,
-                    target_room,
-                    dice_value,
-                )
+                reason = "unknown_reachable"
             elif (
                 reachable_rooms
                 and unknown_rooms
                 and random.random() < self.explore_chance
             ):
-                # 50% chance: move toward a distant unknown room
                 target_room = self._pick_target_room(unknown_rooms, my_room, player_pos)
-                logger.info(
-                    "[%s:%s] Moving toward '%s' (unreachable unknown, dice=%d)",
-                    self.agent_type,
-                    player_id,
-                    target_room,
-                    dice_value,
-                )
+                reason = "unreachable_unknown"
             elif reachable_rooms:
-                # 50% chance (or no unknowns left): go to a random reachable room
                 target_room = random.choice(reachable_rooms)
-                logger.info(
-                    "[%s:%s] Moving to '%s' (random reachable, dice=%d)",
-                    self.agent_type,
-                    player_id,
-                    target_room,
-                    dice_value,
-                )
+                reason = "random_reachable"
             else:
-                # No reachable rooms — fall back to proximity-weighted pick
                 target_room = self._pick_target_room(unknown_rooms, my_room, player_pos)
-                logger.info(
-                    "[%s:%s] Moving to '%s' (fallback, no reachable rooms)",
-                    self.agent_type,
-                    player_id,
-                    target_room,
-                )
+                reason = "fallback"
+            self.agent_trace("move", room=target_room, dice=dice_value, reason=reason)
             return MoveAction(room=target_room)
 
         # Phase 5: end turn (only if available — may not be if waiting for show_card)
         if "end_turn" in available:
-            logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
+            self.agent_trace("end_turn")
             return EndTurnAction()
 
         # No valid action available (e.g. pending show_card from another player)
-        logger.warning(
-            "[%s:%s] No valid action found (available=%s), defaulting to end_turn",
-            self.agent_type,
-            player_id,
-            available,
-        )
+        self.agent_trace("end_turn_fallback", available=available)
         return EndTurnAction()
 
     async def decide_show_card(
         self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
-        logger.info(
-            "[%s] Deciding which card to show to %s from %s",
-            self.agent_type,
-            suggesting_player_id,
-            matching_cards,
-        )
-
         # Prefer a card the suggesting player already knows about
         already_known = self.shown_to.get(suggesting_player_id, set())
         for card in matching_cards:
             if card in already_known:
-                logger.info(
-                    "[%s] Showing '%s' (already known to %s)",
-                    self.agent_type,
-                    card,
-                    suggesting_player_id,
+                self.agent_trace(
+                    "show_card",
+                    card=card,
+                    to_player=suggesting_player_id,
+                    reason="already_known",
+                    matching=matching_cards,
                 )
                 return card
 
         # Otherwise pick randomly and record it
         card = random.choice(matching_cards)
         self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-        logger.info(
-            "[%s] Showing '%s' (random choice, new info for %s)",
-            self.agent_type,
-            card,
-            suggesting_player_id,
+        self.agent_trace(
+            "show_card",
+            card=card,
+            to_player=suggesting_player_id,
+            reason="random",
+            matching=matching_cards,
         )
         return card
 
@@ -1152,12 +1192,7 @@ class RandomAgent(BaseAgent):
             choice = self._pick_nearest_room(
                 fresh_unknown, current_room, player_position
             )
-            logger.debug(
-                "[%s:%s] Target room '%s' (fresh unknown, proximity-weighted)",
-                self.agent_type,
-                self.player_id,
-                choice,
-            )
+            self.agent_trace("pick_target_room", room=choice, reason="fresh_unknown")
             return choice
 
         other_unknown = [r for r in unknown_rooms if r != current_room]
@@ -1165,12 +1200,7 @@ class RandomAgent(BaseAgent):
             choice = self._pick_nearest_room(
                 other_unknown, current_room, player_position
             )
-            logger.debug(
-                "[%s:%s] Target room '%s' (other unknown, proximity-weighted)",
-                self.agent_type,
-                self.player_id,
-                choice,
-            )
+            self.agent_trace("pick_target_room", room=choice, reason="other_unknown")
             return choice
 
         unseen = [
@@ -1178,24 +1208,14 @@ class RandomAgent(BaseAgent):
         ]
         if unseen:
             choice = self._pick_nearest_room(unseen, current_room, player_position)
-            logger.debug(
-                "[%s:%s] Target room '%s' (unvisited, proximity-weighted)",
-                self.agent_type,
-                self.player_id,
-                choice,
-            )
+            self.agent_trace("pick_target_room", room=choice, reason="unvisited")
             return choice
 
         choices = [r for r in ROOMS if r != current_room]
         if not choices:
             choices = list(ROOMS)
         choice = self._pick_nearest_room(choices, current_room, player_position)
-        logger.debug(
-            "[%s:%s] Target room '%s' (fallback, proximity-weighted)",
-            self.agent_type,
-            self.player_id,
-            choice,
-        )
+        self.agent_trace("pick_target_room", room=choice, reason="fallback")
         return choice
 
     @staticmethod
@@ -1305,19 +1325,12 @@ class WandererAgent(BaseAgent):
                 suspect = unknown_suspects[0]
                 weapon = unknown_weapons[0]
                 room = unknown_rooms[0]
-                logger.info(
-                    "[%s:%s] Full deduction achieved! Accusing: %s/%s/%s",
-                    self.agent_type,
-                    player_id,
-                    suspect,
-                    weapon,
-                    room,
-                )
+                self.agent_trace("accuse", suspect=suspect, weapon=weapon, room=room)
                 return AccuseAction(suspect=suspect, weapon=weapon, room=room)
 
         # Phase 1: roll dice first
         if "roll" in available:
-            logger.info("[%s:%s] Rolling dice", self.agent_type, player_id)
+            self.agent_trace("roll")
             return RollAction()
 
         # Phase 2: move to a random room
@@ -1326,23 +1339,22 @@ class WandererAgent(BaseAgent):
             if not candidates:
                 candidates = list(ROOMS)
             target = random.choice(candidates)
-            logger.info("[%s:%s] Wandering to '%s'", self.agent_type, player_id, target)
+            self.agent_trace("wander", room=target)
             return MoveAction(room=target)
 
         # Phase 3: end turn
-        logger.info("[%s:%s] Ending turn", self.agent_type, player_id)
+        self.agent_trace("end_turn")
         return EndTurnAction()
 
     async def decide_show_card(
         self, matching_cards: list[str], suggesting_player_id: str, errors: int = 0
     ) -> str:
-        # Just pick a random card to show
         card = random.choice(matching_cards)
-        logger.info(
-            "[%s] Showing '%s' to %s",
-            self.agent_type,
-            card,
-            suggesting_player_id,
+        self.agent_trace(
+            "show_card",
+            card=card,
+            to_player=suggesting_player_id,
+            matching=matching_cards,
         )
         return card
 
@@ -1479,15 +1491,19 @@ class LLMAgent(BaseAgent):
         redis_client=None,
         game_id: str = "",
     ):
-        super().__init__(player_id=player_id, character=character, cards=cards)
+        super().__init__(
+            player_id=player_id,
+            character=character,
+            cards=cards,
+            redis_client=redis_client,
+            game_id=game_id,
+        )
         self.api_url = os.getenv(
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
         self.memory: list[str] = []
-        self._redis = redis_client
-        self._game_id = game_id
 
         # Fallback agent shares our observation state — LLM agents always
         # use 50/50 style for consistent behavior.
@@ -1495,6 +1511,8 @@ class LLMAgent(BaseAgent):
             player_id=player_id,
             character=character,
             cards=cards,
+            redis_client=redis_client,
+            game_id=game_id,
             secret_passage_chance=0.50,
             explore_chance=0.50,
             chat_frequency=0.50,
@@ -1509,12 +1527,11 @@ class LLMAgent(BaseAgent):
         self._fallback.player_not_has_cards = self.player_not_has_cards
         self._fallback.suggestion_log = self.suggestion_log
 
-        logger.info(
-            "[%s] Configured | api_url=%s | model=%s | api_key_set=%s",
-            self.agent_type,
-            self.api_url,
-            self.model,
-            bool(self.api_key),
+        self.agent_trace(
+            "llm_configured",
+            api_url=self.api_url,
+            model=self.model,
+            api_key_set=bool(self.api_key),
         )
 
     async def load_memory(self):
@@ -1524,12 +1541,7 @@ class LLMAgent(BaseAgent):
 
             game = ClueGame(self._game_id, self._redis)
             self.memory = await game.get_memory(self.player_id)
-            logger.info(
-                "[%s:%s] Loaded %d memory entries from Redis",
-                self.agent_type,
-                self.player_id,
-                len(self.memory),
-            )
+            self.agent_trace("memory_loaded", count=len(self.memory))
 
     async def _save_memory_entry(self, entry: str):
         """Append a memory entry both in-memory and to Redis."""
@@ -1548,11 +1560,7 @@ class LLMAgent(BaseAgent):
         entry = "INFERENCE UPDATE: " + " | ".join(self._pending_inferences)
         self._pending_inferences.clear()
         await self._save_memory_entry(entry)
-        logger.info(
-            "[%s:%s] Flushed inference notifications to memory",
-            self.agent_type,
-            self.player_id,
-        )
+        self.agent_trace("inferences_flushed", entry=entry)
 
     # ------------------------------------------------------------------
     # LLM communication
@@ -1561,10 +1569,7 @@ class LLMAgent(BaseAgent):
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str | None:
         """Call the LLM API and return the response text, or None on failure."""
         if not self.api_key:
-            logger.warning(
-                "[%s] No LLM_API_KEY set — falling back to random agent",
-                self.agent_type,
-            )
+            self.agent_trace("llm_no_api_key")
             return None
 
         headers = {
@@ -1579,22 +1584,11 @@ class LLMAgent(BaseAgent):
             ],
         }
 
-        logger.info(
-            "[%s] Sending LLM request | model=%s | system_prompt_len=%d | user_prompt_len=%d",
-            self.agent_type,
-            self.model,
-            len(system_prompt),
-            len(user_prompt),
-        )
-        llm_trace_logger.debug(
-            "[%s] LLM system prompt preview: %s",
-            self.agent_type,
-            _clip_text(system_prompt, 250),
-        )
-        llm_trace_logger.info(
-            "[%s] LLM user prompt preview: %s",
-            self.agent_type,
-            user_prompt,
+        self.agent_trace(
+            "llm_request",
+            model=self.model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
         )
 
         try:
@@ -1604,84 +1598,60 @@ class LLMAgent(BaseAgent):
                 data = resp.json()
 
                 content = data["choices"][0]["message"]["content"]
-                logger.info(
-                    "[%s] LLM response received | status=%d | length=%d",
-                    self.agent_type,
-                    resp.status_code,
-                    len(content),
-                )
-                llm_trace_logger.info(
-                    "[%s] LLM raw response preview: %s",
-                    self.agent_type,
-                    _clip_text(content),
+                self.agent_trace(
+                    "llm_response",
+                    status=resp.status_code,
+                    content=content,
+                    usage=data.get("usage"),
                 )
                 return content
         except httpx.TimeoutException:
-            logger.error("[%s] LLM API call timed out", self.agent_type)
+            self.agent_trace("llm_error", error="timeout")
             return None
         except httpx.HTTPStatusError as exc:
-            logger.error(
-                "[%s] LLM API HTTP error: %s %s",
-                self.agent_type,
-                exc.response.status_code,
-                exc.response.text[:200],
+            self.agent_trace(
+                "llm_error",
+                error="http_status",
+                status=exc.response.status_code,
+                body=exc.response.text[:500],
             )
             return None
         except Exception as exc:
-            logger.error("[%s] LLM API call failed: %s", self.agent_type, exc)
+            self.agent_trace("llm_error", error=str(exc))
             return None
 
-    @staticmethod
-    def _parse_json_response(text: str) -> dict | None:
+    def _parse_json_response(self, text: str) -> dict | None:
         """Extract a JSON object from the LLM response text."""
         text = text.strip()
-        original_text = text
         # Strip markdown code fences if present
         if text.startswith("```"):
             lines = text.split("\n")
             lines = [l for l in lines if not l.strip().startswith("```")]
             text = "\n".join(lines).strip()
-            llm_trace_logger.info(
-                "[llm] JSON parse: removed code fences | before_len=%d | after_len=%d",
-                len(original_text),
-                len(text),
-            )
         try:
             parsed = json.loads(text)
-            llm_trace_logger.info(
-                "[llm] JSON parse success | method=direct | keys=%s",
-                sorted(parsed.keys()) if isinstance(parsed, dict) else type(parsed),
+            self.agent_trace(
+                "json_parse",
+                method="direct",
+                keys=sorted(parsed.keys()) if isinstance(parsed, dict) else str(type(parsed)),
             )
             return parsed
         except json.JSONDecodeError:
-            # Try to find JSON within the text
             start = text.find("{")
             end = text.rfind("}")
             if start != -1 and end != -1:
                 try:
                     parsed = json.loads(text[start : end + 1])
-                    llm_trace_logger.info(
-                        "[llm] JSON parse success | method=substring | start=%d | end=%d | keys=%s",
-                        start,
-                        end,
-                        (
-                            sorted(parsed.keys())
-                            if isinstance(parsed, dict)
-                            else type(parsed)
-                        ),
+                    self.agent_trace(
+                        "json_parse",
+                        method="substring",
+                        keys=sorted(parsed.keys()) if isinstance(parsed, dict) else str(type(parsed)),
                     )
                     return parsed
                 except json.JSONDecodeError:
-                    llm_trace_logger.warning(
-                        "[llm] JSON parse failed | method=substring | response_preview=%s",
-                        _clip_text(text),
-                    )
-                    pass
+                    self.agent_trace("json_parse_failed", method="substring", text=_clip_text(text))
             else:
-                llm_trace_logger.warning(
-                    "[llm] JSON parse failed | reason=no_json_braces | response_preview=%s",
-                    _clip_text(text),
-                )
+                self.agent_trace("json_parse_failed", reason="no_json_braces", text=_clip_text(text))
         return None
 
     # ------------------------------------------------------------------
@@ -1801,47 +1771,32 @@ class LLMAgent(BaseAgent):
         """Check that a parsed LLM action is structurally valid."""
         action_type = action.get("type")
         if action_type not in available:
-            logger.warning(
-                "[%s] LLM chose unavailable action '%s' (available: %s)",
-                self.agent_type,
-                action_type,
-                available,
+            self.agent_trace(
+                "validation_failed",
+                reason="unavailable_action",
+                action_type=action_type,
+                available=available,
             )
             return False
 
         if action_type in ("roll", "secret_passage", "end_turn"):
-            # No additional validation needed for these action types
             return True
 
         if action_type == "move":
             room = action.get("room")
             if room not in ROOMS:
-                logger.warning(
-                    "[%s] LLM chose invalid room '%s'", self.agent_type, room
-                )
+                self.agent_trace("validation_failed", reason="invalid_room", room=room)
                 return False
 
         elif action_type == "suggest":
             if action.get("suspect") not in SUSPECTS:
-                logger.warning(
-                    "[%s] LLM chose invalid suspect '%s'",
-                    self.agent_type,
-                    action.get("suspect"),
-                )
+                self.agent_trace("validation_failed", reason="invalid_suspect", suspect=action.get("suspect"))
                 return False
             if action.get("weapon") not in WEAPONS:
-                logger.warning(
-                    "[%s] LLM chose invalid weapon '%s'",
-                    self.agent_type,
-                    action.get("weapon"),
-                )
+                self.agent_trace("validation_failed", reason="invalid_weapon", weapon=action.get("weapon"))
                 return False
             if action.get("room") not in ROOMS:
-                logger.warning(
-                    "[%s] LLM chose invalid room '%s'",
-                    self.agent_type,
-                    action.get("room"),
-                )
+                self.agent_trace("validation_failed", reason="invalid_room", room=action.get("room"))
                 return False
 
         elif action_type == "accuse":
@@ -1873,26 +1828,19 @@ class LLMAgent(BaseAgent):
         self._fallback.player_id = self.player_id
 
         self.seen_cards.update(player_state.your_cards)
+        self.set_trace_from_game_state(game_state)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
 
-        logger.info(
-            "[%s:%s] Deciding action | available=%s | "
-            "unknown: suspects=%d weapons=%d rooms=%d | seen_total=%d",
-            self.agent_type,
-            player_id,
-            available,
-            len(unknown_suspects),
-            len(unknown_weapons),
-            len(unknown_rooms),
-            len(self.seen_cards),
-        )
-        logger.info(
-            "[%s:%s] Decision context | current_room=%s | position=%s | unrefuted_suggestions=%d",
-            self.agent_type,
-            player_id,
-            current_room,
-            current_position,
-            len(self.unrefuted_suggestions),
+        self.agent_trace(
+            "decide_action",
+            available=available,
+            unknown_suspects=len(unknown_suspects),
+            unknown_weapons=len(unknown_weapons),
+            unknown_rooms=len(unknown_rooms),
+            seen_total=len(self.seen_cards),
+            current_room=current_room,
+            position=current_position,
+            unrefuted_suggestions=len(self.unrefuted_suggestions),
         )
 
         # Auto-roll: if "roll" is the only meaningful action and the agent
@@ -1905,29 +1853,15 @@ class LLMAgent(BaseAgent):
         )
         non_filler = [a for a in available if a not in ("accuse", "end_turn")]
         if non_filler == ["roll"] and not can_accuse:
-            logger.info(
-                "[%s:%s] Auto-rolling (only option is roll, skipping LLM call)",
-                self.agent_type,
-                player_id,
-            )
+            self.agent_trace("auto_roll", reason="only_option")
             return RollAction()
 
         if errors > 2:
-            logger.warning(
-                "[%s:%s] Too many errors (%d) in LLM responses — falling back to random agent",
-                self.agent_type,
-                player_id,
-                errors,
-            )
+            self.agent_trace("fallback_errors", errors=errors)
             fallback_action = await self._fallback.decide_action(
                 game_state, player_state
             )
-            logger.info(
-                "[%s:%s] Fallback action after LLM errors: %s",
-                self.agent_type,
-                player_id,
-                fallback_action,
-            )
+            self.agent_trace("fallback_action", action=fallback_action.model_dump())
             return fallback_action
 
         # Build prompt and call LLM
@@ -1937,56 +1871,22 @@ class LLMAgent(BaseAgent):
             personality=personality,
         )
         user_prompt = self._build_action_prompt(game_state, player_state)
-        logger.info(
-            "[%s:%s] Asking LLM what to do next | available_actions=%s",
-            self.agent_type,
-            player_id,
-            available,
-        )
         response_text = await self._call_llm(system_prompt, user_prompt)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
-                llm_trace_logger.info(
-                    "[%s:%s] Parsed LLM action payload: %s",
-                    self.agent_type,
-                    player_id,
-                    parsed,
-                )
                 # Extract chat and memory before validation (not game fields)
                 llm_chat = parsed.pop("chat", None)
                 llm_memory = parsed.pop("memory", None)
-                logger.info(
-                    "[%s:%s] LLM proposed action fields | action=%s | chat_present=%s | memory_present=%s",
-                    self.agent_type,
-                    player_id,
-                    parsed,
-                    isinstance(llm_chat, str) and bool(llm_chat.strip()),
-                    isinstance(llm_memory, str) and bool(llm_memory.strip()),
+                self.agent_trace(
+                    "llm_parsed_action",
+                    action=parsed,
+                    chat=llm_chat,
+                    memory=llm_memory,
                 )
-                if llm_chat and isinstance(llm_chat, str):
-                    llm_trace_logger.info(
-                        "[%s:%s] LLM in-character chat: %s",
-                        self.agent_type,
-                        player_id,
-                        _clip_text(llm_chat, limit=400),
-                    )
-                if llm_memory and isinstance(llm_memory, str):
-                    llm_trace_logger.info(
-                        "[%s:%s] LLM memory note: %s",
-                        self.agent_type,
-                        player_id,
-                        _clip_text(llm_memory, limit=400),
-                    )
                 if self._validate_action(parsed, available, game_state, player_state):
-                    logger.info(
-                        "[%s:%s] Using LLM action | type=%s | payload=%s",
-                        self.agent_type,
-                        player_id,
-                        parsed.get("type"),
-                        parsed,
-                    )
+                    self.agent_trace("llm_action_accepted", action_type=parsed.get("type"), payload=parsed)
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
@@ -2000,41 +1900,22 @@ class LLMAgent(BaseAgent):
                             self.rooms_suggested_in.add(room)
                     return action_adapter.validate_python(parsed)
                 else:
-                    llm_trace_logger.debug(
-                        "[%s:%s] LLM response failed validation: %s",
-                        self.agent_type,
-                        player_id,
-                        parsed,
-                    )
-                    logger.warning(
-                        "[%s:%s] LLM action failed validation — falling back to RandomAgent | payload=%s | available=%s",
-                        self.agent_type,
-                        player_id,
-                        parsed,
-                        available,
+                    self.agent_trace(
+                        "llm_action_validation_failed",
+                        payload=parsed,
+                        available=available,
                     )
             else:
-                logger.warning(
-                    "[%s:%s] Failed to parse LLM response as JSON — falling back to RandomAgent | response_preview=%s",
-                    self.agent_type,
-                    player_id,
-                    _clip_text(response_text),
+                self.agent_trace(
+                    "llm_json_parse_failed",
+                    response_preview=_clip_text(response_text),
                 )
         else:
-            logger.info(
-                "[%s:%s] No LLM response — falling back to random agent",
-                self.agent_type,
-                player_id,
-            )
+            self.agent_trace("llm_no_response")
 
         # Fallback to rule-based logic
         fallback_action = await self._fallback.decide_action(game_state, player_state)
-        logger.info(
-            "[%s:%s] Fallback action: %s",
-            self.agent_type,
-            player_id,
-            fallback_action,
-        )
+        self.agent_trace("fallback_action", action=fallback_action.model_dump())
         return fallback_action
 
     async def decide_show_card(
@@ -2043,95 +1924,59 @@ class LLMAgent(BaseAgent):
         # Flush any inference notifications before making a decision
         await self._flush_pending_inferences()
 
-        logger.info(
-            "[%s] Deciding which card to show to %s from %s",
-            self.agent_type,
-            suggesting_player_id,
-            matching_cards,
-        )
-        logger.info(
-            "[%s] Show-card context | suggesting_player=%s | previously_shown=%s",
-            self.agent_type,
-            suggesting_player_id,
-            sorted(self.shown_to.get(suggesting_player_id, set())),
+        self.agent_trace(
+            "decide_show_card",
+            matching=matching_cards,
+            to_player=suggesting_player_id,
+            previously_shown=sorted(self.shown_to.get(suggesting_player_id, set())),
         )
 
         # Auto-show: if only one card matches, show it without calling the LLM
         if len(matching_cards) == 1:
             card = matching_cards[0]
             self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-            logger.info(
-                "[%s] Auto-showing '%s' to %s (only matching card, skipping LLM call)",
-                self.agent_type,
-                card,
-                suggesting_player_id,
-            )
+            self.agent_trace("auto_show_card", card=card, to_player=suggesting_player_id)
             return card
 
         if errors > 2:
-            logger.warning(
-                "[%s] Too many errors (%d) in show_card decisions — falling back to random choice",
-                self.agent_type,
-                errors,
-            )
+            self.agent_trace("show_card_fallback_errors", errors=errors)
             card = await self._fallback.decide_show_card(
                 matching_cards, suggesting_player_id
             )
-            logger.info(
-                "[%s] Fallback: showing '%s' to %s",
-                self.agent_type,
-                card,
-                suggesting_player_id,
-            )
+            self.agent_trace("show_card_fallback", card=card, to_player=suggesting_player_id)
             return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
-        logger.info(
-            "[%s] Asking LLM which card to show | matching_cards=%d",
-            self.agent_type,
-            len(matching_cards),
-        )
         response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt)
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
-                llm_trace_logger.info(
-                    "[%s] Parsed show-card payload: %s", self.agent_type, parsed
-                )
                 card = parsed.get("card")
                 if card in matching_cards:
                     self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-                    logger.info(
-                        "[%s] LLM chose to show '%s' to %s | matching_cards=%s",
-                        self.agent_type,
-                        card,
-                        suggesting_player_id,
-                        matching_cards,
+                    self.agent_trace(
+                        "llm_show_card",
+                        card=card,
+                        to_player=suggesting_player_id,
+                        matching=matching_cards,
                     )
                     return card
                 else:
-                    logger.warning(
-                        "[%s] LLM chose invalid card '%s' (valid: %s) — falling back to RandomAgent",
-                        self.agent_type,
-                        card,
-                        matching_cards,
+                    self.agent_trace(
+                        "llm_show_card_invalid",
+                        card=card,
+                        valid=matching_cards,
                     )
             else:
-                logger.warning(
-                    "[%s] Failed to parse LLM show_card response — falling back to RandomAgent | response_preview=%s",
-                    self.agent_type,
-                    _clip_text(response_text),
+                self.agent_trace(
+                    "llm_show_card_parse_failed",
+                    response_preview=_clip_text(response_text),
                 )
 
         # Fallback
         card = await self._fallback.decide_show_card(
             matching_cards, suggesting_player_id
         )
-        logger.info(
-            "[%s] Fallback: showing '%s' to %s",
-            self.agent_type,
-            card,
-            suggesting_player_id,
-        )
+        self.agent_trace("show_card_fallback", card=card, to_player=suggesting_player_id)
         return card

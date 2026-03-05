@@ -59,6 +59,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Study
+
 **Ratio:** 16:9
 
 > Colored pencil art. Dark victorian noir of a Cluedo mansion — the Study. Top view from the bottom, moonlight streaming through tall windows on the top wall and left wall. Deep midnight blue and mahogany tones. A heavy oak desk strewn with papers and an inkwell, floor-to-ceiling bookshelves, a globe in the corner, a green banker's lamp casting a small circle of light. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug.
@@ -66,6 +67,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Hall
+
 **Ratio:** 4:5
 
 > Colored pencil art. Grand victorian Cluedo mansion — the Hall. Top view from the bottom, warm gaslight glow throughout. Warm amber and ivory tones. Black-and-white checkerboard marble floor, ornate chandelier shadow cast from above, grand double entry doors at the far wall, a tall grandfather clock, coat rack with a top hat and cane. Sconces light the wallpapered walls. No windows.
@@ -73,6 +75,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Lounge
+
 **Ratio:** 5:4
 
 > Colored pencil art. Moody victorian Cluedo mansion — the Lounge. Top view from the bottom, pale light filtering through heavy drapes on the top wall and right wall. Rich crimson and gold tones. Tufted velvet chaise longue, a crackling fireplace with marble mantel, crystal decanter and glasses on a side table, thick burgundy drapes, an animal-skin rug, scattered playing cards. Cigarette smoke curling upward.
@@ -80,6 +83,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Library
+
 **Ratio:** 3:2
 
 > Colored pencil art. Atmospheric victorian Cluedo mansion — the Library. Top view from the bottom, cold moonlight casting long shadows through bay windows on the left wall. Forest green and aged leather tones. Towering shelves packed with leather-bound volumes, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the window, scattered notes and a magnifying glass on a side table.
@@ -87,6 +91,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Billiard Room
+
 **Ratio:** 5:4
 
 > Colored pencil art. Smoky victorian Cluedo mansion — the Billiard Room. Top view from the bottom, a sliver of moonlight through tall windows on the left wall. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game, cue rack on the wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, an empty velvet-lined gun case hanging open on the wall, mounted trophy heads faintly visible on wood-paneled walls.
@@ -94,6 +99,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Dining Room
+
 **Ratio:** 1:1
 
 > Colored pencil art. Opulent victorian Cluedo mansion — the Dining Room. Top view from the bottom, soft light spilling across the table through tall windows on the right wall. Deep plum and silver tones. A long mahogany dining table set for six with fine china and candelabras, high-backed chairs, a sideboard with a silver tureen, wine bottles, and a carving knife. Heavy damask curtains. Spilled red wine on the white tablecloth.
@@ -101,6 +107,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Conservatory
+
 **Ratio:** 5:4
 
 > Colored pencil art. Lush victorian Cluedo mansion — the Conservatory. Top view from the bottom, moonlight flooding through tall windows on the left wall and glass panes behind the camera. Warm sage green and terracotta tones. Potted palms and exotic ferns, a wrought-iron garden bench, stone tile floor with moss in the cracks, a watering can, scattered gardening tools, and a vine creeping along the window frame.
@@ -108,6 +115,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Ballroom
+
 **Ratio:** 1:1
 
 > Colored pencil art. Elegant victorian Cluedo mansion — the Ballroom. Top view from the bottom, warm gaslight washing across the dance floor. Lavender and champagne gold tones. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the corner, enormous crystal chandelier reflection on the floor, floor-length mirrors on the walls, velvet rope barriers, a single dropped silk glove. No windows.
@@ -115,6 +123,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 ---
 
 ### Kitchen
+
 **Ratio:** 1:1
 
 > Colored pencil art. Rustic victorian Cluedo mansion — the Kitchen. Top view from the bottom, soft light through windows on the right wall. Warm copper and cream tones. A heavy butcher-block island, cast-iron pots hanging from a ceiling rack, a coal-burning range with a kettle, flour dusted across the counter, a knife block, bundles of dried herbs, a pantry door slightly ajar, an open toolbox on the floor with a wrench-shaped gap in the tray. Warm gaslight glow on stone floor tiles.
@@ -135,6 +144,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Candlestick
+
 **Ratio:** 2:3
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Candlestick. A heavy brass candlestick with melted wax dripping down its stem, lying on its side on rumpled velvet. Warm golden and tarnished bronze tones. A single flame still guttering at the wick. Wax spatters on dark wood beneath. Dramatic side-lighting casting a long shadow.
@@ -142,6 +152,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Knife
+
 **Ratio:** 9:16
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Knife. A sharp carving knife with an ivory handle, laid diagonally on a white linen napkin. Cold steel blue and bone-white tones. The blade catches a glint of light along its edge. A single dark stain near the tip. Monogrammed handle. Background of polished dark marble.
@@ -149,6 +160,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Lead Pipe
+
 **Ratio:** 9:16
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Lead Pipe. A heavy dull-grey lead pipe, slightly bent, resting on wet cobblestones. Slate grey and rain-slicked charcoal tones. Beads of condensation along its surface. A gaslight reflection in a nearby puddle. Industrial grime and patina. Fog rolling in at the edges.
@@ -156,6 +168,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Revolver
+
 **Ratio:** 3:2
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Revolver. A snub-nosed six-shot revolver with a pearl grip, resting on a green felt card table. Gunmetal black and mother-of-pearl tones. The cylinder slightly open, one chamber empty. Wisps of smoke. Scattered poker chips and a spent brass casing nearby. Warm lamplight from above.
@@ -163,6 +176,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Rope
+
 **Ratio:** 1:1
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Rope. A coil of thick hemp rope with a knotted loop, draped over a wooden banister post. Rough sisal tan and dark oak tones. Frayed fibers catching the light. The knot tied in a precise hangman's style. Shadows of staircase railings across the wall. Dusty, forgotten attic atmosphere.
@@ -170,6 +184,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 ---
 
 ### Wrench
+
 **Ratio:** 4:5
 
 > Colored pencil art. Dark victorian noir Cluedo weapon — the Wrench. A heavy iron pipe wrench with a rust-pitted jaw, resting on a workbench. Deep iron-oxide red and soot-black tones. Oil stains on the wooden bench surface. A torn work glove beside it. Background of brick wall with mounted gas pipes. Harsh overhead workshop light casting hard shadows.

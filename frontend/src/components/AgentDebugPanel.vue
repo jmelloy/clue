@@ -60,28 +60,14 @@
         <!-- Decided action -->
         <div v-if="currentDebug.decided_action" class="debug-section">
           <h3>Last Action</h3>
-          <code class="action-json">{{
-            JSON.stringify(currentDebug.decided_action)
-          }}</code>
+          <code class="action-json">{{ JSON.stringify(currentDebug.decided_action) }}</code>
         </div>
 
         <!-- Card knowledge -->
         <div class="debug-section">
-          <h3
-            class="collapsible-header"
-            @click="cardsExpanded = !cardsExpanded"
-          >
-            <span
-              >Card Knowledge ({{
-                currentDebug.seen_cards?.length || 0
-              }}
-              seen)</span
-            >
-            <span
-              class="collapse-indicator"
-              :class="{ collapsed: !cardsExpanded }"
-              >&#9660;</span
-            >
+          <h3 class="collapsible-header" @click="cardsExpanded = !cardsExpanded">
+            <span>Card Knowledge ({{ currentDebug.seen_cards?.length || 0 }} seen)</span>
+            <span class="collapse-indicator" :class="{ collapsed: !cardsExpanded }">&#9660;</span>
           </h3>
           <div v-if="cardsExpanded">
             <div class="unknown-group">
@@ -92,9 +78,7 @@
                 class="unknown-chip suspect-chip"
                 >{{ s }}</span
               >
-              <span
-                v-if="!currentDebug.unknown_suspects?.length"
-                class="all-known"
+              <span v-if="!currentDebug.unknown_suspects?.length" class="all-known"
                 >all eliminated</span
               >
             </div>
@@ -106,9 +90,7 @@
                 class="unknown-chip weapon-chip"
                 >{{ w }}</span
               >
-              <span
-                v-if="!currentDebug.unknown_weapons?.length"
-                class="all-known"
+              <span v-if="!currentDebug.unknown_weapons?.length" class="all-known"
                 >all eliminated</span
               >
             </div>
@@ -126,28 +108,16 @@
             </div>
             <div class="seen-cards-line">
               <span class="seen-label">Seen:</span>
-              <span class="seen-list">{{
-                currentDebug.seen_cards?.join(", ") || "none"
-              }}</span>
+              <span class="seen-list">{{ currentDebug.seen_cards?.join(", ") || "none" }}</span>
             </div>
           </div>
         </div>
 
         <!-- Known card holders -->
-        <div
-          v-if="Object.keys(currentDebug.player_has_cards || {}).length"
-          class="debug-section"
-        >
-          <h3
-            class="collapsible-header"
-            @click="holdersExpanded = !holdersExpanded"
-          >
+        <div v-if="Object.keys(currentDebug.player_has_cards || {}).length" class="debug-section">
+          <h3 class="collapsible-header" @click="holdersExpanded = !holdersExpanded">
             <span>Known Card Holders</span>
-            <span
-              class="collapse-indicator"
-              :class="{ collapsed: !holdersExpanded }"
-              >&#9660;</span
-            >
+            <span class="collapse-indicator" :class="{ collapsed: !holdersExpanded }">&#9660;</span>
           </h3>
           <div v-if="holdersExpanded">
             <div
@@ -156,62 +126,35 @@
               class="holder-row"
             >
               <span class="holder-name">{{ playerName(pid) }}:</span>
-              <span v-for="c in cards" :key="c" class="holder-card">{{
-                c
-              }}</span>
+              <span v-for="c in cards" :key="c" class="holder-card">{{ c }}</span>
             </div>
           </div>
         </div>
 
         <!-- Unrefuted suggestions -->
-        <div
-          v-if="currentDebug.unrefuted_suggestions?.length"
-          class="debug-section"
-        >
+        <div v-if="currentDebug.unrefuted_suggestions?.length" class="debug-section">
           <h3>Unrefuted Suggestions</h3>
-          <div
-            v-for="(s, i) in currentDebug.unrefuted_suggestions"
-            :key="i"
-            class="unrefuted-item"
-          >
+          <div v-for="(s, i) in currentDebug.unrefuted_suggestions" :key="i" class="unrefuted-item">
             {{ s.suspect }} / {{ s.weapon }} / {{ s.room }}
           </div>
         </div>
 
         <!-- Recent inferences -->
-        <div
-          v-if="currentDebug.recent_inferences?.length"
-          class="debug-section"
-        >
+        <div v-if="currentDebug.recent_inferences?.length" class="debug-section">
           <h3>Pending Inferences</h3>
-          <div
-            v-for="(inf, i) in currentDebug.recent_inferences"
-            :key="i"
-            class="inference-item"
-          >
+          <div v-for="(inf, i) in currentDebug.recent_inferences" :key="i" class="inference-item">
             {{ inf }}
           </div>
         </div>
 
         <!-- LLM Memory -->
         <div v-if="currentDebug.memory?.length" class="debug-section">
-          <h3
-            class="collapsible-header"
-            @click="memoryExpanded = !memoryExpanded"
-          >
+          <h3 class="collapsible-header" @click="memoryExpanded = !memoryExpanded">
             <span>LLM Memory ({{ currentDebug.memory.length }} entries)</span>
-            <span
-              class="collapse-indicator"
-              :class="{ collapsed: !memoryExpanded }"
-              >&#9660;</span
-            >
+            <span class="collapse-indicator" :class="{ collapsed: !memoryExpanded }">&#9660;</span>
           </h3>
           <div v-if="memoryExpanded" class="memory-list">
-            <div
-              v-for="(entry, i) in currentDebug.memory"
-              :key="i"
-              class="memory-entry"
-            >
+            <div v-for="(entry, i) in currentDebug.memory" :key="i" class="memory-entry">
               <span class="memory-index">[{{ i + 1 }}]</span>
               <span class="memory-text">{{ entry }}</span>
             </div>
@@ -224,57 +167,54 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch } from "vue"
 
 const props = defineProps({
   agentDebugData: { type: Object, default: () => ({}) },
   players: { type: Array, default: () => [] },
-});
+})
 
-const collapsed = ref(false);
-const cardsExpanded = ref(true);
-const holdersExpanded = ref(false);
-const memoryExpanded = ref(true);
-const selectedAgent = ref(null);
+const collapsed = ref(false)
+const cardsExpanded = ref(true)
+const holdersExpanded = ref(false)
+const memoryExpanded = ref(true)
+const selectedAgent = ref(null)
 
 const agentIds = computed(() => {
-  const ids = Object.keys(props.agentDebugData || {});
+  const ids = Object.keys(props.agentDebugData || {})
   // Filter out wanderers for a cleaner view
   return ids.filter((id) => {
-    const data = props.agentDebugData[id];
-    return data && data.agent_type !== "wanderer";
-  });
-});
+    const data = props.agentDebugData[id]
+    return data && data.agent_type !== "wanderer"
+  })
+})
 
 // Auto-select first agent
 watch(
   agentIds,
   (ids) => {
-    if (
-      ids.length &&
-      (!selectedAgent.value || !ids.includes(selectedAgent.value))
-    ) {
-      selectedAgent.value = ids[0];
+    if (ids.length && (!selectedAgent.value || !ids.includes(selectedAgent.value))) {
+      selectedAgent.value = ids[0]
     }
   },
   { immediate: true }
-);
+)
 
 const currentDebug = computed(() => {
-  if (!selectedAgent.value) return null;
-  return props.agentDebugData[selectedAgent.value] || null;
-});
+  if (!selectedAgent.value) return null
+  return props.agentDebugData[selectedAgent.value] || null
+})
 
 function agentLabel(pid) {
-  const data = props.agentDebugData[pid];
-  if (data?.character) return data.character;
-  const p = props.players?.find((pl) => pl.id === pid);
-  return p ? p.name : pid.substring(0, 8);
+  const data = props.agentDebugData[pid]
+  if (data?.character) return data.character
+  const p = props.players?.find((pl) => pl.id === pid)
+  return p ? p.name : pid.substring(0, 8)
 }
 
 function playerName(pid) {
-  const p = props.players?.find((pl) => pl.id === pid);
-  return p ? p.name : pid.substring(0, 8);
+  const p = props.players?.find((pl) => pl.id === pid)
+  return p ? p.name : pid.substring(0, 8)
 }
 </script>
 

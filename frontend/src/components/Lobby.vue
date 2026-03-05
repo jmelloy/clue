@@ -9,12 +9,7 @@
 
     <!-- Floating dust particles -->
     <div class="particles">
-      <span
-        v-for="n in 20"
-        :key="n"
-        class="particle"
-        :style="particleStyle(n)"
-      ></span>
+      <span v-for="n in 20" :key="n" class="particle" :style="particleStyle(n)"></span>
     </div>
 
     <div class="lobby-content">
@@ -63,9 +58,7 @@
         <section class="card" v-else-if="urlGameError">
           <div class="card-inner">
             <p class="error-text">{{ urlGameError }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">
-              Return to Foyer
-            </button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
           </div>
         </section>
 
@@ -75,11 +68,7 @@
               <span class="card-label">Case File</span>
               <h2>Game {{ urlGameId }}</h2>
             </div>
-            <p
-              class="status-badge"
-              :class="urlGameState?.status"
-              v-if="urlGameState"
-            >
+            <p class="status-badge" :class="urlGameState?.status" v-if="urlGameState">
               <span class="status-dot"></span>
               {{ urlGameStatusText }}
               <span v-if="urlGameState.players" class="player-count">
@@ -122,11 +111,9 @@
                     class="badge badge-eliminated"
                     >Eliminated</span
                   >
-                  <span
-                    v-else-if="p.type !== 'human'"
-                    class="badge badge-agent"
-                    >{{ agentLabel(p.type) }}</span
-                  >
+                  <span v-else-if="p.type !== 'human'" class="badge badge-agent">{{
+                    agentLabel(p.type)
+                  }}</span>
                   <span v-else class="badge badge-human">Human</span>
                 </li>
               </ul>
@@ -151,11 +138,7 @@
                       <option value="llm_agent">LLM Agent</option>
                     </select>
                   </div>
-                  <button
-                    class="btn-primary"
-                    :disabled="!playerName"
-                    @click="joinUrlGame"
-                  >
+                  <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
                     Enter the Mansion
                   </button>
                 </div>
@@ -165,11 +148,7 @@
             <!-- No players yet -->
             <div v-else-if="urlGameCanJoin" class="form-group">
               <div class="input-wrapper">
-                <input
-                  v-model="playerName"
-                  placeholder="Your alias"
-                  @keyup.enter="joinUrlGame"
-                />
+                <input v-model="playerName" placeholder="Your alias" @keyup.enter="joinUrlGame" />
               </div>
               <div class="select-wrapper">
                 <select v-model="playerType">
@@ -179,11 +158,7 @@
                 </select>
               </div>
               <div class="btn-row">
-                <button
-                  class="btn-primary"
-                  :disabled="!playerName"
-                  @click="joinUrlGame"
-                >
+                <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
                   Enter the Mansion
                 </button>
                 <button class="btn-secondary" @click="observeUrlGame">
@@ -199,9 +174,7 @@
             </div>
 
             <p v-if="error" class="error-text">{{ error }}</p>
-            <button class="btn-ghost" @click="$emit('clear-url-game')">
-              Return to Foyer
-            </button>
+            <button class="btn-ghost" @click="$emit('clear-url-game')">Return to Foyer</button>
           </div>
         </section>
       </template>
@@ -233,19 +206,21 @@
           <section class="card card-create">
             <div class="card-inner">
               <div class="card-header">
-                <span class="card-label">{{ gameType === 'holdem' ? 'New Table' : 'New Investigation' }}</span>
+                <span class="card-label">{{
+                  gameType === "holdem" ? "New Table" : "New Investigation"
+                }}</span>
                 <h2>Host a Game</h2>
               </div>
               <p class="card-desc">
-                {{ gameType === 'holdem' ? 'Take your seat at the table and test your nerve.' : 'Gather your suspects and uncover the truth. As host, you\'ll set the stage for murder.' }}
+                {{
+                  gameType === "holdem"
+                    ? "Take your seat at the table and test your nerve."
+                    : "Gather your suspects and uncover the truth. As host, you'll set the stage for murder."
+                }}
               </p>
               <div class="form-group">
                 <div class="input-wrapper">
-                  <input
-                    v-model="playerName"
-                    placeholder="Your alias"
-                    @keyup.enter="createGame"
-                  />
+                  <input v-model="playerName" placeholder="Your alias" @keyup.enter="createGame" />
                 </div>
                 <div class="select-wrapper" v-if="gameType === 'clue'">
                   <select v-model="playerType">
@@ -273,12 +248,8 @@
                     <span class="checkbox-label">Allow rebuys</span>
                   </label>
                 </template>
-                <button
-                  class="btn-primary"
-                  :disabled="!playerName"
-                  @click="createGame"
-                >
-                  {{ gameType === 'holdem' ? 'Deal Me In' : 'Open the Case' }}
+                <button class="btn-primary" :disabled="!playerName" @click="createGame">
+                  {{ gameType === "holdem" ? "Deal Me In" : "Open the Case" }}
                 </button>
               </div>
             </div>
@@ -315,7 +286,11 @@
                 <h2>Join a Game</h2>
               </div>
               <p class="card-desc">
-                {{ gameType === 'holdem' ? 'Got a table number? Enter it to take your seat.' : 'You\'ve received an invitation to Tudor Mansion. Enter the case number to join.' }}
+                {{
+                  gameType === "holdem"
+                    ? "Got a table number? Enter it to take your seat."
+                    : "You've received an invitation to Tudor Mansion. Enter the case number to join."
+                }}
               </p>
               <div class="form-group">
                 <div class="input-wrapper input-code">
@@ -344,11 +319,7 @@
                   >
                     Enter the Mansion
                   </button>
-                  <button
-                    class="btn-secondary"
-                    :disabled="!joinGameId"
-                    @click="observeGame"
-                  >
+                  <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
                     <span class="btn-icon">&#x1F441;</span> Observe
                   </button>
                 </div>
@@ -386,147 +357,139 @@
       <footer class="lobby-footer">
         <div class="footer-line"></div>
         <p>&ldquo;The truth is rarely pure and never simple.&rdquo;</p>
+        <a href="/admin" class="admin-link">Admin</a>
       </footer>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch } from "vue"
 
 const props = defineProps({
   urlGameId: { type: String, default: null },
   urlGameType: { type: String, default: "clue" },
-});
+})
 
-const emit = defineEmits([
-  "game-joined",
-  "observe",
-  "rejoin",
-  "clear-url-game",
-]);
+const emit = defineEmits(["game-joined", "observe", "rejoin", "clear-url-game"])
 
-const playerName = ref("");
-const playerType = ref("human");
-const gameType = ref("clue");
-const joinGameId = ref("");
-const error = ref("");
+const playerName = ref("")
+const playerType = ref("human")
+const gameType = ref("clue")
+const joinGameId = ref("")
+const error = ref("")
 
 // Hold'em game creation options
-const holdemBuyIn = ref(20);
-const holdemAllowRebuys = ref(false);
+const holdemBuyIn = ref(20)
+const holdemAllowRebuys = ref(false)
 
 // URL game state
-const urlGameState = ref(null);
-const urlGameLoading = ref(false);
-const urlGameError = ref("");
+const urlGameState = ref(null)
+const urlGameLoading = ref(false)
+const urlGameError = ref("")
 
 // Imported from shared constants
-import {
-  CHARACTER_COLORS,
-  CHARACTER_ABBR,
-  CARD_IMAGES,
-} from "../constants/clue.js";
+import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from "../constants/clue.js"
 
 function tokenColor(character) {
-  const c = CHARACTER_COLORS[character] || { bg: "#444", text: "#fff" };
-  return { backgroundColor: c.bg, color: c.text, borderColor: c.bg };
+  const c = CHARACTER_COLORS[character] || { bg: "#444", text: "#fff" }
+  return { backgroundColor: c.bg, color: c.text, borderColor: c.bg }
 }
 
 function charAbbr(character) {
-  return CHARACTER_ABBR[character] || "??";
+  return CHARACTER_ABBR[character] || "??"
 }
 
 function agentLabel(type) {
-  if (type === "agent") return "AI";
-  if (type === "llm_agent") return "LLM";
-  if (type === "wanderer") return "NPC";
-  return type;
+  if (type === "agent") return "AI"
+  if (type === "llm_agent") return "LLM"
+  if (type === "wanderer") return "NPC"
+  return type
 }
 
 function particleStyle(n) {
-  const x = Math.sin(n * 7.3) * 50 + 50;
-  const delay = (n * 1.7) % 12;
-  const duration = 8 + (n % 5) * 2;
-  const size = 1 + (n % 3);
+  const x = Math.sin(n * 7.3) * 50 + 50
+  const delay = (n * 1.7) % 12
+  const duration = 8 + (n % 5) * 2
+  const size = 1 + (n % 3)
   return {
     left: `${x}%`,
     animationDelay: `${delay}s`,
     animationDuration: `${duration}s`,
     width: `${size}px`,
     height: `${size}px`,
-  };
+  }
 }
 
 const urlGameCanJoin = computed(() => {
-  return urlGameState.value?.status === "waiting";
-});
+  return urlGameState.value?.status === "waiting"
+})
 
 const urlGameStatusText = computed(() => {
-  const status = urlGameState.value?.status;
-  if (status === "waiting") return "Awaiting suspects";
-  if (status === "playing") return "Investigation in progress";
-  if (status === "finished") return "Case closed";
-  return "";
-});
+  const status = urlGameState.value?.status
+  if (status === "waiting") return "Awaiting suspects"
+  if (status === "playing") return "Investigation in progress"
+  if (status === "finished") return "Case closed"
+  return ""
+})
 
 watch(
   () => props.urlGameId,
   (gid) => {
     if (gid) {
-      fetchUrlGame(gid);
+      fetchUrlGame(gid)
     } else {
-      urlGameState.value = null;
-      urlGameLoading.value = false;
-      urlGameError.value = "";
+      urlGameState.value = null
+      urlGameLoading.value = false
+      urlGameError.value = ""
     }
   },
   { immediate: true }
-);
+)
 
 async function fetchUrlGame(gid) {
-  urlGameLoading.value = true;
-  urlGameError.value = "";
-  urlGameState.value = null;
+  urlGameLoading.value = true
+  urlGameError.value = ""
+  urlGameState.value = null
   try {
-    const endpoint = props.urlGameType === "holdem" ? `/holdem/games/${gid}` : `/games/${gid}`;
-    const res = await fetch(endpoint);
+    const endpoint = props.urlGameType === "holdem" ? `/holdem/games/${gid}` : `/games/${gid}`
+    const res = await fetch(endpoint)
     if (!res.ok) {
-      urlGameError.value = "Case file not found";
-      return;
+      urlGameError.value = "Case file not found"
+      return
     }
-    const state = await res.json();
-    urlGameState.value = state;
-    if (state.game_type === "holdem") gameType.value = "holdem";
+    const state = await res.json()
+    urlGameState.value = state
+    if (state.game_type === "holdem") gameType.value = "holdem"
   } catch (e) {
-    urlGameError.value = "Failed to retrieve case: " + e.message;
+    urlGameError.value = "Failed to retrieve case: " + e.message
   } finally {
-    urlGameLoading.value = false;
+    urlGameLoading.value = false
   }
 }
 
 async function joinUrlGame() {
-  error.value = "";
+  error.value = ""
   if (props.urlGameType === "holdem" || gameType.value === "holdem") {
-    await doJoinHoldem(props.urlGameId);
+    await doJoinHoldem(props.urlGameId)
   } else {
-    await doJoin(props.urlGameId);
+    await doJoin(props.urlGameId)
   }
 }
 
 function observeUrlGame() {
-  emit("observe", { gameId: props.urlGameId, gameType: props.urlGameType });
+  emit("observe", { gameId: props.urlGameId, gameType: props.urlGameType })
 }
 
 function rejoinAs(player) {
-  emit("rejoin", { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType });
+  emit("rejoin", { gameId: props.urlGameId, playerId: player.id, gameType: props.urlGameType })
 }
 
 async function createGame() {
-  error.value = "";
+  error.value = ""
   try {
     if (gameType.value === "holdem") {
-      const buyInCents = Math.round(holdemBuyIn.value * 100);
+      const buyInCents = Math.round(holdemBuyIn.value * 100)
       const res = await fetch("/holdem/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -534,25 +497,25 @@ async function createGame() {
           buy_in: buyInCents,
           allow_rebuys: holdemAllowRebuys.value,
         }),
-      });
-      const { game_id } = await res.json();
-      await doJoinHoldem(game_id);
+      })
+      const { game_id } = await res.json()
+      await doJoinHoldem(game_id)
     } else {
-      const res = await fetch("/games", { method: "POST" });
-      const { game_id } = await res.json();
-      await doJoin(game_id);
+      const res = await fetch("/games", { method: "POST" })
+      const { game_id } = await res.json()
+      await doJoin(game_id)
     }
   } catch (e) {
-    error.value = "Failed to open case: " + e.message;
+    error.value = "Failed to open case: " + e.message
   }
 }
 
 async function joinGame() {
-  error.value = "";
+  error.value = ""
   if (gameType.value === "holdem") {
-    await doJoinHoldem(joinGameId.value.trim().toUpperCase());
+    await doJoinHoldem(joinGameId.value.trim().toUpperCase())
   } else {
-    await doJoin(joinGameId.value.trim().toUpperCase());
+    await doJoin(joinGameId.value.trim().toUpperCase())
   }
 }
 
@@ -565,18 +528,18 @@ async function doJoin(gameId) {
         player_name: playerName.value,
         player_type: playerType.value,
       }),
-    });
+    })
     if (!res.ok) {
-      const data = await res.json();
-      error.value = data.detail ?? "Failed to join";
-      return;
+      const data = await res.json()
+      error.value = data.detail ?? "Failed to join"
+      return
     }
-    const { player_id } = await res.json();
-    const stateRes = await fetch(`/games/${gameId}`);
-    const state = await stateRes.json();
-    emit("game-joined", { gameId, playerId: player_id, state });
+    const { player_id } = await res.json()
+    const stateRes = await fetch(`/games/${gameId}`)
+    const state = await stateRes.json()
+    emit("game-joined", { gameId, playerId: player_id, state })
   } catch (e) {
-    error.value = "Error: " + e.message;
+    error.value = "Error: " + e.message
   }
 }
 
@@ -586,33 +549,33 @@ async function doJoinHoldem(gameId) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: playerName.value }),
-    });
+    })
     if (!res.ok) {
-      const data = await res.json();
-      error.value = data.detail ?? "Failed to join";
-      return;
+      const data = await res.json()
+      error.value = data.detail ?? "Failed to join"
+      return
     }
-    const { player_id } = await res.json();
-    const stateRes = await fetch(`/holdem/games/${gameId}`);
-    const state = await stateRes.json();
-    emit("game-joined", { gameId, playerId: player_id, state, gameType: "holdem" });
+    const { player_id } = await res.json()
+    const stateRes = await fetch(`/holdem/games/${gameId}`)
+    const state = await stateRes.json()
+    emit("game-joined", { gameId, playerId: player_id, state, gameType: "holdem" })
   } catch (e) {
-    error.value = "Error: " + e.message;
+    error.value = "Error: " + e.message
   }
 }
 
 async function observeGame() {
-  error.value = "";
-  const gid = joinGameId.value.trim().toUpperCase();
+  error.value = ""
+  const gid = joinGameId.value.trim().toUpperCase()
   try {
-    const res = await fetch(`/games/${gid}`);
+    const res = await fetch(`/games/${gid}`)
     if (!res.ok) {
-      error.value = "Case file not found";
-      return;
+      error.value = "Case file not found"
+      return
     }
-    emit("observe", { gameId: gid });
+    emit("observe", { gameId: gid })
   } catch (e) {
-    error.value = "Error: " + e.message;
+    error.value = "Error: " + e.message
   }
 }
 </script>
@@ -741,11 +704,7 @@ async function observeGame() {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(212, 168, 73, 0.15),
-    transparent 70%
-  );
+  background: radial-gradient(circle, rgba(212, 168, 73, 0.15), transparent 70%);
   animation: pulse-glow 4s ease-in-out infinite;
 }
 
@@ -892,11 +851,7 @@ async function observeGame() {
 .card {
   position: relative;
   border-radius: 8px;
-  background: linear-gradient(
-    135deg,
-    rgba(30, 24, 16, 0.95) 0%,
-    rgba(18, 14, 10, 0.97) 100%
-  );
+  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95) 0%, rgba(18, 14, 10, 0.97) 100%);
   border: 1px solid rgba(212, 168, 73, 0.12);
   overflow: hidden;
   transition: border-color 0.4s, box-shadow 0.4s;
@@ -1378,12 +1333,7 @@ async function observeGame() {
 .footer-line {
   width: 60px;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(212, 168, 73, 0.2),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 73, 0.2), transparent);
   margin: 0 auto 1rem;
 }
 
@@ -1392,6 +1342,21 @@ async function observeGame() {
   font-style: italic;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
+}
+
+.admin-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #5a5040;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+
+.admin-link:hover {
+  color: #d4a849;
 }
 
 /* === Hold'em Buy-in === */
@@ -1492,7 +1457,7 @@ async function observeGame() {
   align-items: center;
   gap: 0.4rem;
   transition: all 0.3s;
-  font-family: 'Crimson Text', Georgia, serif;
+  font-family: "Crimson Text", Georgia, serif;
 }
 
 .game-type-btn:hover {
