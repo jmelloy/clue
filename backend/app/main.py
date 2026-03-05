@@ -961,21 +961,36 @@ async def _run_agent_loop(game_id: str):
                     action.type,
                     game_id,
                 )
-                result = await _execute_action(game_id, pid, action)
-                # Broadcast personality chat after the action
-                result_d = result.model_dump()
+                # For suggestions, broadcast personality chat BEFORE the action
+                # so the chat appears before the suggestion result
                 action_d = action.model_dump()
-                chat_context = ChatContext(
-                    dice=result_d.get("dice", ""),
-                    room=result_d.get("room") or action_d.get("room") or "",
-                    suspect=action_d.get("suspect", ""),
-                    weapon=action_d.get("weapon", ""),
-                )
-                chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
+                if action.type == "suggest":
+                    chat_context = ChatContext(
+                        room=action_d.get("room", ""),
+                        suspect=action_d.get("suspect", ""),
+                        weapon=action_d.get("weapon", ""),
+                    )
+                    chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+                    if chat_msg:
+                        name = _player_name(state, pid) if state else pid
+                        await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
+
+                result = await _execute_action(game_id, pid, action)
+
+                # Broadcast personality chat after the action (non-suggest)
+                if action.type != "suggest":
+                    result_d = result.model_dump()
+                    chat_context = ChatContext(
+                        dice=result_d.get("dice", ""),
+                        room=result_d.get("room") or action_d.get("room") or "",
+                        suspect=action_d.get("suspect", ""),
+                        weapon=action_d.get("weapon", ""),
+                    )
+                    chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+                    if chat_msg:
+                        s = await game.get_state()
+                        name = _player_name(s, pid) if s else pid
+                        await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
 
             else:
                 # Human player's turn — poll periodically
@@ -1278,6 +1293,11 @@ async def start_game(game_id: str):
                         donor_pid, donor = random.choice(list(real_agents.items()))
                         card = random.choice(list(donor.own_cards))
                         a.observe_shown_card(card, shown_by=donor_pid)
+
+            # Build player name map and share with all agents
+            player_names = {p.id: p.name for p in state.players}
+            for a in agents.values():
+                a.player_names = player_names
 
             _game_agents[game_id] = agents
             _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))

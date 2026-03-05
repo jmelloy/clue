@@ -486,6 +486,8 @@ class BaseAgent(ABC):
         self._pending_chat: str | None = None
 
         self.player_id: str = player_id
+        # Mapping of player_id -> display name (set after construction)
+        self.player_names: dict[str, str] = {}
 
         # Inference tracking
         self.player_has_cards: dict[str, set[str]] = {}
@@ -563,7 +565,7 @@ class BaseAgent(ABC):
                 room,
             )
             self._pending_inferences.append(
-                f"DEDUCED: {shown_by} showed a card to {shown_to} for "
+                f"DEDUCED: {self._name(shown_by)} showed a card to {self._name(shown_to)} for "
                 f"{suspect}/{weapon}/{room}. By elimination I deduced the "
                 f"card was '{inferred}' — it is NOT the solution."
             )
@@ -652,10 +654,10 @@ class BaseAgent(ABC):
             self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
 
         if players_without_match:
-            pids = ", ".join(players_without_match)
+            names = ", ".join(self._name(pid) for pid in players_without_match)
             self._pending_inferences.append(
-                f"NEGATIVE: {suggesting_player_id} suggested {suspect}/{weapon}/{room}. "
-                f"Players [{pids}] could NOT show any of these cards."
+                f"NEGATIVE: {self._name(suggesting_player_id)} suggested {suspect}/{weapon}/{room}. "
+                f"Players [{names}] could NOT show any of these cards."
             )
         if (
             shown_by
@@ -663,7 +665,7 @@ class BaseAgent(ABC):
             and suggesting_player_id != self.player_id
         ):
             self._pending_inferences.append(
-                f"OBSERVED: {shown_by} showed a card to {suggesting_player_id} "
+                f"OBSERVED: {self._name(shown_by)} showed a card to {self._name(suggesting_player_id)} "
                 f"for {suspect}/{weapon}/{room}."
             )
 
@@ -727,7 +729,7 @@ class BaseAgent(ABC):
                     )
                     self._pending_inferences.append(
                         f"DEDUCED (chain): From earlier suggestion "
-                        f"{suspect}/{weapon}/{room}, I now deduce {shown_by} "
+                        f"{suspect}/{weapon}/{room}, I now deduce {self._name(shown_by)} "
                         f"has '{inferred}' — it is NOT the solution."
                     )
                     self.seen_cards.add(inferred)
@@ -736,6 +738,10 @@ class BaseAgent(ABC):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _name(self, player_id: str) -> str:
+        """Resolve a player ID to a display name, falling back to the ID."""
+        return self.player_names.get(player_id, player_id)
 
     def _get_unknowns(self) -> tuple[list[str], list[str], list[str]]:
         """Return (unknown_suspects, unknown_weapons, unknown_rooms)."""
