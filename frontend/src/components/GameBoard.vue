@@ -502,7 +502,7 @@
         @click="closePreview"
       >
         <div class="card-preview-container" @click.stop>
-          <ClueCard :name="previewCard" use-full-image />
+          <ClueCard :name="previewCard" use-full-image size="large" />
           <button class="card-preview-close" @click="closePreview">
             &times;
           </button>
