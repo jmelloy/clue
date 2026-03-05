@@ -1025,6 +1025,101 @@ async def healthz():
     return OkResponse()
 
 
+# ---------------------------------------------------------------------------
+# Admin endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/admin/games")
+async def admin_list_games():
+    """Return summary info for every active game (Clue + Hold'em)."""
+    games: list[dict] = []
+
+    # Scan for Clue games (keys like "game:{id}")
+    async for key in redis_client.scan_iter(match="game:*", count=200):
+        key_str = key if isinstance(key, str) else key.decode()
+        # Skip sub-keys (game:{id}:solution, etc.)
+        parts = key_str.split(":")
+        if len(parts) != 2:
+            continue
+        game_id = parts[1]
+        raw = await redis_client.get(key_str)
+        if not raw:
+            continue
+        try:
+            state = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        games.append({
+            "game_id": game_id,
+            "game_type": "clue",
+            "status": state.get("status", "unknown"),
+            "players": [
+                {"name": p.get("name", "?"), "type": p.get("type", "human"), "character": p.get("character")}
+                for p in state.get("players", [])
+            ],
+            "turn_number": state.get("turn_number", 0),
+            "whose_turn": state.get("whose_turn"),
+            "winner": state.get("winner"),
+        })
+
+    # Scan for Hold'em games (keys like "holdem:{id}")
+    async for key in redis_client.scan_iter(match="holdem:*", count=200):
+        key_str = key if isinstance(key, str) else key.decode()
+        parts = key_str.split(":")
+        if len(parts) != 2:
+            continue
+        game_id = parts[1]
+        raw = await redis_client.get(key_str)
+        if not raw:
+            continue
+        try:
+            state = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        games.append({
+            "game_id": game_id,
+            "game_type": "holdem",
+            "status": state.get("status", "unknown"),
+            "players": [
+                {"name": p.get("name", "?"), "type": p.get("type", "human"), "chips": p.get("chips")}
+                for p in state.get("players", [])
+            ],
+            "hand_number": state.get("hand_number", 0),
+            "pot": state.get("pot", 0),
+            "whose_turn": state.get("whose_turn"),
+            "winner": state.get("winner"),
+        })
+
+    # Sort: playing first, then waiting, then finished
+    status_order = {"playing": 0, "waiting": 1, "finished": 2}
+    games.sort(key=lambda g: (status_order.get(g["status"], 3), g["game_id"]))
+    return {"games": games}
+
+
+@app.get("/admin/games/{game_id}")
+async def admin_get_game(game_id: str):
+    """Return full raw state for a specific game (admin view)."""
+    # Try Clue first
+    raw = await redis_client.get(f"game:{game_id}")
+    if raw:
+        state = json.loads(raw)
+        # Fetch the log
+        log_entries = await redis_client.lrange(f"game:{game_id}:log", 0, -1)
+        log = [json.loads(e) for e in log_entries] if log_entries else []
+        return {"game_type": "clue", "state": state, "log": log}
+
+    # Try Hold'em
+    raw = await redis_client.get(f"holdem:{game_id}")
+    if raw:
+        state = json.loads(raw)
+        log_entries = await redis_client.lrange(f"holdem:{game_id}:log", 0, -1)
+        log = [json.loads(e) for e in log_entries] if log_entries else []
+        return {"game_type": "holdem", "state": state, "log": log}
+
+    raise HTTPException(status_code=404, detail="Game not found")
+
+
 @app.get("/board")
 async def get_board():
     """Return static board layout data (doors, rooms, starts, passages)."""
@@ -1931,6 +2026,15 @@ async def spa_game_route(game_id: str):
 @app.get("/holdem/{game_id}")
 async def spa_holdem_route(game_id: str):
     """Serve index.html for /holdem/{id} so the Vue SPA can handle routing."""
+    index = _static_dir / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"detail": "Not found"}
+
+
+@app.get("/admin")
+async def spa_admin_route():
+    """Serve index.html for /admin so the Vue SPA can handle routing."""
     index = _static_dir / "index.html"
     if index.exists():
         return FileResponse(str(index))

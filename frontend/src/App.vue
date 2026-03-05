@@ -1,7 +1,12 @@
 <template>
   <div id="clue-app">
+    <AdminGames
+      v-if="isAdminRoute"
+      @go-home="onAdminGoHome"
+      @observe-game="onAdminObserveGame"
+    />
     <Lobby
-      v-if="!gameId"
+      v-else-if="!gameId"
       :url-game-id="urlGameId"
       :url-game-type="currentGameType"
       @game-joined="onGameJoined"
@@ -80,6 +85,7 @@ import WaitingRoom from "./components/WaitingRoom.vue";
 import GameBoard from "./components/GameBoard.vue";
 import PokerWaitingRoom from "./components/PokerWaitingRoom.vue";
 import PokerTable from "./components/PokerTable.vue";
+import AdminGames from "./components/AdminGames.vue";
 
 const gameId = ref(null);
 const playerId = ref(null);
@@ -100,6 +106,7 @@ const boardData = ref(null);
 const agentDebugData = ref({});
 const observerPlayerState = ref(null);
 const currentGameType = ref("clue"); // 'clue' or 'holdem'
+const isAdminRoute = ref(false);
 const pokerTableRef = ref(null);
 
 const gameStatus = computed(() => gameState.value?.status ?? "waiting");
@@ -111,6 +118,8 @@ let reconnectTimer = null;
 // --- URL routing ---
 
 function parseGameIdFromUrl() {
+  // Check admin route
+  if (window.location.pathname === "/admin") return { admin: true };
   // Check holdem route first
   const holdemMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)/);
   if (holdemMatch) return { gameId: holdemMatch[1].toUpperCase(), gameType: "holdem" };
@@ -136,6 +145,11 @@ function pushLobbyUrl() {
 
 function onPopState() {
   const parsed = parseGameIdFromUrl();
+  if (parsed && parsed.admin) {
+    isAdminRoute.value = true;
+    return;
+  }
+  isAdminRoute.value = false;
   if (parsed && gameId.value && parsed.gameId === gameId.value) {
     return;
   }
@@ -151,7 +165,9 @@ function onPopState() {
 onMounted(async () => {
   window.addEventListener("popstate", onPopState);
   const parsed = parseGameIdFromUrl();
-  if (parsed) {
+  if (parsed && parsed.admin) {
+    isAdminRoute.value = true;
+  } else if (parsed) {
     currentGameType.value = parsed.gameType;
     urlGameId.value = parsed.gameId;
   }
@@ -462,6 +478,22 @@ function leaveGame() {
   resetState();
   urlGameId.value = null;
   pushLobbyUrl();
+}
+
+function onAdminGoHome() {
+  isAdminRoute.value = false;
+  pushLobbyUrl();
+}
+
+function onAdminObserveGame({ gameId: gid, gameType: gType }) {
+  isAdminRoute.value = false;
+  currentGameType.value = gType;
+  gameId.value = gid;
+  isObserver.value = true;
+  urlGameId.value = null;
+  pushGameUrl(gid);
+  connectWS();
+  fetchState(gid);
 }
 
 function onGameJoined({ gameId: gid, playerId: pid, state, gameType: gType }) {
