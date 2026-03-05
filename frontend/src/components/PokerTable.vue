@@ -829,6 +829,8 @@ watch(
   --black-suit: #1c1c2e;
   --card-face: #f5f1e8;
   --card-shadow: rgba(0, 0, 0, 0.35);
+  --card-back: var(--poker-card-back);
+  --card-back-border: var(--poker-card-back-border);
 
   font-family: 'Outfit', system-ui, sans-serif;
   font-size: 15px;
@@ -1478,8 +1480,8 @@ watch(
 }
 
 .card-back {
-  background: #1a2540;
-  border: 1px solid #2a3555;
+  background: var(--card-back);
+  border: 1px solid var(--card-back-border);
 }
 
 .card-back-pattern {

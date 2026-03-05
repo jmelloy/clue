@@ -258,9 +258,19 @@ h4 {
   color: #7aa8d4;
 }
 
+[data-theme="light"] .note-seen .note-mark,
+[data-theme="vintage"] .note-seen .note-mark {
+  color: #2a6090;
+}
+
 .note-no {
   color: #4a4030;
   text-decoration: line-through;
+}
+
+[data-theme="light"] .note-no,
+[data-theme="vintage"] .note-no {
+  color: var(--text-muted);
 }
 
 .note-no .note-mark {
