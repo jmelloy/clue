@@ -1318,14 +1318,17 @@ watch(
 
 .show-card-btn.card-suspect {
   background: #9b1b30;
+  color: #e8dcc8;
 }
 
 .show-card-btn.card-weapon {
   background: #1a3a6b;
+  color: #e8dcc8;
 }
 
 .show-card-btn.card-room {
   background: #1a6b3c;
+  color: #e8dcc8;
 }
 
 /* Actions */

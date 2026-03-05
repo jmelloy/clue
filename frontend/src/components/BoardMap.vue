@@ -13,8 +13,11 @@
           :style="overlayPos(room.centerRow, room.centerCol)">
           {{ room.name }}
         </div>
-        <!-- Center CLUE label -->
-        <div class="center-label" :style="overlayPos(12, 11)">CLUE</div>
+        <!-- Center magnifying glass + CLUE label -->
+        <div class="center-emblem" :style="overlayPos(11, 11)">
+          <img src="/images/clue/magnifying-glass.jpg" alt="Clue" class="center-magnifying-glass" />
+          <div class="center-label">CLUE</div>
+        </div>
         <!-- Secret passage indicators -->
         <div v-for="sp in secretPassages" :key="'sp-' + sp.from" class="secret-passage"
           :style="overlayPos(sp.row, sp.col)" :title="'Secret passage to ' + sp.to">
@@ -636,7 +639,7 @@ function tokenStyle(token) {
 
 /* Hide overlay labels in vintage — the board image has its own */
 .board-container.vintage-board .room-label,
-.board-container.vintage-board .center-label,
+.board-container.vintage-board .center-emblem,
 .board-container.vintage-board .secret-passage {
   display: none;
 }
@@ -988,6 +991,7 @@ function tokenStyle(token) {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 2;
 }
 
 /* ── Room labels ── */
@@ -1010,15 +1014,35 @@ function tokenStyle(token) {
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
 }
 
-/* ── Center label ── */
-.center-label {
+/* ── Center emblem (magnifying glass + CLUE) ── */
+.center-emblem {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  pointer-events: none;
+}
+
+.center-magnifying-glass {
+  width: clamp(60px, 12vw, 130px);
+  height: auto;
+  border-radius: 50%;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
+  object-fit: contain;
+}
+
+.center-label {
   color: var(--accent);
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(14px, 2.8vw, 26px);
+  font-size: clamp(12px, 2.5vw, 24px);
   font-weight: 900;
-  letter-spacing: 0.3em;
-  text-shadow: 0 0 15px var(--accent-glow);
+  letter-spacing: 0.35em;
+  text-shadow:
+    0 0 15px var(--accent-glow),
+    0 1px 4px rgba(0, 0, 0, 0.9);
+  margin-top: -2px;
+  text-indent: 0.35em; /* offset letter-spacing for visual centering */
 }
 
 [data-theme="vintage"] .center-label {
