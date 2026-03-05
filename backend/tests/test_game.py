@@ -180,10 +180,12 @@ async def test_make_suggestion(game: ClueGame):
             suspect = SUSPECTS[0]
             weapon = card
         else:
-            # card is a room -- use it as the room in the suggestion
+            # card is a room — place the player in that room so the
+            # suggestion room matches their current location (per the rules).
             suspect = SUSPECTS[0]
             weapon = WEAPONS[0]
             room = card
+            await _place_player_in_room(game, whose_turn, room)
 
         result = await game.process_action(
             whose_turn,
@@ -495,7 +497,10 @@ async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
     elif card in WEAPONS:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
     else:
-        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+        # card is a room — move the player there so the suggestion is valid
+        room = card
+        await _place_player_in_room(game, whose_turn, room)
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room}
 
     result = await game.process_action(
         whose_turn, {"type": "suggest", **suggest_kwargs}
@@ -526,7 +531,10 @@ async def test_show_card_invalid_card_rejected(game: ClueGame):
     elif card in WEAPONS:
         suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": card, "room": room}
     else:
-        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": card}
+        # card is a room — move the player there so the suggestion is valid
+        room = card
+        await _place_player_in_room(game, whose_turn, room)
+        suggest_kwargs = {"suspect": SUSPECTS[0], "weapon": WEAPONS[0], "room": room}
 
     await game.process_action(whose_turn, {"type": "suggest", **suggest_kwargs})
 
@@ -1085,3 +1093,53 @@ async def test_room_players_do_not_block(game: ClueGame):
     assert (
         len(targets.reachable_positions) > 0 or len(targets.reachable_rooms) > 0
     )
+
+
+@pytest.mark.asyncio
+async def test_suggest_must_be_in_suggested_room(game: ClueGame):
+    """A player cannot suggest a room they are not currently in."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+
+    # Place the player in ROOMS[0]
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    # Attempt to suggest a different room — should be rejected
+    different_room = ROOMS[1]
+    with pytest.raises(ValueError, match="must be in the room"):
+        await game.process_action(
+            whose_turn,
+            {
+                "type": "suggest",
+                "suspect": SUSPECTS[0],
+                "weapon": WEAPONS[0],
+                "room": different_room,
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_suggest_in_correct_room_succeeds(game: ClueGame):
+    """A player can suggest the room they are currently in."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    whose_turn = state.whose_turn
+
+    room = ROOMS[0]
+    await _place_player_in_room(game, whose_turn, room)
+
+    result = await game.process_action(
+        whose_turn,
+        {
+            "type": "suggest",
+            "suspect": SUSPECTS[0],
+            "weapon": WEAPONS[0],
+            "room": room,
+        },
+    )
+    assert result.type == "suggest"
+    assert result.room == room
