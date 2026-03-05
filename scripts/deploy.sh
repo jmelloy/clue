@@ -135,6 +135,11 @@ echo "==> Deploying backend..."
 sed "s|image: clue-backend:.*|image: $BACKEND_IMAGE|" "$ROOT_DIR/k8s/backend.yaml" \
   | kubectl_cmd apply -n "$NAMESPACE" -f -
 
+echo "==> Deploying agent-runner..."
+# Agent runner uses the backend image with a different entrypoint.
+sed "s|image: clue-backend:.*|image: $BACKEND_IMAGE|" "$ROOT_DIR/k8s/agent-runner.yaml" \
+  | kubectl_cmd apply -n "$NAMESPACE" -f -
+
 if [ "$WITH_CERT_MANAGER" = true ]; then
   echo "==> Applying cert-manager ClusterIssuer..."
   apply_manifest "" "$ROOT_DIR/k8s/clusterissuer.yaml"
@@ -146,6 +151,7 @@ apply_manifest "$NAMESPACE" "$ROOT_DIR/k8s/ingress.yaml"
 echo "==> Waiting for rollouts..."
 kubectl_cmd rollout status -n "$NAMESPACE" deployment/redis --timeout=120s
 kubectl_cmd rollout status -n "$NAMESPACE" deployment/backend --timeout=120s
+kubectl_cmd rollout status -n "$NAMESPACE" deployment/agent-runner --timeout=120s
 
 echo ""
 echo "==> Deployment complete!"

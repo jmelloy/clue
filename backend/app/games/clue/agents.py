@@ -40,7 +40,11 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 # Global flag — set via AGENT_TRACE=1 env var to enable for all games
-_GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in ("1", "true", "yes")
+_GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 
 def _compute_room_distances(
@@ -213,52 +217,52 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
     },
     "Mrs. White": {
         "roll": [
-            "Oh my... a {dice}.",
-            "Let's see now... oh dear.",
-            "I've been rolling dice since before you were born.",
-            "Hmm, a {dice}. I've seen better, I've seen worse.",
+            "Nice — a {dice}.",
+            "Let's make this roll count.",
+            "A {dice}. Could be exactly what I needed.",
+            "Okay, {dice}. I'll work with that.",
         ],
         "move": [
-            "Off to the {room}. I know this house like the back of my hand.",
-            "The {room}? I just cleaned in there!",
-            "I've dusted every corner of the {room}.",
-            "Back to the {room} again. There's always something to find.",
+            "Heading to the {room}. I know this place inside out.",
+            "The {room}. Time to see who's bluffing.",
+            "Into the {room} — let's shake something loose.",
+            "Back to the {room}. Secrets don't stay hidden forever.",
         ],
         "suggest": [
-            "Now, I don't like to gossip, but... {suspect} with the {weapon}?",
-            "I've seen things in this house. {suspect} has been acting suspicious.",
-            "Between you and me, I think {suspect} did it.",
-            "I may just be the housekeeper, but I notice everything.",
+            "I don't throw names around lightly, but... {suspect} with the {weapon}?",
+            "I've been watching all night. {suspect} is giving me bad vibes.",
+            "My read? {suspect}, and the {weapon} fits.",
+            "Underestimate me if you want — I catch everything.",
         ],
         "accuse": [
-            "I've kept quiet long enough. I KNOW what happened!",
-            "After all these years of service, I finally have the answer!",
+            "I've heard enough. I know exactly what happened!",
+            "No more hints — here's the truth.",
         ],
         "end_turn": [
-            "Right then. Who's next?",
-            "I'll just be over here. Watching.",
-            "Don't mind me.",
+            "Your turn. Impress me.",
+            "I'll be right here, paying attention.",
+            "Go ahead — I'm tracking everything.",
         ],
         "show_card": [
-            "Oh, very well. But you didn't hear it from me.",
-            "I suppose you should see this. Discreetly, please.",
+            "Fine, I'll show you — keep it quiet.",
+            "Here. Use it wisely.",
         ],
         "secret_passage": [
-            "I know every hidden nook in this house!",
-            "These old walls have more secrets than you'd think.",
+            "I know exactly where this shortcut goes.",
+            "Perfect. A hidden route.",
         ],
         "suspected": [
-            "Well I never! After all I've done for this household, {accuser}?!",
-            "Oh, blame the housekeeper. How original, {accuser}.",
-            "I've cleaned up after all of you for YEARS and THIS is my thanks?",
-            "Suspect me? I know where all the bodies are buried. Figuratively.",
-            "{accuser}, I've scrubbed blood out of carpets that would make you faint.",
+            "Me? That's cute, {accuser}.",
+            "Blaming me already, {accuser}? You're reaching.",
+            "If you're coming for me, bring better evidence.",
+            "Suspect me all you want — you're still wrong.",
+            "{accuser}, try that accusation when you've done your homework.",
         ],
         "dragged_to_room": [
-            "Oh, the {room} again? I JUST finished cleaning in there!",
-            "Dragged to the {room}... at my age!",
-            "If I have to go to the {room} ONE more time...",
-            "The {room}? Fine. But I'm not dusting while I'm there.",
+            "Pulled into the {room}? Fine — let's do this.",
+            "The {room} again? Someone really wants answers.",
+            "Dragged to the {room}. Hope this is worth it.",
+            "{room}? Sure. Let's see what falls apart.",
         ],
     },
     "Reverend Green": {
@@ -537,7 +541,9 @@ class BaseAgent(ABC):
             Arbitrary key/value pairs included in the trace entry.
         """
         # Build the log message
-        detail_str = " | ".join(f"{k}={v}" for k, v in details.items()) if details else ""
+        detail_str = (
+            " | ".join(f"{k}={v}" for k, v in details.items()) if details else ""
+        )
         log_msg = f"[{self.agent_type}:{self.player_id}] {event}"
         if detail_str:
             log_msg += f" | {detail_str}"
@@ -1419,9 +1425,11 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
         "questioned. You use military jargon and project absolute confidence."
     ),
     "Mrs. White": (
-        "You are Mrs. White — the long-serving housekeeper who knows every "
-        "secret of the mansion. You're observant, a bit gossipy, and "
-        "occasionally nervous. You speak plainly with dry wit."
+        "You are Mrs. White — sharp, confident, and impossible to fool. "
+        "You know every secret in the mansion because you pay attention to "
+        "everything. You're observant, socially savvy, and a little "
+        "mischievous when it helps your game. You speak with quick, modern "
+        "wit and quiet confidence."
     ),
     "Reverend Green": (
         "You are Reverend Green — the Playboy hiding behind a collar. In truth "
@@ -1633,7 +1641,11 @@ class LLMAgent(BaseAgent):
             self.agent_trace(
                 "json_parse",
                 method="direct",
-                keys=sorted(parsed.keys()) if isinstance(parsed, dict) else str(type(parsed)),
+                keys=(
+                    sorted(parsed.keys())
+                    if isinstance(parsed, dict)
+                    else str(type(parsed))
+                ),
             )
             return parsed
         except json.JSONDecodeError:
@@ -1645,13 +1657,21 @@ class LLMAgent(BaseAgent):
                     self.agent_trace(
                         "json_parse",
                         method="substring",
-                        keys=sorted(parsed.keys()) if isinstance(parsed, dict) else str(type(parsed)),
+                        keys=(
+                            sorted(parsed.keys())
+                            if isinstance(parsed, dict)
+                            else str(type(parsed))
+                        ),
                     )
                     return parsed
                 except json.JSONDecodeError:
-                    self.agent_trace("json_parse_failed", method="substring", text=_clip_text(text))
+                    self.agent_trace(
+                        "json_parse_failed", method="substring", text=_clip_text(text)
+                    )
             else:
-                self.agent_trace("json_parse_failed", reason="no_json_braces", text=_clip_text(text))
+                self.agent_trace(
+                    "json_parse_failed", reason="no_json_braces", text=_clip_text(text)
+                )
         return None
 
     # ------------------------------------------------------------------
@@ -1790,13 +1810,23 @@ class LLMAgent(BaseAgent):
 
         elif action_type == "suggest":
             if action.get("suspect") not in SUSPECTS:
-                self.agent_trace("validation_failed", reason="invalid_suspect", suspect=action.get("suspect"))
+                self.agent_trace(
+                    "validation_failed",
+                    reason="invalid_suspect",
+                    suspect=action.get("suspect"),
+                )
                 return False
             if action.get("weapon") not in WEAPONS:
-                self.agent_trace("validation_failed", reason="invalid_weapon", weapon=action.get("weapon"))
+                self.agent_trace(
+                    "validation_failed",
+                    reason="invalid_weapon",
+                    weapon=action.get("weapon"),
+                )
                 return False
             if action.get("room") not in ROOMS:
-                self.agent_trace("validation_failed", reason="invalid_room", room=action.get("room"))
+                self.agent_trace(
+                    "validation_failed", reason="invalid_room", room=action.get("room")
+                )
                 return False
 
         elif action_type == "accuse":
@@ -1886,7 +1916,11 @@ class LLMAgent(BaseAgent):
                     memory=llm_memory,
                 )
                 if self._validate_action(parsed, available, game_state, player_state):
-                    self.agent_trace("llm_action_accepted", action_type=parsed.get("type"), payload=parsed)
+                    self.agent_trace(
+                        "llm_action_accepted",
+                        action_type=parsed.get("type"),
+                        payload=parsed,
+                    )
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
@@ -1935,7 +1969,9 @@ class LLMAgent(BaseAgent):
         if len(matching_cards) == 1:
             card = matching_cards[0]
             self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-            self.agent_trace("auto_show_card", card=card, to_player=suggesting_player_id)
+            self.agent_trace(
+                "auto_show_card", card=card, to_player=suggesting_player_id
+            )
             return card
 
         if errors > 2:
@@ -1943,7 +1979,9 @@ class LLMAgent(BaseAgent):
             card = await self._fallback.decide_show_card(
                 matching_cards, suggesting_player_id
             )
-            self.agent_trace("show_card_fallback", card=card, to_player=suggesting_player_id)
+            self.agent_trace(
+                "show_card_fallback", card=card, to_player=suggesting_player_id
+            )
             return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
@@ -1978,5 +2016,7 @@ class LLMAgent(BaseAgent):
         card = await self._fallback.decide_show_card(
             matching_cards, suggesting_player_id
         )
-        self.agent_trace("show_card_fallback", card=card, to_player=suggesting_player_id)
+        self.agent_trace(
+            "show_card_fallback", card=card, to_player=suggesting_player_id
+        )
         return card
