@@ -80,7 +80,7 @@ from .games.clue.models import (
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
-from .games.holdem.agents import HoldemAgent
+from .games.holdem.agents import HoldemAgent, get_personality
 from .games.holdem.game import HoldemGame
 from .games.holdem.models import (
     HoldemActionMessage,
@@ -1697,6 +1697,7 @@ async def holdem_start_game(game_id: str):
                 bluff_frequency=config.get("bluff_frequency", 0.15),
                 slowplay_frequency=config.get("slowplay_frequency", 0.1),
                 chat_frequency=config.get("chat_frequency", 0.3),
+                personality=config.get("personality"),
             )
             logger.info(
                 "Created holdem agent for player %s (%s) in game %s",
@@ -1992,11 +1993,18 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    aggression = req.aggression if req else 0.5
-    tightness = req.tightness if req else 0.5
-    bluff_frequency = req.bluff_frequency if req else 0.15
-    slowplay_frequency = req.slowplay_frequency if req else 0.1
-    chat_frequency = req.chat_frequency if req else 0.3
+    # Resolve personality — use requested, or pick a random one
+    requested_personality = req.personality if req else ""
+    personality_name, personality_defaults = get_personality(
+        requested_personality or None
+    )
+
+    # Explicit params override personality defaults
+    aggression = req.aggression if (req and req.aggression is not None) else personality_defaults["aggression"]
+    tightness = req.tightness if (req and req.tightness is not None) else personality_defaults["tightness"]
+    bluff_frequency = req.bluff_frequency if (req and req.bluff_frequency is not None) else personality_defaults["bluff_frequency"]
+    slowplay_frequency = req.slowplay_frequency if (req and req.slowplay_frequency is not None) else personality_defaults["slowplay_frequency"]
+    chat_frequency = req.chat_frequency if (req and req.chat_frequency is not None) else personality_defaults["chat_frequency"]
 
     # Pick a name
     taken_names = {p.name for p in state.players}
@@ -2020,6 +2028,7 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
     # Store agent config in Redis so it can be used at game start
     import json as _json
     agent_config = {
+        "personality": personality_name,
         "aggression": aggression,
         "tightness": tightness,
         "bluff_frequency": bluff_frequency,
@@ -2037,7 +2046,9 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
         game_id,
         HoldemPlayerJoinedMessage(player=player, players=list(state.players)),
     )
-    await _holdem_broadcast_chat(game_id, f"{name} joined the table.")
+    await _holdem_broadcast_chat(
+        game_id, f"{name} joined the table. (Style: {personality_name})"
+    )
 
     return HoldemJoinGameResponse(player_id=player_id, player=player)
 
