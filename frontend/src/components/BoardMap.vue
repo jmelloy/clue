@@ -428,8 +428,8 @@ function tokenStyle(token) {
   display: grid;
   grid-template-columns: repeat(24, 1fr);
   grid-template-rows: repeat(25, 1fr);
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   gap: 0;
   background: #1a1510;
   background-image: linear-gradient(to right, #15110c 1px, transparent 1px),
