@@ -1221,6 +1221,34 @@ async def post_agent_debug(game_id: str, request: Request):
     await manager.broadcast(game_id, AgentDebugMessage(**data))
 
 
+@app.get("/games/{game_id}/agent_trace")
+async def get_agent_trace(game_id: str, limit: int = 200, offset: int = 0):
+    """Return agent trace entries from Redis for debugging."""
+    key = f"game:{game_id}:agent_trace"
+    entries = await redis_client.lrange(key, offset, offset + limit - 1)
+    total = await redis_client.llen(key)
+    return {
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "entries": [json.loads(e) for e in entries],
+    }
+
+
+@app.put("/games/{game_id}/agent_trace")
+async def toggle_agent_trace(game_id: str, request: Request):
+    """Enable or disable agent tracing for a specific game."""
+    data = await request.json()
+    enabled = bool(data.get("enabled", False))
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    state.agent_trace_enabled = enabled
+    await game._save_state(state)
+    return {"agent_trace_enabled": enabled}
+
+
 @app.post("/games/{game_id}/join")
 async def join_game(game_id: str, req: JoinRequest):
     game = ClueGame(game_id, redis_client)
@@ -1360,12 +1388,16 @@ async def start_game(game_id: str):
                         player_id=pid,
                         character=player.character,
                         cards=cards,
+                        redis_client=redis_client,
+                        game_id=game_id,
                     )
                 else:
                     agent = RandomAgent(
                         player_id=pid,
                         character=player.character,
                         cards=cards,
+                        redis_client=redis_client,
+                        game_id=game_id,
                     )
 
                 if ptype == "llm_agent":

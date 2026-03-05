@@ -61,6 +61,7 @@ class GameState(BaseModel):
     last_roll: Optional[list[int]] = None
     pending_show_card: Optional[PendingShowCard] = None
     was_moved_by_suggestion: dict[str, bool] = Field(default_factory=dict)
+    agent_trace_enabled: bool = False
 
 
 class PlayerState(GameState):
