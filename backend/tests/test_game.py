@@ -13,6 +13,7 @@ from app.games.clue.game import (
     ROOM_CENTERS,
     SECRET_PASSAGE_MAP,
 )
+from app.games.clue.board import DOORS, SquareType, SQUARES
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,6 +49,20 @@ async def _add_two_players(game: ClueGame):
     state.players[1].character = "Colonel Mustard"
     await game._save_state(state)
     return state.players[0], state.players[1]
+
+
+async def _add_three_players(game: ClueGame):
+    await game.add_player("P1", "Alice", "human")
+    await game.add_player("P2", "Bob", "human")
+    await game.add_player("P3", "Charlie", "human")
+    # Assign deterministic characters for turn order:
+    # P1=Miss Scarlett (first), P2=Colonel Mustard, P3=Mrs. White
+    state = await game._load_state()
+    state.players[0].character = "Miss Scarlett"
+    state.players[1].character = "Colonel Mustard"
+    state.players[2].character = "Mrs. White"
+    await game._save_state(state)
+    return state.players[0], state.players[1], state.players[2]
 
 
 async def _advance_turn(game: ClueGame, player_id: str):
@@ -1257,3 +1272,368 @@ async def test_suggest_in_correct_room_succeeds(game: ClueGame):
     )
     assert result.type == "suggest"
     assert result.room == room
+
+
+# ---------------------------------------------------------------------------
+# Player Elimination Tests (3-player game)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_turn_advances_to_next(game: ClueGame):
+    """When a player is eliminated via wrong accusation, the turn advances
+    to the next active player immediately."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    # P1 (Miss Scarlett) goes first
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Make a wrong accusation
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    result = await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+    assert result.correct is False
+    assert result.next_player_id is not None
+
+    # Turn should advance to P2, not stay on eliminated P1
+    state = await game.get_state()
+    assert state.status == "playing"
+    assert state.whose_turn != p1_id
+    # The eliminated player should be inactive
+    p1 = next(p for p in state.players if p.id == p1_id)
+    assert p1.active is False
+
+    # The turn state should be reset for the next player
+    assert state.dice_rolled is False
+    assert state.moved is False
+    assert state.suggestions_this_turn == []
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_has_no_actions(game: ClueGame):
+    """An eliminated player should have no available actions (except show_card)."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Eliminate P1
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    actions = game.get_available_actions(p1_id, state)
+    assert actions == []
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_still_shows_cards(game: ClueGame):
+    """An eliminated player must still show cards when asked during suggestions.
+    We use P3 as the suggester so that eliminated P1 (Miss Scarlett) comes
+    before P2 in the clockwise suggestion check order after P3 (Mrs. White)."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Get P1's cards so we can construct a suggestion that P1 can refute
+    p1_cards = await game._load_player_cards(p1_id)
+
+    # Eliminate P1
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    p2_id = state.whose_turn
+
+    # Advance to P3's turn so that P1 comes first in suggestion check order
+    # (order after P3/Mrs. White is: wanderers..., Miss Scarlett/P1, Colonel Mustard/P2)
+    await game.process_action(p2_id, {"type": "roll"})
+    await game.process_action(p2_id, {"type": "move", "room": ROOMS[0]})
+    await game.process_action(p2_id, {"type": "end_turn"})
+
+    state = await game.get_state()
+    p3_id = state.whose_turn
+
+    # Place P3 in a room
+    room = ROOMS[1]
+    await _place_player_in_room(game, p3_id, room)
+
+    # Build a suggestion using one of P1's cards (if P1 has any matching)
+    p1_suspect_cards = [c for c in p1_cards if c in SUSPECTS]
+    p1_weapon_cards = [c for c in p1_cards if c in WEAPONS]
+
+    suggest_suspect = p1_suspect_cards[0] if p1_suspect_cards else SUSPECTS[0]
+    suggest_weapon = p1_weapon_cards[0] if p1_weapon_cards else WEAPONS[0]
+
+    result = await game.process_action(
+        p3_id,
+        {
+            "type": "suggest",
+            "suspect": suggest_suspect,
+            "weapon": suggest_weapon,
+            "room": room,
+        },
+    )
+
+    # After P3 in turn order: wanderers (no cards), then P1 (eliminated but has cards)
+    # Wanderers have no cards, so P1 should be the one asked to show
+    p1_matching = [c for c in p1_cards if c in (suggest_suspect, suggest_weapon, room)]
+    if p1_matching:
+        assert result.pending_show_by == p1_id
+        # P1 should have show_card action even though eliminated
+        state = await game.get_state()
+        actions = game.get_available_actions(p1_id, state)
+        assert "show_card" in actions
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_skipped_in_turn_order(game: ClueGame):
+    """Turn order should skip eliminated players. We verify that P1 never
+    gets a turn again by cycling through multiple rounds."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Eliminate P1
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    # After elimination, turn should have moved to next active player (not P1)
+    assert state.whose_turn != p1_id
+
+    # Cycle through enough turns to verify P1 is never given a turn.
+    # Active players = P2, P3, plus wanderers. Track all turns.
+    turns_seen = []
+    for i in range(12):  # enough to cycle through all active players twice
+        state = await game.get_state()
+        current = state.whose_turn
+        turns_seen.append(current)
+        assert current != p1_id, "Eliminated player P1 should never get a turn"
+        # Advance the turn - alternate rooms to avoid "cannot re-enter" error
+        current_room = state.current_room.get(current)
+        target_room = ROOMS[0] if current_room != ROOMS[0] else ROOMS[1]
+        await game.process_action(current, {"type": "roll"})
+        await game.process_action(current, {"type": "move", "room": target_room})
+        await game.process_action(current, {"type": "end_turn"})
+
+    # Verify P2 and P3 both got turns
+    p2_id = "P2"
+    p3_id = "P3"
+    assert p2_id in turns_seen, "P2 should get turns"
+    assert p3_id in turns_seen, "P3 should get turns"
+
+
+@pytest.mark.asyncio
+async def test_two_eliminations_last_player_wins(game: ClueGame):
+    """When two players are eliminated in a 3-player game, the last one wins."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+
+    # Eliminate P1
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    p2_id = state.whose_turn
+    assert state.status == "playing"
+
+    # Eliminate P2
+    await game.process_action(
+        p2_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    assert state.status == "finished"
+    # Last remaining real player wins
+    p3 = next(p for p in state.players if p.id not in (p1_id, p2_id)
+              and p.type != "wanderer")
+    assert state.winner == p3.id
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_moved_off_door(game: ClueGame):
+    """When a player is eliminated, if they are standing on a door square,
+    they should be moved to an adjacent non-door hallway square so they
+    don't block other players."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Place P1 on a door square
+    door_pos = next(iter(DOORS.keys()))  # e.g. (3, 6) for Study
+    state = await game._load_state()
+    state.player_positions[p1_id] = list(door_pos)
+    state.current_room.pop(p1_id, None)  # not inside a room
+    await game._save_state(state)
+
+    # Eliminate P1
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    p1_pos = tuple(state.player_positions[p1_id])
+    # P1 should no longer be on a door square
+    sq = SQUARES.get(p1_pos)
+    assert sq is not None, f"Position {p1_pos} not found in board squares"
+    assert sq.type != SquareType.DOOR, (
+        f"Eliminated player should not remain on door square {p1_pos}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_eliminated_player_in_room_stays_in_room(game: ClueGame):
+    """When a player is eliminated while inside a room, they stay there.
+    Room interiors don't block movement."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # Place P1 in a room
+    room = ROOMS[0]
+    state = await game._load_state()
+    state.current_room[p1_id] = room
+    center = ROOM_CENTERS.get(room)
+    if center:
+        state.player_positions[p1_id] = list(center)
+    await game._save_state(state)
+
+    # Eliminate P1
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    # Player should still be in the room
+    assert state.current_room.get(p1_id) == room
+
+
+@pytest.mark.asyncio
+async def test_elimination_mid_turn_resets_turn_state(game: ClueGame):
+    """If a player rolls, then accuses incorrectly, the next player's turn
+    starts fresh (dice_rolled=False, moved=False)."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    # P1 rolls dice first
+    await game.process_action(p1_id, {"type": "roll"})
+
+    # Then accuses incorrectly
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+    await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    state = await game.get_state()
+    assert state.dice_rolled is False
+    assert state.moved is False
+    assert state.last_roll is None
+    assert state.suggestions_this_turn == []
+
+
+@pytest.mark.asyncio
+async def test_correct_accusation_still_works_in_three_player(game: ClueGame):
+    """A correct accusation should still end the game with the accuser winning."""
+    await _add_three_players(game)
+    state = await game.start()
+
+    p1_id = state.whose_turn
+    solution = await game._load_solution()
+
+    result = await game.process_action(
+        p1_id,
+        {
+            "type": "accuse",
+            "suspect": solution.suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    assert result.correct is True
+    assert result.winner == p1_id
+    state = await game.get_state()
+    assert state.status == "finished"
