@@ -17,6 +17,10 @@
         <input type="checkbox" v-model="showMoves" />
         Moves &amp; Rolls
       </label>
+      <label class="filter-label">
+        <input type="checkbox" v-model="showChat" />
+        Chat
+      </label>
     </div>
 
     <ul class="chat-messages" ref="chatContainer">
@@ -60,6 +64,7 @@ const showSuggestions = ref(true)
 const showCardShows = ref(true)
 const showAccusations = ref(true)
 const showMoves = ref(true)
+const showChat = ref(true)
 
 const playerById = computed(() => {
   const map = {}
@@ -101,7 +106,7 @@ function logCategory(msg) {
 // Combined messages: all player chat + filtered system log, in original order
 const combinedMessages = computed(() => {
   return props.messages.filter((msg) => {
-    if (isPlayerChat(msg)) return true
+    if (isPlayerChat(msg)) return showChat.value
     const cat = logCategory(msg)
     if (cat === 'suggestion' && !showSuggestions.value) return false
     if (cat === 'cardshow' && !showCardShows.value) return false

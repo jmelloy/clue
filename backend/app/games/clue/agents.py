@@ -487,7 +487,7 @@ class BaseAgent(ABC):
     ):
         self.own_cards: set[str] = set(cards)
         self.seen_cards: set[str] = set(cards)  # own hand + directly shown
-        self.inferred_cards: set[str] = set()    # deduced via elimination
+        self.inferred_cards: set[str] = set()  # deduced via elimination
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
@@ -534,12 +534,16 @@ class BaseAgent(ABC):
             "shown_to": {k: sorted(v) for k, v in self.shown_to.items()},
             "rooms_suggested_in": sorted(self.rooms_suggested_in),
             "unrefuted_suggestions": list(self.unrefuted_suggestions),
-            "player_has_cards": {k: sorted(v) for k, v in self.player_has_cards.items()},
+            "player_has_cards": {
+                k: sorted(v) for k, v in self.player_has_cards.items()
+            },
             "player_not_has_cards": {
                 k: sorted(v) for k, v in self.player_not_has_cards.items()
             },
             "suggestion_log": list(self.suggestion_log),
-            "card_inference_log": {k: list(v) for k, v in self.card_inference_log.items()},
+            "card_inference_log": {
+                k: list(v) for k, v in self.card_inference_log.items()
+            },
         }
 
     def load_knowledge_state(self, data: dict):
@@ -568,7 +572,9 @@ class BaseAgent(ABC):
             return
         try:
             key = self._knowledge_redis_key()
-            await self._redis.set(key, json.dumps(self.get_knowledge_state()), ex=EXPIRY)
+            await self._redis.set(
+                key, json.dumps(self.get_knowledge_state()), ex=EXPIRY
+            )
         except Exception:
             logger.debug("Failed to save knowledge state for %s", self.player_id)
 
@@ -598,7 +604,9 @@ class BaseAgent(ABC):
                     seen_cards=len(self.seen_cards),
                     suggestion_log=len(self.suggestion_log),
                     player_has=sum(len(v) for v in self.player_has_cards.values()),
-                    player_not_has=sum(len(v) for v in self.player_not_has_cards.values()),
+                    player_not_has=sum(
+                        len(v) for v in self.player_not_has_cards.values()
+                    ),
                 )
         except Exception:
             logger.debug("Failed to load knowledge state for %s", self.player_id)
@@ -749,9 +757,7 @@ class BaseAgent(ABC):
                 f"{suspect}/{weapon}/{room} — deduced by elimination."
             )
             self.card_inference_log.setdefault(inferred, []).append(reason)
-            self._pending_inferences.append(
-                f"DEDUCED: {reason}"
-            )
+            self._pending_inferences.append(f"DEDUCED: {reason}")
             self.inferred_cards.add(inferred)
             self._run_inference()
         else:
@@ -1480,6 +1486,10 @@ You are playing Clue (Cluedo) as {character}.
 
 {personality}
 
+Game rule reminder:
+- A suggestion (suspect/weapon/room) is for gathering information and does not end your game.
+- An accusation is a final solve attempt. If your accusation is wrong, you are eliminated from the game.
+
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
 with a short in-character comment (one sentence, stay in character). Be coy and \
 lie in the chat; it's for flavor, not factual reporting.
@@ -1626,7 +1636,6 @@ class LLMAgent(BaseAgent):
         self._fallback.suggestion_log = self.suggestion_log
         self._fallback.card_inference_log = self.card_inference_log
 
-
     async def load_memory(self):
         """Load memory from Redis into the in-memory list."""
         if self._redis and self._game_id and self.player_id:
@@ -1634,8 +1643,6 @@ class LLMAgent(BaseAgent):
 
             game = ClueGame(self._game_id, self._redis)
             self.memory = await game.get_memory(self.player_id)
-
-
 
     async def _save_memory_entry(self, entry: str):
         """Append a memory entry both in-memory and to Redis."""

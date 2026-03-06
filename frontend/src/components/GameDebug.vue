@@ -184,10 +184,14 @@
           <div class="agent-section">
             <h3>Status & Location</h3>
             <div class="kv-list">
-              <div class="kv-row"><span class="kv-key">Type</span><span class="kv-val">{{ selectedAgent.agent_type }}</span></div>
+              <div class="kv-row"><span class="kv-key">Type</span><span class="kv-val"><span class="type-badge" :class="'type-' + agentPlayerType">{{ selectedAgent.agent_type }}</span></span></div>
               <div class="kv-row"><span class="kv-key">Status</span><span class="kv-val">{{ selectedAgent.status }}</span></div>
+              <div class="kv-row"><span class="kv-key">Active</span><span class="kv-val" :class="agentPlayer?.active !== false ? 'text-success' : 'text-error'">{{ agentPlayer?.active !== false ? 'Yes' : 'Eliminated' }}</span></div>
+              <div class="kv-row"><span class="kv-key">Turn</span><span class="kv-val" :class="isAgentTurn ? 'text-turn-active' : ''">{{ isAgentTurn ? 'Their turn' : 'Waiting' }}<span v-if="isAgentTurn && debugData.state"> ({{ debugData.state.dice_rolled ? 'rolled' : 'not rolled' }}<span v-if="debugData.state.last_roll">, {{ debugData.state.last_roll.reduce((a, b) => a + b, 0) }} spaces</span>{{ debugData.state.moved ? ', moved' : '' }})</span></span></div>
+              <div class="kv-row" v-if="debugData.state?.was_moved_by_suggestion?.[selectedAgentId]"><span class="kv-key"></span><span class="kv-val text-warning">Moved by suggestion</span></div>
               <div class="kv-row"><span class="kv-key">Room</span><span class="kv-val">{{ selectedAgent.room || 'Hallway' }}</span></div>
               <div class="kv-row"><span class="kv-key">Position</span><span class="kv-val">{{ selectedAgent.position ? `[${selectedAgent.position[0]}, ${selectedAgent.position[1]}]` : '—' }}</span></div>
+              <div class="kv-row" v-if="selectedAgent.reachable_rooms?.length"><span class="kv-key">Reachable</span><span class="kv-val"><span v-for="r in selectedAgent.reachable_rooms" :key="r" class="chip room-chip">{{ r }}</span></span></div>
               <div class="kv-row" v-if="selectedAgent.action_description"><span class="kv-key">Last Action</span><span class="kv-val">{{ selectedAgent.action_description }}</span></div>
             </div>
           </div>
@@ -220,6 +224,9 @@
             </div>
             <div v-if="selectedAgent.seen_cards?.length" class="seen-line">
               <strong>Seen:</strong> {{ selectedAgent.seen_cards.join(', ') }}
+            </div>
+            <div v-if="selectedAgent.inferred_cards?.length" class="seen-line inferred-line">
+              <strong>Inferred:</strong> {{ selectedAgent.inferred_cards.join(', ') }}
             </div>
           </div>
 
@@ -384,6 +391,20 @@ const agentList = computed(() => {
 const selectedAgent = computed(() => {
   if (!selectedAgentId.value || !debugData.value) return null
   return debugData.value.agent_debug.find(a => a.player_id === selectedAgentId.value) || null
+})
+
+const agentPlayer = computed(() => {
+  if (!selectedAgentId.value) return null
+  return playerMap.value[selectedAgentId.value] || null
+})
+
+const agentPlayerType = computed(() => {
+  const t = agentPlayer.value?.type
+  return { agent: 'agent', llm_agent: 'llm_agent', wanderer: 'wanderer' }[t] || 'human'
+})
+
+const isAgentTurn = computed(() => {
+  return debugData.value?.state?.whose_turn === selectedAgentId.value
 })
 
 const agentMemory = computed(() => {
@@ -1242,7 +1263,11 @@ onUnmounted(() => {
 /* Utility */
 .text-success { color: #2ecc71; }
 .text-error { color: #ff6666; }
+.text-warning { color: #f39c12; font-style: italic; }
+.text-turn-active { color: #f39c12; font-weight: bold; }
 .text-dim { color: var(--text-dim); }
+
+.inferred-line { color: var(--accent, #60a5fa); }
 
 .empty-state {
   text-align: center;
