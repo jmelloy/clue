@@ -364,6 +364,7 @@ class AgentDebugMessage(WSMessage):
     status: str = ""  # e.g. "thinking", "decided", "observing"
     action_description: str = ""  # human-readable description of what agent is doing
     seen_cards: list[str] = Field(default_factory=list)
+    inferred_cards: list[str] = Field(default_factory=list)
     unknown_suspects: list[str] = Field(default_factory=list)
     unknown_weapons: list[str] = Field(default_factory=list)
     unknown_rooms: list[str] = Field(default_factory=list)
