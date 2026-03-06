@@ -37,7 +37,7 @@
 
     <div class="chat-input">
       <input v-model="inputText" placeholder="Type a message..." maxlength="300" @keyup.enter="sendMessage" />
-      <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
+      <button class="btn-accent" :disabled="!inputText.trim()" @click="sendMessage">Send</button>
     </div>
   </div>
 </template>
@@ -332,25 +332,9 @@ watch(
 }
 
 .chat-input button {
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: var(--accent-text);
-  border: none;
   padding: 0.45rem 0.8rem;
   border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
   font-size: 0.85rem;
   font-family: 'Crimson Text', Georgia, serif;
-  transition: all 0.2s;
-}
-
-.chat-input button:hover:not(:disabled) {
-  box-shadow: 0 2px 8px rgba(212, 168, 73, 0.2);
-  transform: translateY(-1px);
-}
-
-.chat-input button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="detective-notes">
-    <h3>Detective Notes</h3>
+    <h3 class="panel-header">Detective Notes</h3>
 
     <div class="notes-section">
       <h4>Suspects</h4>
@@ -187,14 +187,7 @@ defineExpose({ markCard, getCardsShownBy })
   font-size: 0.8rem;
 }
 
-h3 {
-  font-family: 'Playfair Display', Georgia, serif;
-  color: var(--accent);
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
+/* Panel header is in styles/components.css */
 
 h4 {
   color: var(--text-secondary);

@@ -1,6 +1,6 @@
 <template>
   <div class="agent-debug-panel">
-    <h2 class="collapsible-header" @click="collapsed = !collapsed">
+    <h2 class="panel-header collapsible-header" @click="collapsed = !collapsed">
       <span>Player Debug</span>
       <span class="collapse-indicator" :class="{ collapsed }">&#9660;</span>
     </h2>
@@ -191,33 +191,7 @@ function playerName(pid) {
   border: 1px solid var(--border-panel);
 }
 
-.agent-debug-panel h2 {
-  color: var(--accent);
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.collapsible-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  user-select: none;
-}
-
-.collapsible-header:hover {
-  opacity: 0.85;
-}
-
-.collapse-indicator {
-  font-size: 0.65rem;
-  transition: transform 0.2s ease;
-  color: var(--text-dim);
-}
-
-.collapse-indicator.collapsed {
-  transform: rotate(-90deg);
-}
+/* Panel headers and collapsible headers are in styles/components.css */
 
 /* Agent tabs */
 .agent-tabs {
