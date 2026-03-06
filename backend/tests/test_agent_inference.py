@@ -4,7 +4,7 @@ Validates that BaseAgent / RandomAgent correctly:
 - Infers which card was shown when observing other players' suggestions
 - Cascades inferences when new knowledge unlocks old suggestions
 - Tracks negative knowledge (players who couldn't show)
-- Reflects all inferred cards in seen_cards
+- Reflects all inferred cards in known_cards (seen_cards | inferred_cards)
 - Persists and restores knowledge state via Redis
 """
 
@@ -71,9 +71,10 @@ class TestDirectInference:
             room=R[1],
         )
 
-        assert R[1] in agent.seen_cards, (
-            f"Agent should have inferred {R[1]} but seen_cards = {agent.seen_cards}"
+        assert R[1] in agent.inferred_cards, (
+            f"Agent should have inferred {R[1]} but inferred_cards = {agent.inferred_cards}"
         )
+        assert R[1] in agent.known_cards
         assert R[1] in agent.player_has_cards.get(PLAYERS[2], set()), (
             "Agent should track that Bob has the inferred card"
         )
@@ -92,9 +93,9 @@ class TestDirectInference:
         )
 
         # None of S[1], W[1], R[1] should be inferred
-        assert S[1] not in agent.seen_cards
-        assert W[1] not in agent.seen_cards
-        assert R[1] not in agent.seen_cards
+        assert S[1] not in agent.known_cards
+        assert W[1] not in agent.known_cards
+        assert R[1] not in agent.known_cards
 
     def test_infer_using_player_has_knowledge(self):
         """Inference works when we know another player holds one of the cards."""
@@ -115,7 +116,7 @@ class TestDirectInference:
             room=R[1],
         )
         # Still ambiguous
-        assert S[1] not in agent.seen_cards or R[1] not in agent.seen_cards
+        assert S[1] not in agent.inferred_cards or R[1] not in agent.inferred_cards
 
     def test_infer_using_own_card_and_other_player(self):
         """Combine own cards + known player cards to narrow to 1."""
@@ -134,11 +135,12 @@ class TestDirectInference:
             room=R[1],
         )
 
-        assert R[1] in agent.seen_cards
+        assert R[1] in agent.inferred_cards
+        assert R[1] in agent.known_cards
         assert R[1] in agent.player_has_cards.get(PLAYERS[2], set())
 
     def test_already_known_card_not_re_inferred(self):
-        """If the only possible card is already in seen_cards, return None."""
+        """If the only possible card is already known, no duplicate inference."""
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
         # We already know R[1]
@@ -155,6 +157,7 @@ class TestDirectInference:
         )
 
         assert agent.seen_cards == initial_seen
+        assert R[1] not in agent.inferred_cards  # it's in seen, not inferred
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +214,7 @@ class TestNegativeKnowledge:
 
         # With just negative knowledge on W[1], we can't narrow to 1
         # (S[2] and R[2] are both possible)
-        assert not ({S[2], R[2]} <= agent.seen_cards)
+        assert not ({S[2], R[2]} <= agent.known_cards)
 
     def test_negative_knowledge_plus_own_card_enables_inference(self):
         """Negative knowledge + own card narrows to exactly 1."""
@@ -227,16 +230,7 @@ class TestNegativeKnowledge:
             players_without_match=[PLAYERS[2]],
         )
 
-        # Now Bob shows a card for S[0]/W[2]/R[2].
-        # S[0] is ours (Bob can't have it). W[2] and R[2]: Bob doesn't have them
-        # (negative knowledge from above). Wait — that means Bob has none of them?
-        # But Bob DID show a card. That's contradictory. Let me fix the test.
-        # Actually, the negative knowledge says Bob doesn't have S[2], W[2], R[2].
-        # New suggestion is S[0]/W[2]/R[2]. Bob can't have W[2] or R[2] (neg knowledge)
-        # and can't have S[0] (our card). So Bob can't show anything — but we said
-        # Bob showed a card. This is contradictory, so let's use a valid scenario.
-
-        # Better: Bob can't show S[2]/W[2]/R[2] (all three). New suggestion S[0]/W[1]/R[2].
+        # Bob shows a card for S[0]/W[1]/R[2].
         # S[0] is ours (not Bob's). R[2]: Bob doesn't have (neg knowledge).
         # Only W[1] is left — Bob must have shown W[1].
         agent.observe_card_shown_to_other(
@@ -247,7 +241,8 @@ class TestNegativeKnowledge:
             room=R[2],
         )
 
-        assert W[1] in agent.seen_cards
+        assert W[1] in agent.inferred_cards
+        assert W[1] in agent.known_cards
         assert W[1] in agent.player_has_cards.get(PLAYERS[2], set())
 
 
@@ -280,9 +275,9 @@ class TestCascadeInference:
             weapon=W[1],
             room=R[1],
         )
-        assert S[1] not in agent.seen_cards
-        assert W[1] not in agent.seen_cards
-        assert R[1] not in agent.seen_cards
+        assert S[1] not in agent.known_cards
+        assert W[1] not in agent.known_cards
+        assert R[1] not in agent.known_cards
 
         # Now Carol shows us S[1] directly
         agent.observe_shown_card(S[1], shown_by=PLAYERS[3])
@@ -295,9 +290,9 @@ class TestCascadeInference:
         # Now the old suggestion S[1]/W[1]/R[1] can be resolved:
         # We know S[1] and W[1], so Bob must have shown R[1].
         # _run_inference should cascade.
-        assert R[1] in agent.seen_cards, (
+        assert R[1] in agent.known_cards, (
             f"Cascade should have inferred {R[1]} from old suggestion. "
-            f"seen_cards = {sorted(agent.seen_cards)}"
+            f"known_cards = {sorted(agent.known_cards)}"
         )
 
     def test_cascade_chain_multiple_suggestions(self):
@@ -337,13 +332,13 @@ class TestCascadeInference:
         agent.observe_shown_card(R[1], shown_by=PLAYERS[4])
 
         # Cascade step 1: Suggestion A resolves — Bob showed W[1]
-        assert W[1] in agent.seen_cards, (
+        assert W[1] in agent.known_cards, (
             f"Should cascade-infer {W[1]} from suggestion A"
         )
 
         # Cascade step 2: W[1] is now known (Bob has it). Suggestion B:
         # S[0] is ours, W[1] is Bob's → only R[2] left → Carol showed R[2]
-        assert R[2] in agent.seen_cards, (
+        assert R[2] in agent.known_cards, (
             f"Should cascade-infer {R[2]} from suggestion B"
         )
 
@@ -391,36 +386,28 @@ class TestCascadeInference:
 
         # Nothing inferred yet
         for card in [S[1], S[2], W[1], W[2], R[1], R[2], R[3]]:
-            assert card not in agent.seen_cards, f"{card} should not be inferred yet"
+            assert card not in agent.known_cards, f"{card} should not be inferred yet"
 
         # Learn S[1] and R[1] → should cascade:
         # A resolves: Bob showed W[1]
-        # B: now W[1] known, but S[2] and R[2] still unknown → need more
-        # Actually B: Carol showed one of {S[2], W[1], R[2]}. W[1] is now known
-        # (Bob has it). Carol doesn't have W[1] (it's Bob's via player_has_cards).
-        # So Carol showed S[2] or R[2] — still 2 possibilities.
         agent.observe_shown_card(S[1], shown_by=PLAYERS[3])
         agent.observe_shown_card(R[1], shown_by=PLAYERS[3])
 
         # Step 1: A resolves → W[1] inferred (Bob has it)
-        assert W[1] in agent.seen_cards, "Should infer W[1] from suggestion A"
+        assert W[1] in agent.known_cards, "Should infer W[1] from suggestion A"
 
         # For B to cascade, we need to narrow further. Learn R[2]:
         agent.observe_shown_card(R[2], shown_by=PLAYERS[2])
-        # B: Carol showed one of {S[2], R[2]}. R[2] is now known (Bob has it).
-        # But player_has_cards tracks Bob has R[2] — Carol doesn't necessarily
-        # not have it (multiple players can't have the same card in Clue).
-        # Actually in Clue each card is unique — only one player has each card.
-        # So if Bob has R[2], Carol can't. Thus Carol showed S[2].
-        assert S[2] in agent.seen_cards, "Should infer S[2] from suggestion B"
+        # B: Carol showed one of {S[2], W[1], R[2]}. W[1] is Bob's, R[2] is Bob's.
+        # Carol can't have either → Carol showed S[2].
+        assert S[2] in agent.known_cards, "Should infer S[2] from suggestion B"
 
         # C: Dave showed one of {S[2], W[2], R[3]}. S[2] now known (Carol has it).
         # Dave doesn't have S[2]. So Dave showed W[2] or R[3].
         # Still 2 possibilities — unless we learn one more.
-        # This shows the chain goes as far as knowledge allows.
 
-    def test_inference_reflected_in_seen_cards_and_unknowns(self):
-        """Inferred cards appear in seen_cards AND reduce unknowns for decisions."""
+    def test_inference_reflected_in_known_cards_and_unknowns(self):
+        """Inferred cards appear in known_cards AND reduce unknowns for decisions."""
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
         # Set up so we can infer R[1]
@@ -429,9 +416,26 @@ class TestCascadeInference:
             suspect=S[0], weapon=W[0], room=R[1],
         )
 
-        assert R[1] in agent.seen_cards
+        assert R[1] in agent.known_cards
+        assert R[1] in agent.inferred_cards
         unknown_s, unknown_w, unknown_r = agent._get_unknowns()
         assert R[1] not in unknown_r, "Inferred card should not appear in unknowns"
+
+    def test_shown_card_promotes_from_inferred(self):
+        """If a card was inferred and then directly shown, it moves to seen_cards."""
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+
+        # Infer R[1]
+        agent.observe_card_shown_to_other(
+            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
+            suspect=S[0], weapon=W[0], room=R[1],
+        )
+        assert R[1] in agent.inferred_cards
+
+        # Now directly shown
+        agent.observe_shown_card(R[1], shown_by=PLAYERS[2])
+        assert R[1] in agent.seen_cards
+        assert R[1] not in agent.inferred_cards  # promoted to seen
 
 
 # ---------------------------------------------------------------------------
@@ -513,7 +517,7 @@ class TestObserveSuggestionFlow:
 class TestDebugInfoReflectsInferences:
     """Verify get_debug_info shows inferred cards."""
 
-    def test_debug_seen_cards_includes_inferences(self):
+    def test_debug_inferred_cards_present(self):
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
         # Infer R[1]
@@ -523,8 +527,8 @@ class TestDebugInfoReflectsInferences:
         )
 
         debug = agent.get_debug_info()
-        assert R[1] in debug["seen_cards"], (
-            f"Debug seen_cards should include inferred card {R[1]}"
+        assert R[1] in debug["inferred_cards"], (
+            f"Debug inferred_cards should include inferred card {R[1]}"
         )
 
     def test_debug_unknowns_exclude_inferences(self):
@@ -560,15 +564,15 @@ class TestDebugInfoReflectsInferences:
 class TestJWC88JScenario:
     """Reproduce the inference pattern from the reported game.
 
-    Miss Scarlett inferred 5 cards but seen_cards didn't reflect them.
+    Miss Scarlett inferred 5 cards but known_cards didn't reflect them.
     This test builds a simplified version of that scenario.
     """
 
-    def test_multiple_inferences_all_in_seen_cards(self):
-        """After multiple inferences, ALL inferred cards must be in seen_cards.
+    def test_multiple_inferences_all_in_known_cards(self):
+        """After multiple inferences, ALL inferred cards must be in known_cards.
 
         Models the JWC88J game pattern: a series of suggestions where
-        inference + cascade produce multiple new seen cards.
+        inference + cascade produce multiple new known cards.
         """
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
@@ -605,7 +609,7 @@ class TestJWC88JScenario:
             shown_by=PLAYERS[4], shown_to=PLAYERS[1],
             suspect=S[0], weapon=W[0], room=R[3],
         )
-        assert R[3] in agent.seen_cards, "Should directly infer R[3]"
+        assert R[3] in agent.known_cards, "Should directly infer R[3]"
 
         # --- Trigger cascade ---
 
@@ -614,22 +618,23 @@ class TestJWC88JScenario:
         agent.observe_shown_card(R[1], shown_by=PLAYERS[4])
 
         # Cascade from suggestion 1: S[1] and R[1] known → Bob showed W[1]
-        assert W[1] in agent.seen_cards, "Should cascade-infer W[1] from suggestion 1"
+        assert W[1] in agent.known_cards, "Should cascade-infer W[1] from suggestion 1"
 
         # Cascade from suggestion 2: S[0] is ours, W[1] is Bob's → Carol showed R[2]
-        assert R[2] in agent.seen_cards, "Should cascade-infer R[2] from suggestion 2"
+        assert R[2] in agent.known_cards, "Should cascade-infer R[2] from suggestion 2"
 
-        # Verify ALL inferred + shown cards are in seen_cards
-        expected_in_seen = {S[0], W[0], R[0], S[1], R[1], W[1], R[2], R[3]}
-        assert expected_in_seen <= agent.seen_cards, (
-            f"Missing from seen_cards: {expected_in_seen - agent.seen_cards}"
+        # Verify ALL inferred + shown cards are in known_cards
+        expected_known = {S[0], W[0], R[0], S[1], R[1], W[1], R[2], R[3]}
+        assert expected_known <= agent.known_cards, (
+            f"Missing from known_cards: {expected_known - agent.known_cards}"
         )
 
         # Verify debug info matches
         debug = agent.get_debug_info()
-        for card in expected_in_seen:
-            assert card in debug["seen_cards"], (
-                f"Debug seen_cards missing {card}"
+        all_debug_cards = set(debug["seen_cards"]) | set(debug["inferred_cards"])
+        for card in expected_known:
+            assert card in all_debug_cards, (
+                f"Debug cards missing {card}"
             )
 
 
@@ -683,6 +688,44 @@ class TestKnowledgePersistence:
         assert agent2.seen_cards == agent.seen_cards
         assert S[1] in agent2.seen_cards
         assert W[1] in agent2.seen_cards
+
+    @pytest.mark.asyncio
+    async def test_save_load_inferred_cards(self, redis):
+        agent = _make_agent_with_redis(redis)
+
+        # Infer R[1]
+        agent.observe_card_shown_to_other(
+            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
+            suspect=S[0], weapon=W[0], room=R[1],
+        )
+        assert R[1] in agent.inferred_cards
+
+        await agent.save_knowledge()
+
+        agent2 = _make_agent_with_redis(redis)
+        await agent2.load_knowledge()
+
+        assert R[1] in agent2.inferred_cards
+        assert R[1] in agent2.known_cards
+
+    @pytest.mark.asyncio
+    async def test_save_load_card_inference_log(self, redis):
+        agent = _make_agent_with_redis(redis)
+
+        # Infer R[1] — this creates a card_inference_log entry
+        agent.observe_card_shown_to_other(
+            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
+            suspect=S[0], weapon=W[0], room=R[1],
+        )
+        assert R[1] in agent.card_inference_log
+
+        await agent.save_knowledge()
+
+        agent2 = _make_agent_with_redis(redis)
+        await agent2.load_knowledge()
+
+        assert R[1] in agent2.card_inference_log
+        assert len(agent2.card_inference_log[R[1]]) > 0
 
     @pytest.mark.asyncio
     async def test_save_load_player_has_cards(self, redis):
@@ -789,7 +832,7 @@ class TestKnowledgePersistence:
         agent2.observe_shown_card(S[1], shown_by=PLAYERS[3])
         agent2.observe_shown_card(W[1], shown_by=PLAYERS[4])
 
-        assert R[1] in agent2.seen_cards, (
+        assert R[1] in agent2.known_cards, (
             "Cascade inference should work after loading saved state"
         )
 

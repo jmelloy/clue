@@ -530,6 +530,7 @@ class BaseAgent(ABC):
         """Export all inference/knowledge state as a serializable dict."""
         return {
             "seen_cards": sorted(self.seen_cards),
+            "inferred_cards": sorted(self.inferred_cards),
             "shown_to": {k: sorted(v) for k, v in self.shown_to.items()},
             "rooms_suggested_in": sorted(self.rooms_suggested_in),
             "unrefuted_suggestions": list(self.unrefuted_suggestions),
@@ -538,6 +539,7 @@ class BaseAgent(ABC):
                 k: sorted(v) for k, v in self.player_not_has_cards.items()
             },
             "suggestion_log": list(self.suggestion_log),
+            "card_inference_log": {k: list(v) for k, v in self.card_inference_log.items()},
         }
 
     def load_knowledge_state(self, data: dict):
@@ -545,6 +547,7 @@ class BaseAgent(ABC):
         self.seen_cards = set(data.get("seen_cards", []))
         # Ensure own cards are always present
         self.seen_cards |= self.own_cards
+        self.inferred_cards = set(data.get("inferred_cards", []))
         self.shown_to = {k: set(v) for k, v in data.get("shown_to", {}).items()}
         self.rooms_suggested_in = set(data.get("rooms_suggested_in", []))
         self.unrefuted_suggestions = list(data.get("unrefuted_suggestions", []))
@@ -555,6 +558,9 @@ class BaseAgent(ABC):
             k: set(v) for k, v in data.get("player_not_has_cards", {}).items()
         }
         self.suggestion_log = list(data.get("suggestion_log", []))
+        self.card_inference_log = {
+            k: list(v) for k, v in data.get("card_inference_log", {}).items()
+        }
 
     async def save_knowledge(self):
         """Persist knowledge state to Redis."""
