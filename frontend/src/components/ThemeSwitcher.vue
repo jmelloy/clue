@@ -46,7 +46,6 @@ const labels = { dark: 'Dark', light: 'Light', vintage: 'Vintage' }
   font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.2s;
-  white-space: nowrap;
 }
 
 .theme-btn:hover {
@@ -66,5 +65,15 @@ const labels = { dark: 'Dark', light: 'Light', vintage: 'Vintage' }
 
 .theme-label {
   letter-spacing: 0.03em;
+}
+
+@media (max-width: 500px) {
+  .theme-label {
+    display: none;
+  }
+
+  .theme-btn {
+    padding: 0.25rem 0.35rem;
+  }
 }
 </style>
