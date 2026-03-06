@@ -901,8 +901,96 @@ async def _attach_llm_memory(
 
 
 # ---------------------------------------------------------------------------
-# Agent background loop
+# Agent background loop (inline mode)
 # ---------------------------------------------------------------------------
+
+
+def _on_agent_loop_done(game_id: str, task: asyncio.Task) -> None:
+    """Callback invoked when an inline agent-loop task finishes.
+
+    If the task ended for any reason other than explicit cancellation,
+    schedule a watchdog check so the loop can be restarted when the
+    game is still active.
+    """
+    if task.cancelled():
+        return
+    asyncio.get_running_loop().create_task(_agent_loop_watchdog(game_id))
+
+
+async def _agent_loop_watchdog(game_id: str) -> None:
+    """Restart the inline agent loop for *game_id* if the game is still active.
+
+    Called automatically via :func:`_on_agent_loop_done` whenever an agent
+    task exits.  Does nothing if the game has already ended or if a fresh
+    task is already running.
+    """
+    # Bail out if a fresh task was already started (race guard).
+    if game_id in _agent_tasks and not _agent_tasks[game_id].done():
+        return
+
+    try:
+        game = ClueGame(game_id, redis_client)
+        state = await game.get_state()
+        if not state or state.status != "playing":
+            return
+
+        config_raw = await redis_client.get(f"game:{game_id}:agent_config")
+        if not config_raw:
+            return
+
+        config = json.loads(config_raw)
+        agents: dict[str, BaseAgent] = {}
+        for pid, info in config.items():
+            ptype = info.get("type", "agent")
+            character = info.get("character", "")
+            cards = info.get("cards", [])
+
+            if ptype == "llm_agent":
+                agent: BaseAgent = LLMAgent(
+                    player_id=pid,
+                    character=character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+                await agent.load_memory()
+            elif ptype == "wanderer":
+                agent = WandererAgent(
+                    player_id=pid,
+                    character=character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+            else:
+                agent = RandomAgent(
+                    player_id=pid,
+                    character=character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+
+            agents[pid] = agent
+
+        if not agents:
+            return
+
+        player_names = {p.id: p.name for p in state.players}
+        for a in agents.values():
+            a.player_names = player_names
+
+        logger.warning(
+            "Restarting agent loop for game %s with %d agent(s) after unexpected exit",
+            game_id,
+            len(agents),
+        )
+        _game_agents[game_id] = agents
+        task = asyncio.create_task(_run_agent_loop(game_id))
+        task.add_done_callback(lambda t, gid=game_id: _on_agent_loop_done(gid, t))
+        _agent_tasks[game_id] = task
+    except Exception:
+        logger.exception("Error in agent loop watchdog for game %s", game_id)
 
 
 async def _run_agent_loop(game_id: str):
@@ -1534,7 +1622,9 @@ async def start_game(game_id: str):
                 a.player_names = player_names
 
             _game_agents[game_id] = agents
-            _agent_tasks[game_id] = asyncio.create_task(_run_agent_loop(game_id))
+            task = asyncio.create_task(_run_agent_loop(game_id))
+            task.add_done_callback(lambda t, gid=game_id: _on_agent_loop_done(gid, t))
+            _agent_tasks[game_id] = task
         else:
             logger.info(
                 "Agent mode is '%s' — %d agent(s) in game %s will be managed externally",

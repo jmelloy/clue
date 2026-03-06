@@ -184,8 +184,27 @@ class AgentRunner:
         except asyncio.CancelledError:
             logger.info("Agent tasks cancelled for game %s", game_id)
         finally:
-            await self.redis.delete(f"game:{game_id}:agent_config")
-            logger.info("Agents finished for game %s", game_id)
+            # Only remove the agent config key when the game is actually over.
+            # If this task exits while the game is still active (e.g. after
+            # exhausting WebSocket reconnects or a crash), leave the key in
+            # Redis so the discovery loop can restart management on the next
+            # poll cycle.
+            try:
+                game = ClueGame(game_id, self.redis)
+                state = await game.get_state()
+                if state and state.status == "playing":
+                    logger.warning(
+                        "Agent task for game %s exited while game is still active; "
+                        "it will be rediscovered on the next poll",
+                        game_id,
+                    )
+                else:
+                    await self.redis.delete(f"game:{game_id}:agent_config")
+                    logger.info("Agents finished for game %s", game_id)
+            except Exception:
+                logger.exception(
+                    "Error during agent cleanup for game %s", game_id
+                )
 
     # ------------------------------------------------------------------
     # Per-agent WebSocket connection
