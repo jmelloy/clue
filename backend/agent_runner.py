@@ -223,6 +223,7 @@ class AgentRunner:
 
             if ptype == "llm_agent":
                 await agent.load_memory()
+            await agent.load_knowledge()
             agents[pid] = agent
             logger.info(
                 "Created %s agent for %s (%s) in game %s",
@@ -495,6 +496,8 @@ class AgentRunner:
         if isinstance(result, dict) and result.get("error"):
             return
 
+        await agent.save_knowledge()
+
         # Post debug info to backend for observers
         await self._send_debug(game_id, player_id, agent, action)
 
@@ -550,6 +553,7 @@ class AgentRunner:
         await self._send_action(
             game_id, player_id, ShowCardAction(card=card).model_dump()
         )
+        await agent.save_knowledge()
 
         chat_msg = agent.generate_chat("show_card")
         if chat_msg:

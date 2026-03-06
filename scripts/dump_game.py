@@ -10,7 +10,7 @@ Examples:
     python scripts/dump_game.py --list-games
     python scripts/dump_game.py ABC123
     python scripts/dump_game.py --list-games --json
-    python scripts/dump_game.py ABC123 --show-chat --show-cards
+    python scripts/dump_game.py ABC123 --show-chat --show-cards --show-players
     python scripts/dump_game.py ABC123 --show-memory
     python scripts/dump_game.py ABC123 --show-trace --trace-limit 100
     REDIS_URL=redis://localhost:6379 python scripts/dump_game.py ABC123 --show-solution
@@ -58,6 +58,11 @@ def _parse_args() -> argparse.Namespace:
         "--show-cards",
         action="store_true",
         help="Include each player's dealt cards (if game state is present)",
+    )
+    parser.add_argument(
+        "--show-players",
+        action="store_true",
+        help="Include raw player state (full player objects and per-player fields from game state)",
     )
     parser.add_argument(
         "--show-memory",
@@ -137,6 +142,14 @@ def _print_game_dump_text(output: dict[str, Any]) -> None:
                 print(f"  - {' '.join(parts)}{turn_marker}")
     else:
         print(f"State: {_pretty_json(state)}")
+
+    if "raw_players" in output:
+        raw_players = output["raw_players"]
+        print(f"Raw player state ({len(raw_players)} players):")
+        for player_id, data in raw_players.items():
+            print(f"  {player_id}:")
+            for key, value in data.items():
+                print(f"    {key}: {_pretty_json(value)}")
 
     # Build player_id -> character lookup from state
     player_characters: dict[str, str] = {}
@@ -300,6 +313,7 @@ async def dump_game(
     show_chat: bool,
     show_solution: bool,
     show_cards: bool,
+    show_players: bool,
     show_memory: bool,
     show_trace: bool,
     trace_limit: int,
@@ -353,6 +367,25 @@ async def dump_game(
             "state": state,
             "log": log_entries,
         }
+
+        if show_players and isinstance(state, dict):
+            raw_players: dict[str, Any] = {}
+            positions = state.get("player_positions", {})
+            current_rooms = state.get("current_room", {})
+            was_moved = state.get("was_moved_by_suggestion", {})
+            for player in state.get("players", []):
+                pid = player.get("id")
+                if not pid:
+                    continue
+                player_data = dict(player)
+                if pid in positions:
+                    player_data["position"] = positions[pid]
+                if pid in current_rooms:
+                    player_data["current_room"] = current_rooms[pid]
+                if pid in was_moved:
+                    player_data["was_moved_by_suggestion"] = was_moved[pid]
+                raw_players[pid] = player_data
+            output["raw_players"] = raw_players
 
         if show_chat:
             output["chat"] = await _get_json_list(redis_client, chat_key)
@@ -485,6 +518,7 @@ async def _main() -> int:
         show_chat=args.show_chat,
         show_solution=args.show_solution,
         show_cards=args.show_cards,
+        show_players=args.show_players,
         show_memory=args.show_memory,
         show_trace=args.show_trace,
         trace_limit=args.trace_limit,

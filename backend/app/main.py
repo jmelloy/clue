@@ -1013,10 +1013,14 @@ async def _agent_loop_watchdog(game_id: str) -> None:
                     game_id=game_id,
                 )
 
+            # Restore accumulated knowledge (seen cards, inferences, etc.)
+            await agent.load_knowledge()
+
             # Replay the wanderer seed so the restarted agent has the same
-            # initial card knowledge as when it was first created.
+            # initial card knowledge as when it was first created (only if
+            # no persisted knowledge was loaded).
             seed = info.get("wanderer_seed")
-            if seed and ptype == "wanderer":
+            if seed and ptype == "wanderer" and len(agent.seen_cards) <= len(cards):
                 agent.observe_shown_card(seed["card"], shown_by=seed["shown_by"])
 
             agents[pid] = agent
@@ -1091,6 +1095,7 @@ async def _run_agent_loop(game_id: str):
 
                 logger.info("Agent %s showing card in game %s", pid, game_id)
                 await _execute_action(game_id, pid, ShowCardAction(card=card))
+                await agent.save_knowledge()
                 # Broadcast personality chat for show_card
                 chat_msg = agent.generate_chat("show_card")
                 if chat_msg:
@@ -1171,6 +1176,7 @@ async def _run_agent_loop(game_id: str):
                         await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
 
                 result = await _execute_action(game_id, pid, action)
+                await agent.save_knowledge()
 
                 # Broadcast personality chat after the action (non-suggest)
                 if action.type != "suggest":
