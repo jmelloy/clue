@@ -1670,15 +1670,18 @@ watch(
 .physical-card-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 5px;
   padding: 4px 8px;
   width: 100%;
   box-sizing: border-box;
 }
 
+.physical-card-header {
+  justify-content: flex-start;
+}
+
 .physical-card-footer {
-  transform: rotate(180deg);
+  justify-content: flex-end;
 }
 
 .physical-card-icon {
@@ -1788,15 +1791,18 @@ watch(
 .card-preview-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   width: 100%;
   box-sizing: border-box;
 }
 
+.card-preview-header {
+  justify-content: flex-start;
+}
+
 .card-preview-footer {
-  transform: rotate(180deg);
+  justify-content: flex-end;
 }
 
 .card-preview-icon {
@@ -1932,7 +1938,7 @@ watch(
 }
 
 .card-shown-banner-card.physical-card.card-suspect .physical-card-image-frame {
-  height: auto;
+  height: 130px;
   width: 65%;
 }
 
@@ -2042,7 +2048,7 @@ watch(
 }
 
 .game-over-card.physical-card.card-suspect .physical-card-image-frame {
-  height: auto;
+  height: 100px;
   width: 65%;
 }
 
