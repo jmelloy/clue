@@ -1137,20 +1137,6 @@ watch(
   color: #1a5b3a;
 }
 
-[data-theme="light"] .card-suspect {
-  border-color: #b8848a;
-  color: #6b1a2a;
-}
-
-[data-theme="light"] .card-weapon {
-  border-color: #8a9cb8;
-  color: #1a3a5b;
-}
-
-[data-theme="light"] .card-room {
-  border-color: #8ab89a;
-  color: #1a5b3a;
-}
 
 .card-group {
   margin-bottom: 0.5rem;
@@ -2234,7 +2220,7 @@ watch(
   .game-over-cards {
     gap: 0.75rem;
   }
-  .game-over-card {
+  .game-over-card.physical-card {
     width: 100px;
   }
   .game-over-card-frame {
