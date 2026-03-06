@@ -728,6 +728,11 @@ setInterval(() => {
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   font-family: 'Georgia', serif;
   background: var(--bg-page);
@@ -740,5 +745,6 @@ body {
   max-width: 1080px;
   margin: 0 auto;
   padding: 0.75rem;
+  overflow-x: hidden;
 }
 </style>
