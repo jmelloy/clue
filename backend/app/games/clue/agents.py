@@ -1392,16 +1392,14 @@ Respond with a valid JSON object for your chosen action. Include a "chat" field 
 with a short in-character comment about what you're doing (one sentence, stay in \
 character as {character}).  Be coy and lie in the chat; the chat is for flavor and misdirection, not a factual report of your reasoning. \
 
-When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
-suspicions, which cards you've eliminated, your strategy for next turns. These \
-notes will be shown back to you on your next turn so you can remember your \
-reasoning. Be concise but thorough. \
-You will always get the known/unknown cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.
+On end_turn, add a "memory" field: 1–3 sentences capturing (1) what you newly \
+inferred or deduced this turn, (2) your current working theory for the solution, \
+and (3) your plan for the next turn — which room to target, what to suggest, or \
+whether you are ready to accuse. Do not repeat raw card lists; those are in the game state.
 
-INFERENCE LOG: Your notes section may contain automatic inference notifications \
-(prefixed CARD SHOWN, DEDUCED, NEGATIVE, UNREFUTED, OBSERVED). These are events \
-the game engine tracked between your turns. Pay close attention to DEDUCED entries — \
-they reveal cards eliminated by logical deduction. Use these to refine your strategy.\
+INFERENCE LOG: Your notes may include engine-logged events prefixed CARD SHOWN, \
+DEDUCED, NEGATIVE, UNREFUTED, or OBSERVED. DEDUCED entries are logically confirmed \
+eliminations — treat them as certainties when updating your theory and next-turn plan.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1724,12 +1722,12 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
-        # Include memory from previous turns (recent entries, capped to avoid
-        # overwhelming the prompt)
+        # Include memory from previous turns (last 2 entries so the LLM sees
+        # both its own prior planning notes and the most recent inference update)
         if self.memory:
             lines.append("")
-            lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
-            recent = self.memory[-1:]  # last 1 entry
+            lines.append("YOUR NOTES (previous turns):")
+            recent = self.memory[-2:]
             start_idx = len(self.memory) - len(recent) + 1
             for i, entry in enumerate(recent):
                 lines.append(f"  [{start_idx + i}] {entry}")
