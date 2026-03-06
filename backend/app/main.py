@@ -44,6 +44,7 @@ from .games.clue.models import (
     CardShownPublicMessage,
     ChatBroadcastMessage,
     ChatContext,
+    WandererSeed,
     ChatMessage,
     ChatMessagesResponse,
     ChatRequest,
@@ -971,6 +972,12 @@ async def _agent_loop_watchdog(game_id: str) -> None:
                     game_id=game_id,
                 )
 
+            # Replay the wanderer seed so the restarted agent has the same
+            # initial card knowledge as when it was first created.
+            seed = info.get("wanderer_seed")
+            if seed and ptype == "wanderer":
+                agent.observe_shown_card(seed["card"], shown_by=seed["shown_by"])
+
             agents[pid] = agent
 
         if not agents:
@@ -1545,15 +1552,76 @@ async def start_game(game_id: str):
     # Start background agent loop for any agent players (including wanderers)
     agent_players = [p for p in state.players if p.type in _AGENT_PLAYER_TYPES]
     if agent_players:
-        # Always store agent config in Redis so external runners can pick it up
+        # Build agent instances first so we can do wanderer seeding before
+        # persisting the config (the seed must be stored alongside the config
+        # so watchdog restarts reproduce the same starting knowledge).
+        agents: dict[str, BaseAgent] = {}
+        agent_cards: dict[str, list[str]] = {}
+        for player in agent_players:
+            pid = player.id
+            ptype = player.type
+            cards = await game._load_player_cards(pid)
+            agent_cards[pid] = cards
+            if ptype == "llm_agent":
+                agent: BaseAgent = LLMAgent(
+                    player_id=pid,
+                    character=player.character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+                await agent.load_memory()
+            elif ptype == "wanderer":
+                agent = WandererAgent(
+                    player_id=pid,
+                    character=player.character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+            else:
+                agent = RandomAgent(
+                    player_id=pid,
+                    character=player.character,
+                    cards=cards,
+                    redis_client=redis_client,
+                    game_id=game_id,
+                )
+            agents[pid] = agent
+            logger.info(
+                "Created %s agent for player %s (%s) in game %s",
+                ptype,
+                pid,
+                player.character,
+                game_id,
+            )
+
+        # Show one random card from a real player's hand to each wanderer.
+        # Record the seed so the config can reproduce this on restart.
+        wanderer_seeds: dict[str, WandererSeed] = {}
+        real_agents = {
+            pid: a
+            for pid, a in agents.items()
+            if a.agent_type != "wanderer" and a.own_cards
+        }
+        if real_agents:
+            for pid, a in agents.items():
+                if a.agent_type == "wanderer":
+                    donor_pid, donor = random.choice(list(real_agents.items()))
+                    card = random.choice(list(donor.own_cards))
+                    a.observe_shown_card(card, shown_by=donor_pid)
+                    wanderer_seeds[pid] = WandererSeed(card=card, shown_by=donor_pid)
+
+        # Persist agent config (with wanderer seeds) so external runners and
+        # the inline watchdog can reconstruct agents faithfully on restart.
         agent_config: dict[str, AgentPlayerConfig] = {}
         for player in agent_players:
             pid = player.id
-            cards = await game._load_player_cards(pid)
             agent_config[pid] = AgentPlayerConfig(
                 type=player.type,
                 character=player.character,
-                cards=cards,
+                cards=agent_cards[pid],
+                wanderer_seed=wanderer_seeds.get(pid),
             )
         await redis_client.set(
             f"game:{game_id}:agent_config",
@@ -1562,60 +1630,6 @@ async def start_game(game_id: str):
         )
 
         if _AGENT_MODE == "inline":
-            # Run agents in-process (original behavior)
-            agents: dict[str, BaseAgent] = {}
-            for player in agent_players:
-                pid = player.id
-                ptype = player.type
-                cards = await game._load_player_cards(pid)
-                if ptype == "llm_agent":
-                    agent: BaseAgent = LLMAgent(
-                        player_id=pid,
-                        character=player.character,
-                        cards=cards,
-                        redis_client=redis_client,
-                        game_id=game_id,
-                    )
-                elif ptype == "wanderer":
-                    agent = WandererAgent(
-                        player_id=pid,
-                        character=player.character,
-                        cards=cards,
-                        redis_client=redis_client,
-                        game_id=game_id,
-                    )
-                else:
-                    agent = RandomAgent(
-                        player_id=pid,
-                        character=player.character,
-                        cards=cards,
-                        redis_client=redis_client,
-                        game_id=game_id,
-                    )
-
-                if ptype == "llm_agent":
-                    await agent.load_memory()
-                agents[pid] = agent
-                logger.info(
-                    "Created %s agent for player %s (%s) in game %s",
-                    ptype,
-                    pid,
-                    player.character,
-                    game_id,
-                )
-            # Show one random card from a real player's hand to each wanderer
-            real_agents = {
-                pid: a
-                for pid, a in agents.items()
-                if a.agent_type != "wanderer" and a.own_cards
-            }
-            if real_agents:
-                for pid, a in agents.items():
-                    if a.agent_type == "wanderer":
-                        donor_pid, donor = random.choice(list(real_agents.items()))
-                        card = random.choice(list(donor.own_cards))
-                        a.observe_shown_card(card, shown_by=donor_pid)
-
             # Build player name map and share with all agents
             player_names = {p.id: p.name for p in state.players}
             for a in agents.values():

@@ -284,3 +284,85 @@ class TestAgentRunnerConfigPreservation:
             "Discovery should delete config key for games that no longer exist"
         )
         assert game_id not in runner.managed_games
+
+
+# ---------------------------------------------------------------------------
+# Tests: Wanderer seed persistence
+# ---------------------------------------------------------------------------
+
+
+class TestWandererSeedReplay:
+    """Wanderer seed stored in agent_config is replayed on restart."""
+
+    @pytest.mark.asyncio
+    async def test_wanderer_seed_replayed_from_config(self, runner, redis):
+        """_run_game replays the wanderer_seed so restarted wanderers have
+        the same initial card knowledge as the first run."""
+        game_id = await _create_active_game(redis)
+
+        config = {
+            "W0": {
+                "type": "wanderer",
+                "character": "Col. Mustard",
+                "cards": [],
+                "wanderer_seed": {"card": "Knife", "shown_by": "P0"},
+            }
+        }
+        config_key = f"game:{game_id}:agent_config"
+        await redis.set(config_key, json.dumps(config), ex=86400)
+        await redis.set(f"game:{game_id}:agent_lock", _RUNNER_ID, ex=_LOCK_TTL)
+
+        seen_cards_on_start: list[set] = []
+
+        async def _capture_agent_cards(gid, pid, agent):
+            seen_cards_on_start.append(set(agent.seen_cards))
+
+        runner._run_agent_ws = _capture_agent_cards
+        await runner._run_game(game_id, config)
+
+        assert len(seen_cards_on_start) == 1
+        # The wanderer has no hand cards, so seen_cards must be exactly the seeded card.
+        assert seen_cards_on_start[0] == {"Knife"}, (
+            "Wanderer must have exactly the seeded card in seen_cards — "
+            "no double-seeding or missing seed"
+        )
+
+    @pytest.mark.asyncio
+    async def test_wanderer_without_seed_gets_legacy_random_seed(self, runner, redis):
+        """For old configs without wanderer_seed, the legacy random-seed path
+        is still applied so wanderers are not left with zero card knowledge."""
+        game_id = await _create_active_game(redis)
+
+        config = {
+            "P0": {
+                "type": "agent",
+                "character": "Miss Scarlett",
+                "cards": ["Knife", "Revolver"],
+            },
+            "W0": {
+                "type": "wanderer",
+                "character": "Col. Mustard",
+                "cards": [],
+                # intentionally no wanderer_seed — legacy config
+            },
+        }
+        config_key = f"game:{game_id}:agent_config"
+        await redis.set(config_key, json.dumps(config), ex=86400)
+        await redis.set(f"game:{game_id}:agent_lock", _RUNNER_ID, ex=_LOCK_TTL)
+
+        seen_cards_on_start: dict[str, set] = {}
+
+        async def _capture_agent_cards(gid, pid, agent):
+            seen_cards_on_start[pid] = set(agent.seen_cards)
+
+        runner._run_agent_ws = _capture_agent_cards
+        await runner._run_game(game_id, config)
+
+        # Wanderer has no hand cards; legacy seeding gives exactly 1 card from
+        # the donor's hand {"Knife", "Revolver"}.
+        assert seen_cards_on_start["W0"].issubset({"Knife", "Revolver"}), (
+            "Legacy-path wanderer must receive exactly one of the donor's cards"
+        )
+        assert len(seen_cards_on_start["W0"]) == 1, (
+            "Legacy-path wanderer must receive exactly one seeded card"
+        )

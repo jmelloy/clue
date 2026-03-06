@@ -1458,3 +1458,89 @@ class TestAgentLoopWatchdog:
                 pass
             except Exception:
                 pass
+
+    @pytest.mark.asyncio
+    async def test_wanderer_seed_in_persisted_config(self, http, redis):
+        """start_game persists wanderer_seed in agent_config so restarts are consistent."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Regular-Agent", player_type="agent")
+        await _join_game(http, game_id, "Wanderer", player_type="wanderer")
+        await _start_game(http, game_id)
+
+        config_raw = await redis.get(f"game:{game_id}:agent_config")
+        assert config_raw is not None, "agent_config must be written to Redis on start"
+
+        config = json.loads(config_raw)
+        wanderer_entries = [
+            (pid, info)
+            for pid, info in config.items()
+            if info.get("type") == "wanderer"
+        ]
+        assert len(wanderer_entries) >= 1, "Expected at least one wanderer in config"
+
+        # Every wanderer must have a wanderer_seed
+        for pid, wanderer_info in wanderer_entries:
+            seed = wanderer_info.get("wanderer_seed")
+            assert seed is not None, (
+                f"Wanderer {pid} config must include wanderer_seed so restarts have the "
+                "same initial card knowledge"
+            )
+            assert "card" in seed and seed["card"], "wanderer_seed must have a non-empty card"
+            assert "shown_by" in seed and seed["shown_by"], "wanderer_seed must have a shown_by player id"
+
+        # Clean up the agent task
+        task = _agent_tasks.get(game_id)
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_watchdog_replays_wanderer_seed(self, http, redis):
+        """_agent_loop_watchdog applies wanderer_seed so restarted wanderers
+        have the same card knowledge as in the initial run."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Regular-Agent", player_type="agent")
+        await _join_game(http, game_id, "Wanderer", player_type="wanderer")
+        await _start_game(http, game_id)
+
+        # Grab the seed that was recorded at start for the first wanderer
+        config_raw = await redis.get(f"game:{game_id}:agent_config")
+        config = json.loads(config_raw)
+        wanderer_pid, wanderer_info = next(
+            (pid, info) for pid, info in config.items() if info.get("type") == "wanderer"
+        )
+        seed = wanderer_info["wanderer_seed"]
+        assert seed is not None
+
+        # Cancel current task and call watchdog
+        task = _agent_tasks.pop(game_id, None)
+        if task:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+        _game_agents.pop(game_id, None)
+
+        await _agent_loop_watchdog(game_id)
+
+        # The restarted wanderer agent should have the seeded card in seen_cards
+        agents = _game_agents.get(game_id, {})
+        assert wanderer_pid in agents, "Watchdog should have recreated the wanderer agent"
+        wanderer_agent = agents[wanderer_pid]
+        assert isinstance(wanderer_agent, WandererAgent)
+        assert seed["card"] in wanderer_agent.seen_cards, (
+            "Wanderer agent must have the seed card in seen_cards after watchdog restart"
+        )
+
+        # Clean up
+        new_task = _agent_tasks.get(game_id)
+        if new_task and not new_task.done():
+            new_task.cancel()
+            try:
+                await new_task
+            except (asyncio.CancelledError, Exception):
+                pass

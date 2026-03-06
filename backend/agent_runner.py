@@ -232,14 +232,33 @@ class AgentRunner:
                 game_id,
             )
 
-        # Show one random card from a real player's hand to each wanderer
-        real_agents = {
-            pid: a for pid, a in agents.items()
-            if a.agent_type != "wanderer" and a.own_cards
-        }
-        if real_agents:
-            for pid, a in agents.items():
-                if a.agent_type == "wanderer":
+        # Replay wanderer seeds stored in the config so that restarted runners
+        # give each wanderer the same initial card knowledge as the first run.
+        # Track which wanderers received a config seed to avoid double-seeding.
+        wanderers_seeded: set[str] = set()
+        for pid, info in config.items():
+            if info.get("type") == "wanderer":
+                seed = info.get("wanderer_seed")
+                if seed:
+                    agents[pid].observe_shown_card(
+                        seed["card"], shown_by=seed["shown_by"]
+                    )
+                    wanderers_seeded.add(pid)
+
+        # Fall back to the legacy random-seeding approach for wanderers in old
+        # configs that pre-date the wanderer_seed field (i.e. the key is absent).
+        wanderers_needing_legacy_seed = [
+            (pid, a)
+            for pid, a in agents.items()
+            if a.agent_type == "wanderer" and pid not in wanderers_seeded
+        ]
+        if wanderers_needing_legacy_seed:
+            real_agents = {
+                pid: a for pid, a in agents.items()
+                if a.agent_type != "wanderer" and a.own_cards
+            }
+            if real_agents:
+                for pid, a in wanderers_needing_legacy_seed:
                     donor_pid, donor = random.choice(list(real_agents.items()))
                     card = random.choice(list(donor.own_cards))
                     a.observe_shown_card(card, shown_by=donor_pid)
