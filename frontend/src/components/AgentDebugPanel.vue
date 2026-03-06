@@ -23,6 +23,36 @@
             }}</span>
         </div>
 
+        <!-- Player Info -->
+        <div class="debug-section player-info-section">
+          <div class="info-row">
+            <span class="info-label">Type:</span>
+            <span class="info-value agent-type-badge" :class="'type-' + (currentDebug.agent_type || 'human')">{{
+              currentDebug.agent_type || 'human' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Active:</span>
+            <span class="info-value" :class="selectedPlayer?.active !== false ? 'active-yes' : 'active-no'">{{
+              selectedPlayer?.active !== false ? 'Yes' : 'Eliminated' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Turn:</span>
+            <span v-if="isTheirTurn" class="info-value turn-active">
+              Their turn
+              <span v-if="turnState">({{ turnState.diceRolled ? 'rolled' : 'not rolled' }}<span v-if="turnState.lastRoll">, {{ turnState.lastRoll.reduce((a, b) => a + b, 0) }} spaces</span>{{ turnState.moved ? ', moved' : '' }})</span>
+            </span>
+            <span v-else class="info-value turn-waiting">Waiting</span>
+          </div>
+          <div v-if="wasMovedBySuggestion" class="info-row">
+            <span class="info-label"></span>
+            <span class="info-value moved-by-suggestion">Moved by suggestion</span>
+          </div>
+          <div v-if="props.gameState" class="info-row">
+            <span class="info-label">Turn #:</span>
+            <span class="info-value">{{ props.gameState.turn_number }}</span>
+          </div>
+        </div>
+
         <!-- Position & Room -->
         <div class="debug-section location-section">
           <div class="location-row">
@@ -78,6 +108,10 @@
             <div class="seen-cards-line">
               <span class="seen-label">Seen:</span>
               <span class="seen-list">{{ currentDebug.seen_cards?.join(', ') || 'none' }}</span>
+            </div>
+            <div v-if="currentDebug.inferred_cards?.length" class="seen-cards-line">
+              <span class="seen-label">Inferred:</span>
+              <span class="inferred-list">{{ currentDebug.inferred_cards.join(', ') }}</span>
             </div>
           </div>
         </div>
@@ -136,7 +170,8 @@ import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   agentDebugData: { type: Object, default: () => ({}) },
-  players: { type: Array, default: () => [] }
+  players: { type: Array, default: () => [] },
+  gameState: { type: Object, default: null }
 })
 
 const collapsed = ref(false)
@@ -168,6 +203,28 @@ watch(
 const currentDebug = computed(() => {
   if (!selectedAgent.value) return null
   return props.agentDebugData[selectedAgent.value] || null
+})
+
+const selectedPlayer = computed(() => {
+  if (!selectedAgent.value || !props.players?.length) return null
+  return props.players.find((p) => p.id === selectedAgent.value) || null
+})
+
+const isTheirTurn = computed(() => {
+  return props.gameState?.whose_turn === selectedAgent.value
+})
+
+const wasMovedBySuggestion = computed(() => {
+  return props.gameState?.was_moved_by_suggestion?.[selectedAgent.value] ?? false
+})
+
+const turnState = computed(() => {
+  if (!isTheirTurn.value || !props.gameState) return null
+  return {
+    diceRolled: props.gameState.dice_rolled,
+    moved: props.gameState.moved,
+    lastRoll: props.gameState.last_roll
+  }
 })
 
 function agentLabel(pid) {
@@ -440,6 +497,89 @@ function playerName(pid) {
 
 .memory-text {
   color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* Player info */
+.player-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+}
+
+.info-label {
+  color: var(--text-secondary);
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  min-width: 60px;
+}
+
+.info-value {
+  color: var(--text-secondary);
+}
+
+.agent-type-badge {
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.type-random {
+  background: var(--badge-clue-bg);
+  color: var(--badge-clue-text);
+}
+
+.type-llm {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.type-human {
+  background: var(--bg-input);
+  color: var(--text-muted);
+}
+
+.type-wanderer {
+  background: var(--tag-wanderer-bg);
+  color: var(--tag-wanderer-text);
+}
+
+.active-yes {
+  color: var(--success);
+}
+
+.active-no {
+  color: var(--error, #e74c3c);
+  font-weight: bold;
+}
+
+.turn-active {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.turn-waiting {
+  color: var(--text-dim);
+}
+
+.moved-by-suggestion {
+  color: #f39c12;
+  font-style: italic;
+  font-size: 0.65rem;
+}
+
+.inferred-list {
+  color: var(--accent);
   word-break: break-word;
 }
 

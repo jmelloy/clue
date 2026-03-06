@@ -363,7 +363,7 @@
           <section v-if="observerSelectedDebug" class="sidebar-panel">
             <AgentDebugPanel :agent-debug-data="{
               [observerPlayerState.playerId]: observerSelectedDebug
-            }" :players="gameState?.players" />
+            }" :players="gameState?.players" :game-state="gameState" />
           </section>
         </template>
       </div>
