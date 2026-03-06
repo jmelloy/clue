@@ -1370,36 +1370,17 @@ class WandererAgent(BaseAgent):
 # ---------------------------------------------------------------------------
 
 _ACTION_SYSTEM_PROMPT = """\
-You are playing the board game Clue (Cluedo). You are playing as {character}.
+You are playing Clue (Cluedo) as {character}.
 
 {personality}
 
-GAME ELEMENTS:
-- Suspects: Miss Scarlett, Colonel Mustard, Mrs. White, Reverend Green, Mrs. Peacock, Professor Plum
-- Weapons: Candlestick, Knife, Lead Pipe, Revolver, Rope, Wrench
-- Rooms: Kitchen, Ballroom, Conservatory, Billiard Room, Library, Study, Hall, Lounge, Dining Room
-- Secret passages: Study<->Kitchen, Lounge<->Conservatory
-
-RULES:
-- One suspect, one weapon, and one room form the secret solution.
-- Cards you hold or have been shown are NOT the solution.
-- On your turn: if in a corner room, you may use a secret passage; otherwise roll dice, then choose a room to move toward. After moving, optionally suggest or accuse.
-- Suggestions must use the room you are currently in.
-- Accuse ONLY when you are certain of all three solution cards.
-- A wrong accusation eliminates you from the game.
-
 Respond with a valid JSON object for your chosen action. Include a "chat" field \
-with a short in-character comment about what you're doing (one sentence, stay in \
-character as {character}).  Be coy and lie in the chat; the chat is for flavor and misdirection, not a factual report of your reasoning. \
+with a short in-character comment (one sentence, stay in character). Be coy and \
+lie in the chat; it's for flavor, not factual reporting.
 
 On end_turn, add a "memory" field: 1–3 sentences capturing (1) what you newly \
-inferred or deduced this turn, (2) your current working theory for the solution, \
-and (3) your plan for the next turn — which room to target, what to suggest, or \
-whether you are ready to accuse. Do not repeat raw card lists; those are in the game state.
-
-INFERENCE LOG: Your notes may include engine-logged events prefixed CARD SHOWN, \
-DEDUCED, NEGATIVE, UNREFUTED, or OBSERVED. DEDUCED entries are logically confirmed \
-eliminations — treat them as certainties when updating your theory and next-turn plan.\
+inferred this turn, (2) your working theory for the solution, and (3) your plan \
+for the next turn. Do not repeat card lists; those are in the game state.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1703,17 +1684,20 @@ class LLMAgent(BaseAgent):
 
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
 
+        shown_to_you = sorted(self.seen_cards - self.own_cards)
         lines = [
             "CURRENT SITUATION:",
             f"- Your player ID: {player_id}",
             f"- Your cards (in hand): {known_cards}",
-            f"- All cards you've seen (not in solution): {sorted(self.seen_cards)}",
+        ]
+        if shown_to_you:
+            lines.append(f"- Cards shown to you (also not solution): {shown_to_you}")
+        lines += [
             f"- Unknown suspects (could be solution): {unknown_suspects}",
             f"- Unknown weapons (could be solution): {unknown_weapons}",
             f"- Unknown rooms (could be solution): {unknown_rooms}",
             f"- Your current room: {current_room.get(player_id, 'none')}",
             f"- Dice roll: {'+'.join(str(d) for d in game_state.last_roll) + '=' + str(sum(game_state.last_roll)) if game_state.last_roll else 'not rolled yet'}",
-            f"- Available actions: {available}",
         ]
 
         # Add closest rooms by BFS distance
@@ -1737,15 +1721,19 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
-        # Include memory from previous turns (last 2 entries so the LLM sees
-        # both its own prior planning notes and the most recent inference update)
+        # Include the LLM's own planning notes from previous turns.
+        # Engine-generated INFERENCE UPDATE entries are skipped — their
+        # results are already reflected in the seen_cards / unknowns above.
         if self.memory:
-            lines.append("")
-            lines.append("YOUR NOTES (previous turns):")
-            recent = self.memory[-2:]
-            start_idx = len(self.memory) - len(recent) + 1
-            for i, entry in enumerate(recent):
-                lines.append(f"  [{start_idx + i}] {entry}")
+            planning_notes = [
+                m for m in self.memory if not m.startswith("INFERENCE UPDATE:")
+            ]
+            if planning_notes:
+                lines.append("")
+                lines.append("YOUR NOTES (previous turns):")
+                recent = planning_notes[-2:]
+                for entry in recent:
+                    lines.append(f"  - {entry}")
 
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
