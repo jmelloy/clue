@@ -493,12 +493,20 @@ class WandererTurnInfo(BaseModel):
     room: Optional[str] = None
 
 
+class WandererSeed(BaseModel):
+    """Card shown to a wanderer agent at game start for situational awareness."""
+
+    card: str
+    shown_by: str
+
+
 class AgentPlayerConfig(BaseModel):
     """Per-player agent configuration stored in Redis."""
 
     type: str
     character: str
     cards: list[str]
+    wanderer_seed: WandererSeed | None = None
 
 
 class ChatContext(BaseModel):

@@ -18,6 +18,7 @@ import json
 import logging
 import os
 import random
+import socket
 import sys
 
 import httpx
@@ -41,12 +42,65 @@ POLL_INTERVAL = float(os.getenv("AGENT_POLL_INTERVAL", "2"))
 # Derive WebSocket URL from the HTTP backend URL
 _WS_URL = BACKEND_URL.replace("http://", "ws://").replace("https://", "wss://")
 
+# Unique identity for this runner instance used as the Redis lock value so that
+# only the holder can release it.
+_RUNNER_ID = f"{socket.gethostname()}:{os.getpid()}"
+
+# Distributed-lock settings: the lock TTL must be long enough that a single
+# heartbeat interval never starves it, but short enough that a dead runner
+# releases games quickly.
+_LOCK_TTL = 30          # seconds — Redis key expiry
+_LOCK_RENEW_INTERVAL = 10  # seconds — how often the heartbeat refreshes the TTL
+
 
 def _player_name(state: GameState, player_id: str) -> str:
     for p in state.players:
         if p.id == player_id:
             return p.name
     return player_id
+
+
+async def _release_lock(redis: aioredis.Redis, lock_key: str) -> bool:
+    """Atomically delete *lock_key* only if its current value equals *_RUNNER_ID*.
+
+    Uses WATCH/MULTI/EXEC to prevent deleting a lock that was re-acquired by a
+    different runner after ours expired.  Returns True if the lock was released,
+    False if it was already gone or owned by another runner.
+    """
+    async with redis.pipeline(transaction=True) as pipe:
+        try:
+            await pipe.watch(lock_key)
+            current = await pipe.get(lock_key)
+            if current != _RUNNER_ID:
+                await pipe.reset()
+                return False
+            pipe.multi()
+            pipe.delete(lock_key)
+            await pipe.execute()
+            return True
+        except Exception:
+            return False
+
+
+async def _renew_lock(redis: aioredis.Redis, lock_key: str) -> bool:
+    """Atomically extend the TTL of *lock_key* only if it is still owned by us.
+
+    Uses WATCH/MULTI/EXEC so the check-then-extend is atomic.  Returns True if
+    the TTL was refreshed, False if the lock was lost.
+    """
+    async with redis.pipeline(transaction=True) as pipe:
+        try:
+            await pipe.watch(lock_key)
+            current = await pipe.get(lock_key)
+            if current != _RUNNER_ID:
+                await pipe.reset()
+                return False
+            pipe.multi()
+            pipe.expire(lock_key, _LOCK_TTL)
+            await pipe.execute()
+            return True
+        except Exception:
+            return False
 
 
 class AgentRunner:
@@ -108,12 +162,36 @@ class AgentRunner:
                 await self.redis.delete(key)
                 continue
 
-            logger.info("Discovered game %s with %d agent(s)", game_id, len(config))
+            # Try to acquire the distributed lock for this game.  The lock
+            # prevents a second runner instance from also managing the same
+            # game.  SET NX EX means "set only if not already set, with an
+            # expiry" — if another runner holds the lock this returns None.
+            lock_key = f"game:{game_id}:agent_lock"
+            acquired = await self.redis.set(
+                lock_key, _RUNNER_ID, nx=True, ex=_LOCK_TTL
+            )
+            if not acquired:
+                logger.debug(
+                    "Game %s is already locked by another runner — skipping",
+                    game_id,
+                )
+                continue
+
+            logger.info(
+                "Acquired lock for game %s, starting %d agent(s)",
+                game_id,
+                len(config),
+            )
             task = asyncio.create_task(self._run_game(game_id, config))
             self.managed_games[game_id] = task
 
     async def _run_game(self, game_id: str, config: dict):
         """Manage agents for a single game via WebSocket connections."""
+        lock_key = f"game:{game_id}:agent_lock"
+
+        # Keep the Redis lock alive for as long as this task is running.
+        heartbeat_task = asyncio.create_task(self._renew_lock(lock_key))
+
         agents: dict[str, BaseAgent] = {}
 
         for pid, info in config.items():
@@ -154,14 +232,33 @@ class AgentRunner:
                 game_id,
             )
 
-        # Show one random card from a real player's hand to each wanderer
-        real_agents = {
-            pid: a for pid, a in agents.items()
-            if a.agent_type != "wanderer" and a.own_cards
-        }
-        if real_agents:
-            for pid, a in agents.items():
-                if a.agent_type == "wanderer":
+        # Replay wanderer seeds stored in the config so that restarted runners
+        # give each wanderer the same initial card knowledge as the first run.
+        # Track which wanderers received a config seed to avoid double-seeding.
+        wanderers_seeded: set[str] = set()
+        for pid, info in config.items():
+            if info.get("type") == "wanderer":
+                seed = info.get("wanderer_seed")
+                if seed:
+                    agents[pid].observe_shown_card(
+                        seed["card"], shown_by=seed["shown_by"]
+                    )
+                    wanderers_seeded.add(pid)
+
+        # Fall back to the legacy random-seeding approach for wanderers in old
+        # configs that pre-date the wanderer_seed field (i.e. the key is absent).
+        wanderers_needing_legacy_seed = [
+            (pid, a)
+            for pid, a in agents.items()
+            if a.agent_type == "wanderer" and pid not in wanderers_seeded
+        ]
+        if wanderers_needing_legacy_seed:
+            real_agents = {
+                pid: a for pid, a in agents.items()
+                if a.agent_type != "wanderer" and a.own_cards
+            }
+            if real_agents:
+                for pid, a in wanderers_needing_legacy_seed:
                     donor_pid, donor = random.choice(list(real_agents.items()))
                     card = random.choice(list(donor.own_cards))
                     a.observe_shown_card(card, shown_by=donor_pid)
@@ -184,8 +281,68 @@ class AgentRunner:
         except asyncio.CancelledError:
             logger.info("Agent tasks cancelled for game %s", game_id)
         finally:
-            await self.redis.delete(f"game:{game_id}:agent_config")
-            logger.info("Agents finished for game %s", game_id)
+            # Stop heartbeat
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
+            # Always release the lock so another runner can take over if
+            # the game is still active.  The WATCH/MULTI/EXEC pattern makes
+            # the check-and-delete atomic so we never accidentally delete a
+            # lock that was re-acquired by a different runner after ours
+            # expired.
+            try:
+                await _release_lock(self.redis, lock_key)
+                logger.debug("Released lock for game %s", game_id)
+            except Exception:
+                logger.exception("Error releasing lock for game %s", game_id)
+
+            # Clean up the agent config key only when the game has actually
+            # ended.  If the task exits early (e.g. reconnect limit reached),
+            # leave the config so the discovery loop can restart management.
+            try:
+                game = ClueGame(game_id, self.redis)
+                state = await game.get_state()
+                if state and state.status == "playing":
+                    logger.warning(
+                        "Agent task for game %s exited while game is still active; "
+                        "lock released, it will be rediscovered on the next poll",
+                        game_id,
+                    )
+                else:
+                    await self.redis.delete(f"game:{game_id}:agent_config")
+                    logger.info("Agents finished for game %s", game_id)
+            except Exception:
+                logger.exception(
+                    "Error during agent cleanup for game %s", game_id
+                )
+
+    # ------------------------------------------------------------------
+    # Lock heartbeat
+    # ------------------------------------------------------------------
+
+    async def _renew_lock(self, lock_key: str):
+        """Periodically refresh the TTL on *lock_key* to keep the lock alive.
+
+        Runs until cancelled.  If the key no longer belongs to this runner
+        (e.g. it expired and was taken by a peer), we stop renewing silently.
+        The WATCH/MULTI/EXEC pipeline makes the read-then-extend atomic so the
+        renewal never accidentally refreshes a lock owned by another runner.
+        """
+        try:
+            while True:
+                await asyncio.sleep(_LOCK_RENEW_INTERVAL)
+                renewed = await _renew_lock(self.redis, lock_key)
+                if not renewed:
+                    logger.warning(
+                        "Lock %s is no longer held by this runner — stopping heartbeat",
+                        lock_key,
+                    )
+                    return
+        except asyncio.CancelledError:
+            pass
 
     # ------------------------------------------------------------------
     # Per-agent WebSocket connection

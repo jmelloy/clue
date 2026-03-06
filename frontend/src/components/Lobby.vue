@@ -67,7 +67,7 @@
                   </div>
                   <div class="player-info">
                     <span class="player-name">{{ p.name }}</span>
-                    <span v-if="p.character" class="player-character">{{ p.character }}</span>
+                    <span v-if="p.character && p.character !== p.name" class="player-character">{{ p.character }}</span>
                   </div>
                   <span v-if="!p.active && urlGameState.status !== 'waiting'"
                     class="badge badge-out">Out</span>

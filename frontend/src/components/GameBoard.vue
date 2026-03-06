@@ -55,7 +55,7 @@
             <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
               :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
             <span class="legend-name">{{ p.name }}</span>
-            <span v-if="p.type !== 'wanderer'" class="legend-character">{{ p.character }}</span>
+            <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
               gameState.current_room[p.id]
               }}</span>

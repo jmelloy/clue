@@ -1,64 +1,44 @@
 <template>
   <div class="chat-panel">
-    <div class="chat-tabs">
-      <button class="tab-btn" :class="{ active: activeTab === 'chat' }" @click="activeTab = 'chat'">
-        Chat
-      </button>
-      <button class="tab-btn" :class="{ active: activeTab === 'log' }" @click="activeTab = 'log'">
-        Game Log
-      </button>
+    <div class="log-filters">
+      <label class="filter-label">
+        <input type="checkbox" v-model="showSuggestions" />
+        Suggestions
+      </label>
+      <label class="filter-label">
+        <input type="checkbox" v-model="showCardShows" />
+        Card Shows
+      </label>
+      <label class="filter-label">
+        <input type="checkbox" v-model="showAccusations" />
+        Accusations
+      </label>
+      <label class="filter-label">
+        <input type="checkbox" v-model="showMoves" />
+        Moves &amp; Rolls
+      </label>
     </div>
 
-    <!-- Chat Tab -->
-    <template v-if="activeTab === 'chat'">
-      <ul class="chat-messages" ref="chatContainer">
-        <li v-for="(msg, i) in chatOnly" :key="i" class="chat-message">
-          <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
-          <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
-        </li>
-        <li v-if="!chatOnly.length" class="chat-empty">No messages yet.</li>
-      </ul>
-      <div class="chat-input">
-        <input v-model="inputText" placeholder="Type a message..." maxlength="300" @keyup.enter="sendMessage" />
-        <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
-      </div>
-    </template>
+    <ul class="chat-messages" ref="chatContainer">
+      <li
+        v-for="(msg, i) in combinedMessages"
+        :key="i"
+        class="chat-message"
+        :class="{ 'system-message': !isPlayerChat(msg) }"
+      >
+        <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
+        <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{
+          msgTagLabel(msg)
+        }}</span>
+        <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
+      </li>
+      <li v-if="!combinedMessages.length" class="chat-empty">No messages yet.</li>
+    </ul>
 
-    <!-- Game Log Tab -->
-    <template v-if="activeTab === 'log'">
-      <div class="log-filters">
-        <label class="filter-label">
-          <input type="checkbox" v-model="showSuggestions" />
-          Suggestions
-        </label>
-        <label class="filter-label">
-          <input type="checkbox" v-model="showCardShows" />
-          Card Shows
-        </label>
-        <label class="filter-label">
-          <input type="checkbox" v-model="showAccusations" />
-          Accusations
-        </label>
-        <label class="filter-label">
-          <input type="checkbox" v-model="showMoves" />
-          Moves &amp; Rolls
-        </label>
-        <label class="filter-label">
-          <input type="checkbox" v-model="showOther" />
-          Other
-        </label>
-      </div>
-      <ul class="chat-messages" ref="logContainer">
-        <li v-for="(msg, i) in filteredLog" :key="i" class="chat-message system-message">
-          <span class="chat-text" v-html="formatMessageHtml(msg)"></span>
-          <span v-if="msgTag(msg)" class="chat-tag" :class="'chat-tag-' + msgTag(msg)">{{
-            msgTagLabel(msg)
-            }}</span>
-          <span class="chat-time">{{ formatTime(msg.timestamp) }}</span>
-        </li>
-        <li v-if="!filteredLog.length" class="chat-empty">No log entries match filters.</li>
-      </ul>
-    </template>
+    <div class="chat-input">
+      <input v-model="inputText" placeholder="Type a message..." maxlength="300" @keyup.enter="sendMessage" />
+      <button :disabled="!inputText.trim()" @click="sendMessage">Send</button>
+    </div>
   </div>
 </template>
 
@@ -72,17 +52,14 @@ const props = defineProps({
 })
 const emit = defineEmits(['send-message'])
 
-const activeTab = ref('chat')
 const inputText = ref('')
 const chatContainer = ref(null)
-const logContainer = ref(null)
 
 // Log filters — all on by default
 const showSuggestions = ref(true)
 const showCardShows = ref(true)
 const showAccusations = ref(true)
 const showMoves = ref(true)
-const showOther = ref(true)
 
 const playerById = computed(() => {
   const map = {}
@@ -105,10 +82,6 @@ function isPlayerChat(msg) {
   return msg.text.startsWith(player.name + ': ')
 }
 
-function isSystemMsg(msg) {
-  return !isPlayerChat(msg)
-}
-
 // Categorize log messages
 function logCategory(msg) {
   const t = msg.text || ''
@@ -125,18 +98,15 @@ function logCategory(msg) {
   return 'other'
 }
 
-// Split messages into chat vs game log
-const chatOnly = computed(() => props.messages.filter((msg) => isPlayerChat(msg)))
-const logOnly = computed(() => props.messages.filter((msg) => isSystemMsg(msg)))
-
-const filteredLog = computed(() => {
-  return logOnly.value.filter((msg) => {
+// Combined messages: all player chat + filtered system log, in original order
+const combinedMessages = computed(() => {
+  return props.messages.filter((msg) => {
+    if (isPlayerChat(msg)) return true
     const cat = logCategory(msg)
     if (cat === 'suggestion' && !showSuggestions.value) return false
     if (cat === 'cardshow' && !showCardShows.value) return false
     if (cat === 'accusation' && !showAccusations.value) return false
     if (cat === 'move' && !showMoves.value) return false
-    if (cat === 'other' && !showOther.value) return false
     return true
   })
 })
@@ -215,11 +185,8 @@ watch(
   () => props.messages.length,
   async () => {
     await nextTick()
-    if (activeTab.value === 'chat' && chatContainer.value) {
+    if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-    }
-    if (activeTab.value === 'log' && logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight
     }
   }
 )
@@ -233,37 +200,6 @@ watch(
   flex-direction: column;
   height: 100%;
   font-family: 'Crimson Text', Georgia, serif;
-}
-
-.chat-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--accent-border);
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 0.4rem 0.6rem;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-muted);
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-btn:hover {
-  color: var(--accent);
-}
-
-.tab-btn.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
 }
 
 .log-filters {

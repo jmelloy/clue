@@ -35,7 +35,7 @@
           <img v-else-if="CARD_IMAGES[token.character]" :src="CARD_IMAGES[token.character]" :alt="token.character"
             class="token-portrait" />
           <span v-else>{{ abbr(token.character) }}</span>
-          <span class="token-tooltip">{{ token.isWeapon ? token.name : (token.type === 'wanderer' ? token.character : `${token.name} (${token.character})`) }}</span>
+          <span class="token-tooltip">{{ token.isWeapon ? token.name : (token.name === token.character ? token.character : `${token.name} (${token.character})`) }}</span>
         </div>
       </div>
     </div>
@@ -607,6 +607,12 @@ function tokenStyle(token) {
 
 .board-map {
   user-select: none;
+}
+
+@media (max-width: 480px) {
+  .board-map {
+    padding: 0 0.75rem;
+  }
 }
 
 .board-container {

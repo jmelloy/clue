@@ -1387,10 +1387,12 @@ and (3) your plan for the next turn — which room to target, what to suggest, o
 whether you are ready to accuse. Do not repeat raw card lists; those are in the game state.
 
 INFERENCE LOG: Your notes may include engine-logged events prefixed DEDUCED or \
-NEGATIVE. DEDUCED entries are logically confirmed — they name a specific player \
-and card deduced by elimination; treat them as certainties when updating your theory. \
-NEGATIVE entries list players who could not show any card for a suggestion, useful \
-for per-player attribution. All eliminated cards are already in seen_cards.
+NEGATIVE. DEDUCED entries name a specific player and the card they hold, deduced \
+by elimination — treat them as certainties when updating your theory; these deduced \
+cards are already reflected in the seen_cards list. NEGATIVE entries list players \
+who could not show any card for a suggestion — use these to track what each player \
+lacks; NEGATIVE entries do not by themselves mean those cards are eliminated from \
+the solution.
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
