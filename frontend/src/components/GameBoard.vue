@@ -81,7 +81,7 @@
         </div>
 
         <!-- Chat -->
-        <section class="chat-panel-wrapper sidebar-panel">
+        <section class="sidebar-panel chat-panel-wrapper">
           <h2 class="panel-header">Chat &amp; Game Log</h2>
           <ChatPanel
             :messages="chatMessages"
@@ -1536,10 +1536,6 @@ watch(
 
 /* Chat */
 .chat-panel-wrapper {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-panel);
-  border-radius: 6px;
-  padding: 0.8rem;
   min-height: 200px;
 }
 
