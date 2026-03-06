@@ -1467,16 +1467,6 @@ async def join_game(game_id: str, req: JoinRequest):
     return JoinGameResponse(player_id=player_id, player=player)
 
 
-_AGENT_NAMES = [
-    "Bot Alice",
-    "Bot Bob",
-    "Bot Carol",
-    "Bot Dave",
-    "Bot Eve",
-    "Bot Frank",
-]
-
-
 @app.post("/games/{game_id}/add_agent")
 async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     """Add an AI agent to a game in the waiting room."""
@@ -1491,30 +1481,13 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
 
     player_id = _new_player_id()
 
-    # Use a placeholder name; we'll rename to the assigned character below
-    taken_names = {p.name for p in state.players}
-    placeholder = None
-    for name in _AGENT_NAMES:
-        if name not in taken_names:
-            placeholder = name
-            break
-    if placeholder is None:
-        placeholder = f"Bot {len(state.players) + 1}"
-
     try:
-        player = await game.add_player(player_id, placeholder, agent_type)
+        # Pass None as the name; add_player assigns the character name for non-human types
+        player = await game.add_player(player_id, None, agent_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Use the character name as the display name for more personality
     state = await game.get_state()
-    if player.character:
-        player.name = player.character
-        for p in state.players:
-            if p.id == player_id:
-                p.name = player.character
-                break
-        await game._save_state(state)
     await manager.broadcast(
         game_id,
         PlayerJoinedMessage(player=player, players=list(state.players)),

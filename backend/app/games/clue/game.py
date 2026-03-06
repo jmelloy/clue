@@ -285,7 +285,7 @@ class ClueGame:
         )
 
     async def add_player(
-        self, player_id: str, player_name: str, player_type: str
+        self, player_id: str, player_name: str | None, player_type: str
     ) -> Player:
         state = await self._load_state()
         if state is None:
@@ -300,9 +300,13 @@ class ClueGame:
         available = [s for s in SUSPECTS if s not in taken]
         character = random.choice(available)
 
+        # Non-human players (agents, wanderers) always use the character name;
+        # human players keep their provided display name.
+        name = player_name if player_type == "human" else character
+
         player = Player(
             id=player_id,
-            name=player_name,
+            name=name,
             type=player_type,
             character=character,
         )

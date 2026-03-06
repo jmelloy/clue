@@ -48,7 +48,7 @@
                 {{ p.name }}
                 <span v-if="p.id === playerId" class="you-tag">you</span>
               </span>
-              <span class="suspect-character">{{ p.character }}</span>
+              <span v-if="p.character !== p.name" class="suspect-character">{{ p.character }}</span>
             </div>
             <span class="type-badge" :class="'type-' + p.type">{{ typeLabel(p.type) }}</span>
           </div>
