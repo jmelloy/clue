@@ -98,7 +98,7 @@ async def _create_game(http: AsyncClient) -> str:
 
 
 async def _join_game(
-    http: AsyncClient, game_id: str, name: str, player_type: str = "agent"
+    http: AsyncClient, game_id: str, name: str, player_type: str = "human"
 ) -> str:
     resp = await http.post(
         f"/games/{game_id}/join",
