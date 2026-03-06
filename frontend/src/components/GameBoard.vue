@@ -38,9 +38,41 @@
     <div class="main-layout">
       <!-- Left: Board Map + Players -->
       <div class="board-column">
-        <BoardMap :game-state="gameState" :player-id="playerId" :selected-room="targetRoom" :selectable="canMove"
-          :reachable-rooms="reachableRooms" :reachable-positions="reachablePositions" @select-room="onRoomSelected"
-          @select-position="onPositionSelected" />
+        <div class="board-map-wrapper">
+          <BoardMap :game-state="gameState" :player-id="playerId" :selected-room="targetRoom" :selectable="canMove"
+            :reachable-rooms="reachableRooms" :reachable-positions="reachablePositions" @select-room="onRoomSelected"
+            @select-position="onPositionSelected" />
+          <!-- Winning cards tossed on the board -->
+          <div v-if="gameState?.status === 'finished' && gameState?.solution" class="board-tossed-cards">
+            <div class="tossed-card tossed-card-1">
+              <div class="tossed-card-inner card-suspect">
+                <div class="tossed-card-image-frame">
+                  <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" />
+                  <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.suspect) }}</div>
+                </div>
+                <div class="tossed-card-name">{{ gameState.solution.suspect }}</div>
+              </div>
+            </div>
+            <div class="tossed-card tossed-card-2">
+              <div class="tossed-card-inner card-weapon">
+                <div class="tossed-card-image-frame">
+                  <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" />
+                  <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.weapon) }}</div>
+                </div>
+                <div class="tossed-card-name">{{ gameState.solution.weapon }}</div>
+              </div>
+            </div>
+            <div class="tossed-card tossed-card-3">
+              <div class="tossed-card-inner card-room">
+                <div class="tossed-card-image-frame">
+                  <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" />
+                  <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.room) }}</div>
+                </div>
+                <div class="tossed-card-name">{{ gameState.solution.room }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Player Legend -->
         <div class="player-legend">
@@ -343,14 +375,18 @@
         <div class="card-shown-banner" @click.stop>
           <div class="card-shown-banner-label">Card Revealed</div>
           <div class="card-shown-banner-from">{{ playerName(cardShown.by) }} showed you:</div>
-          <div class="card-shown-banner-card" :class="cardCategory(cardShown.card)">
-            <div class="banner-card-frame">
-              <img v-if="hasCardImage(cardShown.card)" :src="cardImageUrl(cardShown.card)" :alt="cardShown.card" class="banner-card-image" />
-              <div v-else class="banner-card-icon-fallback">{{ cardIcon(cardShown.card) }}</div>
+          <div class="card-shown-banner-card physical-card" :class="cardCategory(cardShown.card)">
+            <div class="physical-card-header">
+              <span class="physical-card-icon">{{ cardIcon(cardShown.card) }}</span>
+              <span class="physical-card-title">{{ cardShown.card }}</span>
             </div>
-            <div class="banner-card-nameplate">
-              <span class="banner-card-emoji">{{ cardIcon(cardShown.card) }}</span>
-              <span class="banner-card-name">{{ cardShown.card }}</span>
+            <div class="physical-card-image-frame">
+              <img v-if="hasCardImage(cardShown.card)" :src="cardImageUrl(cardShown.card)" :alt="cardShown.card" class="physical-card-image" />
+              <div v-else class="physical-card-icon-fallback">{{ cardIcon(cardShown.card) }}</div>
+            </div>
+            <div class="physical-card-footer">
+              <span class="physical-card-title">{{ cardShown.card }}</span>
+              <span class="physical-card-icon">{{ cardIcon(cardShown.card) }}</span>
             </div>
           </div>
           <button class="card-shown-banner-dismiss" @click="dismissCardShownOverlay">Got it</button>
@@ -366,29 +402,47 @@
           <div class="game-over-title">Case Closed!</div>
           <div class="game-over-winner">{{ winnerName }} wins!</div>
           <div class="game-over-cards" v-if="gameState?.solution">
-            <div class="game-over-card card-suspect">
-              <div class="game-over-card-type">Suspect</div>
-              <div class="game-over-card-frame">
-                <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" class="game-over-card-image" />
-                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.suspect) }}</div>
+            <div class="game-over-card physical-card card-suspect">
+              <div class="physical-card-header">
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.suspect) }}</span>
+                <span class="physical-card-title">{{ gameState.solution.suspect }}</span>
               </div>
-              <div class="game-over-card-name">{{ gameState.solution.suspect }}</div>
+              <div class="physical-card-image-frame">
+                <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" class="physical-card-image" />
+                <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.suspect) }}</div>
+              </div>
+              <div class="physical-card-footer">
+                <span class="physical-card-title">{{ gameState.solution.suspect }}</span>
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.suspect) }}</span>
+              </div>
             </div>
-            <div class="game-over-card card-weapon">
-              <div class="game-over-card-type">Weapon</div>
-              <div class="game-over-card-frame">
-                <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" class="game-over-card-image" />
-                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.weapon) }}</div>
+            <div class="game-over-card physical-card card-weapon">
+              <div class="physical-card-header">
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.weapon) }}</span>
+                <span class="physical-card-title">{{ gameState.solution.weapon }}</span>
               </div>
-              <div class="game-over-card-name">{{ gameState.solution.weapon }}</div>
+              <div class="physical-card-image-frame">
+                <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" class="physical-card-image" />
+                <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.weapon) }}</div>
+              </div>
+              <div class="physical-card-footer">
+                <span class="physical-card-title">{{ gameState.solution.weapon }}</span>
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.weapon) }}</span>
+              </div>
             </div>
-            <div class="game-over-card card-room">
-              <div class="game-over-card-type">Room</div>
-              <div class="game-over-card-frame">
-                <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" class="game-over-card-image" />
-                <div v-else class="game-over-card-icon-fallback">{{ cardIcon(gameState.solution.room) }}</div>
+            <div class="game-over-card physical-card card-room">
+              <div class="physical-card-header">
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.room) }}</span>
+                <span class="physical-card-title">{{ gameState.solution.room }}</span>
               </div>
-              <div class="game-over-card-name">{{ gameState.solution.room }}</div>
+              <div class="physical-card-image-frame">
+                <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" class="physical-card-image" />
+                <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.room) }}</div>
+              </div>
+              <div class="physical-card-footer">
+                <span class="physical-card-title">{{ gameState.solution.room }}</span>
+                <span class="physical-card-icon">{{ cardIcon(gameState.solution.room) }}</span>
+              </div>
             </div>
           </div>
           <button class="game-over-dismiss" @click="showGameOverOverlay = false">Continue</button>
@@ -399,15 +453,17 @@
     <!-- Card Preview Overlay -->
     <Teleport to="body">
       <div v-if="previewCard && hasCardImage(previewCard)" class="card-preview-overlay" @click="closePreview">
-        <div class="card-preview-frame" @click.stop>
-          <div class="card-preview-ornament top-left"></div>
-          <div class="card-preview-ornament top-right"></div>
-          <div class="card-preview-ornament bottom-left"></div>
-          <div class="card-preview-ornament bottom-right"></div>
-          <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
-          <div class="card-preview-nameplate">
+        <div class="card-preview-frame" :class="cardCategory(previewCard)" @click.stop>
+          <div class="card-preview-header">
             <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
             <span class="card-preview-name">{{ previewCard }}</span>
+          </div>
+          <div class="card-preview-image-frame">
+            <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+          </div>
+          <div class="card-preview-footer">
+            <span class="card-preview-name">{{ previewCard }}</span>
+            <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
           </div>
           <button class="card-preview-close" @click="closePreview">&times;</button>
         </div>
@@ -1052,54 +1108,35 @@ watch(
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem;
-  border-radius: 8px;
+  gap: 0.15rem;
+  padding: 4px;
+  border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 600;
-  border: 1.5px solid;
+  border: 1.5px solid #c8b88a;
   width: 80px;
   box-sizing: border-box;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
   position: relative;
   overflow: hidden;
+  background: #f5f0e1;
 }
 
 .card-suspect {
-  background: rgba(155, 27, 48, 0.15);
-  border-color: rgba(155, 27, 48, 0.3);
-  color: #d4888a;
+  border-color: #b8848a;
+  color: #6b1a2a;
 }
 
 .card-weapon {
-  background: rgba(26, 58, 107, 0.2);
-  border-color: rgba(26, 58, 107, 0.4);
-  color: #7aa8d4;
+  border-color: #8a9cb8;
+  color: #1a3a5b;
 }
 
 .card-room {
-  background: rgba(26, 107, 60, 0.15);
-  border-color: rgba(26, 107, 60, 0.3);
-  color: #7ac89a;
+  border-color: #8ab89a;
+  color: #1a5b3a;
 }
 
-[data-theme="light"] .card-suspect {
-  background: rgba(155, 27, 48, 0.08);
-  border-color: rgba(155, 27, 48, 0.25);
-  color: #9b1b30;
-}
-
-[data-theme="light"] .card-weapon {
-  background: rgba(26, 58, 107, 0.08);
-  border-color: rgba(26, 58, 107, 0.25);
-  color: #1a3a6b;
-}
-
-[data-theme="light"] .card-room {
-  background: rgba(26, 107, 60, 0.08);
-  border-color: rgba(26, 107, 60, 0.25);
-  color: #1a6b3c;
-}
 
 .card-group {
   margin-bottom: 0.5rem;
@@ -1144,15 +1181,19 @@ watch(
 .card-icon {
   font-size: 1.4rem;
   margin: 0.3rem 0;
+  filter: none;
 }
 
 .card-label {
   white-space: nowrap;
   text-align: center;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   line-height: 1.15;
   word-break: break-word;
   white-space: normal;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  color: #3a3020;
 }
 
 .no-cards {
@@ -1552,9 +1593,9 @@ watch(
 }
 
 .card-with-image:hover {
-  border-color: rgba(212, 168, 73, 0.5);
+  border-color: #a8984a;
   transform: translateY(-4px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 12px rgba(212, 168, 73, 0.15);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), 0 0 8px rgba(168, 152, 74, 0.15);
 }
 
 .card-thumb {
@@ -1563,9 +1604,10 @@ watch(
   border-radius: 4px;
   object-fit: cover;
   object-position: center 15%;
-  border: 1.5px solid rgba(212, 168, 73, 0.3);
+  border: 1.5px solid #b8a878;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  background: #e8e0cc;
 }
 
 .card-thumb-room {
@@ -1576,7 +1618,7 @@ watch(
 .card-thumb-weapon {
   border-radius: 4px;
   object-position: center center;
-  border-color: rgba(204, 85, 0, 0.3);
+  border-color: #8a9cb8;
 }
 
 .show-card-thumb {
@@ -1587,16 +1629,8 @@ watch(
 }
 
 .card-with-image:hover .card-thumb {
-  border-color: #d4a849;
-  box-shadow: 0 0 6px rgba(212, 168, 73, 0.3);
-}
-
-.card-with-image.card-room:hover {
-  background: rgba(26, 107, 60, 0.28);
-}
-
-.card-with-image.card-weapon:hover {
-  background: rgba(204, 85, 0, 0.18);
+  border-color: #a8984a;
+  box-shadow: 0 0 4px rgba(168, 152, 74, 0.2);
 }
 
 .show-card-thumb.show-card-thumb-suspect {
@@ -1617,7 +1651,97 @@ watch(
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Card Preview Overlay */
+/* ================================ */
+/* Physical Card Style (shared)     */
+/* ================================ */
+.physical-card {
+  background: #f5f0e1;
+  border: 2px solid #c8b88a;
+  border-radius: 10px;
+  padding: 8px 8px 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.physical-card-header,
+.physical-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.physical-card-footer {
+  transform: rotate(180deg);
+}
+
+.physical-card-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.physical-card-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #3a3020;
+  letter-spacing: 0.03em;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.physical-card-image-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid #b8a878;
+  background: #e8e0cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.physical-card.card-suspect .physical-card-image-frame {
+  border-radius: 50%;
+  aspect-ratio: 1;
+  width: 75%;
+  border-color: #8a4a50;
+}
+
+.physical-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.physical-card.card-suspect .physical-card-image {
+  object-position: center 15%;
+}
+
+.physical-card-icon-fallback {
+  font-size: 2.5rem;
+}
+
+/* Category accent colors on physical cards */
+.physical-card.card-suspect { border-color: #b8848a; }
+.physical-card.card-weapon { border-color: #8a9cb8; }
+.physical-card.card-room { border-color: #8ab89a; }
+
+.physical-card.card-suspect .physical-card-title { color: #6b1a2a; }
+.physical-card.card-weapon .physical-card-title { color: #1a3a5b; }
+.physical-card.card-room .physical-card-title { color: #1a5b3a; }
+
+/* ================================ */
+/* Card Preview Overlay             */
+/* ================================ */
 .card-preview-overlay {
   position: fixed;
   inset: 0;
@@ -1631,106 +1755,92 @@ watch(
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .card-preview-frame {
   position: relative;
-  width: 280px;
-  background: linear-gradient(145deg, #2a2018, #1a1408);
-  border: 3px solid #d4a849;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 0 30px rgba(212, 168, 73, 0.15), 0 20px 60px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(212, 168, 73, 0.1);
+  width: 260px;
+  background: #f5f0e1;
+  border: 3px solid #c8b88a;
+  border-radius: 14px;
+  padding: 14px 14px 10px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   animation: cardReveal 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
 }
+
+.card-preview-frame.card-suspect { border-color: #b8848a; }
+.card-preview-frame.card-weapon { border-color: #8a9cb8; }
+.card-preview-frame.card-room { border-color: #8ab89a; }
 
 @keyframes cardReveal {
-  from {
-    opacity: 0;
-    transform: scale(0.85) rotateY(15deg);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) rotateY(0);
-  }
+  from { opacity: 0; transform: scale(0.85) rotateY(15deg); }
+  to { opacity: 1; transform: scale(1) rotateY(0); }
 }
 
-.card-preview-ornament {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border-color: #d4a849;
-  border-style: solid;
-  opacity: 0.5;
-}
-
-.card-preview-ornament.top-left {
-  top: 6px;
-  left: 6px;
-  border-width: 2px 0 0 2px;
-  border-radius: 4px 0 0 0;
-}
-
-.card-preview-ornament.top-right {
-  top: 6px;
-  right: 6px;
-  border-width: 2px 2px 0 0;
-  border-radius: 0 4px 0 0;
-}
-
-.card-preview-ornament.bottom-left {
-  bottom: 6px;
-  left: 6px;
-  border-width: 0 0 2px 2px;
-  border-radius: 0 0 0 4px;
-}
-
-.card-preview-ornament.bottom-right {
-  bottom: 6px;
-  right: 6px;
-  border-width: 0 2px 2px 0;
-  border-radius: 0 0 4px 0;
-}
-
-.card-preview-image {
-  width: 100%;
-  border-radius: 6px;
-  display: block;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-.card-preview-nameplate {
-  text-align: center;
-  margin-top: 10px;
-  padding: 6px 12px;
-  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
-  border: 1px solid rgba(212, 168, 73, 0.2);
-  border-radius: 6px;
+.card-preview-header,
+.card-preview-footer {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  padding: 6px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.card-preview-footer {
+  transform: rotate(180deg);
 }
 
 .card-preview-icon {
   font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
 .card-preview-name {
   font-family: 'Playfair Display', Georgia, serif;
-  color: #d4a849;
-  font-size: 1.05rem;
+  color: #3a3020;
+  font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.card-preview-frame.card-suspect .card-preview-name { color: #6b1a2a; }
+.card-preview-frame.card-weapon .card-preview-name { color: #1a3a5b; }
+.card-preview-frame.card-room .card-preview-name { color: #1a5b3a; }
+
+.card-preview-image-frame {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #b8a878;
+  background: #e8e0cc;
+}
+
+.card-preview-frame.card-suspect .card-preview-image-frame {
+  border-radius: 50%;
+  width: 80%;
+  aspect-ratio: 1;
+  border-color: #8a4a50;
+}
+
+.card-preview-image {
+  width: 100%;
+  display: block;
+}
+
+.card-preview-frame.card-suspect .card-preview-image {
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
 }
 
 .card-preview-close {
@@ -1740,9 +1850,9 @@ watch(
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid rgba(212, 168, 73, 0.3);
-  background: #1a1408;
-  color: #d4a849;
+  border: 2px solid #c8b88a;
+  background: #f5f0e1;
+  color: #6b5a3a;
   font-size: 1.1rem;
   cursor: pointer;
   display: flex;
@@ -1753,9 +1863,9 @@ watch(
 }
 
 .card-preview-close:hover {
-  background: #d4a849;
-  color: #1a1408;
-  border-color: #d4a849;
+  background: #6b5a3a;
+  color: #f5f0e1;
+  border-color: #6b5a3a;
 }
 
 /* ================================ */
@@ -1810,59 +1920,20 @@ watch(
 }
 
 .card-shown-banner-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.banner-card-frame {
-  width: 180px;
-  height: 140px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 3px solid #d4a849;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(212, 168, 73, 0.1);
   animation: cardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
 }
 
-.banner-card-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.card-shown-banner-card.physical-card {
+  width: 180px;
 }
 
-.banner-card-icon-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  background: linear-gradient(135deg, rgba(40, 32, 20, 0.9), rgba(25, 18, 10, 0.9));
+.card-shown-banner-card.physical-card .physical-card-image-frame {
+  height: 130px;
 }
 
-.banner-card-nameplate {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 1rem;
-  background: linear-gradient(135deg, rgba(212, 168, 73, 0.1), rgba(212, 168, 73, 0.05));
-  border: 1px solid rgba(212, 168, 73, 0.2);
-  border-radius: 8px;
-}
-
-.banner-card-emoji {
-  font-size: 1.2rem;
-}
-
-.banner-card-name {
-  font-family: 'Playfair Display', Georgia, serif;
-  color: #d4a849;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+.card-shown-banner-card.physical-card.card-suspect .physical-card-image-frame {
+  height: auto;
+  width: 65%;
 }
 
 .card-shown-banner-dismiss {
@@ -1961,56 +2032,18 @@ watch(
   justify-content: center;
 }
 
-.game-over-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem;
-  border-radius: 12px;
-  border: 1.5px solid;
-  width: 140px;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+.game-over-card.physical-card {
+  width: 150px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-[data-theme="light"] .game-over-card,
-[data-theme="vintage"] .game-over-card {
-  background: var(--bg-panel-solid);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+.game-over-card.physical-card .physical-card-image-frame {
+  height: 100px;
 }
 
-.game-over-card.card-suspect {
-  border-color: rgba(155, 27, 48, 0.6);
-  background: linear-gradient(145deg, rgba(155, 27, 48, 0.15), rgba(0, 0, 0, 0.3));
-}
-
-.game-over-card.card-weapon {
-  border-color: rgba(26, 58, 107, 0.6);
-  background: linear-gradient(145deg, rgba(26, 58, 107, 0.2), rgba(0, 0, 0, 0.3));
-}
-
-.game-over-card.card-room {
-  border-color: rgba(26, 107, 60, 0.6);
-  background: linear-gradient(145deg, rgba(26, 107, 60, 0.15), rgba(0, 0, 0, 0.3));
-}
-
-[data-theme="light"] .game-over-card.card-suspect,
-[data-theme="vintage"] .game-over-card.card-suspect {
-  border-color: rgba(155, 27, 48, 0.5);
-  background: linear-gradient(145deg, rgba(155, 27, 48, 0.08), rgba(155, 27, 48, 0.04));
-}
-
-[data-theme="light"] .game-over-card.card-weapon,
-[data-theme="vintage"] .game-over-card.card-weapon {
-  border-color: rgba(26, 58, 107, 0.5);
-  background: linear-gradient(145deg, rgba(26, 58, 107, 0.1), rgba(26, 58, 107, 0.04));
-}
-
-[data-theme="light"] .game-over-card.card-room,
-[data-theme="vintage"] .game-over-card.card-room {
-  border-color: rgba(26, 107, 60, 0.5);
-  background: linear-gradient(145deg, rgba(26, 107, 60, 0.08), rgba(26, 107, 60, 0.04));
+.game-over-card.physical-card.card-suspect .physical-card-image-frame {
+  height: auto;
+  width: 65%;
 }
 
 .game-over-card:nth-child(1) { animation: cardFlipIn 0.5s ease 0.3s both; }
@@ -2021,70 +2054,6 @@ watch(
   0% { opacity: 0; transform: perspective(400px) rotateY(90deg) scale(0.8); }
   100% { opacity: 1; transform: perspective(400px) rotateY(0) scale(1); }
 }
-
-.game-over-card-type {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: #8a7e6b;
-}
-
-.game-over-card-frame {
-  width: 120px;
-  height: 90px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid rgba(212, 168, 73, 0.3);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-}
-
-.game-over-card-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.game-over-card-icon-fallback {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, rgba(40, 32, 20, 0.9), rgba(25, 18, 10, 0.9));
-}
-
-[data-theme="light"] .game-over-card-icon-fallback,
-[data-theme="vintage"] .game-over-card-icon-fallback {
-  background: linear-gradient(135deg, rgba(200, 190, 170, 0.5), rgba(220, 210, 190, 0.5));
-}
-
-.game-over-card-name {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #e8dcc8;
-  text-align: center;
-  line-height: 1.2;
-}
-
-[data-theme="light"] .game-over-card-name,
-[data-theme="vintage"] .game-over-card-name {
-  color: var(--text-primary);
-}
-
-.game-over-card.card-suspect .game-over-card-name { color: #d4888a; }
-.game-over-card.card-weapon .game-over-card-name { color: #7aa8d4; }
-.game-over-card.card-room .game-over-card-name { color: #7ac89a; }
-
-[data-theme="light"] .game-over-card.card-suspect .game-over-card-name,
-[data-theme="vintage"] .game-over-card.card-suspect .game-over-card-name { color: #9b1b30; }
-[data-theme="light"] .game-over-card.card-weapon .game-over-card-name,
-[data-theme="vintage"] .game-over-card.card-weapon .game-over-card-name { color: #1a3a6b; }
-[data-theme="light"] .game-over-card.card-room .game-over-card-name,
-[data-theme="vintage"] .game-over-card.card-room .game-over-card-name { color: #1a6b3c; }
 
 .game-over-dismiss {
   margin-top: 0.75rem;
@@ -2104,6 +2073,119 @@ watch(
 .game-over-dismiss:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(212, 168, 73, 0.35);
+}
+
+/* ================================ */
+/* Tossed Cards on Board (win)      */
+/* ================================ */
+.board-map-wrapper {
+  position: relative;
+}
+
+.board-tossed-cards {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.tossed-card {
+  pointer-events: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+}
+
+.tossed-card-inner {
+  background: #f5f0e1;
+  border: 2px solid #c8b88a;
+  border-radius: 8px;
+  padding: 6px;
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.tossed-card-inner.card-suspect { border-color: #b8848a; }
+.tossed-card-inner.card-weapon { border-color: #8a9cb8; }
+.tossed-card-inner.card-room { border-color: #8ab89a; }
+
+.tossed-card-image-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1.5px solid #b8a878;
+  background: #e8e0cc;
+}
+
+.tossed-card-inner.card-suspect .tossed-card-image-frame {
+  border-radius: 50%;
+  aspect-ratio: 1;
+  width: 75%;
+  border-color: #8a4a50;
+}
+
+.tossed-card-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tossed-card-inner.card-suspect .tossed-card-image-frame img {
+  object-position: center 15%;
+}
+
+.tossed-card-icon {
+  font-size: 2rem;
+  padding: 10px;
+}
+
+.tossed-card-name {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #3a3020;
+  text-align: center;
+  padding: 3px 4px 2px;
+  line-height: 1.1;
+}
+
+.tossed-card-inner.card-suspect .tossed-card-name { color: #6b1a2a; }
+.tossed-card-inner.card-weapon .tossed-card-name { color: #1a3a5b; }
+.tossed-card-inner.card-room .tossed-card-name { color: #1a5b3a; }
+
+/* Tossed card positions - scattered look */
+.tossed-card-1 {
+  animation: tossCard1 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s both;
+}
+
+.tossed-card-2 {
+  animation: tossCard2 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.4s both;
+}
+
+.tossed-card-3 {
+  animation: tossCard3 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both;
+}
+
+@keyframes tossCard1 {
+  0% { opacity: 0; transform: translateY(-80px) rotate(-30deg) scale(0.5); }
+  100% { opacity: 1; transform: translateY(0) rotate(-8deg) scale(1); }
+}
+
+@keyframes tossCard2 {
+  0% { opacity: 0; transform: translateY(-80px) rotate(20deg) scale(0.5); }
+  100% { opacity: 1; transform: translateY(0) rotate(3deg) scale(1); }
+}
+
+@keyframes tossCard3 {
+  0% { opacity: 0; transform: translateY(-80px) rotate(40deg) scale(0.5); }
+  100% { opacity: 1; transform: translateY(0) rotate(11deg) scale(1); }
 }
 
 /* Responsive */
@@ -2138,7 +2220,7 @@ watch(
   .game-over-cards {
     gap: 0.75rem;
   }
-  .game-over-card {
+  .game-over-card.physical-card {
     width: 100px;
   }
   .game-over-card-frame {
