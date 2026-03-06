@@ -1004,6 +1004,20 @@ function tokenStyle(token) {
   background: #d8cca0;
 }
 
+[data-theme="light"] .cell-hallway.reachable,
+[data-theme="light"] .cell-start.reachable {
+  background: rgba(76, 175, 80, 0.25);
+}
+
+[data-theme="light"] .cell-room.reachable {
+  filter: saturate(0.6) brightness(0.95);
+  outline-color: rgba(56, 142, 60, 0.6);
+}
+
+[data-theme="light"] .cell.reachable-door {
+  outline-color: rgba(56, 142, 60, 0.8);
+}
+
 [data-theme="vintage"] .cell-hallway.reachable,
 [data-theme="vintage"] .cell-start.reachable {
   background: rgba(76, 175, 80, 0.2);
@@ -1147,7 +1161,7 @@ function tokenStyle(token) {
   font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.5);
   z-index: 10;
-  transition: left 0.4s ease, top 0.4s ease;
+  transition: left 0.15s linear, top 0.15s linear;
   overflow: visible;
 }
 

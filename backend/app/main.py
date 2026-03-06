@@ -484,6 +484,7 @@ async def _execute_action(
                 dice=result.dice,
                 room=result.room,
                 position=result.position,
+                path=result.path,
             ),
         )
         if wanderer:
@@ -1356,6 +1357,100 @@ async def get_game(game_id: str):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
     return state.model_dump()
+
+
+@app.get("/games/{game_id}/debug")
+async def get_game_debug(
+    game_id: str,
+    trace_limit: int = 500,
+    log_offset: int = 0,
+    chat_offset: int = 0,
+    trace_offset: int = 0,
+    events_offset: int = 0,
+):
+    """Return comprehensive debug data: game state, log, chat, agent debug,
+    agent trace, LLM memory, solution, and cards for every player.
+
+    Offset params let clients fetch only new entries since their last request.
+    """
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Gather all data concurrently
+    log_key = f"game:{game_id}:log"
+    chat_key = f"game:{game_id}:chat"
+    trace_key = f"game:{game_id}:agent_trace"
+    events_key = f"game:{game_id}:agent_events"
+    solution_key = f"game:{game_id}:solution"
+
+    (
+        log_raw,
+        chat_raw,
+        trace_raw,
+        trace_total,
+        events_raw,
+        solution_raw,
+    ) = await asyncio.gather(
+        redis_client.lrange(log_key, log_offset, -1),
+        redis_client.lrange(chat_key, chat_offset, -1),
+        redis_client.lrange(trace_key, trace_offset, trace_offset + trace_limit - 1),
+        redis_client.llen(trace_key),
+        redis_client.lrange(events_key, events_offset, -1),
+        redis_client.get(solution_key),
+    )
+
+    # Parse all JSON entries
+    game_log = [json.loads(e) for e in log_raw]
+    chat = [json.loads(e) for e in chat_raw]
+    trace_entries = [json.loads(e) for e in trace_raw]
+    agent_events = [json.loads(e) for e in events_raw]
+    solution = json.loads(solution_raw) if solution_raw else None
+
+    # Collect player cards
+    player_ids = [p.id for p in state.players if p.id]
+    card_keys = [f"game:{game_id}:cards:{pid}" for pid in player_ids]
+    card_raws = await asyncio.gather(*[redis_client.get(k) for k in card_keys])
+    player_cards = {}
+    for pid, raw in zip(player_ids, card_raws):
+        player_cards[pid] = json.loads(raw) if raw else []
+
+    # Collect LLM memory for all players
+    memory_keys = [f"game:{game_id}:memory:{pid}" for pid in player_ids]
+    memory_raws = await asyncio.gather(
+        *[redis_client.lrange(k, 0, -1) for k in memory_keys]
+    )
+    player_memory = {}
+    for pid, entries in zip(player_ids, memory_raws):
+        if entries:
+            player_memory[pid] = [e.decode() if isinstance(e, bytes) else e for e in entries]
+
+    # Get agent debug info (reuse existing logic)
+    agent_debug_resp = await get_agent_debug(game_id)
+
+    # Group trace entries by player_id
+    trace_by_player: dict[str, list] = {}
+    for entry in trace_entries:
+        pid = entry.get("player_id", "_unknown")
+        trace_by_player.setdefault(pid, []).append(entry)
+
+    return {
+        "game_id": game_id,
+        "state": state.model_dump(),
+        "solution": solution,
+        "player_cards": player_cards,
+        "game_log": game_log,
+        "chat": chat,
+        "agent_debug": agent_debug_resp.get("agents", []),
+        "agent_events": agent_events,
+        "agent_trace": {
+            "total": trace_total,
+            "entries": trace_entries,
+            "by_player": trace_by_player,
+        },
+        "player_memory": player_memory,
+    }
 
 
 @app.get("/games/{game_id}/player/{player_id}")

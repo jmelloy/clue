@@ -604,6 +604,68 @@ def move_towards(
     return (best_sq, False)
 
 
+def find_path(
+    start: Square,
+    dest: Square,
+    occupied: set[tuple[int, int]] | None = None,
+) -> list[list[int]]:
+    """
+    BFS shortest path from start to dest, returning waypoints as [[row, col], ...].
+    Skips virtual room nodes in the output. Respects occupied squares.
+    Returns empty list if start == dest or no path found.
+    """
+    if occupied is None:
+        occupied = set()
+    if start == dest:
+        return []
+
+    dist_map: dict[Square, int] = {start: 0}
+    parent: dict[Square, Square | None] = {start: None}
+    queue: deque[tuple[Square, int]] = deque([(start, 0)])
+    found = False
+
+    while queue and not found:
+        sq, dist = queue.popleft()
+        if dist > dist_map.get(sq, float("inf")):
+            continue
+        for nb in sq.neighbors:
+            if nb.type != SquareType.ROOM and (nb.row, nb.col) in occupied:
+                continue
+            # Door <-> Room transitions are free
+            if (sq.type == SquareType.ROOM and nb.type == SquareType.DOOR) or (
+                sq.type == SquareType.DOOR and nb.type == SquareType.ROOM
+            ):
+                new_dist = dist
+            else:
+                new_dist = dist + 1
+            if nb not in dist_map or new_dist < dist_map[nb]:
+                dist_map[nb] = new_dist
+                parent[nb] = sq
+                if nb == dest:
+                    found = True
+                    break
+                # Don't expand through intermediate rooms
+                if nb.type == SquareType.ROOM:
+                    continue
+                if new_dist == dist:
+                    queue.appendleft((nb, new_dist))
+                else:
+                    queue.append((nb, new_dist))
+
+    if dest not in parent:
+        return []
+
+    # Reconstruct path, skipping virtual room nodes
+    path: list[list[int]] = []
+    current: Square | None = dest
+    while current is not None:
+        if current.type != SquareType.ROOM:
+            path.append([current.row, current.col])
+        current = parent[current]
+    path.reverse()
+    return path
+
+
 # ── Main ────────────────────────────────────────────────────
 
 if __name__ == "__main__":

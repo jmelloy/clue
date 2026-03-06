@@ -1,6 +1,7 @@
 <template>
   <div id="clue-app">
     <AdminGames v-if="isAdminRoute" @go-home="onAdminGoHome" @observe-game="onAdminObserveGame" />
+    <GameDebug v-else-if="isDebugRoute && debugGameId" :game-id="debugGameId" @go-home="onDebugGoHome" />
     <Lobby v-else-if="!gameId" :url-game-id="urlGameId" :url-game-type="currentGameType" @game-joined="onGameJoined"
       @observe="onObserve" @rejoin="onRejoin" @clear-url-game="urlGameId = null" />
 
@@ -37,6 +38,7 @@ import GameBoard from './components/GameBoard.vue'
 import PokerWaitingRoom from './components/PokerWaitingRoom.vue'
 import PokerTable from './components/PokerTable.vue'
 import AdminGames from './components/AdminGames.vue'
+import GameDebug from './components/GameDebug.vue'
 
 const gameId = ref(null)
 const playerId = ref(null)
@@ -58,6 +60,8 @@ const agentDebugData = ref({})
 const observerPlayerState = ref(null)
 const currentGameType = ref('clue') // 'clue' or 'holdem'
 const isAdminRoute = ref(false)
+const isDebugRoute = ref(false)
+const debugGameId = ref(null)
 const pokerTableRef = ref(null)
 
 // Initialize theme system (applies data-theme attribute on mount)
@@ -69,11 +73,29 @@ const players = computed(() => gameState.value?.players ?? [])
 let ws = null
 let reconnectTimer = null
 
+// Walk animation timers per player
+const walkTimers = {}
+function cancelWalkAnimation(pid) {
+  if (walkTimers[pid]) {
+    clearTimeout(walkTimers[pid])
+    delete walkTimers[pid]
+  }
+}
+function cancelAllWalkAnimations() {
+  for (const pid of Object.keys(walkTimers)) {
+    clearTimeout(walkTimers[pid])
+    delete walkTimers[pid]
+  }
+}
+
 // --- URL routing ---
 
 function parseGameIdFromUrl() {
   // Check admin route
   if (window.location.pathname === '/admin') return { admin: true }
+  // Check debug route
+  const debugMatch = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)\/debug/)
+  if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
   // Check holdem route first
   const holdemMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)/)
   if (holdemMatch) return { gameId: holdemMatch[1].toUpperCase(), gameType: 'holdem' }
@@ -101,9 +123,18 @@ function onPopState() {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+    isDebugRoute.value = false
+    return
+  }
+  if (parsed && parsed.debug) {
+    isDebugRoute.value = true
+    debugGameId.value = parsed.debugGameId
+    isAdminRoute.value = false
     return
   }
   isAdminRoute.value = false
+  isDebugRoute.value = false
+  debugGameId.value = null
   if (parsed && gameId.value && parsed.gameId === gameId.value) {
     return
   }
@@ -121,6 +152,9 @@ onMounted(async () => {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+  } else if (parsed && parsed.debug) {
+    isDebugRoute.value = true
+    debugGameId.value = parsed.debugGameId
   } else if (parsed) {
     currentGameType.value = parsed.gameType
     urlGameId.value = parsed.gameId
@@ -179,6 +213,7 @@ function connectWS() {
 function handleMessage(msg) {
   switch (msg.type) {
     case 'game_state':
+      cancelAllWalkAnimations()
       if (msg.state) {
         gameState.value = msg.state
         if (msg.state.your_cards) yourCards.value = msg.state.your_cards
@@ -289,22 +324,49 @@ function handleMessage(msg) {
 
     case 'player_moved':
       if (gameState.value) {
-        const rooms = {
-          ...gameState.value.current_room,
-          [msg.player_id]: msg.room
+        const movePath = msg.path
+        if (movePath && movePath.length > 1) {
+          // Animate walk along path
+          cancelWalkAnimation(msg.player_id)
+          // Set moved immediately (game logic)
+          gameState.value = { ...gameState.value, moved: true }
+          reachableRooms.value = []
+          reachablePositions.value = []
+
+          const stepDelay = Math.max(80, Math.min(150, 1500 / movePath.length))
+          let stepIndex = 1 // Skip index 0 (current position)
+
+          const animateStep = () => {
+            if (!gameState.value) return
+            if (stepIndex < movePath.length) {
+              const positions = { ...(gameState.value.player_positions || {}) }
+              positions[msg.player_id] = movePath[stepIndex]
+              const rooms = { ...gameState.value.current_room }
+              delete rooms[msg.player_id]
+              gameState.value = { ...gameState.value, player_positions: positions, current_room: rooms }
+              stepIndex++
+              walkTimers[msg.player_id] = setTimeout(animateStep, stepDelay)
+            } else {
+              // Animation complete — set final room/position
+              const rooms = { ...gameState.value.current_room }
+              if (msg.room) { rooms[msg.player_id] = msg.room } else { delete rooms[msg.player_id] }
+              const positions = { ...(gameState.value.player_positions || {}) }
+              if (msg.position) positions[msg.player_id] = msg.position
+              gameState.value = { ...gameState.value, player_positions: positions, current_room: rooms }
+              delete walkTimers[msg.player_id]
+            }
+          }
+          animateStep()
+        } else {
+          // No path — instant move
+          const rooms = { ...gameState.value.current_room, [msg.player_id]: msg.room }
+          const positions = { ...(gameState.value.player_positions || {}) }
+          if (msg.position) positions[msg.player_id] = msg.position
+          gameState.value = { ...gameState.value, current_room: rooms, player_positions: positions, moved: true }
+          reachableRooms.value = []
+          reachablePositions.value = []
         }
-        const positions = { ...(gameState.value.player_positions || {}) }
-        if (msg.position) positions[msg.player_id] = msg.position
-        const updates = {
-          current_room: rooms,
-          player_positions: positions,
-          moved: true
-        }
-        gameState.value = { ...gameState.value, ...updates }
       }
-      // Clear reachable highlights after movement
-      reachableRooms.value = []
-      reachablePositions.value = []
       // Update debug data for moved player
       if (agentDebugData.value[msg.player_id]) {
         agentDebugData.value = {
@@ -431,6 +493,12 @@ function resetState() {
 function leaveGame() {
   resetState()
   urlGameId.value = null
+  pushLobbyUrl()
+}
+
+function onDebugGoHome() {
+  isDebugRoute.value = false
+  debugGameId.value = null
   pushLobbyUrl()
 }
 

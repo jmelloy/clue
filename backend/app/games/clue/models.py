@@ -163,6 +163,7 @@ class MoveResult(ActionResultBase):
     type: Literal["move"] = "move"
     room: Optional[str] = None
     position: Optional[list[int]] = None
+    path: Optional[list[list[int]]] = None
     dice: int = 0
     total: int = 0
 
@@ -244,6 +245,7 @@ class PlayerMovedMessage(WSMessage):
     type: Literal["player_moved"] = "player_moved"
     player_id: str
     position: Optional[list[int]] = None
+    path: Optional[list[list[int]]] = None
     room: Optional[str] = None
     from_room: Optional[str] = None
     dice: Optional[int] = None
