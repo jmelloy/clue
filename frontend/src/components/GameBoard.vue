@@ -2139,9 +2139,30 @@ watch(
   .main-layout {
     grid-template-columns: 1fr;
   }
+
+  .game-header {
+    flex-wrap: wrap;
+  }
+
+  .header-center {
+    order: 3;
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 500px) {
+  .game-header {
+    padding: 0.4rem 0.6rem;
+    gap: 0.5rem;
+  }
+
+  .header-left h1 {
+    font-size: 1.1rem;
+  }
+
+  .header-right {
+    gap: 0.4rem;
+  }
   .game-over-cards {
     gap: 0.75rem;
   }
