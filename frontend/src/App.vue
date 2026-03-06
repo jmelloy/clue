@@ -1,6 +1,7 @@
 <template>
   <div id="clue-app">
     <AdminGames v-if="isAdminRoute" @go-home="onAdminGoHome" @observe-game="onAdminObserveGame" />
+    <GameDebug v-else-if="isDebugRoute && debugGameId" :game-id="debugGameId" @go-home="onDebugGoHome" />
     <Lobby v-else-if="!gameId" :url-game-id="urlGameId" :url-game-type="currentGameType" @game-joined="onGameJoined"
       @observe="onObserve" @rejoin="onRejoin" @clear-url-game="urlGameId = null" />
 
@@ -37,6 +38,7 @@ import GameBoard from './components/GameBoard.vue'
 import PokerWaitingRoom from './components/PokerWaitingRoom.vue'
 import PokerTable from './components/PokerTable.vue'
 import AdminGames from './components/AdminGames.vue'
+import GameDebug from './components/GameDebug.vue'
 
 const gameId = ref(null)
 const playerId = ref(null)
@@ -58,6 +60,8 @@ const agentDebugData = ref({})
 const observerPlayerState = ref(null)
 const currentGameType = ref('clue') // 'clue' or 'holdem'
 const isAdminRoute = ref(false)
+const isDebugRoute = ref(false)
+const debugGameId = ref(null)
 const pokerTableRef = ref(null)
 
 // Initialize theme system (applies data-theme attribute on mount)
@@ -74,6 +78,9 @@ let reconnectTimer = null
 function parseGameIdFromUrl() {
   // Check admin route
   if (window.location.pathname === '/admin') return { admin: true }
+  // Check debug route
+  const debugMatch = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)\/debug/)
+  if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
   // Check holdem route first
   const holdemMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)/)
   if (holdemMatch) return { gameId: holdemMatch[1].toUpperCase(), gameType: 'holdem' }
@@ -101,9 +108,18 @@ function onPopState() {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+    isDebugRoute.value = false
+    return
+  }
+  if (parsed && parsed.debug) {
+    isDebugRoute.value = true
+    debugGameId.value = parsed.debugGameId
+    isAdminRoute.value = false
     return
   }
   isAdminRoute.value = false
+  isDebugRoute.value = false
+  debugGameId.value = null
   if (parsed && gameId.value && parsed.gameId === gameId.value) {
     return
   }
@@ -121,6 +137,9 @@ onMounted(async () => {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+  } else if (parsed && parsed.debug) {
+    isDebugRoute.value = true
+    debugGameId.value = parsed.debugGameId
   } else if (parsed) {
     currentGameType.value = parsed.gameType
     urlGameId.value = parsed.gameId
@@ -431,6 +450,12 @@ function resetState() {
 function leaveGame() {
   resetState()
   urlGameId.value = null
+  pushLobbyUrl()
+}
+
+function onDebugGoHome() {
+  isDebugRoute.value = false
+  debugGameId.value = null
   pushLobbyUrl()
 }
 
