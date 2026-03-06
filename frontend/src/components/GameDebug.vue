@@ -484,12 +484,44 @@ async function fetchDebug() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch(`/games/${props.gameId}/debug`)
+    // Build URL with offsets for incremental fetches
+    const params = new URLSearchParams()
+    const d = debugData.value
+    if (d) {
+      params.set('log_offset', d.game_log.length)
+      params.set('chat_offset', d.chat.length)
+      params.set('trace_offset', d.agent_trace.entries.length)
+      params.set('events_offset', d.agent_events.length)
+    }
+    const qs = params.toString()
+    const res = await fetch(`/games/${props.gameId}/debug${qs ? '?' + qs : ''}`)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.detail || `HTTP ${res.status}`)
     }
-    debugData.value = await res.json()
+    const fresh = await res.json()
+
+    if (d) {
+      // Append new list entries, replace everything else
+      d.state = fresh.state
+      d.solution = fresh.solution
+      d.player_cards = fresh.player_cards
+      d.agent_debug = fresh.agent_debug
+      d.player_memory = fresh.player_memory
+      d.game_log.push(...fresh.game_log)
+      d.chat.push(...fresh.chat)
+      d.agent_events.push(...fresh.agent_events)
+      d.agent_trace.entries.push(...fresh.agent_trace.entries)
+      d.agent_trace.total = fresh.agent_trace.total
+      // Merge by_player trace groups
+      for (const [pid, entries] of Object.entries(fresh.agent_trace.by_player)) {
+        if (!d.agent_trace.by_player[pid]) d.agent_trace.by_player[pid] = []
+        d.agent_trace.by_player[pid].push(...entries)
+      }
+    } else {
+      debugData.value = fresh
+    }
+
     // Auto-select first agent if none selected
     if (!selectedAgentId.value && debugData.value.agent_debug.length) {
       selectedAgentId.value = debugData.value.agent_debug[0].player_id

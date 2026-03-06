@@ -1359,9 +1359,19 @@ async def get_game(game_id: str):
 
 
 @app.get("/games/{game_id}/debug")
-async def get_game_debug(game_id: str, trace_limit: int = 500):
+async def get_game_debug(
+    game_id: str,
+    trace_limit: int = 500,
+    log_offset: int = 0,
+    chat_offset: int = 0,
+    trace_offset: int = 0,
+    events_offset: int = 0,
+):
     """Return comprehensive debug data: game state, log, chat, agent debug,
-    agent trace, LLM memory, solution, and cards for every player."""
+    agent trace, LLM memory, solution, and cards for every player.
+
+    Offset params let clients fetch only new entries since their last request.
+    """
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
     if state is None:
@@ -1382,11 +1392,11 @@ async def get_game_debug(game_id: str, trace_limit: int = 500):
         events_raw,
         solution_raw,
     ) = await asyncio.gather(
-        redis_client.lrange(log_key, 0, -1),
-        redis_client.lrange(chat_key, 0, -1),
-        redis_client.lrange(trace_key, 0, trace_limit - 1),
+        redis_client.lrange(log_key, log_offset, -1),
+        redis_client.lrange(chat_key, chat_offset, -1),
+        redis_client.lrange(trace_key, trace_offset, trace_offset + trace_limit - 1),
         redis_client.llen(trace_key),
-        redis_client.lrange(events_key, 0, -1),
+        redis_client.lrange(events_key, events_offset, -1),
         redis_client.get(solution_key),
     )
 
