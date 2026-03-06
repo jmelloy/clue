@@ -613,10 +613,7 @@ class BaseAgent(ABC):
         self.unrefuted_suggestions.append(
             {"suspect": suspect, "weapon": weapon, "room": room}
         )
-        self._pending_inferences.append(
-            f"UNREFUTED: My suggestion of {suspect}/{weapon}/{room} was not "
-            f"disproved by anyone! These could all be the solution."
-        )
+        # No inference entry needed -- the prompt already includes unrefuted_suggestions.
         self.agent_trace(
             "observe_suggestion_no_show",
             suspect=suspect,
@@ -647,9 +644,9 @@ class BaseAgent(ABC):
                 room=room,
             )
             self._pending_inferences.append(
-                f"DEDUCED: {self._name(shown_by)} showed a card to {self._name(shown_to)} for "
-                f"{suspect}/{weapon}/{room}. By elimination I deduced the "
-                f"card was '{inferred}' — it is NOT the solution."
+                f"DEDUCED: {self._name(shown_by)} has '{inferred}' "
+                f"(from {self._name(shown_by)}->{self._name(shown_to)} show for "
+                f"{suspect}/{weapon}/{room})."
             )
             self.seen_cards.add(inferred)
             self._run_inference()
@@ -738,15 +735,8 @@ class BaseAgent(ABC):
                 f"NEGATIVE: {self._name(suggesting_player_id)} suggested {suspect}/{weapon}/{room}. "
                 f"Players [{names}] could NOT show any of these cards."
             )
-        if (
-            shown_by
-            and shown_by != self.player_id
-            and suggesting_player_id != self.player_id
-        ):
-            self._pending_inferences.append(
-                f"OBSERVED: {self._name(shown_by)} showed a card to {self._name(suggesting_player_id)} "
-                f"for {suspect}/{weapon}/{room}."
-            )
+        # OBSERVED entries omitted: deduced cards generate DEDUCED entries;
+        # non-deduced observations duplicate information in NEGATIVE entries and seen_cards.
 
         self.agent_trace(
             "observe_suggestion",
@@ -803,9 +793,8 @@ class BaseAgent(ABC):
                         room=room,
                     )
                     self._pending_inferences.append(
-                        f"DEDUCED (chain): From earlier suggestion "
-                        f"{suspect}/{weapon}/{room}, I now deduce {self._name(shown_by)} "
-                        f"has '{inferred}' — it is NOT the solution."
+                        f"DEDUCED (chain): {self._name(shown_by)} has '{inferred}' "
+                        f"(re-deduced from earlier suggestion {suspect}/{weapon}/{room})."
                     )
                     self.seen_cards.add(inferred)
                     changed = True
@@ -1399,9 +1388,11 @@ reasoning. Be concise but thorough. \
 You will always get the known/unknown cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.
 
 INFERENCE LOG: Your notes section may contain automatic inference notifications \
-(prefixed CARD SHOWN, DEDUCED, NEGATIVE, UNREFUTED, OBSERVED). These are events \
-the game engine tracked between your turns. Pay close attention to DEDUCED entries — \
-they reveal cards eliminated by logical deduction. Use these to refine your strategy.\
+(prefixed DEDUCED or NEGATIVE). DEDUCED entries name a specific player and the \
+card they hold, deduced by elimination. NEGATIVE entries list players who \
+could not show any card for a suggestion — use these to track what each player \
+lacks. All eliminated cards are already reflected in the seen_cards list, so use \
+DEDUCED/NEGATIVE entries for per-player attribution, not to re-list eliminated cards.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
