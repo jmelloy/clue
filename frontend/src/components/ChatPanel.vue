@@ -44,7 +44,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { CHARACTER_COLORS } from '../constants/clue.js'
+import { CHARACTER_COLORS } from '../constants/clue'
 
 const props = defineProps({
   messages: { type: Array, default: () => [] },

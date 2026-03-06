@@ -289,7 +289,7 @@ const urlGameState = ref(null)
 const urlGameLoading = ref(false)
 const urlGameError = ref('')
 
-import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from '../constants/clue.js'
+import { CHARACTER_COLORS, CHARACTER_ABBR, CARD_IMAGES } from '../constants/clue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 
 function selectGame(type) {
