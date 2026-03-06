@@ -360,7 +360,8 @@ Structured logging with multiple formatters:
 | `LOG_FORMAT`          | `colored`                                    | Backend, Agent Runner (`colored`, `json`, `plain`) |
 | `LLM_API_KEY`         | _(empty)_                                    | LLM Agent (OpenAI-compatible API key)              |
 | `LLM_API_URL`         | `https://api.openai.com/v1/chat/completions` | LLM Agent                                          |
-| `LLM_MODEL`           | `gpt-5-mini`                                 | LLM Agent                                          |
+| `LLM_MODEL`           | `gpt-4o-mini`                                | LLM Agent (complex decisions)                      |
+| `LLM_NANO_MODEL`      | _(same as `LLM_MODEL`)_                      | LLM Agent (quick operations e.g. showing a card)   |
 | `LLM_TRACE_LOG_LEVEL` | _(empty)_                                    | Backend (trace-level logging for LLM calls)        |
 | `AGENT_POLL_INTERVAL` | `2`                                          | Agent Runner (seconds between Redis polls)         |
 

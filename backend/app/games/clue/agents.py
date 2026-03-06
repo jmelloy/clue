@@ -1486,7 +1486,10 @@ class LLMAgent(BaseAgent):
     Configuration via environment variables:
     - ``LLM_API_URL``: Chat completions endpoint (default: OpenAI)
     - ``LLM_API_KEY``: Bearer token for the API
-    - ``LLM_MODEL``: Model identifier (default: ``gpt-4o-mini``)
+    - ``LLM_MODEL``: Model identifier for complex decisions (default: ``gpt-4o-mini``)
+    - ``LLM_NANO_MODEL``: Model identifier for quick operations such as
+      showing a card (default: same as ``LLM_MODEL``).  Use a smaller/faster
+      model here to reduce latency and cost for simple choices.
     """
 
     agent_type = "llm"
@@ -1510,7 +1513,8 @@ class LLMAgent(BaseAgent):
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
-        self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
+        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self.nano_model = os.getenv("LLM_NANO_MODEL", self.model)
         self.memory: list[str] = []
 
         # Fallback agent shares our observation state — LLM agents always
@@ -1539,6 +1543,7 @@ class LLMAgent(BaseAgent):
             "llm_configured",
             api_url=self.api_url,
             model=self.model,
+            nano_model=self.nano_model,
             api_key_set=bool(self.api_key),
         )
 
@@ -1574,18 +1579,28 @@ class LLMAgent(BaseAgent):
     # LLM communication
     # ------------------------------------------------------------------
 
-    async def _call_llm(self, system_prompt: str, user_prompt: str) -> str | None:
-        """Call the LLM API and return the response text, or None on failure."""
+    async def _call_llm(
+        self, system_prompt: str, user_prompt: str, model: str | None = None
+    ) -> str | None:
+        """Call the LLM API and return the response text, or None on failure.
+
+        Args:
+            system_prompt: The system-role message.
+            user_prompt: The user-role message.
+            model: Override the model to use.  Defaults to ``self.model``.
+        """
         if not self.api_key:
             self.agent_trace("llm_no_api_key")
             return None
+
+        effective_model = model or self.model
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": self.model,
+            "model": effective_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -1594,7 +1609,7 @@ class LLMAgent(BaseAgent):
 
         self.agent_trace(
             "llm_request",
-            model=self.model,
+            model=effective_model,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
@@ -1985,7 +2000,9 @@ class LLMAgent(BaseAgent):
             return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
-        response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt)
+        response_text = await self._call_llm(
+            _SHOW_CARD_SYSTEM_PROMPT, user_prompt, model=self.nano_model
+        )
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
