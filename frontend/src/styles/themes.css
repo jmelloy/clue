@@ -79,6 +79,35 @@
   --lobby-glow-1: rgba(180, 140, 60, 0.15);
   --lobby-glow-2: rgba(100, 50, 50, 0.1);
 
+  /* Success variants */
+  --success-bg: rgba(76, 175, 80, 0.12);
+  --success-border: rgba(76, 175, 80, 0.3);
+
+  /* Game-type badge colors */
+  --badge-clue-bg: rgba(180, 60, 60, 0.15);
+  --badge-clue-text: #e8a0a0;
+  --badge-clue-border: rgba(180, 60, 60, 0.3);
+  --badge-holdem-bg: rgba(60, 120, 180, 0.15);
+  --badge-holdem-text: #a0c8e8;
+  --badge-holdem-border: rgba(60, 120, 180, 0.3);
+
+  /* Player-type tag colors */
+  --tag-agent-bg: rgba(60, 120, 180, 0.15);
+  --tag-agent-text: #a0c8e8;
+  --tag-llm-bg: rgba(120, 60, 180, 0.15);
+  --tag-llm-text: #c8a0e8;
+  --tag-wanderer-bg: rgba(60, 180, 120, 0.15);
+  --tag-wanderer-text: #a0e8c8;
+
+  /* Chat tag colors */
+  --tag-suggest-bg: rgba(122, 168, 212, 0.15);
+  --tag-suggest-text: #7aa8d4;
+  --tag-accuse-bg: rgba(196, 80, 80, 0.15);
+  --tag-accuse-text: #c45050;
+
+  /* Detective notes */
+  --note-seen-color: #7aa8d4;
+
   /* Poker chrome (UI around the felt table) */
   --poker-chrome: #0f1520;
   --poker-chrome-raised: #15202e;
@@ -176,6 +205,35 @@
   --lobby-glow-1: rgba(180, 140, 60, 0.08);
   --lobby-glow-2: rgba(60, 100, 160, 0.06);
 
+  /* Success variants */
+  --success-bg: rgba(46, 139, 62, 0.1);
+  --success-border: rgba(46, 139, 62, 0.28);
+
+  /* Game-type badge colors */
+  --badge-clue-bg: rgba(160, 40, 40, 0.1);
+  --badge-clue-text: #8b2020;
+  --badge-clue-border: rgba(160, 40, 40, 0.25);
+  --badge-holdem-bg: rgba(30, 90, 160, 0.1);
+  --badge-holdem-text: #1a4a80;
+  --badge-holdem-border: rgba(30, 90, 160, 0.25);
+
+  /* Player-type tag colors */
+  --tag-agent-bg: rgba(30, 90, 160, 0.1);
+  --tag-agent-text: #1a4a80;
+  --tag-llm-bg: rgba(100, 40, 160, 0.1);
+  --tag-llm-text: #5a1a8a;
+  --tag-wanderer-bg: rgba(30, 140, 80, 0.1);
+  --tag-wanderer-text: #1a6a40;
+
+  /* Chat tag colors */
+  --tag-suggest-bg: rgba(30, 100, 160, 0.1);
+  --tag-suggest-text: #1a4a80;
+  --tag-accuse-bg: rgba(160, 48, 48, 0.1);
+  --tag-accuse-text: #8b2020;
+
+  /* Detective notes */
+  --note-seen-color: #2a6090;
+
   /* Poker chrome */
   --poker-chrome: #f0ebe3;
   --poker-chrome-raised: #faf7f2;
@@ -269,6 +327,35 @@
   /* Lobby ambient */
   --lobby-glow-1: rgba(160, 120, 40, 0.1);
   --lobby-glow-2: rgba(139, 32, 32, 0.06);
+
+  /* Success variants */
+  --success-bg: rgba(46, 122, 48, 0.1);
+  --success-border: rgba(46, 122, 48, 0.28);
+
+  /* Game-type badge colors */
+  --badge-clue-bg: rgba(139, 32, 32, 0.1);
+  --badge-clue-text: #6a1818;
+  --badge-clue-border: rgba(139, 32, 32, 0.25);
+  --badge-holdem-bg: rgba(30, 80, 140, 0.1);
+  --badge-holdem-text: #1a3a70;
+  --badge-holdem-border: rgba(30, 80, 140, 0.25);
+
+  /* Player-type tag colors */
+  --tag-agent-bg: rgba(30, 80, 140, 0.1);
+  --tag-agent-text: #1a3a70;
+  --tag-llm-bg: rgba(90, 30, 140, 0.1);
+  --tag-llm-text: #501870;
+  --tag-wanderer-bg: rgba(30, 120, 70, 0.1);
+  --tag-wanderer-text: #186038;
+
+  /* Chat tag colors */
+  --tag-suggest-bg: rgba(30, 90, 140, 0.1);
+  --tag-suggest-text: #1a3a70;
+  --tag-accuse-bg: rgba(139, 32, 32, 0.1);
+  --tag-accuse-text: #6a1818;
+
+  /* Detective notes */
+  --note-seen-color: #2a5080;
 
   /* Poker chrome */
   --poker-chrome: #ede5d0;
