@@ -550,11 +550,16 @@ class BaseAgent(ABC):
         """Persist knowledge state to Redis."""
         if not self._redis or not self._game_id:
             return
+        key = self._knowledge_redis_key()
         try:
-            key = self._knowledge_redis_key()
             await self._redis.set(key, json.dumps(self.get_knowledge_state()), ex=EXPIRY)
         except Exception:
-            logger.debug("Failed to save knowledge state for %s", self.player_id)
+            logger.debug(
+                "Failed to save knowledge state for %s (key=%s)",
+                self.player_id,
+                key,
+                exc_info=True,
+            )
 
     def _enqueue_save_knowledge(self):
         """Fire-and-forget save of knowledge state (from sync contexts)."""
@@ -572,8 +577,8 @@ class BaseAgent(ABC):
         """Restore knowledge state from Redis."""
         if not self._redis or not self._game_id:
             return
+        key = self._knowledge_redis_key()
         try:
-            key = self._knowledge_redis_key()
             raw = await self._redis.get(key)
             if raw:
                 self.load_knowledge_state(json.loads(raw))
@@ -585,7 +590,12 @@ class BaseAgent(ABC):
                     player_not_has=sum(len(v) for v in self.player_not_has_cards.values()),
                 )
         except Exception:
-            logger.debug("Failed to load knowledge state for %s", self.player_id)
+            logger.debug(
+                "Failed to load knowledge state for %s (key=%s)",
+                self.player_id,
+                key,
+                exc_info=True,
+            )
 
     # ------------------------------------------------------------------
     # Trace method — centralized debug logging + Redis persistence
