@@ -863,11 +863,14 @@ class TestGameOverBroadcast:
             },
         )
 
-        # Both players should see the accusation broadcast
+        # In a 2-player game the wrong accusation eliminates the accuser,
+        # leaving only one player — so the game ends immediately with a
+        # game_over broadcast (not accusation_made).
         all_msgs = ws1.sent + ws2.sent
-        acc = [m for m in all_msgs if m["type"] == "accusation_made"]
-        assert len(acc) >= 1, "Should broadcast accusation_made"
-        assert acc[0]["correct"] is False
+        game_over = [m for m in all_msgs if m["type"] == "game_over"]
+        assert len(game_over) >= 1, "Should broadcast game_over"
+        assert game_over[0]["correct"] is False
+        assert game_over[0]["winner"] == other_pid
 
         # The game should now be finished with the other player winning
         final = await _get_state(http, game_id)

@@ -7,6 +7,8 @@ import logging
 from pydantic import TypeAdapter, ValidationError
 
 from .board import (
+    DOORS,
+    DOOR_DIRECTIONS,
     START_POSITIONS,
     ROOM_CENTERS,
     ROOM_NAME_TO_ENUM,
@@ -228,6 +230,12 @@ class ClueGame:
         if pending:
             if pending.player_id == player_id:
                 actions.append("show_card")
+            return actions
+
+        # Eliminated players have no actions (they can only show cards,
+        # handled above via pending_show_card)
+        player = next((p for p in state.players if p.id == player_id), None)
+        if player and not player.active:
             return actions
 
         if state.whose_turn != player_id:
@@ -871,6 +879,10 @@ class ClueGame:
                     p.active = False
                     break
 
+            # Move eliminated player off door squares so they don't block
+            # other players' movement
+            eliminated_position = self._move_off_door(state, player_id)
+
             # Check if only one non-wanderer player left
             active_real = [
                 p for p in state.players if p.active and p.type != "wanderer"
@@ -878,15 +890,83 @@ class ClueGame:
             if len(active_real) == 1:
                 state.status = "finished"
                 state.winner = active_real[0].id
+                await self._save_state(state)
+                return AccuseResult(
+                    player_id=player_id,
+                    correct=False,
+                    solution=solution,
+                    eliminated_player_position=eliminated_position,
+                )
+
+            # Advance turn to next active player
+            next_player_id = self._advance_to_next_active(state, player_id)
 
             await self._save_state(state)
             return AccuseResult(
                 player_id=player_id,
                 correct=False,
-                solution=(
-                    solution if state.status == "finished" else None
-                ),
+                next_player_id=next_player_id,
+                eliminated_player_position=eliminated_position,
             )
+
+    @staticmethod
+    def _move_off_door(state: "GameState", player_id: str) -> list[int] | None:
+        """If the player is on a door square, move them to an adjacent
+        non-door hallway square. Returns the new position or None."""
+        pos = state.player_positions.get(player_id)
+        if not pos:
+            return None
+
+        r, c = pos[0], pos[1]
+        sq = SQUARES.get((r, c))
+        if not sq or sq.type != SquareType.DOOR:
+            return None
+
+        # Find an adjacent hallway/start square that isn't a door
+        # Use the door's outward direction as the preferred displacement
+        door_info = DOORS.get((r, c))
+        if door_info:
+            _room, direction = door_info
+            dr, dc = DOOR_DIRECTIONS[direction]
+            nr, nc = r + dr, c + dc
+            neighbor = SQUARES.get((nr, nc))
+            if neighbor and neighbor.type in (SquareType.HALLWAY, SquareType.START):
+                state.player_positions[player_id] = [nr, nc]
+                return [nr, nc]
+
+        # Fallback: try any non-door neighbor
+        for neighbor in sq.neighbors:
+            if neighbor.type in (SquareType.HALLWAY, SquareType.START):
+                state.player_positions[player_id] = [neighbor.row, neighbor.col]
+                return [neighbor.row, neighbor.col]
+
+        return None
+
+    def _advance_to_next_active(
+        self, state: "GameState", current_player_id: str
+    ) -> str:
+        """Advance the turn to the next active player after current_player_id.
+        Resets all turn state (dice, moved, suggestions, etc.)."""
+        active = [p for p in state.players if p.active]
+        # Find current player's position among all players (not just active)
+        all_ids = [p.id for p in state.players]
+        idx = all_ids.index(current_player_id)
+
+        # Walk forward through all players to find the next active one
+        for offset in range(1, len(all_ids) + 1):
+            candidate = state.players[(idx + offset) % len(all_ids)]
+            if candidate.active:
+                state.whose_turn = candidate.id
+                state.turn_number += 1
+                state.dice_rolled = False
+                state.moved = False
+                state.last_roll = None
+                state.suggestions_this_turn = []
+                state.was_moved_by_suggestion.pop(current_player_id, None)
+                return candidate.id
+
+        # Should never happen if there's at least one active player
+        return active[0].id if active else current_player_id
 
     async def _handle_end_turn(
         self, state: GameState, player_id: str

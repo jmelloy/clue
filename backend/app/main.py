@@ -688,13 +688,53 @@ async def _execute_action(
                 f" Correct! {actor_name} wins!"
             )
         else:
-            await manager.broadcast(
-                game_id,
-                AccusationMadeMessage(
-                    player_id=player_id,
-                    correct=False,
-                ),
-            )
+            # Re-fetch state — _handle_accuse advanced the turn and may
+            # have moved the eliminated player off a door square.
+            state = await game.get_state()
+            if state.status == "finished":
+                await manager.broadcast(
+                    game_id,
+                    GameOverMessage(
+                        player_id=player_id,
+                        correct=False,
+                        winner=state.winner,
+                        solution=result.solution,
+                    ),
+                )
+            else:
+                await manager.broadcast(
+                    game_id,
+                    AccusationMadeMessage(
+                        player_id=player_id,
+                        correct=False,
+                    ),
+                )
+                # Broadcast the turn change so all clients update
+                await manager.broadcast(
+                    game_id,
+                    GameStateUpdateMessage(
+                        whose_turn=state.whose_turn,
+                        turn_number=state.turn_number,
+                        dice_rolled=state.dice_rolled,
+                        moved=state.moved,
+                        last_roll=state.last_roll,
+                        suggestions_this_turn=list(state.suggestions_this_turn),
+                        pending_show_card=state.pending_show_card,
+                        player_positions=state.player_positions,
+                    ),
+                )
+                # Notify the next player it's their turn
+                next_pid = result.next_player_id
+                if next_pid:
+                    await manager.send_to_player(
+                        game_id,
+                        next_pid,
+                        YourTurnMessage(
+                            available_actions=game.get_available_actions(
+                                next_pid, state
+                            ),
+                        ),
+                    )
             chat_text = (
                 f"{actor_name} accuses {action.suspect} with the"
                 f" {action.weapon} in the {action.room}."

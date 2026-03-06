@@ -191,6 +191,8 @@ class AccuseResult(ActionResultBase):
     correct: bool
     winner: Optional[str] = None
     solution: Optional[Solution] = None
+    next_player_id: Optional[str] = None
+    eliminated_player_position: Optional[list[int]] = None
 
 
 class EndTurnResult(ActionResultBase):
