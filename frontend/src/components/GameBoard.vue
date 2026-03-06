@@ -1765,6 +1765,7 @@ watch(
 .card-preview-frame {
   position: relative;
   width: 260px;
+  aspect-ratio: 57 / 89;
   background: #f5f0e1;
   border: 3px solid #c8b88a;
   border-radius: 14px;
@@ -1776,6 +1777,7 @@ watch(
   flex-direction: column;
   align-items: center;
   gap: 0;
+  box-sizing: border-box;
 }
 
 .card-preview-frame.card-suspect { border-color: #b8848a; }
@@ -1825,15 +1827,22 @@ watch(
 
 .card-preview-image-frame {
   width: 100%;
+  flex: 1;
+  min-height: 0;
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid #b8a878;
   background: #e8e0cc;
 }
 
+.card-preview-frame.card-room .card-preview-image-frame {
+  flex: none;
+}
+
 .card-preview-frame.card-suspect .card-preview-image-frame {
   border-radius: 50%;
-  width: 80%;
+  width: 90%;
+  flex: none;
   aspect-ratio: 1;
   border-color: #8a4a50;
 }
@@ -1841,6 +1850,12 @@ watch(
 .card-preview-image {
   width: 100%;
   display: block;
+}
+
+.card-preview-frame.card-weapon .card-preview-image {
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .card-preview-frame.card-suspect .card-preview-image {
