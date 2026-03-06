@@ -81,7 +81,8 @@
         </div>
 
         <!-- Chat -->
-        <section class="chat-panel-wrapper">
+        <section class="sidebar-panel chat-panel-wrapper">
+          <h2 class="panel-header">Chat &amp; Game Log</h2>
           <ChatPanel
             :messages="chatMessages"
             :players="gameState?.players"
@@ -94,7 +95,7 @@
       <div class="sidebar-column">
         <!-- Your Cards -->
         <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2 class="collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
+          <h2 class="panel-header collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
             <span>Your Cards</span>
             <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
           </h2>
@@ -140,7 +141,7 @@
 
         <!-- Show Card Request (must respond) -->
         <section v-if="showCardRequest" class="sidebar-panel show-card-request-panel">
-          <h2>You Must Show a Card</h2>
+          <h2 class="panel-header">You Must Show a Card</h2>
           <p class="show-card-desc">
             <strong>{{ playerName(showCardRequest.suggestingPlayerId) }}</strong>
             suggested:
@@ -165,7 +166,7 @@
         <!-- Actions -->
         <section v-if="isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
           class="sidebar-panel actions-panel">
-          <h2>Actions</h2>
+          <h2 class="panel-header">Actions</h2>
 
           <!-- Secret Passage -->
           <div v-if="canSecretPassage" class="action-group">
@@ -300,7 +301,7 @@
           </section>
 
           <section v-if="observerPlayerState" class="sidebar-panel cards-panel">
-            <h2>{{ observerSelectedPlayerName }}'s Cards</h2>
+            <h2 class="panel-header">{{ observerSelectedPlayerName }}'s Cards</h2>
             <div v-if="!observerCards.length" class="no-cards">No cards</div>
             <div v-else class="card-hand">
               <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
@@ -1033,37 +1034,7 @@ watch(
   padding: 0.8rem;
 }
 
-.sidebar-panel h2 {
-  font-family: 'Playfair Display', Georgia, serif;
-  color: var(--accent);
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.03em;
-}
-
-/* Collapsible header */
-.collapsible-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  user-select: none;
-}
-
-.collapsible-header:hover {
-  opacity: 0.85;
-}
-
-.collapse-indicator {
-  font-size: 0.6rem;
-  transition: transform 0.2s ease;
-  color: var(--text-dim);
-}
-
-.collapse-indicator.collapsed {
-  transform: rotate(-90deg);
-}
+/* Panel headers and collapsible headers are in styles/components.css */
 
 /* Cards */
 .card-hand {
@@ -1565,10 +1536,6 @@ watch(
 
 /* Chat */
 .chat-panel-wrapper {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-panel);
-  border-radius: 6px;
-  padding: 0.8rem;
   min-height: 200px;
 }
 

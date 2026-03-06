@@ -74,7 +74,7 @@
       </div>
 
       <!-- Start game -->
-      <button class="btn-start" :disabled="players.length < 2" @click="startGame">
+      <button class="btn-accent btn-start" :disabled="players.length < 2" @click="startGame">
         <span class="btn-start-text">Begin the Investigation</span>
         <span class="btn-start-arrow">&rarr;</span>
       </button>
@@ -642,56 +642,23 @@ async function startGame() {
   font-size: 0.9rem;
 }
 
-/* === Start button === */
+/* === Start button (extends .btn-accent from components.css) === */
 .btn-start {
-  display: inline-flex;
-  align-items: center;
   gap: 0.75rem;
   padding: 0.85rem 2.25rem;
-  border: none;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: var(--accent-text);
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
   animation: fade-in 0.6s ease-out 0.6s both;
-}
-
-.btn-start::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.btn-start:hover:not(:disabled)::before {
-  opacity: 1;
 }
 
 .btn-start:hover:not(:disabled) {
   box-shadow: 0 6px 30px rgba(212, 168, 73, 0.25);
-  transform: translateY(-1px);
 }
 
 .btn-start:hover:not(:disabled) .btn-start-arrow {
   transform: translateX(3px);
-}
-
-.btn-start:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.btn-start:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
 }
 
 .btn-start-arrow {

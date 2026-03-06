@@ -95,6 +95,24 @@ pytest tests/ -v
 
 Tests use `fakeredis` — no running Redis instance needed.
 
+## Debug Scripts
+
+Inspect game state, cards, memory, chat, and agent trace directly from Redis:
+
+```bash
+# List active games
+python scripts/dump_game.py --list-games
+
+# Dump a game with cards + memory
+python scripts/dump_game.py ABC123 --show-cards --show-memory
+
+# Include recent agent trace entries (most recent first)
+python scripts/dump_game.py ABC123 --show-trace
+
+# Limit trace output size
+python scripts/dump_game.py ABC123 --show-trace --trace-limit 100
+```
+
 ## Taking Screenshots
 
 A Playwright-based script captures screenshots of all game states for documentation:

@@ -1,0 +1,83 @@
+/* ================================================================
+   Shared component styles — reusable across Vue components
+   Import globally from main.js so these are NOT scoped
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Panel section headers (scoped to headings to avoid colliding with existing .panel-header divs) ── */
+:where(h1, h2, h3, h4, h5, h6).panel-header {
+  font-family: 'Playfair Display', Georgia, serif;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.03em;
+}
+
+/* ── Collapsible header ── */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-header:hover {
+  opacity: 0.85;
+}
+
+.collapse-indicator {
+  font-size: 0.6rem;
+  transition: transform 0.2s ease;
+  color: var(--text-dim);
+}
+
+.collapse-indicator.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ── Accent button (gradient gold) ── */
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.btn-accent:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.btn-accent:hover:not(:disabled) {
+  box-shadow: 0 3px 14px var(--accent-glow, rgba(212, 168, 73, 0.25));
+  transform: translateY(-1px);
+}
+
+.btn-accent:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-accent:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

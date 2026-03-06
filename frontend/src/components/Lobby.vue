@@ -94,7 +94,7 @@
                       <option value="llm_agent">LLM Agent</option>
                     </select>
                   </div>
-                  <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
+                  <button class="btn-accent btn-primary" :disabled="!playerName" @click="joinUrlGame">
                     Join Game
                   </button>
                 </div>
@@ -114,7 +114,7 @@
                 </select>
               </div>
               <div class="btn-row">
-                <button class="btn-primary" :disabled="!playerName" @click="joinUrlGame">
+                <button class="btn-accent btn-primary" :disabled="!playerName" @click="joinUrlGame">
                   Join Game
                 </button>
                 <button class="btn-secondary" @click="observeUrlGame">
@@ -205,7 +205,7 @@
                         <span class="checkbox-label">Allow rebuys</span>
                       </label>
                     </template>
-                    <button class="btn-primary" :disabled="!playerName" @click="createGame">
+                    <button class="btn-accent btn-primary" :disabled="!playerName" @click="createGame">
                       {{ selectedGame === 'holdem' ? 'Deal Me In' : 'Start Game' }}
                     </button>
                   </div>
@@ -235,7 +235,7 @@
                       </select>
                     </div>
                     <div class="btn-row">
-                      <button class="btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
+                      <button class="btn-accent btn-primary" :disabled="!joinGameId || !playerName" @click="joinGame">
                         Join
                       </button>
                       <button class="btn-secondary" :disabled="!joinGameId" @click="observeGame">
@@ -877,51 +877,16 @@ async function observeGame() {
 /* ==============================
    BUTTONS
    ============================== */
+/* extends .btn-accent from components.css */
 .btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
   padding: 0.6rem 1.25rem;
-  border: none;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-  color: var(--accent-text);
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.88rem;
-  font-weight: 600;
   letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: all 0.25s;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), transparent);
-  opacity: 0;
-  transition: opacity 0.25s;
-}
-
-.btn-primary:hover:not(:disabled)::before {
-  opacity: 1;
-}
-
-.btn-primary:hover:not(:disabled) {
-  box-shadow: 0 3px 14px var(--accent-glow);
-  transform: translateY(-1px);
-}
-
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 .btn-primary:disabled {
   opacity: 0.35;
-  cursor: not-allowed;
 }
 
 .btn-secondary {
