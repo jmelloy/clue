@@ -27,6 +27,7 @@ cd "$REPO_ROOT"
 STEP=20
 START_COMMIT=""
 GAMES="clue,holdem"
+THEMES=""
 TIMEOUT=120
 DRY_RUN=false
 SCREENSHOT_DIR="$REPO_ROOT/screenshots/history"
@@ -36,6 +37,7 @@ while [[ $# -gt 0 ]]; do
         --step) STEP="$2"; shift 2 ;;
         --start) START_COMMIT="$2"; shift 2 ;;
         --games) GAMES="$2"; shift 2 ;;
+        --themes) THEMES="$2"; shift 2 ;;
         --timeout) TIMEOUT="$2"; shift 2 ;;
         --dry-run) DRY_RUN=true; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
@@ -188,7 +190,7 @@ take_screenshot_for_commit() {
     # Run the screenshot node script (from /tmp copy)
     echo "  Taking screenshots..."
     node "$WORKER_SCRIPT" \
-        "$LABEL" "$SCREENSHOT_DIR" "$GAMES" \
+        "$LABEL" "$SCREENSHOT_DIR" "$GAMES" "$THEMES" \
         2>&1 | sed 's/^/  /' || echo "  WARNING: screenshot script had errors"
 
     echo "  Done with $LABEL"

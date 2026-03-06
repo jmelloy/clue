@@ -12,8 +12,9 @@ const { chromium } = require("playwright");
 const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
-const [, , label, outputDir, gamesArg] = process.argv;
+const [, , label, outputDir, gamesArg, themesArg] = process.argv;
 const games = (gamesArg || "clue,holdem").split(",");
+const themes = themesArg ? themesArg.split(",") : [];
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -136,6 +137,24 @@ async function screenshotClueViaUI(browser, label, outputDir) {
 
     await page.screenshot({ path: `${outputDir}/${label}_clue.png` });
     console.log("  Saved Clue screenshot");
+
+    // If themes are requested, cycle through them using the footer theme buttons
+    if (themes.length > 0) {
+      for (const theme of themes) {
+        try {
+          const themeName = theme.charAt(0).toUpperCase() + theme.slice(1);
+          const themeBtn = await page.$(`button:has-text("${themeName}")`);
+          if (themeBtn) {
+            await themeBtn.click();
+            await sleep(1500);
+          }
+          await page.screenshot({ path: `${outputDir}/${label}_clue_${theme}.png` });
+          console.log(`  Saved Clue screenshot (${theme} theme)`);
+        } catch (err) {
+          console.log(`  Theme ${theme} screenshot failed:`, err.message);
+        }
+      }
+    }
   } catch (err) {
     console.log("  Clue UI screenshot failed:", err.message);
     // Take a screenshot anyway to see what we got
