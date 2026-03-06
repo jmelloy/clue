@@ -1627,8 +1627,6 @@ class LLMAgent(BaseAgent):
         self._fallback.card_inference_log = self.card_inference_log
 
 
-
-
     async def load_memory(self):
         """Load memory from Redis into the in-memory list."""
         if self._redis and self._game_id and self.player_id:
