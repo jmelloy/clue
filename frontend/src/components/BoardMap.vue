@@ -609,6 +609,12 @@ function tokenStyle(token) {
   user-select: none;
 }
 
+@media (max-width: 480px) {
+  .board-map {
+    padding: 0 0.75rem;
+  }
+}
+
 .board-container {
   position: relative;
   box-sizing: content-box;
