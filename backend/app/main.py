@@ -484,6 +484,7 @@ async def _execute_action(
                 dice=result.dice,
                 room=result.room,
                 position=result.position,
+                path=result.path,
             ),
         )
         if wanderer:

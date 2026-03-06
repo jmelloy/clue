@@ -19,6 +19,7 @@ from .board import (
     SquareType,
     reachable,
     move_towards,
+    find_path,
 )
 from .models import (
     AccuseAction,
@@ -612,6 +613,7 @@ class ClueGame:
 
         final_room: str | None = None
         final_position: list[int] | None = None
+        dest_sq: Square | None = None
 
         if target_pos and not room_name:
             # Position-based move: player clicked a specific hallway cell
@@ -634,6 +636,7 @@ class ClueGame:
                     state.player_positions[player_id] = [target_row, target_col]
                     final_room = None
                     final_position = [target_row, target_col]
+                    dest_sq = target_sq
                 else:
                     raise ValueError("That position is not reachable with your roll")
             else:
@@ -660,6 +663,7 @@ class ClueGame:
                     if center:
                         state.player_positions[player_id] = list(center)
                         final_position = list(center)
+                    dest_sq = dest
                 elif dest == start_sq:
                     # Player couldn't actually move (all paths blocked)
                     final_room = current_room_name
@@ -670,6 +674,7 @@ class ClueGame:
                     state.current_room.pop(player_id, None)
                     state.player_positions[player_id] = [dest.row, dest.col]
                     final_position = [dest.row, dest.col]
+                    dest_sq = dest
             else:
                 # Fallback: no position info yet — place directly in room
                 state.current_room[player_id] = room_name
@@ -678,6 +683,11 @@ class ClueGame:
                 if center:
                     state.player_positions[player_id] = list(center)
                     final_position = list(center)
+
+        # Compute the walk path for frontend animation
+        move_path: list[list[int]] | None = None
+        if start_sq and dest_sq and dest_sq != start_sq:
+            move_path = find_path(start_sq, dest_sq, occupied) or None
 
         state.moved = True
 
@@ -695,6 +705,7 @@ class ClueGame:
             player_id=player_id,
             room=final_room,
             position=final_position,
+            path=move_path,
             dice=total,
             total=total,
         )

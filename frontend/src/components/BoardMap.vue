@@ -1161,7 +1161,7 @@ function tokenStyle(token) {
   font-family: 'Crimson Text', Georgia, serif;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 0 2px rgba(0, 0, 0, 0.5);
   z-index: 10;
-  transition: left 0.4s ease, top 0.4s ease;
+  transition: left 0.15s linear, top 0.15s linear;
   overflow: visible;
 }
 
