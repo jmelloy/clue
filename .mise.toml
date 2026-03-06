@@ -1,5 +1,52 @@
 [tools]
 node = "latest"
+uv = "latest"
+
+[settings]
+python.uv_venv_auto = "create|source"
 
 [env]
-_.python.venv = { path = "backend/.venv"}
+_.python.venv = { path = "backend/.venv", create = true}
+
+
+[tasks.install]
+description = "Create and install backend + frontend dependencies"
+run = """
+cd backend
+uv sync
+cd ../frontend
+npm install
+"""
+
+[tasks.worktree]
+description = "Create a git worktree: mise run worktree <branch>"
+run = """
+if [ "$#" -lt 1 ]; then
+	echo "Usage: mise run worktree <branch>"
+	exit 1
+fi
+
+branch="$1"
+path=".worktree/$branch"
+
+mkdir -p "$(dirname "$path")"
+git worktree add "$path" "$branch"
+cd "$path"
+mise trust
+mise run install
+"""
+
+[tasks.worktree-rm]
+description = "Remove a git worktree: mise run worktree-rm <branch>"
+run = """
+if [ "$#" -lt 1 ]; then
+	echo "Usage: mise run worktree-rm <branch>"
+	exit 1
+fi
+
+branch="$1"
+path=".worktree/$branch"
+
+git worktree remove "$path"
+"""
+
