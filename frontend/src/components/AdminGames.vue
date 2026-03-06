@@ -186,7 +186,7 @@ onMounted(fetchGames)
   margin: 0 auto;
   padding: 2rem 1.5rem;
   font-family: 'Crimson Text', Georgia, serif;
-  color: #e8dcc8;
+  color: var(--text-primary);
   min-height: 100vh;
 }
 
@@ -201,7 +201,7 @@ onMounted(fetchGames)
 
 .admin-title {
   font-size: 1.8rem;
-  color: #d4a849;
+  color: var(--accent);
   margin: 0;
   letter-spacing: 0.05em;
 }
@@ -215,9 +215,9 @@ onMounted(fetchGames)
 .back-btn {
   padding: 0.5rem 1.2rem;
   border-radius: 6px;
-  border: 1px solid rgba(212, 168, 73, 0.3);
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  color: #d4a849;
+  border: 1px solid var(--accent-border-hover);
+  background: var(--bg-panel);
+  color: var(--accent);
   font-family: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -228,8 +228,8 @@ onMounted(fetchGames)
 
 .refresh-btn:hover,
 .back-btn:hover {
-  border-color: rgba(212, 168, 73, 0.6);
-  box-shadow: 0 2px 12px rgba(212, 168, 73, 0.1);
+  border-color: var(--accent-border-focus);
+  box-shadow: 0 2px 12px var(--accent-glow);
 }
 
 .refresh-btn:disabled {
@@ -238,12 +238,12 @@ onMounted(fetchGames)
 }
 
 .error-banner {
-  background: rgba(180, 60, 60, 0.2);
-  border: 1px solid rgba(180, 60, 60, 0.4);
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
-  color: #e8a0a0;
+  color: var(--error);
   font-size: 0.9rem;
 }
 
@@ -256,8 +256,8 @@ onMounted(fetchGames)
 }
 
 .stat-card {
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1px solid rgba(212, 168, 73, 0.12);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-card);
   border-radius: 8px;
   padding: 1rem;
   text-align: center;
@@ -266,14 +266,14 @@ onMounted(fetchGames)
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #d4a849;
+  color: var(--accent);
 }
 
 .stat-label {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   margin-top: 0.25rem;
 }
 
@@ -288,9 +288,9 @@ onMounted(fetchGames)
 .filter-btn {
   padding: 0.4rem 1rem;
   border-radius: 20px;
-  border: 1px solid rgba(212, 168, 73, 0.15);
+  border: 1px solid var(--accent-border);
   background: transparent;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   font-family: inherit;
   font-size: 0.8rem;
   cursor: pointer;
@@ -299,19 +299,19 @@ onMounted(fetchGames)
 }
 
 .filter-btn:hover {
-  border-color: rgba(212, 168, 73, 0.3);
-  color: #d4a849;
+  border-color: var(--accent-border-hover);
+  color: var(--accent);
 }
 
 .filter-btn.active {
-  background: rgba(212, 168, 73, 0.15);
-  border-color: rgba(212, 168, 73, 0.4);
-  color: #d4a849;
+  background: var(--accent-bg);
+  border-color: var(--accent-border-hover);
+  color: var(--accent);
 }
 
 .empty-state {
   text-align: center;
-  color: #6a6050;
+  color: var(--text-dim);
   padding: 3rem;
   font-size: 1.1rem;
 }
@@ -324,8 +324,8 @@ onMounted(fetchGames)
 }
 
 .game-card {
-  background: linear-gradient(135deg, rgba(30, 24, 16, 0.95), rgba(18, 14, 10, 0.97));
-  border: 1px solid rgba(212, 168, 73, 0.12);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-card);
   border-radius: 10px;
   padding: 1.25rem;
   cursor: pointer;
@@ -333,21 +333,21 @@ onMounted(fetchGames)
 }
 
 .game-card:hover {
-  border-color: rgba(212, 168, 73, 0.35);
-  box-shadow: 0 4px 20px rgba(212, 168, 73, 0.08);
+  border-color: var(--accent-border-hover);
+  box-shadow: 0 4px 20px var(--accent-glow);
   transform: translateY(-1px);
 }
 
 .game-card.status-playing {
-  border-left: 3px solid #4caf50;
+  border-left: 3px solid var(--success);
 }
 
 .game-card.status-waiting {
-  border-left: 3px solid #d4a849;
+  border-left: 3px solid var(--accent);
 }
 
 .game-card.status-finished {
-  border-left: 3px solid #6a6050;
+  border-left: 3px solid var(--text-dim);
 }
 
 .game-card-header {
@@ -360,7 +360,7 @@ onMounted(fetchGames)
 .game-id {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #d4a849;
+  color: var(--accent);
   letter-spacing: 0.1em;
   font-family: monospace;
 }
@@ -375,15 +375,15 @@ onMounted(fetchGames)
 }
 
 .game-type-badge.clue {
-  background: rgba(180, 60, 60, 0.2);
-  color: #e8a0a0;
-  border: 1px solid rgba(180, 60, 60, 0.3);
+  background: var(--badge-clue-bg);
+  color: var(--badge-clue-text);
+  border: 1px solid var(--badge-clue-border);
 }
 
 .game-type-badge.holdem {
-  background: rgba(60, 120, 180, 0.2);
-  color: #a0c8e8;
-  border: 1px solid rgba(60, 120, 180, 0.3);
+  background: var(--badge-holdem-bg);
+  color: var(--badge-holdem-text);
+  border: 1px solid var(--badge-holdem-border);
 }
 
 .game-status-row {
@@ -400,28 +400,28 @@ onMounted(fetchGames)
 }
 
 .status-dot.playing {
-  background: #4caf50;
-  box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success-border);
 }
 
 .status-dot.waiting {
-  background: #d4a849;
-  box-shadow: 0 0 6px rgba(212, 168, 73, 0.5);
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
 }
 
 .status-dot.finished {
-  background: #6a6050;
+  background: var(--text-dim);
 }
 
 .status-text {
   font-size: 0.85rem;
   text-transform: capitalize;
-  color: #8a7e6b;
+  color: var(--text-secondary);
 }
 
 .winner-text {
   font-size: 0.8rem;
-  color: #4caf50;
+  color: var(--success);
   margin-left: auto;
 }
 
@@ -440,7 +440,7 @@ onMounted(fetchGames)
 }
 
 .player-name {
-  color: #e8dcc8;
+  color: var(--text-primary);
 }
 
 .player-type {
@@ -449,35 +449,35 @@ onMounted(fetchGames)
   letter-spacing: 0.08em;
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #6a6050;
+  background: var(--bg-input);
+  color: var(--text-dim);
 }
 
 .player-type.agent,
 .player-type.holdem_agent {
-  color: #a0c8e8;
-  background: rgba(60, 120, 180, 0.15);
+  color: var(--tag-agent-text);
+  background: var(--tag-agent-bg);
 }
 
 .player-type.llm_agent {
-  color: #c8a0e8;
-  background: rgba(120, 60, 180, 0.15);
+  color: var(--tag-llm-text);
+  background: var(--tag-llm-bg);
 }
 
 .player-type.wanderer {
-  color: #a0e8c8;
-  background: rgba(60, 180, 120, 0.15);
+  color: var(--tag-wanderer-text);
+  background: var(--tag-wanderer-bg);
 }
 
 .player-character {
-  color: #8a7e6b;
+  color: var(--text-secondary);
   font-style: italic;
   font-size: 0.8rem;
 }
 
 .player-chips {
   margin-left: auto;
-  color: #4caf50;
+  color: var(--success);
   font-family: monospace;
   font-size: 0.8rem;
 }
@@ -486,7 +486,7 @@ onMounted(fetchGames)
   display: flex;
   gap: 1rem;
   font-size: 0.8rem;
-  color: #6a6050;
+  color: var(--text-dim);
 }
 
 /* Modal */
@@ -502,8 +502,8 @@ onMounted(fetchGames)
 }
 
 .modal-content {
-  background: linear-gradient(135deg, #1e1810, #120e0a);
-  border: 1px solid rgba(212, 168, 73, 0.3);
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--accent-border-hover);
   border-radius: 12px;
   max-width: 800px;
   width: 100%;
@@ -517,12 +517,12 @@ onMounted(fetchGames)
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.12);
+  border-bottom: 1px solid var(--border-card);
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #d4a849;
+  color: var(--accent);
   font-size: 1.3rem;
   display: flex;
   align-items: center;
@@ -532,7 +532,7 @@ onMounted(fetchGames)
 .close-btn {
   background: none;
   border: none;
-  color: #8a7e6b;
+  color: var(--text-secondary);
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.25rem;
@@ -540,13 +540,13 @@ onMounted(fetchGames)
 }
 
 .close-btn:hover {
-  color: #d4a849;
+  color: var(--accent);
 }
 
 .modal-loading {
   padding: 3rem;
   text-align: center;
-  color: #8a7e6b;
+  color: var(--text-secondary);
 }
 
 .modal-body {
@@ -556,7 +556,7 @@ onMounted(fetchGames)
 }
 
 .modal-body h3 {
-  color: #d4a849;
+  color: var(--accent);
   font-size: 1rem;
   margin: 1rem 0 0.5rem;
   letter-spacing: 0.05em;
@@ -567,13 +567,13 @@ onMounted(fetchGames)
 }
 
 .json-view {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(212, 168, 73, 0.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border-card);
   border-radius: 6px;
   padding: 1rem;
   font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 0.75rem;
-  color: #a0987e;
+  color: var(--text-secondary);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -587,7 +587,7 @@ onMounted(fetchGames)
 
 .modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid rgba(212, 168, 73, 0.12);
+  border-top: 1px solid var(--border-card);
   display: flex;
   justify-content: flex-end;
 }
@@ -595,9 +595,9 @@ onMounted(fetchGames)
 .observe-btn {
   padding: 0.5rem 1.5rem;
   border-radius: 6px;
-  border: 1px solid rgba(76, 175, 80, 0.4);
-  background: rgba(76, 175, 80, 0.15);
-  color: #4caf50;
+  border: 1px solid var(--success-border);
+  background: var(--success-bg);
+  color: var(--success);
   font-family: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -606,8 +606,7 @@ onMounted(fetchGames)
 }
 
 .observe-btn:hover {
-  background: rgba(76, 175, 80, 0.25);
-  border-color: rgba(76, 175, 80, 0.6);
+  filter: brightness(1.15);
 }
 
 @media (max-width: 600px) {
