@@ -1513,8 +1513,8 @@ class LLMAgent(BaseAgent):
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
-        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
-        self.nano_model = os.getenv("LLM_NANO_MODEL", self.model)
+        self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
+        self.nano_model = os.getenv("LLM_NANO_MODEL", "gpt-5-nano")
         self.memory: list[str] = []
 
         # Fallback agent shares our observation state — LLM agents always
