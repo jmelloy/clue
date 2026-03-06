@@ -458,8 +458,10 @@
             <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
             <span class="card-preview-name">{{ previewCard }}</span>
           </div>
-          <div class="card-preview-image-frame">
-            <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+          <div class="card-preview-image-area">
+            <div class="card-preview-image-frame">
+              <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+            </div>
           </div>
           <div class="card-preview-footer">
             <span class="card-preview-name">{{ previewCard }}</span>
@@ -1670,15 +1672,18 @@ watch(
 .physical-card-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 5px;
   padding: 4px 8px;
   width: 100%;
   box-sizing: border-box;
 }
 
+.physical-card-header {
+  justify-content: flex-start;
+}
+
 .physical-card-footer {
-  transform: rotate(180deg);
+  justify-content: flex-end;
 }
 
 .physical-card-icon {
@@ -1762,6 +1767,7 @@ watch(
 .card-preview-frame {
   position: relative;
   width: 260px;
+  aspect-ratio: 57 / 89;
   background: #f5f0e1;
   border: 3px solid #c8b88a;
   border-radius: 14px;
@@ -1773,6 +1779,7 @@ watch(
   flex-direction: column;
   align-items: center;
   gap: 0;
+  box-sizing: border-box;
 }
 
 .card-preview-frame.card-suspect { border-color: #b8848a; }
@@ -1788,15 +1795,27 @@ watch(
 .card-preview-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
   width: 100%;
   box-sizing: border-box;
 }
 
+.card-preview-header {
+  justify-content: flex-start;
+}
+
 .card-preview-footer {
-  transform: rotate(180deg);
+  justify-content: flex-end;
+}
+
+.card-preview-image-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .card-preview-icon {
@@ -1819,6 +1838,7 @@ watch(
 
 .card-preview-image-frame {
   width: 100%;
+  max-height: 100%;
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid #b8a878;
@@ -1827,7 +1847,7 @@ watch(
 
 .card-preview-frame.card-suspect .card-preview-image-frame {
   border-radius: 50%;
-  width: 80%;
+  width: 90%;
   aspect-ratio: 1;
   border-color: #8a4a50;
 }
@@ -1835,6 +1855,12 @@ watch(
 .card-preview-image {
   width: 100%;
   display: block;
+}
+
+.card-preview-frame.card-weapon .card-preview-image {
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .card-preview-frame.card-suspect .card-preview-image {
@@ -1932,7 +1958,7 @@ watch(
 }
 
 .card-shown-banner-card.physical-card.card-suspect .physical-card-image-frame {
-  height: auto;
+  height: 130px;
   width: 65%;
 }
 
@@ -2042,7 +2068,7 @@ watch(
 }
 
 .game-over-card.physical-card.card-suspect .physical-card-image-frame {
-  height: auto;
+  height: 100px;
   width: 65%;
 }
 
