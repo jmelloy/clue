@@ -102,8 +102,8 @@
       <div v-if="activeMainTab === 'chat'" class="tab-content">
         <div class="chat-list">
           <div v-for="(msg, i) in debugData.chat" :key="i" class="chat-entry">
-            <span class="chat-sender">{{ msg.sender || 'system' }}</span>
-            <span class="chat-text">{{ msg.message || msg.text }}</span>
+            <span class="chat-sender">{{ msg.player_id ? playerName(msg.player_id) : 'system' }}</span>
+            <span class="chat-text">{{ msg.text }}</span>
             <span class="chat-time" v-if="msg.timestamp">{{ formatTime(msg.timestamp) }}</span>
           </div>
           <div v-if="!debugData.chat.length" class="empty-state">No chat messages.</div>
