@@ -1381,18 +1381,16 @@ Respond with a valid JSON object for your chosen action. Include a "chat" field 
 with a short in-character comment about what you're doing (one sentence, stay in \
 character as {character}).  Be coy and lie in the chat; the chat is for flavor and misdirection, not a factual report of your reasoning. \
 
-When the action is end_turn, also include a "memory" field with your private detective notes — deductions, \
-suspicions, which cards you've eliminated, your strategy for next turns. These \
-notes will be shown back to you on your next turn so you can remember your \
-reasoning. Be concise but thorough. \
-You will always get the known/unknown cards and suggestion history as part of the game state, so focus on insights and plans rather than repeating raw facts.
+On end_turn, add a "memory" field: 1–3 sentences capturing (1) what you newly \
+inferred or deduced this turn, (2) your current working theory for the solution, \
+and (3) your plan for the next turn — which room to target, what to suggest, or \
+whether you are ready to accuse. Do not repeat raw card lists; those are in the game state.
 
-INFERENCE LOG: Your notes section may contain automatic inference notifications \
-(prefixed DEDUCED or NEGATIVE). DEDUCED entries name a specific player and the \
-card they hold, deduced by elimination. NEGATIVE entries list players who \
-could not show any card for a suggestion — use these to track what each player \
-lacks. All eliminated cards are already reflected in the seen_cards list, so use \
-DEDUCED/NEGATIVE entries for per-player attribution, not to re-list eliminated cards.\
+INFERENCE LOG: Your notes may include engine-logged events prefixed DEDUCED or \
+NEGATIVE. DEDUCED entries are logically confirmed — they name a specific player \
+and card deduced by elimination; treat them as certainties when updating your theory. \
+NEGATIVE entries list players who could not show any card for a suggestion, useful \
+for per-player attribution. All eliminated cards are already in seen_cards.
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1477,7 +1475,10 @@ class LLMAgent(BaseAgent):
     Configuration via environment variables:
     - ``LLM_API_URL``: Chat completions endpoint (default: OpenAI)
     - ``LLM_API_KEY``: Bearer token for the API
-    - ``LLM_MODEL``: Model identifier (default: ``gpt-4o-mini``)
+    - ``LLM_MODEL``: Model identifier for complex decisions (default: ``gpt-4o-mini``)
+    - ``LLM_NANO_MODEL``: Model identifier for quick operations such as
+      showing a card (default: same as ``LLM_MODEL``).  Use a smaller/faster
+      model here to reduce latency and cost for simple choices.
     """
 
     agent_type = "llm"
@@ -1502,6 +1503,7 @@ class LLMAgent(BaseAgent):
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
         self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
+        self.nano_model = os.getenv("LLM_NANO_MODEL", "gpt-5-nano")
         self.memory: list[str] = []
 
         # Fallback agent shares our observation state — LLM agents always
@@ -1530,6 +1532,7 @@ class LLMAgent(BaseAgent):
             "llm_configured",
             api_url=self.api_url,
             model=self.model,
+            nano_model=self.nano_model,
             api_key_set=bool(self.api_key),
         )
 
@@ -1565,18 +1568,28 @@ class LLMAgent(BaseAgent):
     # LLM communication
     # ------------------------------------------------------------------
 
-    async def _call_llm(self, system_prompt: str, user_prompt: str) -> str | None:
-        """Call the LLM API and return the response text, or None on failure."""
+    async def _call_llm(
+        self, system_prompt: str, user_prompt: str, model: str | None = None
+    ) -> str | None:
+        """Call the LLM API and return the response text, or None on failure.
+
+        Args:
+            system_prompt: The system-role message.
+            user_prompt: The user-role message.
+            model: Override the model to use.  Defaults to ``self.model``.
+        """
         if not self.api_key:
             self.agent_trace("llm_no_api_key")
             return None
+
+        effective_model = model or self.model
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": self.model,
+            "model": effective_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -1585,7 +1598,7 @@ class LLMAgent(BaseAgent):
 
         self.agent_trace(
             "llm_request",
-            model=self.model,
+            model=effective_model,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
         )
@@ -1715,12 +1728,12 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
-        # Include memory from previous turns (recent entries, capped to avoid
-        # overwhelming the prompt)
+        # Include memory from previous turns (last 2 entries so the LLM sees
+        # both its own prior planning notes and the most recent inference update)
         if self.memory:
             lines.append("")
-            lines.append("YOUR PRIVATE NOTES AND INFERENCE LOG:")
-            recent = self.memory[-1:]  # last 1 entry
+            lines.append("YOUR NOTES (previous turns):")
+            recent = self.memory[-2:]
             start_idx = len(self.memory) - len(recent) + 1
             for i, entry in enumerate(recent):
                 lines.append(f"  [{start_idx + i}] {entry}")
@@ -1976,7 +1989,9 @@ class LLMAgent(BaseAgent):
             return card
 
         user_prompt = self._build_show_card_prompt(matching_cards, suggesting_player_id)
-        response_text = await self._call_llm(_SHOW_CARD_SYSTEM_PROMPT, user_prompt)
+        response_text = await self._call_llm(
+            _SHOW_CARD_SYSTEM_PROMPT, user_prompt, model=self.nano_model
+        )
 
         if response_text is not None:
             parsed = self._parse_json_response(response_text)

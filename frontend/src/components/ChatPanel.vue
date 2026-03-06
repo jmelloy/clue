@@ -303,7 +303,7 @@ watch(
 
 .chat-message {
   padding: 0.2rem 0;
-  border-bottom: 1px solid rgba(212, 168, 73, 0.04);
+  border-bottom: 1px solid var(--border-panel);
   font-size: 0.8rem;
   display: flex;
   justify-content: space-between;
@@ -339,8 +339,8 @@ watch(
 }
 
 .chat-tag-suggest {
-  background: rgba(122, 168, 212, 0.15);
-  color: #7aa8d4;
+  background: var(--tag-suggest-bg);
+  color: var(--tag-suggest-text);
 }
 
 .chat-tag-show {
@@ -349,8 +349,8 @@ watch(
 }
 
 .chat-tag-accuse {
-  background: rgba(196, 80, 80, 0.15);
-  color: #c45050;
+  background: var(--tag-accuse-bg);
+  color: var(--tag-accuse-text);
 }
 
 .chat-time {

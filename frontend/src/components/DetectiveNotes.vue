@@ -242,43 +242,33 @@ h4 {
 
 /* State colors */
 .note-have {
-  color: #4caf50;
+  color: var(--success);
   opacity: 0.7;
 }
 
 .note-have .note-mark {
-  color: #4caf50;
+  color: var(--success);
 }
 
 .note-seen {
-  color: #6a6050;
+  color: var(--text-dim);
 }
 
 .note-seen .note-mark {
-  color: #7aa8d4;
-}
-
-[data-theme="light"] .note-seen .note-mark,
-[data-theme="vintage"] .note-seen .note-mark {
-  color: #2a6090;
+  color: var(--note-seen-color);
 }
 
 .note-no {
-  color: #4a4030;
+  color: var(--text-faint);
   text-decoration: line-through;
 }
 
-[data-theme="light"] .note-no,
-[data-theme="vintage"] .note-no {
-  color: var(--text-muted);
-}
-
 .note-no .note-mark {
-  color: #c45050;
+  color: var(--error);
 }
 
 .note-maybe {
-  background: rgba(212, 168, 73, 0.04);
+  background: var(--accent-bg);
 }
 
 .note-maybe .note-card {
@@ -317,13 +307,13 @@ h4 {
 .note-thumb-room {
   border-radius: 3px;
   object-position: center center;
-  border-color: rgba(122, 200, 154, 0.4);
+  border-color: var(--tag-wanderer-text);
 }
 
 .note-thumb-weapon {
   border-radius: 3px;
   object-position: center center;
-  border-color: rgba(204, 85, 0, 0.4);
+  border-color: var(--tag-accuse-text);
 }
 
 .note-row:hover .note-thumb {
