@@ -423,6 +423,7 @@ import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
 import AgentDebugPanel from './AgentDebugPanel.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import { useTheme } from '../composables/useTheme.js'
 import {
   SUSPECTS,
   WEAPONS,
@@ -430,11 +431,15 @@ import {
   CARD_ICONS,
   CARD_IMAGES,
   cardIcon,
-  hasCardImage,
-  cardImageUrl,
+  hasCardImage as _hasCardImage,
+  cardImageUrl as _cardImageUrl,
   abbr,
   characterColors
 } from '../constants/clue.js'
+
+const { theme } = useTheme()
+const hasCardImage = (card) => _hasCardImage(card, theme.value)
+const cardImageUrl = (card) => _cardImageUrl(card, theme.value)
 
 const props = defineProps({
   gameId: String,

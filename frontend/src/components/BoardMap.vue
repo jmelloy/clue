@@ -44,7 +44,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CARD_IMAGES, CARD_ICONS, WEAPONS, abbr, characterColors } from '../constants/clue.js'
+import { CARD_IMAGES, CARD_ICONS, THEME_CARD_IMAGES, WEAPONS, abbr, characterColors } from '../constants/clue.js'
 import { useTheme } from '../composables/useTheme.js'
 
 const { theme } = useTheme()
@@ -563,11 +563,8 @@ function cellClasses(cell) {
 
 function cellStyle(cell) {
   if (cell.room) {
-    // In vintage mode, the full board image is used as background — skip per-room images
-    if (theme.value === 'vintage') {
-      return { backgroundColor: 'transparent' }
-    }
-    const img = CARD_IMAGES[cell.room]
+    const overrides = THEME_CARD_IMAGES[theme.value]
+    const img = overrides?.[cell.room] || CARD_IMAGES[cell.room]
     const info = ROOM_INFO[cell.room]
     if (img && info) {
       const roomCols = info.maxCol - info.minCol + 1
