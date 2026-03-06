@@ -874,6 +874,28 @@ class ClueGame:
             if len(active_real) == 1:
                 state.status = "finished"
                 state.winner = active_real[0].id
+            elif active_real:
+                # Advance turn to the next active player so the eliminated
+                # player is skipped going forward.
+                all_players = state.players
+                current_idx = next(
+                    i for i, p in enumerate(all_players) if p.id == player_id
+                )
+                n = len(all_players)
+                next_player = None
+                for offset in range(1, n + 1):
+                    candidate = all_players[(current_idx + offset) % n]
+                    if candidate.active:
+                        next_player = candidate
+                        break
+                if next_player:
+                    state.whose_turn = next_player.id
+                    state.turn_number += 1
+                    state.dice_rolled = False
+                    state.moved = False
+                    state.last_roll = None
+                    state.suggestions_this_turn = []
+                    state.was_moved_by_suggestion.pop(player_id, None)
 
             await self._save_state(state)
             return AccuseResult(

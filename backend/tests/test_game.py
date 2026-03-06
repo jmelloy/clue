@@ -264,6 +264,97 @@ async def test_incorrect_accusation_eliminates_player(game: ClueGame):
 
 
 @pytest.mark.asyncio
+async def test_eliminated_player_turn_is_skipped(game: ClueGame):
+    """After a wrong accusation, the eliminated player's turn is skipped."""
+    # Add 3 players so the game continues after one is eliminated
+    await game.add_player("P1", "Alice", "human")
+    await game.add_player("P2", "Bob", "human")
+    await game.add_player("P3", "Carol", "human")
+
+    # Assign deterministic characters: Miss Scarlett goes first, then Colonel
+    # Mustard, then Mrs. Peacock.
+    state = await game._load_state()
+    state.players[0].character = "Miss Scarlett"
+    state.players[1].character = "Colonel Mustard"
+    state.players[2].character = "Mrs. Peacock"
+    await game._save_state(state)
+
+    state = await game.start()
+    assert state.whose_turn == "P1"
+
+    solution = await game._load_solution()
+    wrong_suspect = next(s for s in SUSPECTS if s != solution.suspect)
+
+    # P1 makes a wrong accusation and is eliminated
+    result = await game.process_action(
+        "P1",
+        {
+            "type": "accuse",
+            "suspect": wrong_suspect,
+            "weapon": solution.weapon,
+            "room": solution.room,
+        },
+    )
+
+    assert result.correct is False
+
+    # Game should still be playing (other active players remain)
+    state = await game.get_state()
+    assert state.status == "playing"
+
+    # P1 should be inactive
+    p1_state = next(p for p in state.players if p.id == "P1")
+    assert p1_state.active is False
+
+    # Turn should have advanced away from the eliminated P1
+    assert state.whose_turn != "P1"
+
+    # P1 has no available actions
+    p1_actions = game.get_available_actions("P1", state)
+    assert p1_actions == []
+
+    # The current player (whoever whose_turn points to) should have actions
+    current_player_actions = game.get_available_actions(state.whose_turn, state)
+    assert len(current_player_actions) > 0
+
+    # Cycle through all remaining active players' turns and confirm P1 is
+    # never assigned whose_turn again.
+    active_real_ids = {
+        p.id for p in state.players if p.active and p.type != "wanderer"
+    }
+    assert "P1" not in active_real_ids
+
+    visited = set()
+    current_state = state
+    # len(players) * 2 gives enough iterations to cycle through every player
+    # (including wanderers) at least twice, ensuring all real players get a
+    # turn without looping forever if something goes wrong.
+    for _ in range(len(state.players) * 2):
+        current_turn = current_state.whose_turn
+        assert current_turn != "P1", "Eliminated player got a turn"
+
+        current_player = next(p for p in current_state.players if p.id == current_turn)
+        if current_player.type == "wanderer":
+            # Wanderers just roll and move; advance their turn by placing them
+            # in a room and ending the turn.
+            await _place_player_in_room(game, current_turn, ROOMS[1])
+            await game.process_action(current_turn, {"type": "end_turn"})
+        else:
+            visited.add(current_turn)
+            await game.process_action(current_turn, {"type": "roll"})
+            await game.process_action(current_turn, {"type": "move", "room": ROOMS[0]})
+            await game.process_action(current_turn, {"type": "end_turn"})
+
+        current_state = await game.get_state()
+        if visited >= active_real_ids:
+            break
+
+    # All remaining real players (P2, P3) were visited; P1 was never visited
+    assert "P1" not in visited
+    assert active_real_ids.issubset(visited)
+
+
+@pytest.mark.asyncio
 async def test_move_logging(game: ClueGame):
     await _add_two_players(game)
     state = await game.start()
