@@ -19,32 +19,37 @@ npm install
 """
 
 [tasks.worktree]
-description = "Create a git worktree: mise run worktree <branch>"
+description = "Create a git worktree (usage arg): mise run worktree <branch>"
+usage = '''
+arg "<branch>" help="Branch name"
+'''
 run = """
-if [ "$#" -lt 1 ]; then
-	echo "Usage: mise run worktree <branch>"
-	exit 1
-fi
-
-branch="$1"
+branch="$usage_branch"
 path=".worktree/$branch"
 
 mkdir -p "$(dirname "$path")"
-git worktree add "$path" "$branch"
+if [ -e "$path" ]; then
+	echo "Worktree path already exists: $path"
+	echo "Use: mise run worktree-rm $branch"
+	exit 1
+fi
+if git rev-parse --verify --quiet "$branch^{commit}" >/dev/null; then
+	git worktree add "$path" "$branch"
+else
+	git worktree add -b "$branch" "$path" HEAD
+fi
 cd "$path"
 mise trust
 mise run install
 """
 
 [tasks.worktree-rm]
-description = "Remove a git worktree: mise run worktree-rm <branch>"
+description = "Remove a git worktree (usage arg): mise run worktree-rm <branch>"
+usage = '''
+arg "<branch>" help="Branch name"
+'''
 run = """
-if [ "$#" -lt 1 ]; then
-	echo "Usage: mise run worktree-rm <branch>"
-	exit 1
-fi
-
-branch="$1"
+branch="$usage_branch"
 path=".worktree/$branch"
 
 git worktree remove "$path"

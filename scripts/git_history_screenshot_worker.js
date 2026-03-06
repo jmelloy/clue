@@ -167,86 +167,108 @@ async function screenshotClueViaUI(browser, label, outputDir) {
 }
 
 async function screenshotHoldemViaUI(browser, label, outputDir) {
-  console.log("Screenshotting Hold'em game...");
+  console.log("Screenshotting Hold'em game (UI-driven)...");
 
-  // Check if holdem endpoint exists first
+  // Check if holdem endpoint exists at this commit
   const check = await tryFetch(`${BACKEND_URL}/holdem/games`, { method: "POST" });
   if (!check || !check.game_id) {
     console.log("  SKIP: Hold'em not available at this commit");
     return;
   }
-  const gameId = check.game_id;
 
-  // Join players via API (holdem always needed API joins)
-  const p1 = await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_name: "Alice", buy_in: 1000 }),
-  });
-  await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_name: "Bob", buy_in: 1000 }),
-  });
-  await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_name: "Charlie", buy_in: 1500 }),
-  });
-
-  if (!p1?.player_id) {
-    console.log("  SKIP: could not join Hold'em game");
-    return;
-  }
-
-  // Start via API
-  await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_id: p1.player_id }),
-  });
-  await sleep(2000);
-
-  // Open browser, set identity, navigate to game page
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
-  try {
-    await page.goto(BASE_URL);
-    await page.evaluate(
-      ({ pid, pname }) => {
-        localStorage.setItem("playerId", pid);
-        localStorage.setItem("playerName", pname);
-      },
-      { pid: p1.player_id, pname: "Alice" }
-    );
-    await page.goto(`${BASE_URL}/holdem/${gameId}`, {
-      waitUntil: "networkidle",
-      timeout: 15000,
-    });
-    await sleep(2000);
 
-    // Click Alice's name to rejoin if we see a player list
-    const aliceBtn = await page.$('text=Alice');
-    if (aliceBtn) {
-      await aliceBtn.click();
-      await sleep(4000);
+  try {
+    await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 15000 });
+    await sleep(1000);
+
+    // Select Texas Hold'em game type
+    const holdemCard = await page.$('.game-card--holdem')
+      || await page.$('button:has-text("Texas Hold")');
+    if (holdemCard) {
+      await holdemCard.click();
+      await sleep(1000);
     }
 
-    // Look for Match/Start button in waiting room
-    const matchBtn = await page.$('button:has-text("Match")')
+    // Fill name — try multiple selectors for different eras
+    const nameInput = await page.$('input[placeholder="Your name"]')
+      || await page.$('input[placeholder="Your alias"]')
+      || await page.$('input[placeholder*="name" i]')
+      || await page.$('input[type="text"]');
+
+    if (!nameInput) {
+      console.log("  SKIP: could not find name input");
+      return;
+    }
+    await nameInput.fill("Player1");
+
+    // Click create button — try multiple selectors
+    const createBtn = await page.$('button:has-text("Deal Me In")')
+      || await page.$('button:has-text("Start Game")')
+      || await page.$('button:has-text("Create Game")')
+      || await page.$('button:has-text("Create")')
+      || await page.$('.btn-primary');
+
+    if (!createBtn) {
+      console.log("  SKIP: could not find create button");
+      return;
+    }
+    await createBtn.click();
+    await sleep(3000);
+
+    // Now in PokerWaitingRoom — add bots
+    for (let i = 0; i < 2; i++) {
+      const botBtn = await page.$('button:has-text("Add Bot")')
+        || await page.$('button:has-text("Add Agent")');
+      if (botBtn) {
+        await botBtn.click();
+        await sleep(1500);
+      }
+    }
+
+    // Fallback: if no Add Bot button, join extra players via API
+    const currentUrl = page.url();
+    const gameIdMatch = currentUrl.match(/\/holdem\/([A-Z0-9]+)/i);
+    if (gameIdMatch) {
+      const gameId = gameIdMatch[1];
+      const state = await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}`);
+      const playerCount = state?.players?.length || 0;
+      if (playerCount < 3) {
+        for (let j = playerCount; j < 3; j++) {
+          await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ player_name: `Bot${j}` }),
+          });
+        }
+        await sleep(1000);
+      }
+    }
+
+    // Click deal/start button
+    const dealBtn = await page.$('button:has-text("Deal Cards")')
+      || await page.$('button:has-text("Start Game")')
       || await page.$('button:has-text("Start")');
-    if (matchBtn) {
-      console.log("  Still in waiting room, trying to start...");
-      await matchBtn.click();
-      await sleep(4000);
+
+    if (dealBtn) {
+      await dealBtn.click();
+      await sleep(5000);
+    }
+
+    // Wait for poker table to appear
+    const table = await page.$('.poker-table, .table-container, .holdem-game, canvas');
+    if (table) {
+      await sleep(2000);
     }
 
     await page.screenshot({ path: `${outputDir}/${label}_holdem.png` });
     console.log("  Saved Hold'em screenshot");
   } catch (err) {
-    console.log("  Hold'em screenshot failed:", err.message);
+    console.log("  Hold'em UI screenshot failed:", err.message);
     try {
       await page.screenshot({ path: `${outputDir}/${label}_holdem.png` });
+      console.log("  Saved Hold'em screenshot (error state)");
     } catch {}
   }
   await ctx.close();
