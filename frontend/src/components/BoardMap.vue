@@ -1004,6 +1004,20 @@ function tokenStyle(token) {
   background: #d8cca0;
 }
 
+[data-theme="light"] .cell-hallway.reachable,
+[data-theme="light"] .cell-start.reachable {
+  background: rgba(76, 175, 80, 0.25);
+}
+
+[data-theme="light"] .cell-room.reachable {
+  filter: saturate(0.6) brightness(0.95);
+  outline-color: rgba(56, 142, 60, 0.6);
+}
+
+[data-theme="light"] .cell.reachable-door {
+  outline-color: rgba(56, 142, 60, 0.8);
+}
+
 [data-theme="vintage"] .cell-hallway.reachable,
 [data-theme="vintage"] .cell-start.reachable {
   background: rgba(76, 175, 80, 0.2);
