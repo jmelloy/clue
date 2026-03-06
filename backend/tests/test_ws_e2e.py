@@ -17,7 +17,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.games.clue.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
 from app.games.clue.agents import RandomAgent, WandererAgent
-from app.main import app, manager, _agent_tasks, _game_agents
+from app.main import app, manager, _agent_tasks, _game_agents, _agent_loop_watchdog
 from app.games.clue.models import GameState, PongMessage, WSMessage
 
 # ---------------------------------------------------------------------------
@@ -1355,3 +1355,192 @@ class TestReconnection:
 
         # Old WS should NOT have received it (disconnected)
         assert len(ws1_new.sent) > 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: Agent loop watchdog (inline mode)
+# ---------------------------------------------------------------------------
+
+
+class TestAgentLoopWatchdog:
+    """Test the watchdog that restarts agent loops when they die unexpectedly."""
+
+    @pytest.mark.asyncio
+    async def test_watchdog_creates_task_when_game_active(self, http, redis):
+        """_agent_loop_watchdog creates a new agent task if the game is still playing."""
+        import app.main as main_module
+
+        game_id = await _create_game(http)
+        pid1 = await _join_game(http, game_id, "Agent-1")
+        pid2 = await _join_game(http, game_id, "Agent-2")
+        await _start_game(http, game_id)
+
+        # Cancel the existing agent task to simulate a crash
+        task = _agent_tasks.get(game_id)
+        assert task is not None, "Agent task should have been created on game start"
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+        # Remove the cancelled task manually (the watchdog won't fire for cancels)
+        _agent_tasks.pop(game_id, None)
+        _game_agents.pop(game_id, None)
+
+        # The game is still active — call the watchdog directly
+        await _agent_loop_watchdog(game_id)
+
+        # Watchdog should have created a new task and populated _game_agents
+        assert game_id in _agent_tasks, "Watchdog should have created a new agent task"
+        assert game_id in _game_agents, "Watchdog should have restored agent instances"
+
+        # Clean up
+        new_task = _agent_tasks.get(game_id)
+        if new_task and not new_task.done():
+            new_task.cancel()
+            try:
+                await new_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_watchdog_skips_finished_game(self, http, redis):
+        """_agent_loop_watchdog does nothing when the game is already over."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Agent-1")
+        await _join_game(http, game_id, "Agent-2")
+        await _start_game(http, game_id)
+
+        # Force the game to a finished state
+        game = ClueGame(game_id, redis)
+        state = await game.get_state()
+        state.status = "finished"
+        await game._save_state(state)
+
+        # Remove any existing agent task
+        _agent_tasks.pop(game_id, None)
+        _game_agents.pop(game_id, None)
+
+        await _agent_loop_watchdog(game_id)
+
+        # Watchdog should NOT create a new task for a finished game
+        assert game_id not in _agent_tasks, "Watchdog should not create task for finished game"
+
+    @pytest.mark.asyncio
+    async def test_watchdog_skips_when_task_already_running(self, http, redis):
+        """_agent_loop_watchdog is a no-op when a healthy task already exists."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Agent-1")
+        await _join_game(http, game_id, "Agent-2")
+        await _start_game(http, game_id)
+
+        existing_task = _agent_tasks.get(game_id)
+        assert existing_task is not None
+
+        # Call the watchdog while the task is still running
+        await _agent_loop_watchdog(game_id)
+
+        # The task should be the same object — not replaced
+        assert _agent_tasks.get(game_id) is existing_task, (
+            "Watchdog should not replace an already-running agent task"
+        )
+
+        # Clean up
+        if existing_task and not existing_task.done():
+            existing_task.cancel()
+            try:
+                await existing_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_wanderer_seed_in_persisted_config(self, http, redis):
+        """start_game persists wanderer_seed in agent_config so restarts are consistent."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Regular-Agent", player_type="agent")
+        await _join_game(http, game_id, "Wanderer", player_type="wanderer")
+        await _start_game(http, game_id)
+
+        config_raw = await redis.get(f"game:{game_id}:agent_config")
+        assert config_raw is not None, "agent_config must be written to Redis on start"
+
+        config = json.loads(config_raw)
+        wanderer_entries = [
+            (pid, info)
+            for pid, info in config.items()
+            if info.get("type") == "wanderer"
+        ]
+        assert len(wanderer_entries) >= 1, "Expected at least one wanderer in config"
+
+        # Every wanderer must have a wanderer_seed
+        for pid, wanderer_info in wanderer_entries:
+            seed = wanderer_info.get("wanderer_seed")
+            assert seed is not None, (
+                f"Wanderer {pid} config must include wanderer_seed so restarts have the "
+                "same initial card knowledge"
+            )
+            assert "card" in seed and seed["card"], "wanderer_seed must have a non-empty card"
+            assert "shown_by" in seed and seed["shown_by"], "wanderer_seed must have a shown_by player id"
+
+        # Clean up the agent task
+        task = _agent_tasks.get(game_id)
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_watchdog_replays_wanderer_seed(self, http, redis):
+        """_agent_loop_watchdog applies wanderer_seed so restarted wanderers
+        have the same card knowledge as in the initial run."""
+        game_id = await _create_game(http)
+        await _join_game(http, game_id, "Regular-Agent", player_type="agent")
+        await _join_game(http, game_id, "Wanderer", player_type="wanderer")
+        await _start_game(http, game_id)
+
+        # Grab the seed that was recorded at start for the first wanderer
+        config_raw = await redis.get(f"game:{game_id}:agent_config")
+        config = json.loads(config_raw)
+        wanderer_pid, wanderer_info = next(
+            (pid, info) for pid, info in config.items() if info.get("type") == "wanderer"
+        )
+        seed = wanderer_info["wanderer_seed"]
+        assert seed is not None
+
+        # Cancel current task and call watchdog
+        task = _agent_tasks.pop(game_id, None)
+        if task:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+        _game_agents.pop(game_id, None)
+
+        await _agent_loop_watchdog(game_id)
+
+        # The restarted wanderer agent should have the seeded card in seen_cards
+        agents = _game_agents.get(game_id, {})
+        assert wanderer_pid in agents, "Watchdog should have recreated the wanderer agent"
+        wanderer_agent = agents[wanderer_pid]
+        assert isinstance(wanderer_agent, WandererAgent)
+        assert seed["card"] in wanderer_agent.seen_cards, (
+            "Wanderer agent must have the seed card in seen_cards after watchdog restart"
+        )
+
+        # Clean up
+        new_task = _agent_tasks.get(game_id)
+        if new_task and not new_task.done():
+            new_task.cancel()
+            try:
+                await new_task
+            except (asyncio.CancelledError, Exception):
+                pass
