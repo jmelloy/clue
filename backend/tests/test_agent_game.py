@@ -211,23 +211,23 @@ async def test_three_agents_complete_game(redis):
 
 @pytest.mark.asyncio
 async def test_agent_tracks_seen_cards(redis):
-    """Verify the agent's seen_cards set grows as the game progresses."""
+    """Verify the agent's known_cards set grows as the game progresses."""
     game, agents, state = await _setup_game(redis, num_agents=2)
 
-    # Record initial seen counts (just own hand)
-    initial_counts = {pid: len(a.seen_cards) for pid, a in agents.items()}
+    # Record initial known counts (just own hand)
+    initial_counts = {pid: len(a.known_cards) for pid, a in agents.items()}
 
     final_state, turns, log = await _run_game(game, agents, state)
 
     # After the game, agents should have learned more cards
     for pid, agent in agents.items():
         assert (
-            len(agent.seen_cards) >= initial_counts[pid]
-        ), f"Agent {pid} should not lose track of seen cards"
+            len(agent.known_cards) >= initial_counts[pid]
+        ), f"Agent {pid} should not lose track of known cards"
 
     # At least one agent should have learned cards beyond their hand
     any_learned = any(
-        len(a.seen_cards) > initial_counts[pid] for pid, a in agents.items()
+        len(a.known_cards) > initial_counts[pid] for pid, a in agents.items()
     )
     # This is very likely but not guaranteed (could win before any suggestion)
     # so we don't assert — just log
@@ -250,9 +250,9 @@ async def test_agent_accuses_only_when_certain(redis):
     for pid, action, result in log:
         if action.type == "accuse":
             agent = agents[pid]
-            unknown_s = [s for s in SUSPECTS if s not in agent.seen_cards]
-            unknown_w = [w for w in WEAPONS if w not in agent.seen_cards]
-            unknown_r = [r for r in ROOMS if r not in agent.seen_cards]
+            unknown_s = [s for s in SUSPECTS if s not in agent.known_cards]
+            unknown_w = [w for w in WEAPONS if w not in agent.known_cards]
+            unknown_r = [r for r in ROOMS if r not in agent.known_cards]
             # The agent should accuse only with exactly 1 unknown per category
             assert (
                 len(unknown_s) == 1
@@ -281,8 +281,8 @@ async def test_agent_never_suggests_own_cards(redis):
             cards = await game._load_player_cards(pid)
             # Suspect and weapon should NOT be in the agent's hand
             # (unless all suspects or all weapons are known)
-            unknown_suspects = [s for s in SUSPECTS if s not in agent.seen_cards]
-            unknown_weapons = [w for w in WEAPONS if w not in agent.seen_cards]
+            unknown_suspects = [s for s in SUSPECTS if s not in agent.known_cards]
+            unknown_weapons = [w for w in WEAPONS if w not in agent.known_cards]
 
             if unknown_suspects:
                 assert action.suspect not in cards, (
