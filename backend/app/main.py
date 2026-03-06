@@ -914,7 +914,7 @@ def _on_agent_loop_done(game_id: str, task: asyncio.Task) -> None:
     """
     if task.cancelled():
         return
-    asyncio.get_running_loop().create_task(_agent_loop_watchdog(game_id))
+    task.get_loop().create_task(_agent_loop_watchdog(game_id))
 
 
 async def _agent_loop_watchdog(game_id: str) -> None:
