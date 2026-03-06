@@ -458,8 +458,10 @@
             <span class="card-preview-icon">{{ cardIcon(previewCard) }}</span>
             <span class="card-preview-name">{{ previewCard }}</span>
           </div>
-          <div class="card-preview-image-frame">
-            <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+          <div class="card-preview-image-area">
+            <div class="card-preview-image-frame">
+              <img :src="cardImageUrl(previewCard)" :alt="previewCard" class="card-preview-image" />
+            </div>
           </div>
           <div class="card-preview-footer">
             <span class="card-preview-name">{{ previewCard }}</span>
@@ -1807,6 +1809,15 @@ watch(
   justify-content: flex-end;
 }
 
+.card-preview-image-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
 .card-preview-icon {
   font-size: 1.1rem;
   flex-shrink: 0;
@@ -1827,22 +1838,16 @@ watch(
 
 .card-preview-image-frame {
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  max-height: 100%;
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid #b8a878;
   background: #e8e0cc;
 }
 
-.card-preview-frame.card-room .card-preview-image-frame {
-  flex: none;
-}
-
 .card-preview-frame.card-suspect .card-preview-image-frame {
   border-radius: 50%;
   width: 90%;
-  flex: none;
   aspect-ratio: 1;
   border-color: #8a4a50;
 }
