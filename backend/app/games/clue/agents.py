@@ -468,9 +468,11 @@ def generate_character_chat(
 class BaseAgent(ABC):
     """Abstract base for Clue game agents.
 
-    Maintains a ``seen_cards`` set of all cards known not to be in the
-    solution (own hand + shown cards).  Subclasses implement the two
-    decision methods: ``decide_action`` and ``decide_show_card``.
+    Maintains ``seen_cards`` (own hand + cards directly shown) and
+    ``inferred_cards`` (deduced through elimination logic).  The union
+    ``known_cards`` gives all cards known not to be in the solution.
+    Subclasses implement the two decision methods: ``decide_action``
+    and ``decide_show_card``.
     """
 
     agent_type: str = "base"
@@ -484,7 +486,8 @@ class BaseAgent(ABC):
         game_id: str = "",
     ):
         self.own_cards: set[str] = set(cards)
-        self.seen_cards: set[str] = set(cards)
+        self.seen_cards: set[str] = set(cards)  # own hand + directly shown
+        self.inferred_cards: set[str] = set()    # deduced via elimination
         self.shown_to: dict[str, set[str]] = {}
         self.rooms_suggested_in: set[str] = set()
         self.unrefuted_suggestions: list[dict] = []
@@ -499,6 +502,8 @@ class BaseAgent(ABC):
         self.player_has_cards: dict[str, set[str]] = {}
         self.player_not_has_cards: dict[str, set[str]] = {}
         self.suggestion_log: list[dict] = []
+        # Per-card inference log: card_name -> list of reasoning strings
+        self.card_inference_log: dict[str, list[str]] = {}
         # Accumulate inference notifications for LLM agents to consume
         self._pending_inferences: list[str] = []
 
@@ -508,6 +513,11 @@ class BaseAgent(ABC):
         self._trace_enabled: bool | None = None  # None = check game state / env
 
         self.agent_trace("agent_created", cards=sorted(cards))
+
+    @property
+    def known_cards(self) -> set[str]:
+        """All cards known not to be the solution (seen + inferred)."""
+        return self.seen_cards | self.inferred_cards
 
     # ------------------------------------------------------------------
     # Knowledge state persistence (Redis)
@@ -672,8 +682,10 @@ class BaseAgent(ABC):
 
     def observe_shown_card(self, card: str, shown_by: str | None = None):
         """Called when another player shows us a card."""
-        is_new = card not in self.seen_cards
+        is_new = card not in self.known_cards
         self.seen_cards.add(card)
+        # If it was previously only inferred, promote to seen
+        self.inferred_cards.discard(card)
         if shown_by:
             self.player_has_cards.setdefault(shown_by, set()).add(card)
         self.agent_trace(
@@ -726,12 +738,15 @@ class BaseAgent(ABC):
                 weapon=weapon,
                 room=room,
             )
-            self._pending_inferences.append(
-                f"DEDUCED: {self._name(shown_by)} showed a card to {self._name(shown_to)} for "
-                f"{suspect}/{weapon}/{room}. By elimination I deduced the "
-                f"card was '{inferred}' — it is NOT the solution."
+            reason = (
+                f"{self._name(shown_by)} showed a card to {self._name(shown_to)} for "
+                f"{suspect}/{weapon}/{room} — deduced by elimination."
             )
-            self.seen_cards.add(inferred)
+            self.card_inference_log.setdefault(inferred, []).append(reason)
+            self._pending_inferences.append(
+                f"DEDUCED: {reason}"
+            )
+            self.inferred_cards.add(inferred)
             self._run_inference()
         else:
             suggested_cards = {suspect, weapon, room}
@@ -777,9 +792,9 @@ class BaseAgent(ABC):
 
         if len(possible) == 1:
             inferred_card = next(iter(possible))
-            if inferred_card in self.seen_cards:
+            if inferred_card in self.known_cards:
                 return None  # Already known, no new information
-            self.seen_cards.add(inferred_card)
+            self.inferred_cards.add(inferred_card)
             self.player_has_cards.setdefault(shown_by, set()).add(inferred_card)
             return inferred_card
         return None
@@ -869,9 +884,9 @@ class BaseAgent(ABC):
                 weapon = entry["weapon"]
                 room = entry["room"]
 
-                # Skip if we already know what was shown (all 3 are seen)
+                # Skip if we already know what was shown (all 3 are known)
                 suggested_cards = {suspect, weapon, room}
-                if suggested_cards <= self.seen_cards:
+                if suggested_cards <= self.known_cards:
                     continue
 
                 inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
@@ -884,12 +899,13 @@ class BaseAgent(ABC):
                         weapon=weapon,
                         room=room,
                     )
-                    self._pending_inferences.append(
-                        f"DEDUCED (chain): From earlier suggestion "
-                        f"{suspect}/{weapon}/{room}, I now deduce {self._name(shown_by)} "
-                        f"has '{inferred}' — it is NOT the solution."
+                    reason = (
+                        f"From earlier suggestion {suspect}/{weapon}/{room}, "
+                        f"deduced {self._name(shown_by)} has '{inferred}' (chain)."
                     )
-                    self.seen_cards.add(inferred)
+                    self.card_inference_log.setdefault(inferred, []).append(reason)
+                    self._pending_inferences.append(f"DEDUCED (chain): {reason}")
+                    self.inferred_cards.add(inferred)
                     changed = True
 
     # ------------------------------------------------------------------
@@ -902,9 +918,10 @@ class BaseAgent(ABC):
 
     def _get_unknowns(self) -> tuple[list[str], list[str], list[str]]:
         """Return (unknown_suspects, unknown_weapons, unknown_rooms)."""
-        unknown_suspects = [s for s in SUSPECTS if s not in self.seen_cards]
-        unknown_weapons = [w for w in WEAPONS if w not in self.seen_cards]
-        unknown_rooms = [r for r in ROOMS if r not in self.seen_cards]
+        known = self.known_cards
+        unknown_suspects = [s for s in SUSPECTS if s not in known]
+        unknown_weapons = [w for w in WEAPONS if w not in known]
+        unknown_rooms = [r for r in ROOMS if r not in known]
         return unknown_suspects, unknown_weapons, unknown_rooms
 
     # ------------------------------------------------------------------
@@ -962,6 +979,7 @@ class BaseAgent(ABC):
             "status": status,
             "action_description": action_description,
             "seen_cards": sorted(self.seen_cards),
+            "inferred_cards": sorted(self.inferred_cards),
             "unknown_suspects": unknown_suspects,
             "unknown_weapons": unknown_weapons,
             "unknown_rooms": unknown_rooms,
@@ -1094,7 +1112,7 @@ class RandomAgent(BaseAgent):
             unknown_suspects=len(unknown_suspects),
             unknown_weapons=len(unknown_weapons),
             unknown_rooms=len(unknown_rooms),
-            seen_total=len(self.seen_cards),
+            seen_total=len(self.known_cards),
         )
 
         # Accuse if we've narrowed to exactly one per category
@@ -1592,6 +1610,7 @@ class LLMAgent(BaseAgent):
         )
         self._fallback.player_id = self.player_id
         self._fallback.seen_cards = self.seen_cards
+        self._fallback.inferred_cards = self.inferred_cards
         self._fallback.shown_to = self.shown_to
         self._fallback.rooms_suggested_in = self.rooms_suggested_in
         self._fallback.unrefuted_suggestions = self.unrefuted_suggestions
@@ -1599,6 +1618,7 @@ class LLMAgent(BaseAgent):
         self._fallback.player_has_cards = self.player_has_cards
         self._fallback.player_not_has_cards = self.player_not_has_cards
         self._fallback.suggestion_log = self.suggestion_log
+        self._fallback.card_inference_log = self.card_inference_log
 
 
 
@@ -1626,12 +1646,8 @@ class LLMAgent(BaseAgent):
         """Save any accumulated inference notifications to memory."""
         if not self._pending_inferences:
             return
-        # Combine all pending inferences into a single memory entry
-        entry = "INFERENCE UPDATE: " + " | ".join(self._pending_inferences)
+        # Clear pending list — inferences are now tracked in card_inference_log
         self._pending_inferences.clear()
-        await self._save_memory_entry(entry)
-
-
 
     # ------------------------------------------------------------------
     # LLM communication
@@ -1775,9 +1791,20 @@ class LLMAgent(BaseAgent):
                 f"{self.unrefuted_suggestions}"
             )
 
+        # Include per-card inference log — only for cards not directly seen.
+        # This tells the LLM *why* certain cards were ruled out via deduction.
+        unseen_inferences = {
+            card: reasons
+            for card, reasons in self.card_inference_log.items()
+            if card not in self.seen_cards
+        }
+        if unseen_inferences:
+            lines.append("")
+            lines.append("DEDUCTIONS (cards you inferred are NOT the solution):")
+            for card, reasons in sorted(unseen_inferences.items()):
+                lines.append(f"  {card}: {reasons[-1]}")
+
         # Include the LLM's own planning notes from previous turns.
-        # Engine-generated INFERENCE UPDATE entries are skipped — their
-        # results are already reflected in the seen_cards / unknowns above.
         if self.memory:
             planning_notes = [
                 m for m in self.memory if not m.startswith("INFERENCE UPDATE:")
@@ -1915,6 +1942,18 @@ class LLMAgent(BaseAgent):
         self.seen_cards.update(player_state.your_cards)
         self.set_trace_from_game_state(game_state)
         unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
+
+        self.agent_trace(
+            "decide_action",
+            available=available,
+            unknown_suspects=len(unknown_suspects),
+            unknown_weapons=len(unknown_weapons),
+            unknown_rooms=len(unknown_rooms),
+            seen_total=len(self.known_cards),
+            current_room=current_room,
+            position=current_position,
+            unrefuted_suggestions=len(self.unrefuted_suggestions),
+        )
 
         # Auto-roll: if "roll" is the only meaningful action and the agent
         # hasn't narrowed all categories to one unknown (ready to accuse),
