@@ -441,13 +441,7 @@ function onAdminGoHome() {
 
 function onAdminObserveGame({ gameId: gid, gameType: gType }) {
   isAdminRoute.value = false
-  currentGameType.value = gType
-  gameId.value = gid
-  isObserver.value = true
-  urlGameId.value = null
-  pushGameUrl(gid)
-  connectWS()
-  fetchState(gid)
+  onObserve({ gameId: gid, gameType: gType })
 }
 
 function onGameJoined({ gameId: gid, playerId: pid, state, gameType: gType }) {
