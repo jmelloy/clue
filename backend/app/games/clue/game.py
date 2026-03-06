@@ -861,10 +861,12 @@ class ClueGame:
                 solution=solution,
             )
         else:
-            # Player is eliminated but game continues
+            # Player is eliminated but game continues; piece stays on the board
+            # and can still be moved to rooms by other players' suggestions.
             for p in state.players:
                 if p.id == player_id:
                     p.active = False
+                    p.status = "eliminated"
                     break
 
             # Check if only one non-wanderer player left

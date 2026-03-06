@@ -14,6 +14,7 @@ class Player(BaseModel):
     type: str  # "human" | "agent" | "llm_agent" | "wanderer"
     character: str
     active: bool = True
+    status: Literal["active", "eliminated"] = "active"
 
 
 class Solution(BaseModel):

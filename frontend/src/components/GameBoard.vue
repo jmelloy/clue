@@ -46,7 +46,7 @@
         <div class="player-legend">
           <div v-for="p in gameState?.players" :key="p.id" class="legend-item" :class="{
             active: gameState?.whose_turn === p.id,
-            eliminated: !p.active,
+            eliminated: p.status === 'eliminated',
             'is-me': p.id === playerId,
             'wanderer-legend': p.type === 'wanderer',
             'observer-clickable': isObserver,
@@ -59,7 +59,7 @@
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
               gameState.current_room[p.id]
               }}</span>
-            <span v-if="!p.active" class="legend-status">eliminated</span>
+            <span v-if="p.status === 'eliminated'" class="legend-status">eliminated</span>
             <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
             <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
             <!-- Shown cards popup -->

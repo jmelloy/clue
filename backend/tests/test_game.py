@@ -302,9 +302,10 @@ async def test_eliminated_player_turn_is_skipped(game: ClueGame):
     state = await game.get_state()
     assert state.status == "playing"
 
-    # P1 should be inactive
+    # P1 should be inactive with an explicit "eliminated" status
     p1_state = next(p for p in state.players if p.id == "P1")
     assert p1_state.active is False
+    assert p1_state.status == "eliminated"
 
     # Turn should have advanced away from the eliminated P1
     assert state.whose_turn != "P1"
