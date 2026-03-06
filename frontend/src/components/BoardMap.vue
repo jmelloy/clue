@@ -185,27 +185,37 @@ for (const room of Object.values(ROOM_INFO)) {
 
 // ── Build flat cell array (25 rows x 24 cols = 600 cells) ──
 
-// First pass: determine cell types in a 2D grid for neighbor lookups
+// First pass: determine cell types and room membership in 2D grids
 const GRID_TYPES = []
+const GRID_ROOMS = []
 for (let r = 0; r < 25; r++) {
   const line = (BOARD_ROWS[r] || '').padEnd(24)
-  const row = []
+  const typeRow = []
+  const roomRow = []
   for (let c = 0; c < 24; c++) {
     const key = `${r},${c}`
     const ch = line[c]
     const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
     if (DOORS[key] || ROOM_KEY_MAP[ch] || ch === '.' || isCenter) {
-      row.push('usable')
+      typeRow.push('usable')
     } else {
-      row.push('wall')
+      typeRow.push('wall')
     }
+    // Track which room each cell belongs to (doors count as their room)
+    roomRow.push(DOORS[key] || ROOM_KEY_MAP[ch] || null)
   }
-  GRID_TYPES.push(row)
+  GRID_TYPES.push(typeRow)
+  GRID_ROOMS.push(roomRow)
 }
 
 function isWallOrEdge(r, c) {
   if (r < 0 || r >= 25 || c < 0 || c >= 24) return true
   return GRID_TYPES[r][c] === 'wall'
+}
+
+function roomAt(r, c) {
+  if (r < 0 || r >= 25 || c < 0 || c >= 24) return null
+  return GRID_ROOMS[r][c]
 }
 
 const CELL_DATA = []
@@ -225,6 +235,15 @@ for (let r = 0; r < 25; r++) {
       left: isWallOrEdge(r, c - 1)
     }
 
+    // Compute room boundary edges (where this cell's room differs from neighbor)
+    const cellRoom = GRID_ROOMS[r][c]
+    const roomEdges = cellRoom ? {
+      top: roomAt(r - 1, c) !== cellRoom,
+      right: roomAt(r, c + 1) !== cellRoom,
+      bottom: roomAt(r + 1, c) !== cellRoom,
+      left: roomAt(r, c - 1) !== cellRoom
+    } : null
+
     if (doorRoom) {
       CELL_DATA.push({
         row: r,
@@ -232,10 +251,11 @@ for (let r = 0; r < 25; r++) {
         type: 'door',
         room: doorRoom,
         doorDir: DOOR_DIRECTIONS[key],
-        edges
+        edges,
+        roomEdges
       })
     } else if (ROOM_KEY_MAP[ch]) {
-      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch], edges })
+      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch], edges, roomEdges })
     } else if (ch === '.') {
       CELL_DATA.push({
         row: r,
@@ -504,6 +524,13 @@ function cellClasses(cell) {
     if (cell.edges.bottom) cls.push('edge-bottom')
     if (cell.edges.left) cls.push('edge-left')
   }
+  // Room boundary edges (gold wall inset)
+  if (cell.roomEdges) {
+    if (cell.roomEdges.top) cls.push('room-edge-top')
+    if (cell.roomEdges.right) cls.push('room-edge-right')
+    if (cell.roomEdges.bottom) cls.push('room-edge-bottom')
+    if (cell.roomEdges.left) cls.push('room-edge-left')
+  }
   if (cell.room) {
     if (props.selectable) cls.push('clickable')
     if (props.selectedRoom === cell.room) cls.push('selected')
@@ -709,6 +736,31 @@ function tokenStyle(token) {
 
 [data-theme="light"] .cell-room {
   border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ── Room boundary gold walls (inset border around each room) ── */
+.room-edge-top,
+.room-edge-right,
+.room-edge-bottom,
+.room-edge-left {
+  position: relative;
+}
+
+.room-edge-top { border-top: 2px solid #c8a84e; }
+.room-edge-right { border-right: 2px solid #c8a84e; }
+.room-edge-bottom { border-bottom: 2px solid #c8a84e; }
+.room-edge-left { border-left: 2px solid #c8a84e; }
+
+[data-theme="light"] .room-edge-top { border-top-color: #b8963e; }
+[data-theme="light"] .room-edge-right { border-right-color: #b8963e; }
+[data-theme="light"] .room-edge-bottom { border-bottom-color: #b8963e; }
+[data-theme="light"] .room-edge-left { border-left-color: #b8963e; }
+
+[data-theme="vintage"] .room-edge-top,
+[data-theme="vintage"] .room-edge-right,
+[data-theme="vintage"] .room-edge-bottom,
+[data-theme="vintage"] .room-edge-left {
+  border-color: transparent;
 }
 
 .cell-door {
