@@ -14,9 +14,6 @@ import pytest
 import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
-# Ensure the backend package is importable when running from the tests dir
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from app.games.clue.game import ClueGame
 from agent_runner import AgentRunner
 
