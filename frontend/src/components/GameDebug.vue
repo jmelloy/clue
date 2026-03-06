@@ -89,10 +89,10 @@
             <span class="log-type">{{ entry.type }}</span>
             <span class="log-player" v-if="entry.player_id">{{ playerName(entry.player_id) }}</span>
             <span class="log-detail">{{ logSummary(entry) }}</span>
-            <button class="log-expand-btn" @click="entry._expanded = !entry._expanded">
-              {{ entry._expanded ? '−' : '+' }}
+            <button class="log-expand-btn" @click="toggleLogEntry(i)">
+              {{ expandedLogEntries.has(i) ? '▼' : '▶' }}
             </button>
-            <pre v-if="entry._expanded" class="json-block log-json">{{ JSON.stringify(entry, null, 2) }}</pre>
+            <pre v-if="expandedLogEntries.has(i)" class="json-block log-json">{{ JSON.stringify(entry, null, 2) }}</pre>
           </div>
           <div v-if="!filteredLog.length" class="empty-state">No log entries{{ logFilter ? ' matching filter' : '' }}.</div>
         </div>
@@ -346,6 +346,7 @@ const activeMainTab = ref('state')
 const selectedAgentId = ref(null)
 const rawStateExpanded = ref(false)
 const logFilter = ref('')
+const expandedLogEntries = ref(new Set())
 const tracePlayerFilter = ref('')
 const traceEventFilter = ref('')
 let refreshInterval = null
@@ -402,10 +403,17 @@ const agentTraceEntries = computed(() => {
   return debugData.value.agent_trace.by_player[selectedAgentId.value] || []
 })
 
+function toggleLogEntry(i) {
+  const s = new Set(expandedLogEntries.value)
+  if (s.has(i)) s.delete(i)
+  else s.add(i)
+  expandedLogEntries.value = s
+}
+
 // Log filtering
 const filteredLog = computed(() => {
   if (!debugData.value) return []
-  let entries = debugData.value.game_log.map(e => ({ ...e }))
+  let entries = debugData.value.game_log
   if (logFilter.value) {
     const q = logFilter.value.toLowerCase()
     entries = entries.filter(e => JSON.stringify(e).toLowerCase().includes(q))
