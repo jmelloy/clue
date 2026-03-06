@@ -451,13 +451,13 @@ function omitKeys(obj, keys) {
 
 function logSummary(entry) {
   switch (entry.type) {
-    case 'move': return `moved to [${entry.position?.[0]}, ${entry.position?.[1]}]`
+    case 'move': return `rolled ${entry.dice}` + (entry.room ? `, entered ${entry.room}` : '')
     case 'suggestion': return `${entry.suspect} / ${entry.weapon} / ${entry.room}`
     case 'accusation': return `${entry.suspect} / ${entry.weapon} / ${entry.room} — ${entry.correct ? 'CORRECT' : 'WRONG'}`
-    case 'card_shown': return `${playerName(entry.shown_by)} showed card to ${playerName(entry.shown_to)}`
-    case 'roll': return `rolled ${entry.value}`
-    case 'end_turn': return 'ended turn'
-    case 'secret_passage': return `used secret passage to ${entry.room}`
+    case 'card_shown': return `${playerName(entry.player_id)} showed card to ${playerName(entry.to_player_id)}`
+    case 'roll': return `rolled ${entry.dice}`
+    case 'end_turn': return `ended turn, next: ${playerName(entry.next_player_id)}`
+    case 'secret_passage': return `used passage from ${entry.from_room} to ${entry.room}`
     case 'game_started': return 'game started'
     default: return ''
   }
