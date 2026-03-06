@@ -95,16 +95,43 @@ export const CARD_IMAGES = {
   'Dining Room': '/images/clue/rooms/thumbnails/DiningRoom.jpg'
 }
 
+// Per-theme card image overrides — keyed by theme name, each a partial map of card name -> image URL.
+// Falls back to CARD_IMAGES for any card not listed under the active theme.
+export const THEME_CARD_IMAGES = {
+  vintage: {
+    Kitchen: '/images/clue/alternates/vintage/kitchen.png',
+    Ballroom: '/images/clue/alternates/vintage/ballroom.png',
+    Conservatory: '/images/clue/alternates/vintage/conservatory.png',
+    'Billiard Room': '/images/clue/alternates/vintage/billiard_room.png',
+    Library: '/images/clue/alternates/vintage/library.png',
+    Study: '/images/clue/alternates/vintage/study.png',
+    Hall: '/images/clue/alternates/vintage/hall.png',
+    Lounge: '/images/clue/alternates/vintage/lounge.png',
+    'Dining Room': '/images/clue/alternates/vintage/dining_room.png'
+  },
+  flirtatious: {
+    'Miss Scarlett': '/images/clue/alternates/flirtatious/thumbnails/MissScarlett.jpg',
+    'Colonel Mustard': '/images/clue/alternates/flirtatious/thumbnails/ColonelMustard.jpg',
+    'Mrs. White': '/images/clue/alternates/flirtatious/thumbnails/MrsWhite.jpg',
+    'Reverend Green': '/images/clue/alternates/flirtatious/thumbnails/ReverendGreen.jpg',
+    'Mrs. Peacock': '/images/clue/alternates/flirtatious/thumbnails/MrsPeacock.jpg',
+    'Professor Plum': '/images/clue/alternates/flirtatious/thumbnails/ProfessorPlum.jpg'
+  }
+}
+
 export function cardIcon(card) {
   return CARD_ICONS[card] || '\u{1F0CF}'
 }
 
-export function hasCardImage(card) {
+export function hasCardImage(card, theme) {
+  const overrides = theme && THEME_CARD_IMAGES[theme]
+  if (overrides?.[card]) return true
   return !!CARD_IMAGES[card]
 }
 
-export function cardImageUrl(card) {
-  return CARD_IMAGES[card] || ''
+export function cardImageUrl(card, theme) {
+  const overrides = theme && THEME_CARD_IMAGES[theme]
+  return overrides?.[card] || CARD_IMAGES[card] || ''
 }
 
 /** Returns the abbreviation for a character name (e.g. "Sc" for "Miss Scarlett"). */
