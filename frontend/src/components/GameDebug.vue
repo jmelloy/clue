@@ -683,9 +683,16 @@ onUnmounted(() => {
 }
 
 .state-card.double-wide {
-  grid-column: span 2;
+  /* Default to full-width, safe for 1-column layouts */
+  grid-column: 1 / -1;
 }
 
+@media (min-width: 600px) {
+  .state-grid .state-card.double-wide {
+    /* Only span 2 columns when the grid can fit at least 2 columns */
+    grid-column: span 2;
+  }
+}
 .state-card h3 {
   font-size: 0.8rem;
   color: var(--text-secondary);
