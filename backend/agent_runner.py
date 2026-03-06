@@ -223,6 +223,7 @@ class AgentRunner:
 
             if ptype == "llm_agent":
                 await agent.load_memory()
+            await agent.load_knowledge()
             agents[pid] = agent
             logger.info(
                 "Created %s agent for %s (%s) in game %s",
@@ -234,23 +235,28 @@ class AgentRunner:
 
         # Replay wanderer seeds stored in the config so that restarted runners
         # give each wanderer the same initial card knowledge as the first run.
+        # Only seed when no persisted knowledge was loaded (i.e. seen_cards is
+        # still just the dealt hand), to avoid re-applying a seed on top of
+        # already-restored state.
         # Track which wanderers received a config seed to avoid double-seeding.
         wanderers_seeded: set[str] = set()
         for pid, info in config.items():
             if info.get("type") == "wanderer":
                 seed = info.get("wanderer_seed")
-                if seed:
-                    agents[pid].observe_shown_card(
-                        seed["card"], shown_by=seed["shown_by"]
-                    )
+                agent = agents[pid]
+                if seed and len(agent.seen_cards) <= len(agent.own_cards):
+                    agent.observe_shown_card(seed["card"], shown_by=seed["shown_by"])
                     wanderers_seeded.add(pid)
 
         # Fall back to the legacy random-seeding approach for wanderers in old
         # configs that pre-date the wanderer_seed field (i.e. the key is absent).
+        # Only seed wanderers that have not had persisted knowledge restored.
         wanderers_needing_legacy_seed = [
             (pid, a)
             for pid, a in agents.items()
-            if a.agent_type == "wanderer" and pid not in wanderers_seeded
+            if a.agent_type == "wanderer"
+            and pid not in wanderers_seeded
+            and len(a.seen_cards) <= len(a.own_cards)
         ]
         if wanderers_needing_legacy_seed:
             real_agents = {
@@ -495,6 +501,8 @@ class AgentRunner:
         if isinstance(result, dict) and result.get("error"):
             return
 
+        await agent.save_knowledge()
+
         # Post debug info to backend for observers
         await self._send_debug(game_id, player_id, agent, action)
 
@@ -550,6 +558,7 @@ class AgentRunner:
         await self._send_action(
             game_id, player_id, ShowCardAction(card=card).model_dump()
         )
+        await agent.save_knowledge()
 
         chat_msg = agent.generate_chat("show_card")
         if chat_msg:

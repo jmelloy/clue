@@ -36,19 +36,15 @@
               <div class="kv-row"><span class="kv-key">Whose Turn</span><span class="kv-val">{{ playerName(debugData.state.whose_turn) }}</span></div>
               <div class="kv-row"><span class="kv-key">Winner</span><span class="kv-val">{{ playerName(debugData.state.winner) || '—' }}</span></div>
               <div class="kv-row"><span class="kv-key">Trace Enabled</span><span class="kv-val">{{ debugData.state.agent_trace_enabled ? 'Yes' : 'No' }}</span></div>
+              <div class="kv-row" v-if="debugData.solution"><span class="kv-key">Solution</span><span class="kv-val solution-chips">
+                <span class="chip suspect-chip">{{ debugData.solution.suspect }}</span>
+                <span class="chip weapon-chip">{{ debugData.solution.weapon }}</span>
+                <span class="chip room-chip">{{ debugData.solution.room }}</span>
+              </span></div>
             </div>
           </div>
 
-          <div class="state-card" v-if="debugData.solution">
-            <h3>Solution</h3>
-            <div class="solution-chips">
-              <span class="chip suspect-chip">{{ debugData.solution.suspect }}</span>
-              <span class="chip weapon-chip">{{ debugData.solution.weapon }}</span>
-              <span class="chip room-chip">{{ debugData.solution.room }}</span>
-            </div>
-          </div>
-
-          <div class="state-card">
+          <div class="state-card double-wide">
             <h3>Players</h3>
             <table class="data-table">
               <thead><tr><th>Name</th><th>Character</th><th>Type</th><th>Active</th><th>Room</th><th>Cards</th></tr></thead>
@@ -686,6 +682,17 @@ onUnmounted(() => {
   grid-column: 1 / -1;
 }
 
+.state-card.double-wide {
+  /* Default to full-width, safe for 1-column layouts */
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 600px) {
+  .state-grid .state-card.double-wide {
+    /* Only span 2 columns when the grid can fit at least 2 columns */
+    grid-column: span 2;
+  }
+}
 .state-card h3 {
   font-size: 0.8rem;
   color: var(--text-secondary);

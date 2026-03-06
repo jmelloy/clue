@@ -520,6 +520,90 @@ class BaseAgent(ABC):
         return self.seen_cards | self.inferred_cards
 
     # ------------------------------------------------------------------
+    # Knowledge state persistence (Redis)
+    # ------------------------------------------------------------------
+
+    def _knowledge_redis_key(self) -> str:
+        return f"game:{self._game_id}:agent_knowledge:{self.player_id}"
+
+    def get_knowledge_state(self) -> dict:
+        """Export all inference/knowledge state as a serializable dict."""
+        return {
+            "seen_cards": sorted(self.seen_cards),
+            "inferred_cards": sorted(self.inferred_cards),
+            "shown_to": {k: sorted(v) for k, v in self.shown_to.items()},
+            "rooms_suggested_in": sorted(self.rooms_suggested_in),
+            "unrefuted_suggestions": list(self.unrefuted_suggestions),
+            "player_has_cards": {k: sorted(v) for k, v in self.player_has_cards.items()},
+            "player_not_has_cards": {
+                k: sorted(v) for k, v in self.player_not_has_cards.items()
+            },
+            "suggestion_log": list(self.suggestion_log),
+            "card_inference_log": {k: list(v) for k, v in self.card_inference_log.items()},
+        }
+
+    def load_knowledge_state(self, data: dict):
+        """Restore inference/knowledge state from a previously saved dict."""
+        self.seen_cards = set(data.get("seen_cards", []))
+        # Ensure own cards are always present
+        self.seen_cards |= self.own_cards
+        self.inferred_cards = set(data.get("inferred_cards", []))
+        self.shown_to = {k: set(v) for k, v in data.get("shown_to", {}).items()}
+        self.rooms_suggested_in = set(data.get("rooms_suggested_in", []))
+        self.unrefuted_suggestions = list(data.get("unrefuted_suggestions", []))
+        self.player_has_cards = {
+            k: set(v) for k, v in data.get("player_has_cards", {}).items()
+        }
+        self.player_not_has_cards = {
+            k: set(v) for k, v in data.get("player_not_has_cards", {}).items()
+        }
+        self.suggestion_log = list(data.get("suggestion_log", []))
+        self.card_inference_log = {
+            k: list(v) for k, v in data.get("card_inference_log", {}).items()
+        }
+
+    async def save_knowledge(self):
+        """Persist knowledge state to Redis."""
+        if not self._redis or not self._game_id:
+            return
+        try:
+            key = self._knowledge_redis_key()
+            await self._redis.set(key, json.dumps(self.get_knowledge_state()), ex=EXPIRY)
+        except Exception:
+            logger.debug("Failed to save knowledge state for %s", self.player_id)
+
+    def _enqueue_save_knowledge(self):
+        """Fire-and-forget save of knowledge state (from sync contexts)."""
+        import asyncio
+
+        if not self._redis or not self._game_id:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.save_knowledge())
+        except RuntimeError:
+            pass  # No running loop — skip
+
+    async def load_knowledge(self):
+        """Restore knowledge state from Redis."""
+        if not self._redis or not self._game_id:
+            return
+        try:
+            key = self._knowledge_redis_key()
+            raw = await self._redis.get(key)
+            if raw:
+                self.load_knowledge_state(json.loads(raw))
+                self.agent_trace(
+                    "knowledge_restored",
+                    seen_cards=len(self.seen_cards),
+                    suggestion_log=len(self.suggestion_log),
+                    player_has=sum(len(v) for v in self.player_has_cards.values()),
+                    player_not_has=sum(len(v) for v in self.player_not_has_cards.values()),
+                )
+        except Exception:
+            logger.debug("Failed to load knowledge state for %s", self.player_id)
+
+    # ------------------------------------------------------------------
     # Trace method — centralized debug logging + Redis persistence
     # ------------------------------------------------------------------
 
@@ -619,6 +703,7 @@ class BaseAgent(ABC):
         )
         if is_new:
             self._run_inference()
+        self._enqueue_save_knowledge()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
         """Called when a suggestion gets no card shown by anyone."""
@@ -636,6 +721,7 @@ class BaseAgent(ABC):
             room=room,
             total_unrefuted=len(self.unrefuted_suggestions),
         )
+        self._enqueue_save_knowledge()
 
     def observe_card_shown_to_other(
         self, shown_by: str, shown_to: str, suspect: str, weapon: str, room: str
@@ -680,6 +766,7 @@ class BaseAgent(ABC):
                 room=room,
                 possible_cards=len(possible),
             )
+        self._enqueue_save_knowledge()
 
     def _possible_cards_for_player(
         self, player_id: str, candidates: set[str]
@@ -772,6 +859,7 @@ class BaseAgent(ABC):
             shown_by=shown_by,
             players_without_match=players_without_match,
         )
+        self._enqueue_save_knowledge()
 
     def _run_inference(self):
         """Re-examine suggestion log for new deductions from updated knowledge.
@@ -1538,13 +1626,6 @@ class LLMAgent(BaseAgent):
         self._fallback.suggestion_log = self.suggestion_log
         self._fallback.card_inference_log = self.card_inference_log
 
-        self.agent_trace(
-            "llm_configured",
-            api_url=self.api_url,
-            model=self.model,
-            nano_model=self.nano_model,
-            api_key_set=bool(self.api_key),
-        )
 
     async def load_memory(self):
         """Load memory from Redis into the in-memory list."""
@@ -1553,7 +1634,8 @@ class LLMAgent(BaseAgent):
 
             game = ClueGame(self._game_id, self._redis)
             self.memory = await game.get_memory(self.player_id)
-            self.agent_trace("memory_loaded", count=len(self.memory))
+
+
 
     async def _save_memory_entry(self, entry: str):
         """Append a memory entry both in-memory and to Redis."""
@@ -1603,13 +1685,6 @@ class LLMAgent(BaseAgent):
             ],
         }
 
-        self.agent_trace(
-            "llm_request",
-            model=effective_model,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-        )
-
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(self.api_url, json=payload, headers=headers)
@@ -1649,15 +1724,6 @@ class LLMAgent(BaseAgent):
             text = "\n".join(lines).strip()
         try:
             parsed = json.loads(text)
-            self.agent_trace(
-                "json_parse",
-                method="direct",
-                keys=(
-                    sorted(parsed.keys())
-                    if isinstance(parsed, dict)
-                    else str(type(parsed))
-                ),
-            )
             return parsed
         except json.JSONDecodeError:
             start = text.find("{")
@@ -1665,15 +1731,6 @@ class LLMAgent(BaseAgent):
             if start != -1 and end != -1:
                 try:
                     parsed = json.loads(text[start : end + 1])
-                    self.agent_trace(
-                        "json_parse",
-                        method="substring",
-                        keys=(
-                            sorted(parsed.keys())
-                            if isinstance(parsed, dict)
-                            else str(type(parsed))
-                        ),
-                    )
                     return parsed
                 except json.JSONDecodeError:
                     self.agent_trace(
@@ -1912,7 +1969,6 @@ class LLMAgent(BaseAgent):
         )
         non_filler = [a for a in available if a not in ("accuse", "end_turn")]
         if non_filler == ["roll"] and not can_accuse:
-            self.agent_trace("auto_roll", reason="only_option")
             return RollAction()
 
         if errors > 2:
@@ -1938,18 +1994,7 @@ class LLMAgent(BaseAgent):
                 # Extract chat and memory before validation (not game fields)
                 llm_chat = parsed.pop("chat", None)
                 llm_memory = parsed.pop("memory", None)
-                self.agent_trace(
-                    "llm_parsed_action",
-                    action=parsed,
-                    chat=llm_chat,
-                    memory=llm_memory,
-                )
                 if self._validate_action(parsed, available, game_state, player_state):
-                    self.agent_trace(
-                        "llm_action_accepted",
-                        action_type=parsed.get("type"),
-                        payload=parsed,
-                    )
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
@@ -1987,20 +2032,10 @@ class LLMAgent(BaseAgent):
         # Flush any inference notifications before making a decision
         await self._flush_pending_inferences()
 
-        self.agent_trace(
-            "decide_show_card",
-            matching=matching_cards,
-            to_player=suggesting_player_id,
-            previously_shown=sorted(self.shown_to.get(suggesting_player_id, set())),
-        )
-
         # Auto-show: if only one card matches, show it without calling the LLM
         if len(matching_cards) == 1:
             card = matching_cards[0]
             self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-            self.agent_trace(
-                "auto_show_card", card=card, to_player=suggesting_player_id
-            )
             return card
 
         if errors > 2:
@@ -2024,12 +2059,6 @@ class LLMAgent(BaseAgent):
                 card = parsed.get("card")
                 if card in matching_cards:
                     self.shown_to.setdefault(suggesting_player_id, set()).add(card)
-                    self.agent_trace(
-                        "llm_show_card",
-                        card=card,
-                        to_player=suggesting_player_id,
-                        matching=matching_cards,
-                    )
                     return card
                 else:
                     self.agent_trace(
