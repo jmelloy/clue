@@ -36,8 +36,8 @@ Analysis of data flow between backend models, Redis storage, WebSocket broadcast
 
 ### 6. `detective_notes` accessed on wrong model level
 - **Frontend**: `App.vue:222` reads `msg.state.detective_notes`
-- **Backend**: `detective_notes` exists on `PlayerState` (`models.py:68-72`) but not `GameState` (`models.py:49-65`). The `game_state` WebSocket message sends a `GameState`, not `PlayerState`.
-- **Impact**: Detective notes may not restore correctly after reconnection via WebSocket state updates.
+- **Backend**: `detective_notes` exists on `PlayerState` (`models.py:68-72`), and the `game_state` WebSocket message wraps a `PlayerState` in `GameStateUpdateMessage.state` (not a `GameState`).
+- **Impact**: No mismatch here; `detective_notes` is available on the `PlayerState` sent over the WebSocket, so reconnection via `game_state` updates should restore it correctly. This item reflects an earlier incorrect assumption.
 
 ### 7. `/board` endpoint fetched but data never used
 - **Frontend**: `App.vue:163` fetches `/board` and stores result in `boardData`
