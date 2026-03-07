@@ -1214,7 +1214,7 @@ async def _run_agent_loop(game_id: str):
 # ---------------------------------------------------------------------------
 
 
-@app.post("/games", status_code=201, response_model=CreateGameResponse)
+@app.post("/api/games", status_code=201, response_model=CreateGameResponse)
 async def create_game():
     game_id = _new_id(6)
     game = ClueGame(game_id, redis_client)
@@ -1222,7 +1222,7 @@ async def create_game():
     return CreateGameResponse(game_id=game_id, status=state.status)
 
 
-@app.get("/healthz")
+@app.get("/api/healthz")
 async def healthz():
     return OkResponse()
 
@@ -1232,7 +1232,7 @@ async def healthz():
 # ---------------------------------------------------------------------------
 
 
-@app.get("/admin/games")
+@app.get("/api/admin/games")
 async def admin_list_games():
     """Return summary info for every active game (Clue + Hold'em)."""
     games: list[dict] = []
@@ -1311,7 +1311,7 @@ async def admin_list_games():
     return {"games": games}
 
 
-@app.get("/admin/games/{game_id}")
+@app.get("/api/admin/games/{game_id}")
 async def admin_get_game(game_id: str):
     """Return full raw state for a specific game (admin view)."""
     # Try Clue first
@@ -1334,7 +1334,7 @@ async def admin_get_game(game_id: str):
     raise HTTPException(status_code=404, detail="Game not found")
 
 
-@app.get("/board")
+@app.get("/api/board")
 async def get_board():
     """Return static board layout data (doors, rooms, starts, passages)."""
     return {
@@ -1356,7 +1356,7 @@ async def get_board():
     }
 
 
-@app.get("/games/{game_id}")
+@app.get("/api/games/{game_id}")
 async def get_game(game_id: str):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1365,7 +1365,7 @@ async def get_game(game_id: str):
     return state.model_dump()
 
 
-@app.get("/games/{game_id}/debug")
+@app.get("/api/games/{game_id}/debug")
 async def get_game_debug(
     game_id: str,
     trace_limit: int = 500,
@@ -1459,7 +1459,7 @@ async def get_game_debug(
     }
 
 
-@app.get("/games/{game_id}/player/{player_id}")
+@app.get("/api/games/{game_id}/player/{player_id}")
 async def get_player_state(game_id: str, player_id: str):
     game = ClueGame(game_id, redis_client)
     player_state = await game.get_player_state(player_id)
@@ -1468,7 +1468,7 @@ async def get_player_state(game_id: str, player_id: str):
     return player_state.model_dump()
 
 
-@app.get("/games/{game_id}/agent_debug")
+@app.get("/api/games/{game_id}/agent_debug")
 async def get_agent_debug(game_id: str):
     """Return current debug info for all players (agents and humans) in a game."""
     game = ClueGame(game_id, redis_client)
@@ -1539,7 +1539,7 @@ async def get_agent_debug(game_id: str):
     return {"agents": result}
 
 
-@app.post("/games/{game_id}/agent_debug")
+@app.post("/api/games/{game_id}/agent_debug")
 async def post_agent_debug(game_id: str, request: Request):
     """Receive agent debug info from external agent runner, store and broadcast."""
     data = await request.json()
@@ -1562,7 +1562,7 @@ async def post_agent_debug(game_id: str, request: Request):
     await manager.broadcast(game_id, AgentDebugMessage(**data))
 
 
-@app.get("/games/{game_id}/agent_trace")
+@app.get("/api/games/{game_id}/agent_trace")
 async def get_agent_trace(game_id: str, limit: int = 200, offset: int = 0):
     """Return agent trace entries from Redis for debugging."""
     key = f"game:{game_id}:agent_trace"
@@ -1576,7 +1576,7 @@ async def get_agent_trace(game_id: str, limit: int = 200, offset: int = 0):
     }
 
 
-@app.put("/games/{game_id}/agent_trace")
+@app.put("/api/games/{game_id}/agent_trace")
 async def toggle_agent_trace(game_id: str, request: Request):
     """Enable or disable agent tracing for a specific game."""
     data = await request.json()
@@ -1590,7 +1590,7 @@ async def toggle_agent_trace(game_id: str, request: Request):
     return {"agent_trace_enabled": enabled}
 
 
-@app.post("/games/{game_id}/join")
+@app.post("/api/games/{game_id}/join")
 async def join_game(game_id: str, req: JoinRequest):
     game = ClueGame(game_id, redis_client)
     player_id = _new_player_id()
@@ -1608,7 +1608,7 @@ async def join_game(game_id: str, req: JoinRequest):
     return JoinGameResponse(player_id=player_id, player=player)
 
 
-@app.post("/games/{game_id}/add_agent")
+@app.post("/api/games/{game_id}/add_agent")
 async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     """Add an AI agent to a game in the waiting room."""
     agent_type = req.agent_type if req else "agent"
@@ -1637,7 +1637,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     return JoinGameResponse(player_id=player_id, player=player)
 
 
-@app.post("/games/{game_id}/start")
+@app.post("/api/games/{game_id}/start")
 async def start_game(game_id: str):
     game = ClueGame(game_id, redis_client)
     try:
@@ -1764,7 +1764,7 @@ async def start_game(game_id: str):
     return state.model_dump()
 
 
-@app.post("/games/{game_id}/action")
+@app.post("/api/games/{game_id}/action")
 async def submit_action(game_id: str, req: ActionRequest):
     try:
         result = await _execute_action(game_id, req.player_id, req.action)
@@ -1784,7 +1784,7 @@ async def submit_action(game_id: str, req: ActionRequest):
 # ---------------------------------------------------------------------------
 
 
-@app.put("/games/{game_id}/notes")
+@app.put("/api/games/{game_id}/notes")
 async def save_notes(game_id: str, req: SaveNotesRequest):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1799,7 +1799,7 @@ async def save_notes(game_id: str, req: SaveNotesRequest):
 # ---------------------------------------------------------------------------
 
 
-@app.websocket("/ws/{game_id}/{player_id}")
+@app.websocket("/api/ws/{game_id}/{player_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str):
     await manager.connect(game_id, player_id, websocket)
     game = ClueGame(game_id, redis_client)
@@ -1866,7 +1866,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
 # ---------------------------------------------------------------------------
 
 
-@app.get("/games/{game_id}/chat")
+@app.get("/api/games/{game_id}/chat")
 async def get_chat(game_id: str):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1876,7 +1876,7 @@ async def get_chat(game_id: str):
     return ChatMessagesResponse(messages=messages)
 
 
-@app.post("/games/{game_id}/chat")
+@app.post("/api/games/{game_id}/chat")
 async def send_chat(game_id: str, req: ChatRequest):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1912,7 +1912,7 @@ async def _holdem_broadcast_chat(game_id: str, text: str, player_id: str | None 
     )
 
 
-@app.post("/holdem/games", status_code=201, response_model=HoldemCreateGameResponse)
+@app.post("/api/holdem/games", status_code=201, response_model=HoldemCreateGameResponse)
 async def holdem_create_game(req: HoldemCreateGameRequest | None = None):
     game_id = _new_id(6)
     game = HoldemGame(game_id, redis_client)
@@ -1927,7 +1927,7 @@ async def holdem_create_game(req: HoldemCreateGameRequest | None = None):
     )
 
 
-@app.get("/holdem/games/{game_id}")
+@app.get("/api/holdem/games/{game_id}")
 async def holdem_get_game(game_id: str):
     game = HoldemGame(game_id, redis_client)
     state = await game.get_state()
@@ -1936,7 +1936,7 @@ async def holdem_get_game(game_id: str):
     return state.model_dump()
 
 
-@app.get("/holdem/games/{game_id}/player/{player_id}")
+@app.get("/api/holdem/games/{game_id}/player/{player_id}")
 async def holdem_get_player_state(game_id: str, player_id: str):
     game = HoldemGame(game_id, redis_client)
     ps = await game.get_player_state(player_id)
@@ -1945,7 +1945,7 @@ async def holdem_get_player_state(game_id: str, player_id: str):
     return ps.model_dump()
 
 
-@app.post("/holdem/games/{game_id}/join")
+@app.post("/api/holdem/games/{game_id}/join")
 async def holdem_join_game(game_id: str, req: HoldemJoinRequest):
     game = HoldemGame(game_id, redis_client)
     player_id = _new_player_id()
@@ -1963,7 +1963,7 @@ async def holdem_join_game(game_id: str, req: HoldemJoinRequest):
     return HoldemJoinGameResponse(player_id=player_id, player=player)
 
 
-@app.post("/holdem/games/{game_id}/start")
+@app.post("/api/holdem/games/{game_id}/start")
 async def holdem_start_game(game_id: str):
     game = HoldemGame(game_id, redis_client)
     try:
@@ -2136,7 +2136,7 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
     return result
 
 
-@app.post("/holdem/games/{game_id}/action")
+@app.post("/api/holdem/games/{game_id}/action")
 async def holdem_submit_action(game_id: str, req: HoldemActionRequest):
     try:
         result = await _holdem_execute_action(game_id, req.player_id, req.action)
@@ -2150,7 +2150,7 @@ async def holdem_submit_action(game_id: str, req: HoldemActionRequest):
     return response
 
 
-@app.websocket("/ws/holdem/{game_id}/{player_id}")
+@app.websocket("/api/ws/holdem/{game_id}/{player_id}")
 async def holdem_websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str):
     await manager.connect(game_id, player_id, websocket)
     game = HoldemGame(game_id, redis_client)
@@ -2193,7 +2193,7 @@ async def holdem_websocket_endpoint(websocket: WebSocket, game_id: str, player_i
         manager.disconnect(game_id, player_id, websocket)
 
 
-@app.get("/holdem/games/{game_id}/chat")
+@app.get("/api/holdem/games/{game_id}/chat")
 async def holdem_get_chat(game_id: str):
     game = HoldemGame(game_id, redis_client)
     state = await game.get_state()
@@ -2203,7 +2203,7 @@ async def holdem_get_chat(game_id: str):
     return HoldemChatMessagesResponse(messages=messages)
 
 
-@app.post("/holdem/games/{game_id}/chat")
+@app.post("/api/holdem/games/{game_id}/chat")
 async def holdem_send_chat(game_id: str, req: HoldemChatRequest):
     game = HoldemGame(game_id, redis_client)
     state = await game.get_state()
@@ -2297,7 +2297,7 @@ async def _run_holdem_agent_loop(game_id: str):
         logger.info("Holdem agent loop ended for game %s", game_id)
 
 
-@app.post("/holdem/games/{game_id}/add_agent")
+@app.post("/api/holdem/games/{game_id}/add_agent")
 async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = None):
     """Add an AI agent to a Hold'em game in the waiting room."""
     game = HoldemGame(game_id, redis_client)

@@ -94,7 +94,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
 
     # Step 1: Health check
     try:
-        resp = await http.get("/healthz")
+        resp = await http.get("/api/healthz")
         assert resp.status_code == 200, f"Health check failed: {resp.status_code}"
         print("[OK] Server is healthy")
     except Exception as e:
@@ -106,7 +106,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
         return False
 
     # Step 2: Create game
-    resp = await http.post("/games")
+    resp = await http.post("/api/games")
     assert resp.status_code == 201
     game_id = resp.json()["game_id"]
     print(f"[OK] Created game: {game_id}")
@@ -116,7 +116,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
     player_characters: dict[str, str] = {}
     for i in range(num_agents):
         resp = await http.post(
-            f"/games/{game_id}/join",
+            f"/api/games/{game_id}/join",
             json={"player_name": f"Bot-{i}", "player_type": "agent"},
         )
         assert resp.status_code == 200
@@ -143,7 +143,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             pass
 
     for pid in pids:
-        ws = await websockets.connect(f"{ws_base}/ws/{game_id}/{pid}")
+        ws = await websockets.connect(f"{ws_base}/api/ws/{game_id}/{pid}")
         ws_connections[pid] = ws
     print(f"[OK] WebSocket connections established for all {num_agents} agents")
 
@@ -162,7 +162,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
     print("[OK] All agents received initial game_state via WebSocket")
 
     # Step 5: Start game
-    resp = await http.post(f"/games/{game_id}/start")
+    resp = await http.post(f"/api/games/{game_id}/start")
     assert resp.status_code == 200
     print(f"[OK] Game started, first turn: {resp.json()['whose_turn']}")
 
@@ -198,7 +198,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
     start_time = time.time()
 
     # Fetch initial state as a GameState model
-    resp = await http.get(f"/games/{game_id}")
+    resp = await http.get(f"/api/games/{game_id}")
     game_state = GameState.model_validate(resp.json())
 
     while game_state.status == "playing" and actions_taken < MAX_TURNS:
@@ -213,7 +213,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
                 pending.suggesting_player_id,
             )
             resp = await http.post(
-                f"/games/{game_id}/action",
+                f"/api/games/{game_id}/action",
                 json={"player_id": pid, "action": {"type": "show_card", "card": card}},
             )
             assert resp.status_code == 200, f"show_card failed: {resp.text}"
@@ -244,7 +244,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
             )
             action = await agent.decide_action(game_state, player_state)
             resp = await http.post(
-                f"/games/{game_id}/action",
+                f"/api/games/{game_id}/action",
                 json={"player_id": pid, "action": action},
             )
             assert (
@@ -275,7 +275,7 @@ async def run_live_test(base_url: str, num_agents: int = 3):
         await asyncio.sleep(0.05)
 
         # Refresh game state
-        resp = await http.get(f"/games/{game_id}")
+        resp = await http.get(f"/api/games/{game_id}")
         game_state = GameState.model_validate(resp.json())
         actions_taken += 1
 

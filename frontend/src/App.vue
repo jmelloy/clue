@@ -160,7 +160,7 @@ onMounted(async () => {
     urlGameId.value = parsed.gameId
   }
   try {
-    const res = await fetch('/board')
+    const res = await fetch('/api/board')
     if (res.ok) boardData.value = await res.json()
   } catch (_) {
     /* fall back to hardcoded board data */
@@ -178,8 +178,8 @@ function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   const wsPath =
     currentGameType.value === 'holdem'
-      ? `/ws/holdem/${gameId.value}/${playerId.value}`
-      : `/ws/${gameId.value}/${playerId.value}`
+      ? `/api/ws/holdem/${gameId.value}/${playerId.value}`
+      : `/api/ws/${gameId.value}/${playerId.value}`
   ws = new WebSocket(`${proto}://${location.host}${wsPath}`)
 
   ws.onopen = () => {
@@ -537,7 +537,7 @@ function onObserve({ gameId: gid, gameType: gType }) {
   urlGameId.value = null
 
   // Fetch current state
-  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
+  const endpoint = currentGameType.value === 'holdem' ? `/api/holdem/games/${gid}` : `/api/games/${gid}`
   fetch(endpoint)
     .then((r) => r.json())
     .then((state) => {
@@ -565,7 +565,7 @@ function onRejoin({ gameId: gid, playerId: pid, gameType: gType }) {
   urlGameId.value = null
 
   // Fetch current state
-  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
+  const endpoint = currentGameType.value === 'holdem' ? `/api/holdem/games/${gid}` : `/api/games/${gid}`
   fetch(endpoint)
     .then((r) => r.json())
     .then((state) => {
@@ -583,7 +583,7 @@ function onRejoin({ gameId: gid, playerId: pid, gameType: gType }) {
 }
 
 function loadChat(gid) {
-  fetch(`/games/${gid}/chat`)
+  fetch(`/api/games/${gid}/chat`)
     .then((r) => r.json())
     .then((data) => {
       chatMessages.value = data.messages ?? []
@@ -592,7 +592,7 @@ function loadChat(gid) {
 }
 
 function loadAgentDebug(gid) {
-  fetch(`/games/${gid}/agent_debug`)
+  fetch(`/api/games/${gid}/agent_debug`)
     .then((r) => r.json())
     .then((data) => {
       if (data.agents) {
@@ -608,7 +608,7 @@ function loadAgentDebug(gid) {
 
 function onObserverSelectPlayer(pid) {
   if (!isObserver.value || !gameId.value) return
-  fetch(`/games/${gameId.value}/player/${pid}`)
+  fetch(`/api/games/${gameId.value}/player/${pid}`)
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => {
       if (data) {
@@ -628,7 +628,7 @@ function onGameStarted(state) {
 }
 
 async function sendAction(action) {
-  const res = await fetch(`/games/${gameId.value}/action`, {
+  const res = await fetch(`/api/games/${gameId.value}/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, action })
@@ -638,7 +638,7 @@ async function sendAction(action) {
     if (result.available_actions) availableActions.value = result.available_actions
     // Refresh full state to stay in sync
     try {
-      const stateRes = await fetch(`/games/${gameId.value}`)
+      const stateRes = await fetch(`/api/games/${gameId.value}`)
       if (stateRes.ok) {
         const freshState = await stateRes.json()
         gameState.value = freshState
@@ -650,7 +650,7 @@ async function sendAction(action) {
 }
 
 async function sendChat(text) {
-  await fetch(`/games/${gameId.value}/chat`, {
+  await fetch(`/api/games/${gameId.value}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, text })
@@ -733,7 +733,7 @@ function handleHoldemMessage(msg) {
 async function refreshHoldemState() {
   if (!gameId.value || !playerId.value) return
   try {
-    const res = await fetch(`/holdem/games/${gameId.value}/player/${playerId.value}`)
+    const res = await fetch(`/api/holdem/games/${gameId.value}/player/${playerId.value}`)
     if (res.ok) {
       const state = await res.json()
       gameState.value = state
@@ -746,7 +746,7 @@ async function refreshHoldemState() {
 }
 
 async function sendHoldemAction(action) {
-  const res = await fetch(`/holdem/games/${gameId.value}/action`, {
+  const res = await fetch(`/api/holdem/games/${gameId.value}/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, action })
@@ -759,7 +759,7 @@ async function sendHoldemAction(action) {
 }
 
 async function sendHoldemChat(text) {
-  await fetch(`/holdem/games/${gameId.value}/chat`, {
+  await fetch(`/api/holdem/games/${gameId.value}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, text })
@@ -767,7 +767,7 @@ async function sendHoldemChat(text) {
 }
 
 function loadHoldemChat(gid) {
-  fetch(`/holdem/games/${gid}/chat`)
+  fetch(`/api/holdem/games/${gid}/chat`)
     .then((r) => r.json())
     .then((data) => {
       chatMessages.value = data.messages ?? []

@@ -134,7 +134,7 @@ async function addAgent() {
   error.value = ''
   addingAgent.value = true
   try {
-    const res = await fetch(`/holdem/games/${props.gameId}/add_agent`, { method: 'POST' })
+    const res = await fetch(`/api/holdem/games/${props.gameId}/add_agent`, { method: 'POST' })
     if (!res.ok) {
       const data = await res.json()
       error.value = data.detail ?? 'Failed to add agent'
@@ -149,7 +149,7 @@ async function addAgent() {
 async function startGame() {
   error.value = ''
   try {
-    const res = await fetch(`/holdem/games/${props.gameId}/start`, { method: 'POST' })
+    const res = await fetch(`/api/holdem/games/${props.gameId}/start`, { method: 'POST' })
     if (!res.ok) {
       const data = await res.json()
       error.value = data.detail ?? 'Failed to start'
