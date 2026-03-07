@@ -567,7 +567,7 @@ class BaseAgent(ABC):
         }
 
     async def save_knowledge(self):
-        """Persist knowledge state to Redis."""
+        """Persist knowledge state and detective notes to Redis."""
         if not self._redis or not self._game_id:
             return
         try:
@@ -577,9 +577,60 @@ class BaseAgent(ABC):
             )
         except Exception:
             logger.debug("Failed to save knowledge state for %s", self.player_id)
+        await self._save_detective_notes()
+
+    def _build_detective_notes(self) -> dict:
+        """Convert agent knowledge into the detective notes format.
+
+        Returns a dict matching the frontend DetectiveNotes structure:
+          {"notes": {card: state, ...}, "shownBy": {card: player_name, ...}}
+
+        Mapping:
+          - own_cards → "have"
+          - seen_cards (not own) → "seen" (directly shown to agent)
+          - inferred_cards → "seen" (deduced through elimination)
+        """
+        notes: dict[str, str] = {}
+        shown_by: dict[str, str] = {}
+
+        for card in self.own_cards:
+            notes[card] = "have"
+
+        for card in self.seen_cards - self.own_cards:
+            notes[card] = "seen"
+            # Find who showed this card
+            for pid, cards in self.player_has_cards.items():
+                if card in cards:
+                    shown_by[card] = self._name(pid)
+                    break
+
+        for card in self.inferred_cards:
+            notes[card] = "seen"
+            # Find who holds this inferred card
+            if card not in shown_by:
+                for pid, cards in self.player_has_cards.items():
+                    if card in cards:
+                        shown_by[card] = self._name(pid)
+                        break
+
+        return {"notes": notes, "shownBy": shown_by}
+
+    async def _save_detective_notes(self):
+        """Persist detective notes to Redis (same key as player notes)."""
+        if not self._redis or not self._game_id:
+            return
+        try:
+            key = f"game:{self._game_id}:notes:{self.player_id}"
+            await self._redis.set(
+                key, json.dumps(self._build_detective_notes()), ex=EXPIRY
+            )
+        except Exception:
+            logger.debug(
+                "Failed to save detective notes for %s", self.player_id
+            )
 
     def _enqueue_save_knowledge(self):
-        """Fire-and-forget save of knowledge state (from sync contexts)."""
+        """Fire-and-forget save of knowledge state and detective notes."""
         import asyncio
 
         if not self._redis or not self._game_id:
