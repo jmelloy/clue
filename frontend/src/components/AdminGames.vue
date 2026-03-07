@@ -147,7 +147,7 @@ async function fetchGames() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch('/admin/games')
+    const res = await fetch('/api/admin/games')
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     games.value = data.games
@@ -163,7 +163,7 @@ async function openGame(game) {
   detailLoading.value = true
   gameDetail.value = null
   try {
-    const res = await fetch(`/admin/games/${game.game_id}`)
+    const res = await fetch(`/api/admin/games/${game.game_id}`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     gameDetail.value = await res.json()
   } catch (e) {
