@@ -84,8 +84,11 @@
             'observer-clickable': isObserver,
             'observer-selected': isObserver && observerPlayerState?.playerId === p.id
           }" @click.stop="onLegendClick(p)">
-            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
-              :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
+            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer', 'has-image': p.type !== 'wanderer' && hasCardImage(p.character) }"
+              :style="tokenStyle(p)">
+              <img v-if="p.type !== 'wanderer' && hasCardImage(p.character)" :src="cardImageUrl(p.character)" :alt="p.character" class="legend-token-portrait" />
+              <template v-else>{{ abbr(p.character) }}</template>
+            </span>
             <span class="legend-name">{{ p.name }}</span>
             <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
@@ -631,7 +634,7 @@ function playerName(pid) {
 
 function tokenStyle(player) {
   const { bg, text } = characterColors(player.character)
-  const style = { backgroundColor: bg, color: text }
+  const style = { backgroundColor: bg, color: text, '--token-border': bg }
   if (player.type === 'wanderer') style.opacity = 0.5
   return style
 }
@@ -1004,6 +1007,25 @@ watch(
   font-weight: bold;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.legend-token.has-image {
+  background: none !important;
+  border: 2px solid;
+  border-color: var(--token-border, rgba(255, 255, 255, 0.5));
+  overflow: hidden;
+  padding: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.legend-token-portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  border-radius: 50%;
+  display: block;
+  clip-path: circle(50%);
 }
 
 .legend-name {
