@@ -56,6 +56,7 @@ class GameState(BaseModel):
     player_positions: dict[str, list[int]] = Field(default_factory=dict)
     suggestions_this_turn: list[Suggestion] = Field(default_factory=list)
     winner: Optional[str] = None
+    solution: Optional[Solution] = None
     dice_rolled: bool = False
     moved: bool = False
     last_roll: Optional[list[int]] = None

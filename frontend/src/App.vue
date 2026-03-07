@@ -232,6 +232,10 @@ function handleMessage(msg) {
         } else {
           showCardRequest.value = null
         }
+        // If game is finished, clear actions and timers (handles reconnect after game over)
+        if (msg.state.status === 'finished') {
+          availableActions.value = []
+        }
       } else {
         // Partial update: merge individual fields
         const { type: _type, ...fields } = msg
