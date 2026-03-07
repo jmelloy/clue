@@ -749,7 +749,7 @@ let saveNotesTimer = null
 function onNotesChanged(notesData) {
   if (saveNotesTimer) clearTimeout(saveNotesTimer)
   saveNotesTimer = setTimeout(() => {
-    fetch(`/api/games/${props.gameId}/notes`, {
+    fetch(`/api/clue/games/${props.gameId}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_id: props.playerId, notes: notesData })

@@ -92,7 +92,7 @@ async def http(redis):
 
 
 async def _create_game(http: AsyncClient) -> str:
-    resp = await http.post("/api/games")
+    resp = await http.post("/api/clue/games")
     assert resp.status_code == 201
     return resp.json()["game_id"]
 
@@ -101,7 +101,7 @@ async def _join_game(
     http: AsyncClient, game_id: str, name: str, player_type: str = "human"
 ) -> str:
     resp = await http.post(
-        f"/api/games/{game_id}/join",
+        f"/api/clue/games/{game_id}/join",
         json={"player_name": name, "player_type": player_type},
     )
     assert resp.status_code == 200
@@ -123,7 +123,7 @@ async def _assign_characters(redis, game_id: str, assignments: dict[str, str]):
 
 
 async def _start_game(http: AsyncClient, game_id: str) -> dict:
-    resp = await http.post(f"/api/games/{game_id}/start")
+    resp = await http.post(f"/api/clue/games/{game_id}/start")
     assert resp.status_code == 200
     return resp.json()
 
@@ -134,7 +134,7 @@ async def _submit_action(
     # Convert Pydantic models to dicts for JSON serialization
     action_data = action.model_dump() if hasattr(action, "model_dump") else action
     resp = await http.post(
-        f"/api/games/{game_id}/action",
+        f"/api/clue/games/{game_id}/action",
         json={"player_id": player_id, "action": action_data},
     )
     assert (
@@ -144,7 +144,7 @@ async def _submit_action(
 
 
 async def _get_state(http: AsyncClient, game_id: str) -> dict:
-    resp = await http.get(f"/api/games/{game_id}")
+    resp = await http.get(f"/api/clue/games/{game_id}")
     assert resp.status_code == 200
     return resp.json()
 
@@ -899,7 +899,7 @@ class TestChatIntegration:
         ws2.drain()
 
         resp = await http.post(
-            f"/api/games/{game_id}/chat",
+            f"/api/clue/games/{game_id}/chat",
             json={"player_id": pid1, "text": "Good luck!"},
         )
         assert resp.status_code == 200
