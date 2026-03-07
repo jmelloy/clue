@@ -1,5 +1,7 @@
 // Shared Clue game constants — single source of truth
 
+import type { CharacterColor } from '../types'
+
 export const SUSPECTS = [
   'Miss Scarlett',
   'Colonel Mustard',
@@ -7,9 +9,9 @@ export const SUSPECTS = [
   'Reverend Green',
   'Mrs. Peacock',
   'Professor Plum'
-]
+] as const
 
-export const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench']
+export const WEAPONS = ['Candlestick', 'Knife', 'Lead Pipe', 'Revolver', 'Rope', 'Wrench'] as const
 
 export const ROOMS = [
   'Kitchen',
@@ -21,9 +23,14 @@ export const ROOMS = [
   'Hall',
   'Lounge',
   'Dining Room'
-]
+] as const
 
-export const CHARACTER_COLORS = {
+export type Suspect = (typeof SUSPECTS)[number]
+export type Weapon = (typeof WEAPONS)[number]
+export type Room = (typeof ROOMS)[number]
+export type ClueCard = Suspect | Weapon | Room
+
+export const CHARACTER_COLORS: Record<string, CharacterColor> = {
   'Miss Scarlett': { bg: '#c0392b', text: '#fff' },
   'Colonel Mustard': { bg: '#e8b812', text: '#1a1a2e' },
   'Mrs. White': { bg: '#e8e8e8', text: '#1a1a2e', name: '#9e9e9e' },
@@ -32,7 +39,7 @@ export const CHARACTER_COLORS = {
   'Professor Plum': { bg: '#7b2d8e', text: '#fff' }
 }
 
-export const CHARACTER_ABBR = {
+export const CHARACTER_ABBR: Record<string, string> = {
   'Miss Scarlett': 'Sc',
   'Colonel Mustard': 'Mu',
   'Mrs. White': 'Wh',
@@ -41,7 +48,7 @@ export const CHARACTER_ABBR = {
   'Professor Plum': 'Pl'
 }
 
-export const CARD_ICONS = {
+export const CARD_ICONS: Record<string, string> = {
   // Suspects
   'Miss Scarlett': '\u{1F48B}', // 💋
   'Colonel Mustard': '\u{1F396}', // 🎖️
@@ -68,7 +75,7 @@ export const CARD_ICONS = {
   'Dining Room': '\u{1F37D}' // 🍽️
 }
 
-export const CARD_IMAGES = {
+export const CARD_IMAGES: Record<string, string> = {
   // Suspects
   'Miss Scarlett': '/images/clue/suspects/thumbnails/MissScarlett.jpg',
   'Colonel Mustard': '/images/clue/suspects/thumbnails/ColonelMustard.jpg',
@@ -97,7 +104,7 @@ export const CARD_IMAGES = {
 
 // Per-theme card image overrides — keyed by theme name, each a partial map of card name -> image URL.
 // Falls back to CARD_IMAGES for any card not listed under the active theme.
-export const THEME_CARD_IMAGES = {
+export const THEME_CARD_IMAGES: Record<string, Record<string, string>> = {
   vintage: {
     Kitchen: '/images/clue/alternates/vintage/kitchen.png',
     Ballroom: '/images/clue/alternates/vintage/ballroom.png',
@@ -119,27 +126,27 @@ export const THEME_CARD_IMAGES = {
   }
 }
 
-export function cardIcon(card) {
+export function cardIcon(card: string): string {
   return CARD_ICONS[card] || '\u{1F0CF}'
 }
 
-export function hasCardImage(card, theme) {
-  const overrides = theme && THEME_CARD_IMAGES[theme]
+export function hasCardImage(card: string, theme?: string): boolean {
+  const overrides = theme ? THEME_CARD_IMAGES[theme] : undefined
   if (overrides?.[card]) return true
   return !!CARD_IMAGES[card]
 }
 
-export function cardImageUrl(card, theme) {
-  const overrides = theme && THEME_CARD_IMAGES[theme]
+export function cardImageUrl(card: string, theme?: string): string {
+  const overrides = theme ? THEME_CARD_IMAGES[theme] : undefined
   return overrides?.[card] || CARD_IMAGES[card] || ''
 }
 
 /** Returns the abbreviation for a character name (e.g. "Sc" for "Miss Scarlett"). */
-export function abbr(character) {
+export function abbr(character: string): string {
   return CHARACTER_ABBR[character] ?? character?.charAt(0) ?? '?'
 }
 
 /** Returns the `{ bg, text }` color pair for a character. Falls back to a neutral gray. */
-export function characterColors(character) {
+export function characterColors(character: string): CharacterColor {
   return CHARACTER_COLORS[character] ?? { bg: '#666', text: '#fff' }
 }

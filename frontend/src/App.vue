@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useTheme } from './composables/useTheme.js'
+import { useTheme } from './composables/useTheme'
 import Lobby from './components/Lobby.vue'
 import WaitingRoom from './components/WaitingRoom.vue'
 import GameBoard from './components/GameBoard.vue'

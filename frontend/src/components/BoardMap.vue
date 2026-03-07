@@ -44,8 +44,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CARD_IMAGES, CARD_ICONS, THEME_CARD_IMAGES, WEAPONS, abbr, characterColors } from '../constants/clue.js'
-import { useTheme } from '../composables/useTheme.js'
+import { CARD_IMAGES, CARD_ICONS, THEME_CARD_IMAGES, WEAPONS, abbr, characterColors } from '../constants/clue'
+import { useTheme } from '../composables/useTheme'
 
 const { theme } = useTheme()
 

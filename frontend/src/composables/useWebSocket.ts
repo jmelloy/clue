@@ -1,14 +1,19 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, type Ref } from 'vue'
+
+export interface UseWebSocketReturn {
+  messages: Ref<unknown[]>
+  send: (data: string | Record<string, unknown>) => void
+  connected: Ref<boolean>
+  disconnect: () => void
+}
 
 /**
  * Composable for WebSocket connection management.
- * @param {string} gameId
- * @param {string} playerId
  */
-export function useWebSocket(gameId, playerId) {
-  const messages = ref([])
+export function useWebSocket(gameId: string, playerId: string): UseWebSocketReturn {
+  const messages = ref<unknown[]>([])
   const connected = ref(false)
-  let ws = null
+  let ws: WebSocket | null = null
 
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -26,11 +31,11 @@ export function useWebSocket(gameId, playerId) {
       connected.value = false
     }
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (event: MessageEvent) => {
       try {
         const msg = JSON.parse(event.data)
         messages.value.push(msg)
-      } catch (e) {
+      } catch {
         console.warn(
           '[useWebSocket] Failed to parse WebSocket message as JSON. Check message format.'
         )
@@ -38,7 +43,7 @@ export function useWebSocket(gameId, playerId) {
     }
   }
 
-  function send(data) {
+  function send(data: string | Record<string, unknown>) {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(typeof data === 'string' ? data : JSON.stringify(data))
     }

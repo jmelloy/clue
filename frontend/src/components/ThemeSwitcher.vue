@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { useTheme } from '../composables/useTheme.js'
+import { useTheme } from '../composables/useTheme'
 
 const { theme, themes, setTheme } = useTheme()
 

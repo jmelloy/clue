@@ -55,7 +55,7 @@ import {
   CHARACTER_COLORS,
   CARD_ICONS,
   CARD_IMAGES
-} from '../constants/clue.js'
+} from '../constants/clue'
 
 // States: '' (unknown), 'have' (in your hand), 'seen' (shown to you), 'no' (eliminated), 'maybe' (possible)
 const CYCLE = ['', 'no', 'maybe', '']
