@@ -94,19 +94,19 @@ function parseGameIdFromUrl() {
   // Check admin route
   if (window.location.pathname === '/admin') return { admin: true }
   // Check debug route
-  const debugMatch = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)\/debug/)
+  const debugMatch = window.location.pathname.match(/^\/clue\/([A-Za-z0-9]+)\/debug/)
   if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
   // Check holdem route first
   const holdemMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)/)
   if (holdemMatch) return { gameId: holdemMatch[1].toUpperCase(), gameType: 'holdem' }
   // Check clue route
-  const clueMatch = window.location.pathname.match(/^\/game\/([A-Za-z0-9]+)/)
+  const clueMatch = window.location.pathname.match(/^\/clue\/([A-Za-z0-9]+)/)
   if (clueMatch) return { gameId: clueMatch[1].toUpperCase(), gameType: 'clue' }
   return null
 }
 
 function pushGameUrl(gid) {
-  const prefix = currentGameType.value === 'holdem' ? '/holdem' : '/game'
+  const prefix = currentGameType.value === 'holdem' ? '/holdem' : '/clue'
   const url = `${prefix}/${gid}`
   if (window.location.pathname !== url) {
     window.history.pushState({ gameId: gid, gameType: currentGameType.value }, '', url)
@@ -160,7 +160,7 @@ onMounted(async () => {
     urlGameId.value = parsed.gameId
   }
   try {
-    const res = await fetch('/board')
+    const res = await fetch('/clue/board')
     if (res.ok) boardData.value = await res.json()
   } catch (_) {
     /* fall back to hardcoded board data */
@@ -179,7 +179,7 @@ function connectWS() {
   const wsPath =
     currentGameType.value === 'holdem'
       ? `/ws/holdem/${gameId.value}/${playerId.value}`
-      : `/ws/${gameId.value}/${playerId.value}`
+      : `/ws/clue/${gameId.value}/${playerId.value}`
   ws = new WebSocket(`${proto}://${location.host}${wsPath}`)
 
   ws.onopen = () => {
@@ -537,7 +537,7 @@ function onObserve({ gameId: gid, gameType: gType }) {
   urlGameId.value = null
 
   // Fetch current state
-  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
+  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/clue/games/${gid}`
   fetch(endpoint)
     .then((r) => r.json())
     .then((state) => {
@@ -565,7 +565,7 @@ function onRejoin({ gameId: gid, playerId: pid, gameType: gType }) {
   urlGameId.value = null
 
   // Fetch current state
-  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/games/${gid}`
+  const endpoint = currentGameType.value === 'holdem' ? `/holdem/games/${gid}` : `/clue/games/${gid}`
   fetch(endpoint)
     .then((r) => r.json())
     .then((state) => {
@@ -583,7 +583,7 @@ function onRejoin({ gameId: gid, playerId: pid, gameType: gType }) {
 }
 
 function loadChat(gid) {
-  fetch(`/games/${gid}/chat`)
+  fetch(`/clue/games/${gid}/chat`)
     .then((r) => r.json())
     .then((data) => {
       chatMessages.value = data.messages ?? []
@@ -592,7 +592,7 @@ function loadChat(gid) {
 }
 
 function loadAgentDebug(gid) {
-  fetch(`/games/${gid}/agent_debug`)
+  fetch(`/clue/games/${gid}/agent_debug`)
     .then((r) => r.json())
     .then((data) => {
       if (data.agents) {
@@ -608,7 +608,7 @@ function loadAgentDebug(gid) {
 
 function onObserverSelectPlayer(pid) {
   if (!isObserver.value || !gameId.value) return
-  fetch(`/games/${gameId.value}/player/${pid}`)
+  fetch(`/clue/games/${gameId.value}/player/${pid}`)
     .then((r) => (r.ok ? r.json() : null))
     .then((data) => {
       if (data) {
@@ -628,7 +628,7 @@ function onGameStarted(state) {
 }
 
 async function sendAction(action) {
-  const res = await fetch(`/games/${gameId.value}/action`, {
+  const res = await fetch(`/clue/games/${gameId.value}/action`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, action })
@@ -638,7 +638,7 @@ async function sendAction(action) {
     if (result.available_actions) availableActions.value = result.available_actions
     // Refresh full state to stay in sync
     try {
-      const stateRes = await fetch(`/games/${gameId.value}`)
+      const stateRes = await fetch(`/clue/games/${gameId.value}`)
       if (stateRes.ok) {
         const freshState = await stateRes.json()
         gameState.value = freshState
@@ -650,7 +650,7 @@ async function sendAction(action) {
 }
 
 async function sendChat(text) {
-  await fetch(`/games/${gameId.value}/chat`, {
+  await fetch(`/clue/games/${gameId.value}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, text })

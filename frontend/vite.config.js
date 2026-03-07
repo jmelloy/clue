@@ -12,8 +12,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/games': backendUrl,
-      '/board': backendUrl,
+      '/clue/games': backendUrl,
+      '/clue/board': backendUrl,
       '/holdem/games': backendUrl,
       '/admin/games': backendUrl,
       '/ws': { target: backendWsUrl, ws: true }

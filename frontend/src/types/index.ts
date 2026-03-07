@@ -502,7 +502,7 @@ export interface CharacterColor {
   name?: string
 }
 
-/** Board data fetched from /board endpoint. */
+/** Board data fetched from /clue/board endpoint. */
 export interface BoardData {
   grid: string[][]
   rooms: Record<string, { name: string; top: number; left: number; width: number; height: number }>

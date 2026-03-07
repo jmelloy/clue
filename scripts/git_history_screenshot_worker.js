@@ -105,11 +105,11 @@ async function screenshotClueViaUI(browser, label, outputDir) {
     if (gameIdMatch) {
       const gameId = gameIdMatch[1];
       // Check player count via API
-      const state = await tryFetch(`${BACKEND_URL}/games/${gameId}`);
+      const state = await tryFetch(`${BACKEND_URL}/clue/games/${gameId}`);
       const playerCount = state?.players?.length || 0;
       if (playerCount < 3) {
         for (let i = playerCount; i < 3; i++) {
-          await tryFetch(`${BACKEND_URL}/games/${gameId}/join`, {
+          await tryFetch(`${BACKEND_URL}/clue/games/${gameId}/join`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ player_name: `Bot${i}` }),

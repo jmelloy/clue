@@ -9,7 +9,7 @@ Discovery:
 
 Communication:
   - Connects to the backend via WebSocket for real-time game events.
-  - Submits actions via the backend HTTP API (POST /games/{game_id}/action).
+  - Submits actions via the backend HTTP API (POST /clue/games/{game_id}/action).
   - Fetches player state via HTTP GET when making decisions.
 """
 
@@ -361,7 +361,7 @@ class AgentRunner:
         agent: BaseAgent,
     ):
         """Drive a single agent via a WebSocket connection to the backend."""
-        ws_url = f"{_WS_URL}/ws/{game_id}/{player_id}"
+        ws_url = f"{_WS_URL}/ws/clue/{game_id}/{player_id}"
         logger.info("Connecting agent %s to WebSocket %s", player_id, ws_url)
 
         max_reconnects = 5
@@ -451,7 +451,7 @@ class AgentRunner:
             await asyncio.sleep(1.35)
 
         # Fetch fresh player state from the backend
-        resp = await self.http.get(f"/games/{game_id}/player/{player_id}")
+        resp = await self.http.get(f"/clue/games/{game_id}/player/{player_id}")
         if resp.status_code != 200:
             logger.warning(
                 "Failed to fetch player state for %s in game %s: %s",
@@ -601,7 +601,7 @@ class AgentRunner:
                 decided_action=action.model_dump() if action else None,
             )
             await self.http.post(
-                f"/games/{game_id}/agent_debug",
+                f"/clue/games/{game_id}/agent_debug",
                 json=debug_info,
             )
         except Exception:
@@ -612,7 +612,7 @@ class AgentRunner:
     async def _send_action(self, game_id: str, player_id: str, action: dict) -> dict:
         """Send an action to the backend via the HTTP API."""
         resp = await self.http.post(
-            f"/games/{game_id}/action",
+            f"/clue/games/{game_id}/action",
             json={"player_id": player_id, "action": action},
         )
         if resp.status_code == 400:
@@ -633,7 +633,7 @@ class AgentRunner:
         logger.info("Sending chat from %s in game %s: %s", player_id, game_id, text)
         try:
             await self.http.post(
-                f"/games/{game_id}/chat",
+                f"/clue/games/{game_id}/chat",
                 json={"player_id": player_id, "text": text},
             )
         except Exception:

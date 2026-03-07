@@ -1214,7 +1214,7 @@ async def _run_agent_loop(game_id: str):
 # ---------------------------------------------------------------------------
 
 
-@app.post("/games", status_code=201, response_model=CreateGameResponse)
+@app.post("/clue/games", status_code=201, response_model=CreateGameResponse)
 async def create_game():
     game_id = _new_id(6)
     game = ClueGame(game_id, redis_client)
@@ -1334,7 +1334,7 @@ async def admin_get_game(game_id: str):
     raise HTTPException(status_code=404, detail="Game not found")
 
 
-@app.get("/board")
+@app.get("/clue/board")
 async def get_board():
     """Return static board layout data (doors, rooms, starts, passages)."""
     return {
@@ -1356,7 +1356,7 @@ async def get_board():
     }
 
 
-@app.get("/games/{game_id}")
+@app.get("/clue/games/{game_id}")
 async def get_game(game_id: str):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1365,7 +1365,7 @@ async def get_game(game_id: str):
     return state.model_dump()
 
 
-@app.get("/games/{game_id}/debug")
+@app.get("/clue/games/{game_id}/debug")
 async def get_game_debug(
     game_id: str,
     trace_limit: int = 500,
@@ -1459,7 +1459,7 @@ async def get_game_debug(
     }
 
 
-@app.get("/games/{game_id}/player/{player_id}")
+@app.get("/clue/games/{game_id}/player/{player_id}")
 async def get_player_state(game_id: str, player_id: str):
     game = ClueGame(game_id, redis_client)
     player_state = await game.get_player_state(player_id)
@@ -1468,7 +1468,7 @@ async def get_player_state(game_id: str, player_id: str):
     return player_state.model_dump()
 
 
-@app.get("/games/{game_id}/agent_debug")
+@app.get("/clue/games/{game_id}/agent_debug")
 async def get_agent_debug(game_id: str):
     """Return current debug info for all players (agents and humans) in a game."""
     game = ClueGame(game_id, redis_client)
@@ -1539,7 +1539,7 @@ async def get_agent_debug(game_id: str):
     return {"agents": result}
 
 
-@app.post("/games/{game_id}/agent_debug")
+@app.post("/clue/games/{game_id}/agent_debug")
 async def post_agent_debug(game_id: str, request: Request):
     """Receive agent debug info from external agent runner, store and broadcast."""
     data = await request.json()
@@ -1562,7 +1562,7 @@ async def post_agent_debug(game_id: str, request: Request):
     await manager.broadcast(game_id, AgentDebugMessage(**data))
 
 
-@app.get("/games/{game_id}/agent_trace")
+@app.get("/clue/games/{game_id}/agent_trace")
 async def get_agent_trace(game_id: str, limit: int = 200, offset: int = 0):
     """Return agent trace entries from Redis for debugging."""
     key = f"game:{game_id}:agent_trace"
@@ -1576,7 +1576,7 @@ async def get_agent_trace(game_id: str, limit: int = 200, offset: int = 0):
     }
 
 
-@app.put("/games/{game_id}/agent_trace")
+@app.put("/clue/games/{game_id}/agent_trace")
 async def toggle_agent_trace(game_id: str, request: Request):
     """Enable or disable agent tracing for a specific game."""
     data = await request.json()
@@ -1590,7 +1590,7 @@ async def toggle_agent_trace(game_id: str, request: Request):
     return {"agent_trace_enabled": enabled}
 
 
-@app.post("/games/{game_id}/join")
+@app.post("/clue/games/{game_id}/join")
 async def join_game(game_id: str, req: JoinRequest):
     game = ClueGame(game_id, redis_client)
     player_id = _new_player_id()
@@ -1608,7 +1608,7 @@ async def join_game(game_id: str, req: JoinRequest):
     return JoinGameResponse(player_id=player_id, player=player)
 
 
-@app.post("/games/{game_id}/add_agent")
+@app.post("/clue/games/{game_id}/add_agent")
 async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     """Add an AI agent to a game in the waiting room."""
     agent_type = req.agent_type if req else "agent"
@@ -1637,7 +1637,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     return JoinGameResponse(player_id=player_id, player=player)
 
 
-@app.post("/games/{game_id}/start")
+@app.post("/clue/games/{game_id}/start")
 async def start_game(game_id: str):
     game = ClueGame(game_id, redis_client)
     try:
@@ -1764,7 +1764,7 @@ async def start_game(game_id: str):
     return state.model_dump()
 
 
-@app.post("/games/{game_id}/action")
+@app.post("/clue/games/{game_id}/action")
 async def submit_action(game_id: str, req: ActionRequest):
     try:
         result = await _execute_action(game_id, req.player_id, req.action)
@@ -1784,7 +1784,7 @@ async def submit_action(game_id: str, req: ActionRequest):
 # ---------------------------------------------------------------------------
 
 
-@app.put("/games/{game_id}/notes")
+@app.put("/clue/games/{game_id}/notes")
 async def save_notes(game_id: str, req: SaveNotesRequest):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1799,7 +1799,7 @@ async def save_notes(game_id: str, req: SaveNotesRequest):
 # ---------------------------------------------------------------------------
 
 
-@app.websocket("/ws/{game_id}/{player_id}")
+@app.websocket("/ws/clue/{game_id}/{player_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str):
     await manager.connect(game_id, player_id, websocket)
     game = ClueGame(game_id, redis_client)
@@ -1866,7 +1866,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
 # ---------------------------------------------------------------------------
 
 
-@app.get("/games/{game_id}/chat")
+@app.get("/clue/games/{game_id}/chat")
 async def get_chat(game_id: str):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1876,7 +1876,7 @@ async def get_chat(game_id: str):
     return ChatMessagesResponse(messages=messages)
 
 
-@app.post("/games/{game_id}/chat")
+@app.post("/clue/games/{game_id}/chat")
 async def send_chat(game_id: str, req: ChatRequest):
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -2385,16 +2385,16 @@ async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = Non
 
 
 # ---------------------------------------------------------------------------
-# SPA fallback for /game/{id} routes
+# SPA fallback for /{game_type}/{id} routes
 # ---------------------------------------------------------------------------
 
 _static_dir = Path(__file__).parent.parent / "static"
 
 
-@app.get("/game/{game_id}")
-@app.get("/game/{game_id}/debug")
-async def spa_game_route(game_id: str):
-    """Serve index.html for /game/{id} and /game/{id}/debug so the Vue SPA can handle routing."""
+@app.get("/clue/{game_id}")
+@app.get("/clue/{game_id}/debug")
+async def spa_clue_route(game_id: str):
+    """Serve index.html for /clue/{id} and /clue/{id}/debug so the Vue SPA can handle routing."""
     index = _static_dir / "index.html"
     if index.exists():
         return FileResponse(str(index))

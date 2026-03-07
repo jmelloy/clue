@@ -132,7 +132,7 @@ function particleStyle(n) {
 }
 
 function copyLink() {
-  const url = `${window.location.origin}/game/${props.gameId}`
+  const url = `${window.location.origin}/clue/${props.gameId}`
   navigator.clipboard.writeText(url)
   copied.value = true
   setTimeout(() => {
@@ -144,7 +144,7 @@ async function addAgent(agentType) {
   error.value = ''
   addingAgent.value = true
   try {
-    const res = await fetch(`/games/${props.gameId}/add_agent`, {
+    const res = await fetch(`/clue/games/${props.gameId}/add_agent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ agent_type: agentType })
@@ -163,7 +163,7 @@ async function addAgent(agentType) {
 async function startGame() {
   error.value = ''
   try {
-    const res = await fetch(`/games/${props.gameId}/start`, { method: 'POST' })
+    const res = await fetch(`/clue/games/${props.gameId}/start`, { method: 'POST' })
     if (!res.ok) {
       const data = await res.json()
       error.value = data.detail ?? 'Failed to start'
