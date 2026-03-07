@@ -39,6 +39,16 @@ class PendingShowCard(BaseModel):
     matching_cards: list[str]
 
 
+class PendingShowCardPublic(BaseModel):
+    """PendingShowCard without matching_cards, safe to broadcast to all players."""
+
+    player_id: str
+    suggesting_player_id: str
+    suspect: str
+    weapon: str
+    room: str
+
+
 class ReachableTargets(BaseModel):
     """Rooms and hallway positions reachable with a given dice roll."""
 
@@ -314,7 +324,7 @@ class GameStateUpdateMessage(WSMessage):
     moved: Optional[bool] = None
     last_roll: Optional[list[int]] = None
     suggestions_this_turn: Optional[list[Suggestion]] = None
-    pending_show_card: Optional[PendingShowCard] = None
+    pending_show_card: Optional[PendingShowCardPublic] = None
     player_positions: Optional[dict[str, list[int]]] = None
     state: Optional[PlayerState] = None
 

@@ -61,6 +61,7 @@ from .games.clue.models import (
     JoinRequest,
     MoveResult,
     OkResponse,
+    PendingShowCardPublic,
     Player,
     PlayerJoinedMessage,
     PlayerMovedMessage,
@@ -228,6 +229,21 @@ def _player_name(state: GameState, player_id: str) -> str:
 def _is_wanderer(state: GameState, player_id: str) -> bool:
     player = next((p for p in state.players if p.id == player_id), None)
     return player.type == "wanderer" if player else False
+
+
+def _sanitize_pending(
+    pending: "PendingShowCard | None",
+) -> "PendingShowCardPublic | None":
+    """Strip matching_cards from PendingShowCard before broadcasting."""
+    if pending is None:
+        return None
+    return PendingShowCardPublic(
+        player_id=pending.player_id,
+        suggesting_player_id=pending.suggesting_player_id,
+        suspect=pending.suspect,
+        weapon=pending.weapon,
+        room=pending.room,
+    )
 
 
 async def _broadcast_chat(game_id: str, text: str, player_id: str | None = None):
@@ -720,7 +736,7 @@ async def _execute_action(
                         moved=state.moved,
                         last_roll=state.last_roll,
                         suggestions_this_turn=list(state.suggestions_this_turn),
-                        pending_show_card=state.pending_show_card,
+                        pending_show_card=_sanitize_pending(state.pending_show_card),
                         player_positions=state.player_positions,
                     ),
                 )
@@ -756,7 +772,7 @@ async def _execute_action(
                 moved=state.moved,
                 last_roll=state.last_roll,
                 suggestions_this_turn=list(state.suggestions_this_turn),
-                pending_show_card=state.pending_show_card,
+                pending_show_card=_sanitize_pending(state.pending_show_card),
                 player_positions=state.player_positions,
             ),
         )
@@ -1806,10 +1822,14 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, player_id: str)
     try:
         player_state = await game.get_player_state(player_id)
         if player_state:
+            # Strip matching_cards from pending_show_card before sending
+            sanitized_state = player_state.model_copy(
+                update={"pending_show_card": _sanitize_pending(player_state.pending_show_card)}
+            )
             await manager.send_to_player(
                 game_id,
                 player_id,
-                GameStateUpdateMessage(state=player_state),
+                GameStateUpdateMessage(state=sanitized_state),
             )
             # Resend show_card_request if there's a pending one for this player
             pending = player_state.pending_show_card

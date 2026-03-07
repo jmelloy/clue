@@ -44,7 +44,7 @@ export interface PendingShowCard {
   suspect: string
   weapon: string
   room: string
-  matching_cards: string[]
+  matching_cards?: string[]
 }
 
 /** [row, col] grid position on the 25×24 board. */
