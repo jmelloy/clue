@@ -84,10 +84,11 @@
             'observer-clickable': isObserver,
             'observer-selected': isObserver && observerPlayerState?.playerId === p.id
           }" @click.stop="onLegendClick(p)">
-            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer', 'has-image': p.type !== 'wanderer' && hasCardImage(p.character) }"
+            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer', 'has-image': !!CARD_IMAGES[p.character] }"
               :style="tokenStyle(p)">
-              <img v-if="p.type !== 'wanderer' && hasCardImage(p.character)" :src="cardImageUrl(p.character)" :alt="p.character" class="legend-token-portrait" />
-              <template v-else>{{ abbr(p.character) }}</template>
+              <img v-if="CARD_IMAGES[p.character]" :src="CARD_IMAGES[p.character]" :alt="p.character"
+                class="token-portrait" />
+              <span v-else>{{ abbr(p.character) }}</span>
             </span>
             <span class="legend-name">{{ p.name }}</span>
             <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
@@ -1018,7 +1019,7 @@ watch(
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-.legend-token-portrait {
+.token-portrait {
   width: 100%;
   height: 100%;
   object-fit: cover;
