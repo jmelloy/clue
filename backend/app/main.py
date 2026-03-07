@@ -2392,8 +2392,9 @@ _static_dir = Path(__file__).parent.parent / "static"
 
 
 @app.get("/game/{game_id}")
+@app.get("/game/{game_id}/debug")
 async def spa_game_route(game_id: str):
-    """Serve index.html for /game/{id} so the Vue SPA can handle routing."""
+    """Serve index.html for /game/{id} and /game/{id}/debug so the Vue SPA can handle routing."""
     index = _static_dir / "index.html"
     if index.exists():
         return FileResponse(str(index))
