@@ -112,15 +112,6 @@
           </div>
         </div>
 
-        <!-- Chat -->
-        <section class="sidebar-panel chat-panel-wrapper">
-          <h2 class="panel-header">Chat &amp; Game Log</h2>
-          <ChatPanel
-            :messages="chatMessages"
-            :players="gameState?.players"
-            @send-message="$emit('send-chat', $event)"
-          />
-        </section>
       </div>
 
       <!-- Right: Sidebar -->
@@ -367,9 +358,17 @@
           </section>
         </template>
       </div>
-    </div>
 
-    <!-- Card Shown Banner Overlay -->
+      <!-- Chat (at bottom of responsive stack) -->
+      <section class="sidebar-panel chat-panel-wrapper">
+        <h2 class="panel-header">Chat &amp; Game Log</h2>
+        <ChatPanel
+          :messages="chatMessages"
+          :players="gameState?.players"
+          @send-message="$emit('send-chat', $event)"
+        />
+      </section>
+    </div>
     <Teleport to="body">
       <div v-if="cardShown && !cardShownDismissedOnce" class="card-shown-overlay" @click="dismissCardShownOverlay">
         <div class="card-shown-banner" @click.stop>
@@ -1585,6 +1584,7 @@ watch(
 /* Chat */
 .chat-panel-wrapper {
   min-height: 200px;
+  grid-column: 1;
 }
 
 /* Card thumbnails in hand */
@@ -2255,6 +2255,11 @@ watch(
   }
   .game-over-banner {
     padding: 1.5rem 1.5rem;
+  }
+
+  .legend-name,
+  .legend-character {
+    display: none;
   }
 }
 </style>
