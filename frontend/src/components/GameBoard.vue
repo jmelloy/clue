@@ -40,8 +40,8 @@
       <div class="board-column">
         <div class="board-map-wrapper">
           <BoardMap :game-state="gameState" :player-id="playerId" :selected-room="targetRoom" :selectable="canMove"
-            :reachable-rooms="reachableRooms" :reachable-positions="reachablePositions" @select-room="onRoomSelected"
-            @select-position="onPositionSelected" />
+            :reachable-rooms="reachableRooms" :reachable-positions="reachablePositions" :board-data="boardData"
+            @select-room="onRoomSelected" @select-position="onPositionSelected" />
           <!-- Winning cards tossed on the board -->
           <div v-if="gameState?.status === 'finished' && gameState?.solution" class="board-tossed-cards">
             <div class="tossed-card tossed-card-1">
@@ -507,6 +507,7 @@ const props = defineProps({
   showCardRequest: Object,
   cardShown: Object,
   chatMessages: { type: Array, default: () => [] },
+  boardData: { type: Object, default: null },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
   reachableRooms: { type: Array, default: () => [] },

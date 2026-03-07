@@ -19,7 +19,7 @@
           <div class="center-label">CLUE</div>
         </div>
         <!-- Secret passage indicators -->
-        <div v-for="sp in secretPassages" :key="'sp-' + sp.from" class="secret-passage"
+        <div v-for="sp in activeSecretPassages" :key="'sp-' + sp.from" class="secret-passage"
           :style="overlayPos(sp.row, sp.col)" :title="'Secret passage to ' + sp.to">
           &#x21C9; {{ sp.to }}
         </div>
@@ -218,80 +218,6 @@ function roomAt(r, c) {
   return GRID_ROOMS[r][c]
 }
 
-const CELL_DATA = []
-for (let r = 0; r < 25; r++) {
-  const line = (BOARD_ROWS[r] || '').padEnd(24)
-  for (let c = 0; c < 24; c++) {
-    const key = `${r},${c}`
-    const ch = line[c]
-    const doorRoom = DOORS[key]
-    const startChar = STARTS[key]
-
-    // Compute exposed edges for usable cells
-    const edges = {
-      top: isWallOrEdge(r - 1, c),
-      right: isWallOrEdge(r, c + 1),
-      bottom: isWallOrEdge(r + 1, c),
-      left: isWallOrEdge(r, c - 1)
-    }
-
-    // Compute room boundary edges (where this cell's room differs from neighbor)
-    const cellRoom = GRID_ROOMS[r][c]
-    const roomEdges = cellRoom ? {
-      top: roomAt(r - 1, c) !== cellRoom,
-      right: roomAt(r, c + 1) !== cellRoom,
-      bottom: roomAt(r + 1, c) !== cellRoom,
-      left: roomAt(r, c - 1) !== cellRoom
-    } : null
-
-    if (doorRoom) {
-      CELL_DATA.push({
-        row: r,
-        col: c,
-        type: 'door',
-        room: doorRoom,
-        doorDir: DOOR_DIRECTIONS[key],
-        edges,
-        roomEdges
-      })
-    } else if (ROOM_KEY_MAP[ch]) {
-      CELL_DATA.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch], edges, roomEdges })
-    } else if (ch === '.') {
-      CELL_DATA.push({
-        row: r,
-        col: c,
-        type: startChar ? 'start' : 'hallway',
-        room: null,
-        startChar,
-        edges
-      })
-    } else {
-      const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
-      // Garden cells: non-center walls near usable cells (direct or diagonal neighbors)
-      let gardenRing = 0
-      if (!isCenter) {
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue
-            if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 1; break }
-          }
-          if (gardenRing) break
-        }
-        // Second ring: within 2 cells of usable space
-        if (!gardenRing) {
-          outer: for (let dr = -2; dr <= 2; dr++) {
-            for (let dc = -2; dc <= 2; dc++) {
-              if (dr === 0 && dc === 0) continue
-              if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 2; break outer }
-            }
-          }
-        }
-      }
-      CELL_DATA.push({ row: r, col: c, type: 'wall', room: null, isCenter, gardenRing, edges })
-    }
-  }
-}
-
 // ── Component ──
 
 const props = defineProps({
@@ -300,12 +226,172 @@ const props = defineProps({
   selectedRoom: String,
   selectable: Boolean,
   reachableRooms: { type: Array, default: () => [] },
-  reachablePositions: { type: Array, default: () => [] }
+  reachablePositions: { type: Array, default: () => [] },
+  boardData: { type: Object, default: null }
 })
 
 const emit = defineEmits(['select-room', 'select-position'])
 
-const cells = CELL_DATA
+// Override hardcoded board data with server data when available
+const activeDoors = computed(() => {
+  if (!props.boardData?.doors) return DOORS
+  const doors = {}
+  for (const [key, val] of Object.entries(props.boardData.doors)) {
+    doors[key] = val.room
+  }
+  return doors
+})
+
+const activeDoorDirections = computed(() => {
+  if (!props.boardData?.doors) return DOOR_DIRECTIONS
+  const dirs = {}
+  for (const [key, val] of Object.entries(props.boardData.doors)) {
+    dirs[key] = val.direction
+  }
+  return dirs
+})
+
+const activeStarts = computed(() => {
+  if (!props.boardData?.starts) return STARTS
+  // Backend returns {"r,c": "Name"}, same format as STARTS
+  return props.boardData.starts
+})
+
+const activeRoomInfo = computed(() => {
+  if (!props.boardData?.rooms) return ROOM_INFO
+  const info = {}
+  for (const [name, data] of Object.entries(props.boardData.rooms)) {
+    const b = data.bounds
+    info[name] = {
+      name,
+      minRow: b.r1,
+      maxRow: b.r2,
+      minCol: b.c1,
+      maxCol: b.c2,
+      centerRow: (b.r1 + b.r2) / 2,
+      centerCol: (b.c1 + b.c2) / 2
+    }
+  }
+  return info
+})
+
+const activeSecretPassages = computed(() => {
+  const roomInfo = activeRoomInfo.value
+  if (!props.boardData?.secret_passages) {
+    // Rebuild from hardcoded using active room info
+    return buildSecretPassages(roomInfo)
+  }
+  const passages = []
+  for (const [src, dst] of Object.entries(props.boardData.secret_passages)) {
+    if (roomInfo[src]) {
+      passages.push({
+        from: src,
+        to: dst,
+        row: roomInfo[src].minRow + 0.8,
+        col: roomInfo[src].minCol + 1.5
+      })
+    }
+  }
+  return passages
+})
+
+function buildSecretPassages(roomInfo) {
+  const passages = []
+  if (roomInfo['Study'] && roomInfo['Kitchen']) {
+    passages.push({
+      from: 'Study', to: 'Kitchen',
+      row: roomInfo['Study'].minRow + 0.8,
+      col: roomInfo['Study'].minCol + 1.5
+    })
+    passages.push({
+      from: 'Kitchen', to: 'Study',
+      row: roomInfo['Kitchen'].maxRow - 0.3,
+      col: roomInfo['Kitchen'].maxCol - 1.5
+    })
+  }
+  if (roomInfo['Lounge'] && roomInfo['Conservatory']) {
+    passages.push({
+      from: 'Lounge', to: 'Conservatory',
+      row: roomInfo['Lounge'].minRow + 0.8,
+      col: roomInfo['Lounge'].maxCol - 1.5
+    })
+    passages.push({
+      from: 'Conservatory', to: 'Lounge',
+      row: roomInfo['Conservatory'].maxRow - 0.3,
+      col: roomInfo['Conservatory'].minCol + 1.5
+    })
+  }
+  return passages
+}
+
+// Recompute cells when boardData changes
+const cells = computed(() => {
+  const doors = activeDoors.value
+  const doorDirs = activeDoorDirections.value
+  const starts = activeStarts.value
+  const cellData = []
+
+  for (let r = 0; r < 25; r++) {
+    const line = (BOARD_ROWS[r] || '').padEnd(24)
+    for (let c = 0; c < 24; c++) {
+      const key = `${r},${c}`
+      const ch = line[c]
+      const doorRoom = doors[key]
+      const startChar = starts[key]
+
+      const edges = {
+        top: isWallOrEdge(r - 1, c),
+        right: isWallOrEdge(r, c + 1),
+        bottom: isWallOrEdge(r + 1, c),
+        left: isWallOrEdge(r, c - 1)
+      }
+
+      const cellRoom = GRID_ROOMS[r][c]
+      const roomEdges = cellRoom ? {
+        top: roomAt(r - 1, c) !== cellRoom,
+        right: roomAt(r, c + 1) !== cellRoom,
+        bottom: roomAt(r + 1, c) !== cellRoom,
+        left: roomAt(r, c - 1) !== cellRoom
+      } : null
+
+      if (doorRoom) {
+        cellData.push({
+          row: r, col: c, type: 'door', room: doorRoom,
+          doorDir: doorDirs[key], edges, roomEdges
+        })
+      } else if (ROOM_KEY_MAP[ch]) {
+        cellData.push({ row: r, col: c, type: 'room', room: ROOM_KEY_MAP[ch], edges, roomEdges })
+      } else if (ch === '.') {
+        cellData.push({
+          row: r, col: c, type: startChar ? 'start' : 'hallway',
+          room: null, startChar, edges
+        })
+      } else {
+        const isCenter = r >= 8 && r <= 15 && c >= 9 && c <= 14
+        let gardenRing = 0
+        if (!isCenter) {
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue
+              if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 1; break }
+            }
+            if (gardenRing) break
+          }
+          if (!gardenRing) {
+            outer: for (let dr = -2; dr <= 2; dr++) {
+              for (let dc = -2; dc <= 2; dc++) {
+                if (dr === 0 && dc === 0) continue
+                if (!isWallOrEdge(r + dr, c + dc)) { gardenRing = 2; break outer }
+              }
+            }
+          }
+        }
+        cellData.push({ row: r, col: c, type: 'wall', room: null, isCenter, gardenRing, edges })
+      }
+    }
+  }
+  return cellData
+})
 
 const currentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
@@ -321,34 +407,7 @@ const hasReachableData = computed(
   () => props.reachableRooms.length > 0 || props.reachablePositions.length > 0
 )
 
-const roomLabels = computed(() => Object.values(ROOM_INFO))
-
-const secretPassages = [
-  {
-    from: 'Study',
-    to: 'Kitchen',
-    row: ROOM_INFO['Study'].minRow + 0.8,
-    col: ROOM_INFO['Study'].minCol + 1.5
-  },
-  {
-    from: 'Kitchen',
-    to: 'Study',
-    row: ROOM_INFO['Kitchen'].maxRow - 0.3,
-    col: ROOM_INFO['Kitchen'].maxCol - 1.5
-  },
-  {
-    from: 'Lounge',
-    to: 'Conservatory',
-    row: ROOM_INFO['Lounge'].minRow + 0.8,
-    col: ROOM_INFO['Lounge'].maxCol - 1.5
-  },
-  {
-    from: 'Conservatory',
-    to: 'Lounge',
-    row: ROOM_INFO['Conservatory'].maxRow - 0.3,
-    col: ROOM_INFO['Conservatory'].minCol + 1.5
-  }
-]
+const roomLabels = computed(() => Object.values(activeRoomInfo.value))
 
 // Get the active suggestion (last suggestion this turn, if any)
 const activeSuggestion = computed(() => {
@@ -367,7 +426,7 @@ const playerTokens = computed(() => {
   // Build weapon items for rooms
   const weaponsByRoom = {}
   for (const [weapon, room] of Object.entries(weaponPos)) {
-    if (ROOM_INFO[room]) {
+    if (activeRoomInfo.value[room]) {
       if (!weaponsByRoom[room]) weaponsByRoom[room] = []
       weaponsByRoom[room].push(weapon)
     }
@@ -378,7 +437,7 @@ const playerTokens = computed(() => {
   const hallway = []
   for (const p of players) {
     const room = roomMap[p.id]
-    if (room && ROOM_INFO[room]) {
+    if (room && activeRoomInfo.value[room]) {
       if (!byRoom[room]) byRoom[room] = []
       byRoom[room].push(p)
     } else if (posMap[p.id]) {
@@ -391,7 +450,7 @@ const playerTokens = computed(() => {
 
   // Distribute players and weapons within each room
   for (const roomName of allRooms) {
-    const info = ROOM_INFO[roomName]
+    const info = activeRoomInfo.value[roomName]
     const rPlayers = byRoom[roomName] || []
     const rWeapons = weaponsByRoom[roomName] || []
     const cR = info.centerRow
@@ -565,7 +624,7 @@ function cellStyle(cell) {
   if (cell.room) {
     const overrides = THEME_CARD_IMAGES[theme.value]
     const img = overrides?.[cell.room] || CARD_IMAGES[cell.room]
-    const info = ROOM_INFO[cell.room]
+    const info = activeRoomInfo.value[cell.room]
     if (img && info) {
       const roomCols = info.maxCol - info.minCol + 1
       const roomRows = info.maxRow - info.minRow + 1
