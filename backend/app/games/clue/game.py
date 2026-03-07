@@ -212,7 +212,15 @@ class ClueGame:
         return state
 
     async def get_state(self) -> GameState:
-        return await self._load_state()
+        state = await self._load_state()
+        # Include solution when game is finished so clients see it
+        if state is not None and state.status == "finished" and state.solution is None:
+            try:
+                solution = await self._load_solution()
+                state.solution = solution
+            except Exception:
+                pass
+        return state
 
     def get_available_actions(self, player_id: str, state: GameState) -> list[str]:
         """Return the list of actions available to a player given the current game state.
@@ -285,6 +293,13 @@ class ClueGame:
             return None
         cards = await self._load_player_cards(player_id)
         notes = await self.load_detective_notes(player_id)
+        # Include solution when game is finished so reconnecting players see it
+        if state.status == "finished" and state.solution is None:
+            try:
+                solution = await self._load_solution()
+                state.solution = solution
+            except Exception:
+                pass
         return PlayerState(
             **state.model_dump(),
             your_cards=cards,
