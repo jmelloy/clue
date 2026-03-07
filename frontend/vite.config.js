@@ -2,8 +2,6 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-const backendWsUrl = backendUrl.replace(/^http/, 'ws')
-
 export default defineConfig({
   plugins: [vue()],
   build: {
@@ -12,11 +10,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/clue/games': backendUrl,
-      '/clue/board': backendUrl,
-      '/holdem/games': backendUrl,
-      '/admin/games': backendUrl,
-      '/ws': { target: backendWsUrl, ws: true }
+      '/api': { target: backendUrl, ws: true }
     }
   }
 })

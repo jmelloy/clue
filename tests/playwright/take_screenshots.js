@@ -38,26 +38,26 @@ async function main() {
   // ===== Create holdem game and players via API =====
   console.log("Setting up holdem game...");
   const { game_id: gameId } = await (
-    await fetch(`${BACKEND_URL}/holdem/games`, { method: "POST" })
+    await fetch(`${BACKEND_URL}/api/holdem/games`, { method: "POST" })
   ).json();
   console.log("  Game:", gameId);
 
   const p1 = await (
-    await fetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
+    await fetch(`${BACKEND_URL}/api/holdem/games/${gameId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: "Alice", buy_in: 1000 }),
     })
   ).json();
   const p2 = await (
-    await fetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
+    await fetch(`${BACKEND_URL}/api/holdem/games/${gameId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: "Bob", buy_in: 1000 }),
     })
   ).json();
   const p3 = await (
-    await fetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
+    await fetch(`${BACKEND_URL}/api/holdem/games/${gameId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: "Charlie", buy_in: 1500 }),
@@ -113,7 +113,7 @@ async function main() {
   } else {
     console.log("  Starting via API...");
     const startResp = await fetch(
-      `${BACKEND_URL}/holdem/games/${gameId}/start`,
+      `${BACKEND_URL}/api/holdem/games/${gameId}/start`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

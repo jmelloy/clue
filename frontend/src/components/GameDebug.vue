@@ -511,7 +511,7 @@ async function fetchDebug() {
       params.set('events_offset', d.agent_events.length)
     }
     const qs = params.toString()
-    const res = await fetch(`/clue/games/${props.gameId}/debug${qs ? '?' + qs : ''}`)
+    const res = await fetch(`/api/clue/games/${props.gameId}/debug${qs ? '?' + qs : ''}`)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.detail || `HTTP ${res.status}`)

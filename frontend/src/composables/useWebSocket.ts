@@ -17,7 +17,7 @@ export function useWebSocket(gameId: string, playerId: string): UseWebSocketRetu
 
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    ws = new WebSocket(`${proto}://${location.host}/ws/clue/${gameId}/${playerId}`)
+    ws = new WebSocket(`${proto}://${location.host}/api/ws/clue/${gameId}/${playerId}`)
 
     ws.onopen = () => {
       connected.value = true

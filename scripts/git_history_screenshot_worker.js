@@ -105,11 +105,11 @@ async function screenshotClueViaUI(browser, label, outputDir) {
     if (gameIdMatch) {
       const gameId = gameIdMatch[1];
       // Check player count via API
-      const state = await tryFetch(`${BACKEND_URL}/clue/games/${gameId}`);
+      const state = await tryFetch(`${BACKEND_URL}/api/clue/games/${gameId}`);
       const playerCount = state?.players?.length || 0;
       if (playerCount < 3) {
         for (let i = playerCount; i < 3; i++) {
-          await tryFetch(`${BACKEND_URL}/clue/games/${gameId}/join`, {
+          await tryFetch(`${BACKEND_URL}/api/clue/games/${gameId}/join`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ player_name: `Bot${i}` }),
@@ -170,7 +170,7 @@ async function screenshotHoldemViaUI(browser, label, outputDir) {
   console.log("Screenshotting Hold'em game (UI-driven)...");
 
   // Check if holdem endpoint exists at this commit
-  const check = await tryFetch(`${BACKEND_URL}/holdem/games`, { method: "POST" });
+  const check = await tryFetch(`${BACKEND_URL}/api/holdem/games`, { method: "POST" });
   if (!check || !check.game_id) {
     console.log("  SKIP: Hold'em not available at this commit");
     return;
@@ -232,11 +232,11 @@ async function screenshotHoldemViaUI(browser, label, outputDir) {
     const gameIdMatch = currentUrl.match(/\/holdem\/([A-Z0-9]+)/i);
     if (gameIdMatch) {
       const gameId = gameIdMatch[1];
-      const state = await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}`);
+      const state = await tryFetch(`${BACKEND_URL}/api/holdem/games/${gameId}`);
       const playerCount = state?.players?.length || 0;
       if (playerCount < 3) {
         for (let j = playerCount; j < 3; j++) {
-          await tryFetch(`${BACKEND_URL}/holdem/games/${gameId}/join`, {
+          await tryFetch(`${BACKEND_URL}/api/holdem/games/${gameId}/join`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ player_name: `Bot${j}` }),

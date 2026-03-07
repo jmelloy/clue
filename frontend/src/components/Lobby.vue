@@ -343,7 +343,7 @@ async function fetchUrlGame(gid) {
   urlGameError.value = ''
   urlGameState.value = null
   try {
-    const endpoint = props.urlGameType === 'holdem' ? `/holdem/games/${gid}` : `/clue/games/${gid}`
+    const endpoint = props.urlGameType === 'holdem' ? `/api/holdem/games/${gid}` : `/api/clue/games/${gid}`
     const res = await fetch(endpoint)
     if (!res.ok) {
       urlGameError.value = 'Game not found'
@@ -381,7 +381,7 @@ async function createGame() {
   try {
     if (selectedGame.value === 'holdem') {
       const buyInCents = Math.round(holdemBuyIn.value * 100)
-      const res = await fetch('/holdem/games', {
+      const res = await fetch('/api/holdem/games', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -392,7 +392,7 @@ async function createGame() {
       const { game_id } = await res.json()
       await doJoinHoldem(game_id)
     } else {
-      const res = await fetch('/clue/games', { method: 'POST' })
+      const res = await fetch('/api/clue/games', { method: 'POST' })
       const { game_id } = await res.json()
       await doJoin(game_id)
     }
@@ -412,7 +412,7 @@ async function joinGame() {
 
 async function doJoin(gameId) {
   try {
-    const res = await fetch(`/clue/games/${gameId}/join`, {
+    const res = await fetch(`/api/clue/games/${gameId}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -426,7 +426,7 @@ async function doJoin(gameId) {
       return
     }
     const { player_id } = await res.json()
-    const stateRes = await fetch(`/clue/games/${gameId}`)
+    const stateRes = await fetch(`/api/clue/games/${gameId}`)
     const state = await stateRes.json()
     emit('game-joined', { gameId, playerId: player_id, state })
   } catch (e) {
@@ -436,7 +436,7 @@ async function doJoin(gameId) {
 
 async function doJoinHoldem(gameId) {
   try {
-    const res = await fetch(`/holdem/games/${gameId}/join`, {
+    const res = await fetch(`/api/holdem/games/${gameId}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_name: playerName.value })
@@ -447,7 +447,7 @@ async function doJoinHoldem(gameId) {
       return
     }
     const { player_id } = await res.json()
-    const stateRes = await fetch(`/holdem/games/${gameId}`)
+    const stateRes = await fetch(`/api/holdem/games/${gameId}`)
     const state = await stateRes.json()
     emit('game-joined', { gameId, playerId: player_id, state, gameType: 'holdem' })
   } catch (e) {
@@ -459,7 +459,7 @@ async function observeGame() {
   error.value = ''
   const gid = joinGameId.value.trim().toUpperCase()
   try {
-    const res = await fetch(`/clue/games/${gid}`)
+    const res = await fetch(`/api/clue/games/${gid}`)
     if (!res.ok) {
       error.value = 'Game not found'
       return
