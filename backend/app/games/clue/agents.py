@@ -1551,9 +1551,6 @@ Respond with a valid JSON object for your chosen action. Include a "chat" field 
 with a short in-character comment (one sentence, stay in character). Be coy and \
 lie in the chat; it's for flavor, not factual reporting.
 
-On end_turn, add a "memory" field: 1–3 sentences capturing (1) what you newly \
-inferred this turn, (2) your working theory for the solution, and (3) your plan \
-for the next turn. Do not repeat card lists; those are in the game state.\
 """
 
 # Personality blurbs injected into the LLM system prompt per character.
@@ -1709,6 +1706,63 @@ class LLMAgent(BaseAgent):
 
             game = ClueGame(self._game_id, self._redis)
             await game.append_memory(self.player_id, entry)
+
+    async def _generate_memory(
+        self, game_state: GameState, player_state: PlayerState
+    ) -> None:
+        """Make a cheap LLM call to generate end-of-turn memory notes."""
+        unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
+        shown_to_you = sorted(self.seen_cards - self.own_cards)
+
+        context_lines = [
+            f"Your character: {self.character}",
+            f"Your cards: {list(player_state.your_cards)}",
+        ]
+        if shown_to_you:
+            context_lines.append(f"Cards shown to you: {shown_to_you}")
+        context_lines += [
+            f"Unknown suspects: {unknown_suspects}",
+            f"Unknown weapons: {unknown_weapons}",
+            f"Unknown rooms: {unknown_rooms}",
+        ]
+        if self.unrefuted_suggestions:
+            context_lines.append(
+                f"Unrefuted suggestions: {self.unrefuted_suggestions}"
+            )
+
+        # Include recent inference log entries for context
+        unseen_inferences = {
+            card: reasons
+            for card, reasons in self.card_inference_log.items()
+            if card not in self.seen_cards
+        }
+        if unseen_inferences:
+            context_lines.append("Recent deductions:")
+            for card, reasons in sorted(unseen_inferences.items()):
+                context_lines.append(f"  {card}: {reasons[-1]}")
+
+        if self.memory:
+            planning_notes = [
+                m for m in self.memory if not m.startswith("INFERENCE UPDATE:")
+            ]
+            if planning_notes:
+                context_lines.append(f"Previous note: {planning_notes[-1]}")
+
+        system = (
+            "You are a Clue (Cluedo) player. Write 1-3 concise sentences "
+            "capturing: (1) what you newly learned this turn, (2) your "
+            "working theory for the solution, and (3) your plan for next "
+            "turn. Do not repeat full card lists. Respond with ONLY the "
+            "memory text, no JSON."
+        )
+        user = "\n".join(context_lines)
+
+        response = await self._call_llm(system, user, model=self.nano_model)
+        if response and isinstance(response, str):
+            # Strip any accidental JSON wrapping
+            memory_text = response.strip().strip('"').strip()
+            if memory_text:
+                await self._save_memory_entry(memory_text)
 
     async def _flush_pending_inferences(self):
         """Save any accumulated inference notifications to memory."""
@@ -2076,20 +2130,16 @@ class LLMAgent(BaseAgent):
         if response_text is not None:
             parsed = self._parse_json_response(response_text)
             if parsed is not None:
-                # Extract chat and memory before validation (not game fields)
+                # Extract chat before validation (not a game field)
                 llm_chat = parsed.pop("chat", None)
-                llm_memory = parsed.pop("memory", None)
+                parsed.pop("memory", None)  # discard; memory is now a separate call
                 if self._validate_action(parsed, available, game_state, player_state):
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
-                    # Save memory entry only on end_turn
-                    if (
-                        llm_memory
-                        and isinstance(llm_memory, str)
-                        and parsed.get("type") == "end_turn"
-                    ):
-                        await self._save_memory_entry(llm_memory.strip())
+                    # Generate memory via a separate cheap LLM call on end_turn
+                    if parsed.get("type") == "end_turn":
+                        await self._generate_memory(game_state, player_state)
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
                         room = parsed.get("room")
