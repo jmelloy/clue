@@ -29,6 +29,7 @@ from .models import (
     HoldemLogEntryBase,
     HoldemPlayer,
     HoldemPlayerState,
+    MIN_CHIP,
     PlayerActionLogEntry,
     RANKS,
     RaiseAction,
@@ -436,6 +437,8 @@ class HoldemGame:
     ) -> BetResult:
         if amount < state.big_blind:
             raise ValueError(f"Minimum bet is {state.big_blind}")
+        if amount % MIN_CHIP != 0 and amount < player.chips:
+            raise ValueError(f"Bet must be a multiple of {MIN_CHIP}")
         if amount > player.chips:
             raise ValueError("Not enough chips")
 
@@ -467,6 +470,8 @@ class HoldemGame:
         raise_portion = amount - amount_to_call
         if raise_portion < state.big_blind and amount < player.chips:
             raise ValueError(f"Minimum raise is {state.big_blind}")
+        if amount % MIN_CHIP != 0 and amount < player.chips:
+            raise ValueError(f"Raise must be a multiple of {MIN_CHIP}")
         if amount > player.chips:
             raise ValueError("Not enough chips")
 

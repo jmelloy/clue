@@ -408,6 +408,75 @@ async def test_minimum_bet_enforced(redis):
             )
 
 
+@pytest.mark.asyncio
+async def test_bet_must_be_chip_multiple(redis):
+    """Bets that aren't a multiple of MIN_CHIP (10) are rejected."""
+    game, state = await _setup_started_game(redis)
+
+    # Navigate to a position where 'bet' is available
+    whose_turn = state.whose_turn
+    available = game.get_available_actions(whose_turn, state)
+    if "call" in available:
+        await game.process_action(whose_turn, {"type": "call"})
+        state = await game.get_state()
+        whose_turn = state.whose_turn
+        available = game.get_available_actions(whose_turn, state)
+    if "check" in available:
+        await game.process_action(whose_turn, {"type": "check"})
+        state = await game.get_state()
+        whose_turn = state.whose_turn
+
+    available = game.get_available_actions(whose_turn, state)
+    if "bet" in available:
+        # 25 is valid (multiple of 10? No, 25 % 10 == 5) — 25 is NOT a
+        # multiple of 10, so it should be rejected.
+        with pytest.raises(ValueError, match="multiple of 10"):
+            await game.process_action(
+                whose_turn, {"type": "bet", "amount": 25}
+            )
+        # 30 is valid (multiple of 10)
+        result = await game.process_action(
+            whose_turn, {"type": "bet", "amount": 30}
+        )
+        assert result.type == "bet"
+        assert result.amount == 30
+
+
+@pytest.mark.asyncio
+async def test_raise_must_be_chip_multiple(redis):
+    """Raises that aren't a multiple of MIN_CHIP (10) are rejected."""
+    game, state = await _setup_started_game(redis)
+
+    whose_turn = state.whose_turn
+    available = game.get_available_actions(whose_turn, state)
+
+    # First player calls or raises to set up a raise scenario
+    if "call" in available:
+        await game.process_action(whose_turn, {"type": "call"})
+        state = await game.get_state()
+        whose_turn = state.whose_turn
+        available = game.get_available_actions(whose_turn, state)
+
+    # Now try to bet then raise
+    if "bet" in available:
+        await game.process_action(whose_turn, {"type": "bet", "amount": 40})
+        state = await game.get_state()
+        whose_turn = state.whose_turn
+        available = game.get_available_actions(whose_turn, state)
+
+    if "raise" in available:
+        # 65 is not a multiple of 10
+        with pytest.raises(ValueError, match="multiple of 10"):
+            await game.process_action(
+                whose_turn, {"type": "raise", "amount": 65}
+            )
+        # 60 is valid
+        result = await game.process_action(
+            whose_turn, {"type": "raise", "amount": 60}
+        )
+        assert result.type == "raise"
+
+
 # ---------------------------------------------------------------------------
 # Full Hand Playthrough Tests
 # ---------------------------------------------------------------------------

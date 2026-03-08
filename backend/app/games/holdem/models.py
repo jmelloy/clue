@@ -12,6 +12,10 @@ from pydantic import BaseModel, Field
 # Card representation
 # ---------------------------------------------------------------------------
 
+# Chip denominations (smallest unit determines bet granularity)
+CHIP_DENOMINATIONS = [500, 100, 25, 10]
+MIN_CHIP = min(CHIP_DENOMINATIONS)  # 10 — all bets must be multiples of this
+
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 SUITS = ["hearts", "diamonds", "clubs", "spades"]
 
