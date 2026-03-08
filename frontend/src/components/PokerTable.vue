@@ -15,7 +15,7 @@
         <span class="meta-divider"></span>
         <span class="meta-item">
           <span class="meta-label">Blinds</span>
-          <span class="meta-value">{{ gameState?.small_blind ?? 10 }}/{{ gameState?.big_blind ?? 20 }}</span>
+          <span class="meta-value">{{ formatChips(gameState?.small_blind ?? 10) }}/{{ formatChips(gameState?.big_blind ?? 20) }}</span>
         </span>
         <button class="chat-toggle" @click="chatOpen = !chatOpen" :class="{ active: chatOpen }">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -64,7 +64,7 @@
                 <div v-for="(chip, ci) in chipStackVisual(p.current_bet, 6)" :key="ci" class="bet-chip"
                   :class="`chip-${chip}`" :style="{ '--bi': ci }"></div>
               </div>
-              <span>{{ p.current_bet }}</span>
+              <span>{{ formatChips(p.current_bet) }}</span>
             </div>
 
             <!-- Avatar -->
@@ -533,9 +533,7 @@ function seatHue(idx) {
 }
 
 function formatChips(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
-  if (n >= 10000) return (n / 1000).toFixed(1) + 'K'
-  return n.toLocaleString()
+  return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Position seats around an ellipse
