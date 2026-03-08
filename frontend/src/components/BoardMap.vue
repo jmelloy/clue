@@ -563,6 +563,8 @@ function cellClasses(cell) {
 
 function cellStyle(cell) {
   if (cell.room) {
+    // Vintage theme: room artwork is baked into the board background image
+    if (theme.value === 'vintage') return {}
     const overrides = THEME_CARD_IMAGES[theme.value]
     const img = overrides?.[cell.room] || CARD_IMAGES[cell.room]
     const info = ROOM_INFO[cell.room]
