@@ -24,7 +24,8 @@
         @game-started="onGameStarted" @leave-game="leaveGame" />
       <PokerTable v-else ref="pokerTableRef" :game-id="gameId" :player-id="playerId" :game-state="gameState"
         :your-cards="yourCards" :available-actions="availableActions" :chat-messages="chatMessages"
-        :is-observer="isObserver" @action="sendHoldemAction" @send-chat="sendHoldemChat" />
+        :is-observer="isObserver" @action="sendHoldemAction" @send-chat="sendHoldemChat"
+        @rebuy="sendHoldemRebuy" @decline-rebuy="sendHoldemDeclineRebuy" />
     </template>
   </div>
 </template>
@@ -725,6 +726,20 @@ function handleHoldemMessage(msg) {
       availableActions.value = []
       break
 
+    case 'rebuy_prompt':
+      if (pokerTableRef.value) {
+        pokerTableRef.value.onRebuyPrompt()
+      }
+      break
+
+    case 'player_rebuy':
+      refreshHoldemState()
+      break
+
+    case 'player_eliminated':
+      refreshHoldemState()
+      break
+
     case 'chat_message':
       chatMessages.value = [...chatMessages.value, msg]
       break
@@ -768,6 +783,28 @@ async function sendHoldemChat(text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ player_id: playerId.value, text })
   })
+}
+
+async function sendHoldemRebuy() {
+  const res = await fetch(`/api/holdem/games/${gameId.value}/rebuy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId.value })
+  })
+  if (res.ok) {
+    await refreshHoldemState()
+  }
+}
+
+async function sendHoldemDeclineRebuy() {
+  const res = await fetch(`/api/holdem/games/${gameId.value}/decline_rebuy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId.value })
+  })
+  if (res.ok) {
+    await refreshHoldemState()
+  }
 }
 
 function loadHoldemChat(gid) {

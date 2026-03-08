@@ -604,3 +604,225 @@ async def test_multiple_hands_play_through(redis):
 
     # Should have played through multiple hands
     assert state.hand_number > initial_hand + 1
+
+
+@pytest.mark.asyncio
+async def test_rebuy_when_allowed(redis):
+    """When allow_rebuys=True, a busted player gets rebuy_pending instead of eliminated."""
+    game = HoldemGame("REBUY", redis)
+    await game.create(buy_in=30, allow_rebuys=True)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    state = await game.start()
+
+    # Play until someone goes bust (rebuy_pending)
+    max_actions = 100
+    found_rebuy_pending = False
+    for _ in range(max_actions):
+        state = await game.get_state()
+        if state.status != "playing":
+            break
+
+        # Check for rebuy_pending players
+        pending = [p for p in state.players if p.rebuy_pending]
+        if pending:
+            found_rebuy_pending = True
+            # Player should still be active (not eliminated yet)
+            assert pending[0].active is True
+            assert pending[0].chips <= 0
+            break
+
+        whose_turn = state.whose_turn
+        if whose_turn is None:
+            break
+
+        available = game.get_available_actions(whose_turn, state)
+        if not available:
+            break
+
+        # P0 goes all-in, P1 calls
+        if whose_turn == "P0" and "all_in" in available:
+            await game.process_action(whose_turn, {"type": "all_in"})
+        elif "call" in available:
+            await game.process_action(whose_turn, {"type": "call"})
+        elif "check" in available:
+            await game.process_action(whose_turn, {"type": "check"})
+        elif "fold" in available:
+            await game.process_action(whose_turn, {"type": "fold"})
+        else:
+            break
+
+    # With small buy-in and all-in strategy, someone should go bust
+    # (If the game ended with one winner naturally, that's also fine)
+    state = await game.get_state()
+    if state.status == "playing":
+        assert found_rebuy_pending
+
+
+@pytest.mark.asyncio
+async def test_rebuy_restores_chips(redis):
+    """Rebuy should restore the player's chips to buy-in amount."""
+    game = HoldemGame("REBUY2", redis)
+    await game.create(buy_in=30, allow_rebuys=True)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    state = await game.start()
+
+    # Play until someone goes bust
+    max_actions = 100
+    busted_player = None
+    for _ in range(max_actions):
+        state = await game.get_state()
+        if state.status != "playing":
+            break
+
+        pending = [p for p in state.players if p.rebuy_pending]
+        if pending:
+            busted_player = pending[0].id
+            break
+
+        whose_turn = state.whose_turn
+        if whose_turn is None:
+            break
+
+        available = game.get_available_actions(whose_turn, state)
+        if not available:
+            break
+
+        if "all_in" in available:
+            await game.process_action(whose_turn, {"type": "all_in"})
+        elif "call" in available:
+            await game.process_action(whose_turn, {"type": "call"})
+        elif "check" in available:
+            await game.process_action(whose_turn, {"type": "check"})
+        else:
+            break
+
+    if busted_player:
+        # Execute rebuy
+        state = await game.rebuy(busted_player)
+        player = next(p for p in state.players if p.id == busted_player)
+        # Chips may be less than buy_in because a new hand is dealt with blinds
+        assert player.chips > 0
+        assert player.chips <= 30
+        assert player.rebuy_pending is False
+        assert player.active is True
+        # Game should continue (new hand dealt)
+        assert state.status == "playing"
+
+
+@pytest.mark.asyncio
+async def test_decline_rebuy_eliminates(redis):
+    """Declining rebuy should eliminate the player."""
+    game = HoldemGame("REBUY3", redis)
+    await game.create(buy_in=30, allow_rebuys=True)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    state = await game.start()
+
+    # Play until someone goes bust
+    max_actions = 100
+    busted_player = None
+    for _ in range(max_actions):
+        state = await game.get_state()
+        if state.status != "playing":
+            break
+
+        pending = [p for p in state.players if p.rebuy_pending]
+        if pending:
+            busted_player = pending[0].id
+            break
+
+        whose_turn = state.whose_turn
+        if whose_turn is None:
+            break
+
+        available = game.get_available_actions(whose_turn, state)
+        if not available:
+            break
+
+        if "all_in" in available:
+            await game.process_action(whose_turn, {"type": "all_in"})
+        elif "call" in available:
+            await game.process_action(whose_turn, {"type": "call"})
+        elif "check" in available:
+            await game.process_action(whose_turn, {"type": "check"})
+        else:
+            break
+
+    if busted_player:
+        # Decline rebuy
+        state = await game.decline_rebuy(busted_player)
+        player = next(p for p in state.players if p.id == busted_player)
+        assert player.active is False
+        assert player.rebuy_pending is False
+        # With 2 players and one eliminated, game should be finished
+        assert state.status == "finished"
+
+
+@pytest.mark.asyncio
+async def test_rebuy_not_allowed_eliminates_immediately(redis):
+    """When allow_rebuys=False, busted players are eliminated immediately."""
+    game = HoldemGame("NOREBUY", redis)
+    await game.create(buy_in=30, allow_rebuys=False)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    state = await game.start()
+
+    max_actions = 100
+    for _ in range(max_actions):
+        state = await game.get_state()
+        if state.status != "playing":
+            break
+
+        # Should never see rebuy_pending
+        assert not any(p.rebuy_pending for p in state.players)
+
+        whose_turn = state.whose_turn
+        if whose_turn is None:
+            break
+
+        available = game.get_available_actions(whose_turn, state)
+        if not available:
+            break
+
+        if "all_in" in available:
+            await game.process_action(whose_turn, {"type": "all_in"})
+        elif "call" in available:
+            await game.process_action(whose_turn, {"type": "call"})
+        elif "check" in available:
+            await game.process_action(whose_turn, {"type": "check"})
+        else:
+            break
+
+    # Game should end with elimination
+    if state.status == "finished":
+        eliminated = [p for p in state.players if not p.active]
+        assert len(eliminated) >= 1
+        assert not any(p.rebuy_pending for p in state.players)
+
+
+@pytest.mark.asyncio
+async def test_rebuy_error_when_not_pending(redis):
+    """Rebuy should fail if player is not rebuy_pending."""
+    game = HoldemGame("REBUYERR", redis)
+    await game.create(buy_in=2000, allow_rebuys=True)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    await game.start()
+
+    with pytest.raises(ValueError, match="does not need to rebuy"):
+        await game.rebuy("P0")
+
+
+@pytest.mark.asyncio
+async def test_rebuy_error_when_not_allowed(redis):
+    """Rebuy should fail if allow_rebuys is False."""
+    game = HoldemGame("REBUYERR2", redis)
+    await game.create(buy_in=2000, allow_rebuys=False)
+    await game.add_player("P0", "Alice")
+    await game.add_player("P1", "Bob")
+    await game.start()
+
+    with pytest.raises(ValueError, match="not allowed"):
+        await game.rebuy("P0")

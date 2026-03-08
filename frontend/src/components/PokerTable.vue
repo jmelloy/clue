@@ -398,6 +398,29 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Rebuy Overlay -->
+    <Transition name="showdown-fade">
+      <div v-if="showRebuyPrompt" class="showdown-backdrop">
+        <div class="showdown-modal" @click.stop>
+          <div class="showdown-glow"></div>
+          <div class="showdown-content">
+            <div class="showdown-crown" style="filter: grayscale(1);">&#9760;</div>
+            <h2 class="showdown-title">You're out of chips!</h2>
+            <div class="showdown-hand-type">Rebuy for {{ formatChips(gameState?.buy_in ?? 0) }}?</div>
+            <div class="showdown-divider"></div>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+              <button class="action-btn call" style="padding: 10px 28px; font-size: 1rem;" @click="doRebuy">
+                <span class="btn-label">Rebuy</span>
+              </button>
+              <button class="action-btn fold" style="padding: 10px 28px; font-size: 1rem;" @click="doDeclineRebuy">
+                <span class="btn-label">Leave Game</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -413,7 +436,7 @@ const props = defineProps({
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false }
 })
-const emit = defineEmits(['action', 'send-chat'])
+const emit = defineEmits(['action', 'send-chat', 'rebuy', 'decline-rebuy'])
 
 const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
 
@@ -473,6 +496,7 @@ const unreadChat = ref(0)
 const lastReadChat = ref(0)
 const sweepingChips = ref([])   // chips animating to center after a betting round ends
 const prevBettingRound = ref(null)
+const showRebuyPrompt = ref(false)
 
 const communityCards = computed(() => props.gameState?.community_cards ?? [])
 const activePlayers = computed(() => props.gameState?.players ?? [])
@@ -712,6 +736,16 @@ function submitRaise() {
   doAction({ type: 'raise', amount: raiseAmount.value })
 }
 
+function doRebuy() {
+  showRebuyPrompt.value = false
+  emit('rebuy')
+}
+
+function doDeclineRebuy() {
+  showRebuyPrompt.value = false
+  emit('decline-rebuy')
+}
+
 function sendChatMessage() {
   const text = chatInput.value.trim()
   if (!text) return
@@ -773,6 +807,9 @@ defineExpose({
       playerHands: data.player_hands || {},
       winnerIds: data.winners || []
     }
+  },
+  onRebuyPrompt() {
+    showRebuyPrompt.value = true
   }
 })
 
