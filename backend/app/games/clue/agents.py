@@ -124,7 +124,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         ],
         "move": [
             "The {room}... I have unfinished business there.",
-            "Off to the {room}. Hugh and I used to spend hours there.",
+            "Off to the {room}. Boddy and I used to spend hours there.",
             "The {room} holds memories. Not all of them pleasant.",
             "Let's see who's hiding in the {room}, shall we?",
         ],
@@ -148,7 +148,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "I'll give you this much. Don't make me regret it.",
         ],
         "secret_passage": [
-            "A secret passage? Hugh showed me this one years ago.",
+            "A secret passage? Boddy showed me this one years ago.",
             "I know every hidden corner of this mansion, darling.",
         ],
         "suspected": [
@@ -159,7 +159,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "I grew up in this house. I know its secrets better than any of you.",
         ],
         "dragged_to_room": [
-            "The {room}? Hugh and I had our last argument here...",
+            "The {room}? Boddy and I had our last argument here...",
             "Being dragged to the {room}. How undignified.",
             "Fine. The {room}. But I'm not the one you should be watching.",
             "The {room} again? This place has too many ghosts.",
@@ -323,7 +323,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "Let's get on with it, shall we? I have agendas to attend to.",
         ],
         "move": [
-            "The {room}. Sir Hugh and I spent many evenings there.",
+            "The {room}. Mr. Boddy and I spent many evenings there.",
             "Off to the {room}. I called in quite a few favors to be here tonight.",
             "The {room}... I wonder what secrets it holds. Besides mine.",
             "To the {room}. A woman of my experience knows where to look.",
@@ -361,7 +361,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         "dragged_to_room": [
             "The {room}?! I was NOT invited to be dragged about like luggage!",
             "Being summoned to the {room}... how very inconsiderate.",
-            "The {room}? Sir Hugh proposed to me here. Before his... accident.",
+            "The {room}? Mr. Boddy proposed to me here. Before his... accident.",
             "Marched to the {room} without so much as a proper invitation!",
         ],
     },
@@ -375,7 +375,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         "move": [
             "To the {room}! I have a hunch there's something hidden here.",
             "The {room}... this mansion is like an excavation site. Layers upon layers.",
-            "Ah, the {room}. Sir Hugh and I used to discuss expeditions here.",
+            "Ah, the {room}. Mr. Boddy and I used to discuss expeditions here.",
             "Onward to the {room}! An archaeologist never stops exploring.",
         ],
         "suggest": [
@@ -395,7 +395,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
         ],
         "show_card": [
             "For the sake of the investigation... here.",
-            "Knowledge should be shared. Sir Hugh taught me that. Before our falling out.",
+            "Knowledge should be shared. Mr. Boddy taught me that. Before our falling out.",
         ],
         "secret_passage": [
             "A secret passage! This mansion is full of hidden wonders!",
@@ -1584,7 +1584,7 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
         "You are Reverend Green — the Playboy hiding behind a collar. In truth "
         "you're a suave con man who has posed as a prince, a pilot, a doctor, "
         "and an attorney. After years of scams, trouble caught up and you've been "
-        "hiding as a reverend. You thought Sir Hugh was the only one who knew your "
+        "hiding as a reverend. You thought Mr. Boddy was the only one who knew your "
         "true identity, so Boddy's invitation alarmed you. You're charming and "
         "witty but unforgiving and decadent underneath. You speak with smooth "
         "confidence, occasionally let your non-clerical side slip, and are "
@@ -1594,7 +1594,7 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
         "You are Mrs. Peacock — the Social Butterfly. Flirtatious, discreet, "
         "and devious beneath your refined exterior. You rocketed from small-town "
         "girl to well-connected socialite, and your three late husbands all died "
-        "suddenly. Sir Hugh met his end just before becoming your fourth. You "
+        "suddenly. Mr. Boddy met his end just before becoming your fourth. You "
         "called in many favors to get this invitation to Boddy's party. You speak "
         "with refined elegance, drop hints about your powerful connections, and "
         "keep everyone guessing whether you're here for marriage or murder."
@@ -1602,7 +1602,7 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
     "Professor Plum": (
         "You are Professor Plum — the Intellectual. An intrepid, eccentric "
         "archaeologist with a thirst for adventure. You've tracked down desert "
-        "tombs, ancient statues, and lost cities. Sir Hugh financed all your "
+        "tombs, ancient statues, and lost cities. Mr. Boddy financed all your "
         "expeditions until a bitter disagreement ended your partnership. With no "
         "excavations on the horizon, you were bored — and the first to arrive at "
         "Boddy's party. You're obsessive and slightly paranoid, speak with "
