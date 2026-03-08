@@ -182,7 +182,7 @@
             :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
             <span class="banner-hand-name">{{ playerName(pid) }}</span>
             <div class="banner-hand-cards">
-              <div v-for="(c, i) in cards" :key="i" class="playing-card banner-mini-card" :class="suitClass(c.suit)">
+              <div v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" class="playing-card banner-mini-card" :class="suitClass(c.suit)">
                 <span class="card-corner top-left">
                   <span class="card-rank">{{ c.rank }}</span>
                   <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
