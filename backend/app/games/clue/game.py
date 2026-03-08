@@ -515,8 +515,20 @@ class ClueGame:
         if state.status != "playing":
             raise ValueError("Game is not in progress")
 
-        if not isinstance(action, ShowCardAction) and state.whose_turn != player_id:
+        if not isinstance(action, (ShowCardAction, EndTurnAction)) and state.whose_turn != player_id:
             raise ValueError("It is not your turn")
+
+        # end_turn is always allowed: no-op if not your turn, force-finish if
+        # it is (even when not in the available list).  Agents may send this
+        # while cleaning up.
+        if isinstance(action, EndTurnAction):
+            if state.whose_turn != player_id:
+                # Not this player's turn — silently succeed as a no-op.
+                next_pid = state.whose_turn
+                return EndTurnResult(player_id=player_id, next_player_id=next_pid)
+            # It *is* their turn — skip the available-actions check and just
+            # end the turn (handles lingering end_turn after suggest, etc.).
+            return await self._handle_end_turn(state, player_id)
 
         available = self.get_available_actions(player_id, state)
         if action.type not in available:
