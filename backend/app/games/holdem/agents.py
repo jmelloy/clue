@@ -21,6 +21,7 @@ from .models import (
     HoldemAction,
     HoldemGameState,
     HoldemPlayerState,
+    MIN_CHIP,
     RANK_VALUES,
     RaiseAction,
 )
@@ -391,7 +392,11 @@ class HoldemAgent:
         fraction = max(0.33, min(1.0, fraction))
         amount = max(min_bet, int(pot * fraction))
         amount = min(amount, chips)
-        return max(min_bet, min(amount, chips))
+        amount = max(min_bet, min(amount, chips))
+        # Round down to nearest chip denomination
+        if amount < chips:
+            amount = (amount // MIN_CHIP) * MIN_CHIP
+        return max(min_bet, amount)
 
     def _compute_raise(
         self, pot: int, amount_to_call: int, chips: int, strength: float,
@@ -405,6 +410,10 @@ class HoldemAgent:
         amount = max(min_raise, int(pot * fraction))
         # Cap at available chips — if we can't meet min_raise, go all-in
         amount = min(amount, chips)
+        # Round down to nearest chip denomination
+        if amount < chips:
+            amount = (amount // MIN_CHIP) * MIN_CHIP
+            amount = max(min_raise, amount)
         return amount
 
     def generate_chat(self, action_type: str, **kwargs) -> str | None:

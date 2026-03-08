@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+from functools import reduce
+from math import gcd
 from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -11,6 +13,10 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 # Card representation
 # ---------------------------------------------------------------------------
+
+# Chip denominations (GCD determines bet granularity)
+CHIP_DENOMINATIONS = [500, 100, 25, 10]
+MIN_CHIP = reduce(gcd, CHIP_DENOMINATIONS)  # 5 — all bets must be multiples of this
 
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 SUITS = ["hearts", "diamonds", "clubs", "spades"]
