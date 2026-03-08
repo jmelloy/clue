@@ -1202,7 +1202,7 @@ async def _run_agent_loop(game_id: str):
                             )
                             action_d = action.model_dump()
                             result = await _execute_action(game_id, pid, action)
-                        except (ValueError, Exception) as retry_exc:
+                        except Exception as retry_exc:
                             agent.agent_trace(
                                 "action_rejected_retry_failed",
                                 detail=str(retry_exc),
