@@ -281,6 +281,9 @@ class CardShownMessage(WSMessage):
     type: Literal["card_shown"] = "card_shown"
     shown_by: str
     card: str
+    suspect: str = ""
+    weapon: str = ""
+    room: str = ""
     available_actions: list[str] = Field(default_factory=list)
 
 

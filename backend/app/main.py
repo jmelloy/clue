@@ -633,6 +633,9 @@ async def _execute_action(
             CardShownMessage(
                 shown_by=player_id,
                 card=result.card,
+                suspect=result.suspect,
+                weapon=result.weapon,
+                room=result.room,
                 available_actions=game.get_available_actions(
                     result.suggesting_player_id, state
                 ),

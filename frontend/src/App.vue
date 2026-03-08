@@ -424,11 +424,15 @@ function handleMessage(msg) {
         if (msg.weapon_positions) suggUpdate.weapon_positions = msg.weapon_positions
         if (msg.current_room) suggUpdate.current_room = msg.current_room
         gameState.value = { ...gameState.value, ...suggUpdate }
+        // If no one can show a card and this is our suggestion, show the banner
+        if (!msg.pending_show_by && msg.player_id === playerId.value) {
+          cardShown.value = { card: null, by: null, suspect: msg.suspect, weapon: msg.weapon, room: msg.room }
+        }
       }
       break
 
     case 'card_shown':
-      cardShown.value = { card: msg.card, by: msg.shown_by }
+      cardShown.value = { card: msg.card, by: msg.shown_by, suspect: msg.suspect, weapon: msg.weapon, room: msg.room }
       if (msg.available_actions) availableActions.value = msg.available_actions
       showCardRequest.value = null
       autoShowCardTimer.value = null
