@@ -1766,7 +1766,7 @@ watch(
 
 .card-preview-frame {
   position: relative;
-  width: 260px;
+  width: min(260px, 70vw);
   aspect-ratio: 57 / 89;
   background: #f5f0e1;
   border: 3px solid #c8b88a;
@@ -1950,7 +1950,7 @@ watch(
 }
 
 .card-shown-banner-card.physical-card {
-  width: 180px;
+  width: min(180px, 50vw);
 }
 
 .card-shown-banner-card.physical-card .physical-card-image-frame {
@@ -2228,6 +2228,10 @@ watch(
     order: 3;
     flex-basis: 100%;
   }
+
+  .sidebar-column {
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 500px) {
@@ -2240,9 +2244,38 @@ watch(
     font-size: 1.1rem;
   }
 
+  .header-left {
+    gap: 0.35rem;
+  }
+
   .header-right {
     gap: 0.4rem;
   }
+
+  .status-banner {
+    font-size: 0.82rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .dice {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+
+  .hand-card {
+    width: 68px;
+    font-size: 0.65rem;
+  }
+
+  .physical-card-image-frame {
+    height: 50px;
+  }
+
+  .sidebar-panel {
+    padding: 0.5rem;
+  }
+
   .game-over-cards {
     gap: 0.75rem;
   }
@@ -2260,6 +2293,31 @@ watch(
   .legend-name,
   .legend-character {
     display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .header-left h1 {
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+
+  .game-id-label {
+    display: none;
+  }
+
+  .hand-card {
+    width: 60px;
+    font-size: 0.6rem;
+  }
+
+  .card-hand {
+    gap: 0.3rem;
+  }
+
+  .status-banner {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
   }
 }
 </style>
