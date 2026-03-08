@@ -410,7 +410,7 @@ async def test_minimum_bet_enforced(redis):
 
 @pytest.mark.asyncio
 async def test_bet_must_be_chip_multiple(redis):
-    """Bets that aren't a multiple of MIN_CHIP (10) are rejected."""
+    """Bets that aren't a multiple of MIN_CHIP (5) are rejected."""
     game, state = await _setup_started_game(redis)
 
     # Navigate to a position where 'bet' is available
@@ -428,23 +428,22 @@ async def test_bet_must_be_chip_multiple(redis):
 
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
-        # 25 is valid (multiple of 10? No, 25 % 10 == 5) — 25 is NOT a
-        # multiple of 10, so it should be rejected.
-        with pytest.raises(ValueError, match="multiple of 10"):
+        # 23 is not a multiple of 5 — should be rejected
+        with pytest.raises(ValueError, match="multiple of 5"):
             await game.process_action(
-                whose_turn, {"type": "bet", "amount": 25}
+                whose_turn, {"type": "bet", "amount": 23}
             )
-        # 30 is valid (multiple of 10)
+        # 25 is a multiple of 5 (one 25-chip) — valid
         result = await game.process_action(
-            whose_turn, {"type": "bet", "amount": 30}
+            whose_turn, {"type": "bet", "amount": 25}
         )
         assert result.type == "bet"
-        assert result.amount == 30
+        assert result.amount == 25
 
 
 @pytest.mark.asyncio
 async def test_raise_must_be_chip_multiple(redis):
-    """Raises that aren't a multiple of MIN_CHIP (10) are rejected."""
+    """Raises that aren't a multiple of MIN_CHIP (5) are rejected."""
     game, state = await _setup_started_game(redis)
 
     whose_turn = state.whose_turn
@@ -465,14 +464,14 @@ async def test_raise_must_be_chip_multiple(redis):
         available = game.get_available_actions(whose_turn, state)
 
     if "raise" in available:
-        # 65 is not a multiple of 10
-        with pytest.raises(ValueError, match="multiple of 10"):
+        # 63 is not a multiple of 5
+        with pytest.raises(ValueError, match="multiple of 5"):
             await game.process_action(
-                whose_turn, {"type": "raise", "amount": 65}
+                whose_turn, {"type": "raise", "amount": 63}
             )
-        # 60 is valid
+        # 65 is valid (multiple of 5: e.g. 25 + 4×10)
         result = await game.process_action(
-            whose_turn, {"type": "raise", "amount": 60}
+            whose_turn, {"type": "raise", "amount": 65}
         )
         assert result.type == "raise"
 
@@ -496,8 +495,8 @@ async def test_various_invalid_chip_amounts_rejected(redis):
 
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
-        for bad_amount in [21, 33, 45, 57, 99, 101, 115, 203]:
-            with pytest.raises(ValueError, match="multiple of 10"):
+        for bad_amount in [21, 22, 33, 37, 41, 99, 101, 203]:
+            with pytest.raises(ValueError, match="multiple of 5"):
                 await game.process_action(
                     whose_turn, {"type": "bet", "amount": bad_amount}
                 )
@@ -505,7 +504,7 @@ async def test_various_invalid_chip_amounts_rejected(redis):
 
 @pytest.mark.asyncio
 async def test_valid_chip_amounts_accepted(redis):
-    """Amounts that are multiples of 10 are accepted for bets."""
+    """Amounts that are multiples of 5 are accepted for bets."""
     game, state = await _setup_started_game(redis)
 
     whose_turn = state.whose_turn
@@ -522,25 +521,23 @@ async def test_valid_chip_amounts_accepted(redis):
 
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
-        # 20 (min bet = big blind) is valid
+        # 25 (one red chip) is valid
         result = await game.process_action(
-            whose_turn, {"type": "bet", "amount": 20}
+            whose_turn, {"type": "bet", "amount": 25}
         )
         assert result.type == "bet"
-        assert result.amount == 20
+        assert result.amount == 25
 
 
 @pytest.mark.asyncio
 async def test_all_in_bypasses_chip_multiple_check(redis):
-    """All-in with a non-chip-multiple stack is allowed (bet path)."""
+    """All-in with a non-chip-multiple stack is allowed."""
     game = HoldemGame("ALLIN_ODD", redis)
-    await game.create(buy_in=35)  # 35 is not a multiple of 10
+    await game.create(buy_in=33)  # 33 is not a multiple of 5
     await game.add_player("P0", "Alice")
     await game.add_player("P1", "Bob")
     state = await game.start()
 
-    # After blinds (10 + 20 = 30), one player has 25, the other 15 or 5
-    # depending on who is SB/BB. Either way, stacks may not be chip-multiples.
     whose_turn = state.whose_turn
     available = game.get_available_actions(whose_turn, state)
 
@@ -554,7 +551,7 @@ async def test_bet_exact_remaining_chips_bypasses_multiple_check(redis):
     """Betting your exact remaining chips (all-in via bet) bypasses the chip
     multiple check, since you're putting everything in."""
     game = HoldemGame("BETALLIN", redis)
-    await game.create(buy_in=55)  # Odd buy-in
+    await game.create(buy_in=53)  # Odd buy-in, not a multiple of 5
     await game.add_player("P0", "Alice")
     await game.add_player("P1", "Bob")
     state = await game.start()
@@ -575,8 +572,8 @@ async def test_bet_exact_remaining_chips_bypasses_multiple_check(redis):
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
         player = next(p for p in state.players if p.id == whose_turn)
-        # Bet the exact remaining chips even if not a multiple of 10
-        if player.chips % 10 != 0:
+        # Bet the exact remaining chips even if not a multiple of 5
+        if player.chips % 5 != 0:
             result = await game.process_action(
                 whose_turn, {"type": "bet", "amount": player.chips}
             )
@@ -588,7 +585,7 @@ async def test_bet_exact_remaining_chips_bypasses_multiple_check(redis):
 async def test_raise_exact_remaining_chips_bypasses_multiple_check(redis):
     """Raising your exact remaining chips bypasses chip multiple check."""
     game = HoldemGame("RAISEALLIN", redis)
-    await game.create(buy_in=55)
+    await game.create(buy_in=53)
     await game.add_player("P0", "Alice")
     await game.add_player("P1", "Bob")
     state = await game.start()
@@ -628,17 +625,17 @@ async def test_chip_validation_in_three_player_game(redis):
 
     # Try an invalid bet amount
     if "bet" in available:
-        with pytest.raises(ValueError, match="multiple of 10"):
+        with pytest.raises(ValueError, match="multiple of 5"):
             await game.process_action(
                 whose_turn, {"type": "bet", "amount": 33}
             )
     if "raise" in available:
         # Raise amount must exceed amount_to_call + big_blind AND be a chip
-        # multiple.  Use 45 which is above the min raise (40) but not a
-        # multiple of 10.
-        with pytest.raises(ValueError, match="multiple of 10"):
+        # multiple.  Use 43 which is above the min raise (40) but not a
+        # multiple of 5.
+        with pytest.raises(ValueError, match="multiple of 5"):
             await game.process_action(
-                whose_turn, {"type": "raise", "amount": 45}
+                whose_turn, {"type": "raise", "amount": 43}
             )
 
 
