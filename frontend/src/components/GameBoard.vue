@@ -84,8 +84,7 @@
             'observer-clickable': isObserver,
             'observer-selected': isObserver && observerPlayerState?.playerId === p.id
           }" @click.stop="onLegendClick(p)">
-            <span class="legend-token" :class="{ 'wanderer-token-legend': p.type === 'wanderer' }"
-              :style="tokenStyle(p)">{{ abbr(p.character) }}</span>
+            <PlayerPawn :character="p.character" :wanderer="p.type === 'wanderer'" />
             <span class="legend-name">{{ p.name }}</span>
             <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
@@ -480,6 +479,7 @@ import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
 import AgentDebugPanel from './AgentDebugPanel.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import PlayerPawn from './PlayerPawn.vue'
 import { useTheme } from '../composables/useTheme'
 import {
   SUSPECTS,
@@ -490,8 +490,6 @@ import {
   cardIcon,
   hasCardImage as _hasCardImage,
   cardImageUrl as _cardImageUrl,
-  abbr,
-  characterColors
 } from '../constants/clue'
 
 const { theme } = useTheme()
@@ -629,12 +627,6 @@ function playerName(pid) {
   return p ? p.name : pid
 }
 
-function tokenStyle(player) {
-  const { bg, text } = characterColors(player.character)
-  const style = { backgroundColor: bg, color: text }
-  if (player.type === 'wanderer') style.opacity = 0.5
-  return style
-}
 
 function cardCategory(card) {
   if (SUSPECTS.includes(card)) return 'card-suspect'
@@ -993,18 +985,6 @@ watch(
   padding: 0.5rem;
 }
 
-.legend-token {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  font-size: 0.55rem;
-  font-weight: bold;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-}
 
 .legend-name {
   font-weight: 600;
@@ -1043,9 +1023,6 @@ watch(
   opacity: 0.5;
 }
 
-.wanderer-token-legend {
-  border: 1.5px dashed rgba(255, 255, 255, 0.3);
-}
 
 .legend-wanderer-label {
   color: var(--text-faint);
