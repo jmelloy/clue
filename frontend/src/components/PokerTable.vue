@@ -257,21 +257,21 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="betAmount = gameState?.big_blind ?? 20" class="pill">Min</button>
-                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 3)" class="pill">
+                  <button @click="betAmount = roundToChip((myPlayer?.chips ?? 0) / 3)" class="pill">
                     &frac13;
                   </button>
-                  <button @click="betAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">
+                  <button @click="betAmount = roundToChip((myPlayer?.chips ?? 0) / 2)" class="pill">
                     &frac12;
                   </button>
                   <button @click="betAmount = myPlayer?.chips ?? 0" class="pill">Max</button>
                 </div>
                 <div class="range-track">
                   <input type="range" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0"
-                    :step="gameState?.big_blind ?? 20" v-model.number="betAmount" class="range-input" />
+                    :step="MIN_CHIP" v-model.number="betAmount" class="range-input" />
                 </div>
                 <div class="slider-confirm">
                   <input type="number" v-model.number="betAmount" :min="gameState?.big_blind ?? 20"
-                    :max="myPlayer?.chips ?? 0" class="num-input" />
+                    :max="myPlayer?.chips ?? 0" :step="MIN_CHIP" class="num-input" />
                   <button class="go-btn" @click="submitBet">
                     Bet {{ formatChips(betAmount) }}
                   </button>
@@ -286,21 +286,21 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="raiseAmount = minRaise" class="pill">Min</button>
-                  <button @click="raiseAmount = Math.floor((myPlayer?.chips ?? 0) / 2)" class="pill">
+                  <button @click="raiseAmount = roundToChip((myPlayer?.chips ?? 0) / 2)" class="pill">
                     &frac12;
                   </button>
-                  <button @click="raiseAmount = Math.floor(((myPlayer?.chips ?? 0) * 3) / 4)" class="pill">
+                  <button @click="raiseAmount = roundToChip(((myPlayer?.chips ?? 0) * 3) / 4)" class="pill">
                     &frac34;
                   </button>
                   <button @click="raiseAmount = myPlayer?.chips ?? 0" class="pill">Pot</button>
                 </div>
                 <div class="range-track">
-                  <input type="range" :min="minRaise" :max="myPlayer?.chips ?? 0" :step="gameState?.big_blind ?? 20"
+                  <input type="range" :min="minRaise" :max="myPlayer?.chips ?? 0" :step="MIN_CHIP"
                     v-model.number="raiseAmount" class="range-input" />
                 </div>
                 <div class="slider-confirm">
                   <input type="number" v-model.number="raiseAmount" :min="minRaise" :max="myPlayer?.chips ?? 0"
-                    class="num-input" />
+                    :step="MIN_CHIP" class="num-input" />
                   <button class="go-btn" @click="submitRaise">
                     Raise {{ formatChips(raiseAmount) }}
                   </button>
@@ -409,6 +409,12 @@ const CHIP_DENOMS = [
   { value: 25, color: 'red' },
   { value: 10, color: 'white' }
 ]
+const MIN_CHIP = Math.min(...CHIP_DENOMS.map(d => d.value))  // 10
+
+// Round a bet amount down to the nearest chip denomination multiple
+function roundToChip(amount) {
+  return Math.floor(amount / MIN_CHIP) * MIN_CHIP
+}
 
 // Break an amount into chip denominations, returns array of { color, count }
 function chipBreakdown(amount) {
@@ -692,11 +698,15 @@ function doAction(action) {
 }
 
 function submitBet() {
-  doAction({ type: 'bet', amount: betAmount.value })
+  const chips = myPlayer.value?.chips ?? 0
+  const amount = betAmount.value >= chips ? chips : roundToChip(betAmount.value)
+  doAction({ type: 'bet', amount })
 }
 
 function submitRaise() {
-  doAction({ type: 'raise', amount: raiseAmount.value })
+  const chips = myPlayer.value?.chips ?? 0
+  const amount = raiseAmount.value >= chips ? chips : roundToChip(raiseAmount.value)
+  doAction({ type: 'raise', amount })
 }
 
 function sendChatMessage() {
