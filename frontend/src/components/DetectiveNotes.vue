@@ -7,7 +7,7 @@
       <div v-for="card in SUSPECTS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
         <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb"
           :style="{ borderColor: CHARACTER_COLORS[card]?.bg || '#666' }" />
-        <span class="note-card" :style="suspectStyle(card)">{{ card }}</span>
+        <span class="note-card">{{ card }}</span>
         <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
           {{ noteMark(card) }}
           <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
@@ -115,15 +115,6 @@ function emitNotesChanged() {
 
 // Watch for any notes changes and emit
 watch(notes, () => emitNotesChanged(), { deep: true })
-
-function suspectStyle(card) {
-  const state = notes[card] ?? ''
-  if (state === 'have' || state === 'no' || state === 'seen') return {}
-  const color = CHARACTER_COLORS[card]?.name || CHARACTER_COLORS[card]?.bg
-  if (!color) return {}
-  // Default and 'maybe' states show the suspect's color
-  return { color }
-}
 
 function noteMark(card) {
   const state = notes[card] ?? ''
