@@ -25,6 +25,7 @@ from .models import (
     HoldemActionResult,
     HoldemChatMessage,
     HoldemGameState,
+    HoldemHandResult,
     HoldemLogEntryBase,
     HoldemPlayer,
     HoldemPlayerState,
@@ -381,12 +382,10 @@ class HoldemGame:
             winner = active_unfolded[0]
             winner.chips += state.pot
             # Store hand result for banner (no hands revealed on fold win)
-            state.last_hand_result = {
-                "winners": [winner.id],
-                "winning_hand": "",
-                "pot": state.pot,
-                "player_hands": {},
-            }
+            state.last_hand_result = HoldemHandResult(
+                winners=[winner.id],
+                pot=state.pot,
+            )
             result = FoldResult(player_id=player.id)
             await self._save_state(state)
             await self._end_hand(state, [winner.id], "Last player standing")
@@ -691,15 +690,12 @@ class HoldemGame:
         state.winning_hand = best_hand_name
 
         # Store hand result for broadcast (persists through deal of next hand)
-        state.last_hand_result = {
-            "winners": winners,
-            "winning_hand": best_hand_name,
-            "pot": state.pot,
-            "player_hands": {
-                pid: [c.model_dump() for c in cards]
-                for pid, cards in player_hands.items()
-            },
-        }
+        state.last_hand_result = HoldemHandResult(
+            winners=winners,
+            winning_hand=best_hand_name,
+            pot=state.pot,
+            player_hands=player_hands,
+        )
 
         await self._append_log(
             ShowdownLogEntry(

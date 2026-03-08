@@ -84,7 +84,6 @@ from .ws_manager import ConnectionManager
 from .games.holdem.agents import HoldemAgent, get_personality
 from .games.holdem.game import HoldemGame
 from .games.holdem.models import (
-    Card as HoldemCard,
     HoldemActionMessage,
     HoldemActionRequest,
     HoldemAddAgentRequest,
@@ -2089,33 +2088,27 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
     # Broadcast showdown/hand result if a hand just completed
     hand_result = state.last_hand_result
     if hand_result:
-        # Convert card dicts back to Card objects for the message model
-        player_hands = {
-            pid: [HoldemCard(**c) for c in cards]
-            for pid, cards in hand_result.get("player_hands", {}).items()
-        }
         await manager.broadcast(
             game_id,
             HoldemShowdownMessage(
-                winners=hand_result["winners"],
-                winning_hand=hand_result.get("winning_hand", ""),
-                pot=hand_result.get("pot", 0),
-                player_hands=player_hands,
+                winners=hand_result.winners,
+                winning_hand=hand_result.winning_hand,
+                pot=hand_result.pot,
+                player_hands=hand_result.player_hands,
             ),
         )
         winner_names = ", ".join(
-            _holdem_player_name(state, w) for w in hand_result["winners"]
+            _holdem_player_name(state, w) for w in hand_result.winners
         )
-        winning_hand = hand_result.get("winning_hand", "")
-        if winning_hand:
+        if hand_result.winning_hand:
             await _holdem_broadcast_chat(
                 game_id,
-                f"{winner_names} wins the pot ({hand_result['pot']}) with {winning_hand}!",
+                f"{winner_names} wins the pot ({hand_result.pot}) with {hand_result.winning_hand}!",
             )
         else:
             await _holdem_broadcast_chat(
                 game_id,
-                f"{winner_names} takes the pot ({hand_result['pot']}).",
+                f"{winner_names} takes the pot ({hand_result.pot}).",
             )
 
     if state.status == "finished":
