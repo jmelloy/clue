@@ -576,7 +576,7 @@ class BaseAgent(ABC):
                 key, json.dumps(self.get_knowledge_state()), ex=EXPIRY
             )
         except Exception:
-            logger.debug("Failed to save knowledge state for %s", self.player_id)
+            logger.warning("Failed to save knowledge state for %s", self.player_id)
         await self._save_detective_notes()
 
     def _build_detective_notes(self) -> dict:
@@ -625,7 +625,7 @@ class BaseAgent(ABC):
                 key, json.dumps(self._build_detective_notes()), ex=EXPIRY
             )
         except Exception:
-            logger.debug(
+            logger.warning(
                 "Failed to save detective notes for %s", self.player_id
             )
 
@@ -660,7 +660,7 @@ class BaseAgent(ABC):
                     ),
                 )
         except Exception:
-            logger.debug("Failed to load knowledge state for %s", self.player_id)
+            logger.warning("Failed to load knowledge state for %s", self.player_id)
 
     # ------------------------------------------------------------------
     # Trace method — centralized debug logging + Redis persistence

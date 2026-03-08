@@ -152,11 +152,26 @@ class AgentRunner:
             if not config_raw:
                 continue
 
-            config = json.loads(config_raw)
+            try:
+                config = json.loads(config_raw)
+            except (json.JSONDecodeError, TypeError) as exc:
+                logger.warning(
+                    "Malformed agent config for game %s, skipping: %s",
+                    game_id,
+                    exc,
+                )
+                continue
 
             # Check if game is still active
-            game = ClueGame(game_id, self.redis)
-            state = await game.get_state()
+            try:
+                game = ClueGame(game_id, self.redis)
+                state = await game.get_state()
+            except Exception:
+                logger.exception(
+                    "Failed to fetch game state for %s during discovery",
+                    game_id,
+                )
+                continue
             if not state or state.status != "playing":
                 # Game is over or doesn't exist — clean up config
                 await self.redis.delete(key)
@@ -370,7 +385,15 @@ class AgentRunner:
         async for ws in websockets.connect(ws_url):
             try:
                 async for raw_msg in ws:
-                    msg = json.loads(raw_msg)
+                    try:
+                        msg = json.loads(raw_msg)
+                    except (json.JSONDecodeError, TypeError):
+                        logger.warning(
+                            "Malformed WebSocket message for agent %s in game %s, skipping",
+                            player_id,
+                            game_id,
+                        )
+                        continue
                     done = await self._handle_message(
                         game_id, player_id, agent, msg
                     )

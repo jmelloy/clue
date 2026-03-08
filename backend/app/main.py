@@ -1088,7 +1088,16 @@ async def _run_agent_loop(game_id: str):
                     f"Deciding which card to show from {matching}",
                     game_state=state,
                 )
-                card = await agent.decide_show_card(matching, suggesting_pid)
+                try:
+                    card = await agent.decide_show_card(matching, suggesting_pid)
+                except Exception:
+                    logger.exception(
+                        "Agent %s failed to decide show_card in game %s, "
+                        "falling back to first matching card",
+                        pid,
+                        game_id,
+                    )
+                    card = matching[0]
                 await _broadcast_agent_debug(
                     game_id,
                     agent,
@@ -1134,7 +1143,18 @@ async def _run_agent_loop(game_id: str):
                     f"Deciding next action (available: {', '.join(player_state.available_actions)})",
                     game_state=state,
                 )
-                action = await agent.decide_action(state, player_state)
+                try:
+                    action = await agent.decide_action(state, player_state)
+                except Exception:
+                    logger.exception(
+                        "Agent %s failed to decide action in game %s, "
+                        "falling back to end_turn",
+                        pid,
+                        game_id,
+                    )
+                    # Try to end turn gracefully; if that's not available,
+                    # the action execution will raise and be caught below.
+                    action = EndTurnAction()
                 action_d = action.model_dump()
                 action_desc = action.type
                 if action.type == "move":
@@ -2460,7 +2480,20 @@ async def _run_holdem_agent_loop(game_id: str):
                     await asyncio.sleep(0.5)
                     continue
 
-                action = agent.decide_action(state, player_state)
+                try:
+                    action = agent.decide_action(state, player_state)
+                except Exception as exc:
+                    logger.exception(
+                        "Holdem agent %s failed to decide action in game %s",
+                        whose_turn,
+                        game_id,
+                    )
+                    # Fallback: check or fold
+                    if "check" in player_state.available_actions:
+                        action = CheckAction()
+                    else:
+                        action = FoldAction()
+
                 logger.info(
                     "Holdem agent %s taking action %s in game %s",
                     whose_turn,
