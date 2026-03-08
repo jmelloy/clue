@@ -336,7 +336,22 @@ async def test_cannot_act_out_of_turn(game: ClueGame):
 
     not_their_turn = "P2" if state.whose_turn == "P1" else "P1"
     with pytest.raises(ValueError, match="not your turn"):
-        await game.process_action(not_their_turn, {"type": "end_turn"})
+        await game.process_action(not_their_turn, {"type": "roll"})
+
+
+@pytest.mark.asyncio
+async def test_end_turn_noop_when_not_your_turn(game: ClueGame):
+    """end_turn from the wrong player is a silent no-op, not an error."""
+    await _add_two_players(game)
+    state = await game.start()
+
+    current = state.whose_turn
+    not_their_turn = "P2" if current == "P1" else "P1"
+    result = await game.process_action(not_their_turn, {"type": "end_turn"})
+    assert result.type == "end_turn"
+    # Turn should NOT have advanced
+    refreshed = await game.get_state()
+    assert refreshed.whose_turn == current
 
 
 @pytest.mark.asyncio
@@ -539,7 +554,7 @@ async def test_cannot_end_turn_while_pending_show_card(game: ClueGame):
     )
     assert result.pending_show_by == other_id
 
-    with pytest.raises(ValueError, match="not available at this time"):
+    with pytest.raises(ValueError, match="Cannot end turn while waiting"):
         await game.process_action(whose_turn, {"type": "end_turn"})
 
 

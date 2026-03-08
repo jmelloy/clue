@@ -1731,6 +1731,13 @@ class LLMAgent(BaseAgent):
 
         effective_model = model or self.model
 
+        self.agent_trace(
+            "llm_request",
+            model=effective_model,
+            system_prompt=_clip_text(system_prompt),
+            user_prompt=_clip_text(user_prompt),
+        )
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -1890,6 +1897,11 @@ class LLMAgent(BaseAgent):
             lines.append('  Roll dice: {"type": "roll"}')
         if "move" in available:
             lines.append('  Move: {"type": "move", "room": "<room name>"}')
+            player_current_room = current_room.get(player_id)
+            if player_current_room:
+                lines.append(
+                    f"    NOTE: You CANNOT re-enter {player_current_room} (the room you are already in). Choose a different room."
+                )
         if "suggest" in available:
             room = current_room.get(player_id, "")
             lines.append(
@@ -1988,7 +2000,10 @@ class LLMAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState, errors: int = 0
+        self,
+        game_state: GameState,
+        player_state: PlayerState,
+        errors: int = 0,
     ) -> GameAction:
         # Flush any inference notifications accumulated since last decision
         await self._flush_pending_inferences()
@@ -2044,6 +2059,11 @@ class LLMAgent(BaseAgent):
             personality=personality,
         )
         user_prompt = self._build_action_prompt(game_state, player_state)
+        if rejection_detail:
+            user_prompt += (
+                f"\n\nIMPORTANT: Your previous action was REJECTED by the server: "
+                f"{rejection_detail}\nChoose a DIFFERENT action."
+            )
         response_text = await self._call_llm(system_prompt, user_prompt)
 
         if response_text is not None:
@@ -2056,8 +2076,8 @@ class LLMAgent(BaseAgent):
                     # Stash chat for generate_chat() to return later
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
-                    # Save memory entry if provided
-                    if llm_memory and isinstance(llm_memory, str):
+                    # Save memory entry only on end_turn
+                    if llm_memory and isinstance(llm_memory, str) and parsed.get("type") == "end_turn":
                         await self._save_memory_entry(llm_memory.strip())
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
