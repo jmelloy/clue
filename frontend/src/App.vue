@@ -2,6 +2,7 @@
   <div id="clue-app">
     <AdminGames v-if="isAdminRoute" @go-home="onAdminGoHome" @observe-game="onAdminObserveGame" />
     <GameDebug v-else-if="isDebugRoute && debugGameId" :game-id="debugGameId" @go-home="onDebugGoHome" />
+    <HoldemDebug v-else-if="isHoldemDebugRoute && holdemDebugGameId" :game-id="holdemDebugGameId" @go-home="onHoldemDebugGoHome" />
     <Lobby v-else-if="!gameId" :url-game-id="urlGameId" :url-game-type="currentGameType" @game-joined="onGameJoined"
       @observe="onObserve" @rejoin="onRejoin" @clear-url-game="urlGameId = null" />
 
@@ -40,6 +41,7 @@ import PokerWaitingRoom from './components/PokerWaitingRoom.vue'
 import PokerTable from './components/PokerTable.vue'
 import AdminGames from './components/AdminGames.vue'
 import GameDebug from './components/GameDebug.vue'
+import HoldemDebug from './components/HoldemDebug.vue'
 
 const gameId = ref(null)
 const playerId = ref(null)
@@ -63,6 +65,8 @@ const currentGameType = ref('clue') // 'clue' or 'holdem'
 const isAdminRoute = ref(false)
 const isDebugRoute = ref(false)
 const debugGameId = ref(null)
+const isHoldemDebugRoute = ref(false)
+const holdemDebugGameId = ref(null)
 const pokerTableRef = ref(null)
 
 // Initialize theme system (applies data-theme attribute on mount)
@@ -97,7 +101,10 @@ function parseGameIdFromUrl() {
   // Check debug route
   const debugMatch = window.location.pathname.match(/^\/clue\/([A-Za-z0-9]+)\/debug/)
   if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
-  // Check holdem route first
+  // Check holdem debug route
+  const holdemDebugMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)\/debug/)
+  if (holdemDebugMatch) return { holdemDebug: true, holdemDebugGameId: holdemDebugMatch[1].toUpperCase() }
+  // Check holdem route
   const holdemMatch = window.location.pathname.match(/^\/holdem\/([A-Za-z0-9]+)/)
   if (holdemMatch) return { gameId: holdemMatch[1].toUpperCase(), gameType: 'holdem' }
   // Check clue route
@@ -131,11 +138,21 @@ function onPopState() {
     isDebugRoute.value = true
     debugGameId.value = parsed.debugGameId
     isAdminRoute.value = false
+    isHoldemDebugRoute.value = false
+    return
+  }
+  if (parsed && parsed.holdemDebug) {
+    isHoldemDebugRoute.value = true
+    holdemDebugGameId.value = parsed.holdemDebugGameId
+    isAdminRoute.value = false
+    isDebugRoute.value = false
     return
   }
   isAdminRoute.value = false
   isDebugRoute.value = false
   debugGameId.value = null
+  isHoldemDebugRoute.value = false
+  holdemDebugGameId.value = null
   if (parsed && gameId.value && parsed.gameId === gameId.value) {
     return
   }
@@ -156,6 +173,9 @@ onMounted(async () => {
   } else if (parsed && parsed.debug) {
     isDebugRoute.value = true
     debugGameId.value = parsed.debugGameId
+  } else if (parsed && parsed.holdemDebug) {
+    isHoldemDebugRoute.value = true
+    holdemDebugGameId.value = parsed.holdemDebugGameId
   } else if (parsed) {
     currentGameType.value = parsed.gameType
     urlGameId.value = parsed.gameId
@@ -504,6 +524,12 @@ function leaveGame() {
 function onDebugGoHome() {
   isDebugRoute.value = false
   debugGameId.value = null
+  pushLobbyUrl()
+}
+
+function onHoldemDebugGoHome() {
+  isHoldemDebugRoute.value = false
+  holdemDebugGameId.value = null
   pushLobbyUrl()
 }
 
