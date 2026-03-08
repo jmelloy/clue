@@ -625,9 +625,7 @@ class BaseAgent(ABC):
                 key, json.dumps(self._build_detective_notes()), ex=EXPIRY
             )
         except Exception:
-            logger.debug(
-                "Failed to save detective notes for %s", self.player_id
-            )
+            logger.debug("Failed to save detective notes for %s", self.player_id)
 
     def _enqueue_save_knowledge(self):
         """Fire-and-forget save of knowledge state and detective notes."""
@@ -1068,7 +1066,11 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState, errors: int = 0
+        self,
+        game_state: GameState,
+        player_state: PlayerState,
+        errors: int = 0,
+        rejection_detail: str | None = None,
     ) -> GameAction:
         """Return a typed GameAction for the current turn phase."""
         ...
@@ -1156,7 +1158,11 @@ class RandomAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     async def decide_action(
-        self, game_state: GameState, player_state: PlayerState, errors: int = 0
+        self,
+        game_state: GameState,
+        player_state: PlayerState,
+        errors: int = 0,
+        rejection_detail: str | None = None,
     ) -> GameAction:
         player_id = player_state.your_player_id
         known_cards = player_state.your_cards
@@ -2004,6 +2010,7 @@ class LLMAgent(BaseAgent):
         game_state: GameState,
         player_state: PlayerState,
         errors: int = 0,
+        rejection_detail: str | None = None,
     ) -> GameAction:
         # Flush any inference notifications accumulated since last decision
         await self._flush_pending_inferences()
@@ -2077,7 +2084,11 @@ class LLMAgent(BaseAgent):
                     if llm_chat and isinstance(llm_chat, str):
                         self._pending_chat = llm_chat
                     # Save memory entry only on end_turn
-                    if llm_memory and isinstance(llm_memory, str) and parsed.get("type") == "end_turn":
+                    if (
+                        llm_memory
+                        and isinstance(llm_memory, str)
+                        and parsed.get("type") == "end_turn"
+                    ):
                         await self._save_memory_entry(llm_memory.strip())
                     # Track rooms for suggestion
                     if parsed.get("type") == "suggest":
