@@ -2150,33 +2150,30 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
             ),
         )
 
-    if state.betting_round == "showdown" or state.status == "finished":
-        # Get the showdown log entry to retrieve hand info
-        log = await game.get_log()
-        showdown_entries = [e for e in log if e.type == "showdown_log"]
-        if showdown_entries:
-            sd = showdown_entries[-1]
-            # Load player hands for showdown display
-            player_hands = {}
-            for p in state.players:
-                if p.active:
-                    cards = await game._load_player_cards(p.id)
-                    if cards:
-                        player_hands[p.id] = cards
-
-            await manager.broadcast(
-                game_id,
-                HoldemShowdownMessage(
-                    winners=sd.winners,
-                    winning_hand=sd.winning_hand,
-                    pot=sd.pot,
-                    player_hands=player_hands,
-                ),
-            )
-            winner_names = ", ".join(_holdem_player_name(state, w) for w in sd.winners)
+    # Broadcast showdown/hand result if a hand just completed
+    hand_result = state.last_hand_result
+    if hand_result:
+        await manager.broadcast(
+            game_id,
+            HoldemShowdownMessage(
+                winners=hand_result.winners,
+                winning_hand=hand_result.winning_hand,
+                pot=hand_result.pot,
+                player_hands=hand_result.player_hands,
+            ),
+        )
+        winner_names = ", ".join(
+            _holdem_player_name(state, w) for w in hand_result.winners
+        )
+        if hand_result.winning_hand:
             await _holdem_broadcast_chat(
                 game_id,
-                f"{winner_names} wins the pot ({_format_currency(sd.pot)}) with {sd.winning_hand}!",
+                f"{winner_names} wins the pot ({_format_currency(hand_result.pot)}) with {hand_result.winning_hand}!",
+            )
+        else:
+            await _holdem_broadcast_chat(
+                game_id,
+                f"{winner_names} takes the pot ({_format_currency(hand_result.pot)}).",
             )
 
     if state.status == "finished":

@@ -176,6 +176,21 @@
           </span>
           <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
         </div>
+        <!-- Revealed hands row -->
+        <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length" class="winner-banner-hands">
+          <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
+            :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
+            <span class="banner-hand-name">{{ playerName(pid) }}</span>
+            <div class="banner-hand-cards">
+              <div v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" class="playing-card banner-mini-card" :class="suitClass(c.suit)">
+                <span class="card-corner top-left">
+                  <span class="card-rank">{{ c.rank }}</span>
+                  <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Transition>
 
@@ -795,12 +810,14 @@ watch(chatOpen, (open) => {
 defineExpose({
   onShowdown(data) {
     showdownData.value = data
-    // Set persistent banner
+    // Set persistent banner with player hands
     const names = data.winners.map((wid) => playerName(wid)).join(' & ')
     winnerBanner.value = {
       names,
       pot: data.pot,
-      hand: data.winning_hand
+      hand: data.winning_hand,
+      playerHands: data.player_hands || {},
+      winnerIds: data.winners || []
     }
   },
   onRebuyPrompt() {
@@ -808,14 +825,20 @@ defineExpose({
   }
 })
 
+// Clear winner banner when backend clears last_hand_result (on next action)
+watch(
+  () => props.gameState?.last_hand_result,
+  (result) => {
+    if (!result && winnerBanner.value) {
+      winnerBanner.value = null
+    }
+  }
+)
+
 // Track betting round changes for chip sweep animation
 watch(
   () => props.gameState?.betting_round,
   (round, oldRound) => {
-    // Clear winner banner when a new hand starts
-    if (round && round !== 'showdown') {
-      winnerBanner.value = null
-    }
     // Sweep chips to center when betting round advances
     if (oldRound && round && round !== oldRound) {
       const players = props.gameState?.players ?? []
@@ -2306,6 +2329,66 @@ watch(
   font-weight: 500;
   font-style: italic;
   opacity: 0.9;
+}
+
+.winner-banner-hands {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold-dim) 40%, transparent);
+}
+
+.banner-player-hand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.7;
+}
+
+.banner-player-hand.banner-hand-winner {
+  opacity: 1;
+}
+
+.banner-hand-name {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  min-width: 50px;
+  text-align: right;
+}
+
+.banner-hand-winner .banner-hand-name {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.banner-hand-cards {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.banner-mini-card {
+  width: 32px;
+  height: 44px;
+  font-size: 0.65rem;
+  border-radius: 4px;
+}
+
+.banner-mini-card .card-rank {
+  font-size: 0.55rem;
+}
+
+.banner-mini-card .card-suit-small {
+  font-size: 0.45rem;
+}
+
+.banner-mini-card .card-pips,
+.banner-mini-card .card-face-center {
+  display: none;
 }
 
 .banner-slide-enter-active {
