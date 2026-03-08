@@ -1901,8 +1901,8 @@ def _holdem_player_name(state, player_id: str) -> str:
 
 
 def _format_currency(amount: int | float) -> str:
-    """Format an integer chip amount as dollars and cents (e.g. $1,000.00)."""
-    return f"${amount:,.2f}"
+    """Format a chip amount (in cents) as dollars and cents (e.g. $1,000.00)."""
+    return f"${amount / 100:,.2f}"
 
 
 async def _holdem_broadcast_chat(game_id: str, text: str, player_id: str | None = None):

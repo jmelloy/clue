@@ -548,7 +548,7 @@ function seatHue(idx) {
 }
 
 function formatChips(n) {
-  return '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return '$' + (Number(n) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // Position seats around an ellipse
