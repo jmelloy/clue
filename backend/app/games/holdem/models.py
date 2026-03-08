@@ -48,6 +48,7 @@ class HoldemPlayer(BaseModel):
     current_bet: int = 0  # amount bet this round
     all_in: bool = False
     player_type: str = "human"  # "human" or "holdem_agent"
+    rebuy_pending: bool = False  # waiting for rebuy decision
 
 
 class HoldemGameState(BaseModel):
@@ -250,6 +251,26 @@ class HoldemGameOverMessage(HoldemWSMessage):
     winner: str = ""
 
 
+class HoldemRebuyPromptMessage(HoldemWSMessage):
+    """Sent to a player who must rebuy or be eliminated."""
+    type: Literal["rebuy_prompt"] = "rebuy_prompt"
+    player_id: str = ""
+    buy_in: int = 0
+
+
+class HoldemPlayerEliminatedMessage(HoldemWSMessage):
+    """Broadcast when a player is eliminated (didn't rebuy)."""
+    type: Literal["player_eliminated"] = "player_eliminated"
+    player_id: str = ""
+
+
+class HoldemRebuyMessage(HoldemWSMessage):
+    """Broadcast when a player rebuys."""
+    type: Literal["player_rebuy"] = "player_rebuy"
+    player_id: str = ""
+    chips: int = 0
+
+
 class HoldemPongMessage(HoldemWSMessage):
     type: Literal["pong"] = "pong"
 
@@ -353,6 +374,10 @@ class HoldemChatRequest(BaseModel):
 
 class HoldemChatMessagesResponse(BaseModel):
     messages: list[HoldemChatMessage]
+
+
+class HoldemRebuyRequest(BaseModel):
+    player_id: str
 
 
 class HoldemAddAgentRequest(BaseModel):

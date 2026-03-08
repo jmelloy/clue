@@ -96,12 +96,17 @@ from .games.holdem.models import (
     HoldemCreateGameResponse,
     HoldemGameOverMessage,
     HoldemGameStartedMessage,
+    HoldemGameState,
     HoldemGameStateMessage,
     HoldemJoinGameResponse,
     HoldemJoinRequest,
     HoldemNewHandMessage,
     HoldemPlayerJoinedMessage,
+    HoldemPlayerEliminatedMessage,
     HoldemPongMessage,
+    HoldemRebuyMessage,
+    HoldemRebuyPromptMessage,
+    HoldemRebuyRequest,
     HoldemShowdownMessage,
     HoldemYourTurnMessage,
     AllInResult,
@@ -2138,6 +2143,23 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
             ),
         )
 
+    # Send rebuy prompts to busted players (when allow_rebuys is on)
+    # Re-load state since _end_hand may have modified it
+    state = await game.get_state()
+    if state and state.allow_rebuys:
+        rebuy_pending = [p for p in state.players if p.rebuy_pending]
+        for p in rebuy_pending:
+            name = _holdem_player_name(state, p.id)
+            await manager.send_to_player(
+                game_id,
+                p.id,
+                HoldemRebuyPromptMessage(player_id=p.id, buy_in=state.buy_in),
+            )
+            await _holdem_broadcast_chat(
+                game_id,
+                f"{name} is out of chips! Rebuy for {_format_currency(state.buy_in)}?",
+            )
+
     return result
 
 
@@ -2222,6 +2244,89 @@ async def holdem_send_chat(game_id: str, req: HoldemChatRequest):
     return HoldemOkResponse()
 
 
+@app.post("/api/holdem/games/{game_id}/rebuy")
+async def holdem_rebuy(game_id: str, req: HoldemRebuyRequest):
+    """Player rebuys after going bust."""
+    game = HoldemGame(game_id, redis_client)
+    try:
+        state = await game.rebuy(req.player_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    player = next((p for p in state.players if p.id == req.player_id), None)
+    name = _holdem_player_name(state, req.player_id)
+    await manager.broadcast(
+        game_id,
+        HoldemRebuyMessage(player_id=req.player_id, chips=player.chips if player else 0),
+    )
+    await _holdem_broadcast_chat(game_id, f"{name} rebuys for {_format_currency(state.buy_in)}!")
+
+    # If the game advanced to a new hand, notify players
+    if state.status == "playing" and state.whose_turn:
+        await _holdem_notify_new_hand(game_id, state, game)
+
+    return HoldemOkResponse()
+
+
+@app.post("/api/holdem/games/{game_id}/decline_rebuy")
+async def holdem_decline_rebuy(game_id: str, req: HoldemRebuyRequest):
+    """Player declines rebuy and is eliminated."""
+    game = HoldemGame(game_id, redis_client)
+    try:
+        state = await game.decline_rebuy(req.player_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    name = _holdem_player_name(state, req.player_id)
+    await manager.broadcast(
+        game_id,
+        HoldemPlayerEliminatedMessage(player_id=req.player_id),
+    )
+    await _holdem_broadcast_chat(game_id, f"{name} is eliminated.")
+
+    if state.status == "finished":
+        winner_name = _holdem_player_name(state, state.winner) if state.winner else "?"
+        await manager.broadcast(
+            game_id,
+            HoldemGameOverMessage(winner=state.winner or ""),
+        )
+        await _holdem_broadcast_chat(
+            game_id, f"Game over! {winner_name} wins the tournament!"
+        )
+    elif state.status == "playing" and state.whose_turn:
+        await _holdem_notify_new_hand(game_id, state, game)
+
+    return HoldemOkResponse()
+
+
+async def _holdem_notify_new_hand(game_id: str, state: HoldemGameState, game: HoldemGame):
+    """Notify all players about a new hand starting."""
+    for player in state.players:
+        if player.active:
+            cards = await game._load_player_cards(player.id)
+            await manager.send_to_player(
+                game_id,
+                player.id,
+                HoldemGameStartedMessage(
+                    your_cards=cards,
+                    whose_turn=state.whose_turn,
+                    available_actions=game.get_available_actions(player.id, state),
+                ),
+            )
+    await manager.broadcast(game_id, HoldemNewHandMessage(
+        hand_number=state.hand_number,
+        dealer=state.players[state.dealer_index].id if state.players else "",
+    ))
+    if state.whose_turn:
+        await manager.send_to_player(
+            game_id,
+            state.whose_turn,
+            HoldemYourTurnMessage(
+                available_actions=game.get_available_actions(state.whose_turn, state),
+            ),
+        )
+
+
 # ---------------------------------------------------------------------------
 # Hold'em agent support
 # ---------------------------------------------------------------------------
@@ -2245,6 +2350,42 @@ async def _run_holdem_agent_loop(game_id: str):
             state = await game.get_state()
             if state is None or state.status != "playing":
                 break
+
+            # Auto-rebuy for agents that are rebuy_pending
+            if state.allow_rebuys:
+                for agent_id in list(agents.keys()):
+                    agent_player = next(
+                        (p for p in state.players if p.id == agent_id), None
+                    )
+                    if agent_player and agent_player.rebuy_pending:
+                        await asyncio.sleep(1.0)
+                        try:
+                            new_state = await game.rebuy(agent_id)
+                            name = agents[agent_id].name
+                            await manager.broadcast(
+                                game_id,
+                                HoldemRebuyMessage(
+                                    player_id=agent_id,
+                                    chips=new_state.buy_in,
+                                ),
+                            )
+                            await _holdem_broadcast_chat(
+                                game_id,
+                                f"{name} rebuys for {_format_currency(new_state.buy_in)}!",
+                            )
+                            # Refresh state after rebuy
+                            state = await game.get_state()
+                            if not state or state.status != "playing":
+                                break
+                            # If game advanced to new hand, notify
+                            if state.whose_turn:
+                                await _holdem_notify_new_hand(game_id, state, game)
+                        except ValueError:
+                            pass
+
+                # Re-check after potential rebuys
+                if not state or state.status != "playing":
+                    break
 
             whose_turn = state.whose_turn
             if whose_turn and whose_turn in agents:

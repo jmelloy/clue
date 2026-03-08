@@ -694,10 +694,19 @@ class HoldemGame:
         self, state: HoldemGameState, winners: list[str], hand_desc: str
     ):
         """End the current hand — check for tournament elimination and deal next."""
-        # Eliminate players with 0 chips
-        for p in state.players:
-            if p.active and p.chips <= 0:
-                p.active = False
+        # Handle players with 0 chips
+        busted = [p for p in state.players if p.active and p.chips <= 0]
+        if busted and state.allow_rebuys:
+            # Mark busted players as rebuy_pending instead of eliminating
+            for p in busted:
+                p.rebuy_pending = True
+            await self._save_state(state)
+            # Don't deal next hand yet — wait for rebuy decisions
+            return
+
+        # No rebuys: eliminate busted players immediately
+        for p in busted:
+            p.active = False
 
         # Check if the game is over (only 1 player with chips)
         active_players = [p for p in state.players if p.active]
@@ -709,9 +718,6 @@ class HoldemGame:
             return
 
         # Move dealer button
-        active_indices = [
-            i for i, p in enumerate(state.players) if p.active
-        ]
         current_dealer_abs = state.dealer_index % len(state.players)
         # Find next active player as dealer
         for offset in range(1, len(state.players) + 1):
@@ -723,6 +729,75 @@ class HoldemGame:
         await self._save_state(state)
 
         # Deal next hand
+        await self._deal_new_hand(state)
+
+    async def rebuy(self, player_id: str) -> HoldemGameState:
+        """Player rebuys for the buy-in amount. Returns updated state."""
+        state = await self._load_state()
+        if state is None:
+            raise ValueError("Game not found")
+        if not state.allow_rebuys:
+            raise ValueError("Rebuys are not allowed in this game")
+
+        player = next((p for p in state.players if p.id == player_id), None)
+        if player is None:
+            raise ValueError("Player not found")
+        if not player.rebuy_pending:
+            raise ValueError("Player does not need to rebuy")
+
+        player.chips = state.buy_in
+        player.rebuy_pending = False
+
+        await self._save_state(state)
+
+        # If no more rebuy_pending players, advance to next hand
+        if not any(p.rebuy_pending for p in state.players):
+            await self._advance_after_rebuys(state)
+
+        return await self._load_state()
+
+    async def decline_rebuy(self, player_id: str) -> HoldemGameState:
+        """Player declines rebuy and is eliminated."""
+        state = await self._load_state()
+        if state is None:
+            raise ValueError("Game not found")
+
+        player = next((p for p in state.players if p.id == player_id), None)
+        if player is None:
+            raise ValueError("Player not found")
+        if not player.rebuy_pending:
+            raise ValueError("Player does not need to rebuy")
+
+        player.rebuy_pending = False
+        player.active = False
+
+        await self._save_state(state)
+
+        # If no more rebuy_pending players, advance to next hand
+        if not any(p.rebuy_pending for p in state.players):
+            await self._advance_after_rebuys(state)
+
+        return await self._load_state()
+
+    async def _advance_after_rebuys(self, state: HoldemGameState):
+        """After all rebuy decisions are made, check game over or deal next hand."""
+        active_players = [p for p in state.players if p.active]
+        if len(active_players) <= 1:
+            state.status = "finished"
+            if active_players:
+                state.winner = active_players[0].id
+            await self._save_state(state)
+            return
+
+        # Move dealer button
+        current_dealer_abs = state.dealer_index % len(state.players)
+        for offset in range(1, len(state.players) + 1):
+            next_idx = (current_dealer_abs + offset) % len(state.players)
+            if state.players[next_idx].active:
+                state.dealer_index = next_idx
+                break
+
+        await self._save_state(state)
         await self._deal_new_hand(state)
 
     async def get_log(self) -> list[HoldemLogEntryBase]:
