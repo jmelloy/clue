@@ -875,5 +875,6 @@ body {
   margin: 0 auto;
   padding: 0.75rem;
   overflow-x: hidden;
+  box-sizing: border-box;
 }
 </style>

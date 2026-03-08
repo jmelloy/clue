@@ -637,13 +637,13 @@ function tokenStyle(token) {
 
 @media (max-width: 480px) {
   .board-map {
-    padding: 0 0.75rem;
+    padding: 0;
   }
 }
 
 .board-container {
   position: relative;
-  box-sizing: content-box;
+  box-sizing: border-box;
   width: 100%;
   max-width: 690px;
   margin: 0 auto;
