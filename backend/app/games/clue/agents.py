@@ -2004,7 +2004,6 @@ class LLMAgent(BaseAgent):
         game_state: GameState,
         player_state: PlayerState,
         errors: int = 0,
-        rejection_detail: str | None = None,
     ) -> GameAction:
         # Flush any inference notifications accumulated since last decision
         await self._flush_pending_inferences()
