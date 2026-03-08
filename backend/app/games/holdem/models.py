@@ -80,6 +80,9 @@ class HoldemGameState(BaseModel):
     last_raiser: Optional[str] = None
     actions_this_round: int = 0
 
+    # Result of the last completed hand (persists until next action)
+    last_hand_result: Optional[dict] = None
+
 
 class HoldemPlayerState(HoldemGameState):
     """Player-specific view including hole cards and available actions."""

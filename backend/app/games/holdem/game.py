@@ -327,6 +327,10 @@ class HoldemGame:
         if state.whose_turn != player_id:
             raise ValueError("It is not your turn")
 
+        # Clear previous hand result (will be set again if this action ends a hand)
+        if state.last_hand_result is not None:
+            state.last_hand_result = None
+
         available = self.get_available_actions(player_id, state)
         if action.type not in available:
             raise ValueError(
@@ -376,6 +380,13 @@ class HoldemGame:
             # Last player standing wins
             winner = active_unfolded[0]
             winner.chips += state.pot
+            # Store hand result for banner (no hands revealed on fold win)
+            state.last_hand_result = {
+                "winners": [winner.id],
+                "winning_hand": "",
+                "pot": state.pot,
+                "player_hands": {},
+            }
             result = FoldResult(player_id=player.id)
             await self._save_state(state)
             await self._end_hand(state, [winner.id], "Last player standing")
@@ -678,6 +689,17 @@ class HoldemGame:
 
         state.winner = winners[0] if len(winners) == 1 else None
         state.winning_hand = best_hand_name
+
+        # Store hand result for broadcast (persists through deal of next hand)
+        state.last_hand_result = {
+            "winners": winners,
+            "winning_hand": best_hand_name,
+            "pot": state.pot,
+            "player_hands": {
+                pid: [c.model_dump() for c in cards]
+                for pid, cards in player_hands.items()
+            },
+        }
 
         await self._append_log(
             ShowdownLogEntry(
