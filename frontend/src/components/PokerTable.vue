@@ -447,7 +447,9 @@ const CHIP_DENOMS = [
   { value: 25, color: 'red' },
   { value: 10, color: 'white' }
 ]
-const MIN_CHIP = Math.min(...CHIP_DENOMS.map(d => d.value))  // 10
+// GCD of all denominations — the smallest representable bet increment
+function _gcd(a, b) { while (b) { [a, b] = [b, a % b] } return a }
+const MIN_CHIP = CHIP_DENOMS.map(d => d.value).reduce(_gcd)  // 5
 
 // Round a bet amount down to the nearest chip denomination multiple
 function roundToChip(amount) {
