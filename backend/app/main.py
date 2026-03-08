@@ -1180,7 +1180,62 @@ async def _run_agent_loop(game_id: str):
                         name = _player_name(state, pid) if state else pid
                         await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
 
-                result = await _execute_action(game_id, pid, action)
+                try:
+                    result = await _execute_action(game_id, pid, action)
+                except ValueError as exc:
+                    detail = str(exc)
+                    agent.agent_trace(
+                        "action_rejected",
+                        status=400,
+                        detail=detail,
+                        action=action_d,
+                    )
+                    # Retry once with rejection detail for LLM agents
+                    if agent.agent_type == "llm":
+                        logger.info(
+                            "Retrying action for %s in game %s after rejection: %s",
+                            pid, game_id, detail,
+                        )
+                        try:
+                            action = await agent.decide_action(
+                                state, player_state, rejection_detail=detail
+                            )
+                            action_d = action.model_dump()
+                            result = await _execute_action(game_id, pid, action)
+                        except Exception as retry_exc:
+                            agent.agent_trace(
+                                "action_rejected_retry_failed",
+                                detail=str(retry_exc),
+                                action=action_d,
+                            )
+                            logger.warning(
+                                "Retry also failed for %s in game %s, using fallback",
+                                pid, game_id,
+                            )
+                            try:
+                                fallback_action = await agent._fallback.decide_action(
+                                    state, player_state
+                                )
+                                agent.agent_trace(
+                                    "fallback_after_rejection",
+                                    action=fallback_action.model_dump(),
+                                )
+                                action = fallback_action
+                                action_d = action.model_dump()
+                                result = await _execute_action(game_id, pid, action)
+                            except Exception:
+                                logger.exception(
+                                    "Fallback also failed for %s in game %s",
+                                    pid, game_id,
+                                )
+                                continue
+                    else:
+                        logger.warning(
+                            "Action rejected for non-LLM agent %s in game %s: %s",
+                            pid, game_id, detail,
+                        )
+                        continue
+
                 await agent.save_knowledge()
 
                 # Broadcast personality chat after the action (non-suggest)

@@ -499,7 +499,55 @@ class AgentRunner:
         action_dict = action.model_dump()
         result = await self._send_action(game_id, player_id, action_dict)
         if isinstance(result, dict) and result.get("error"):
-            return
+            detail = result.get("detail", "")
+            agent.agent_trace(
+                "action_rejected",
+                status=result.get("status"),
+                detail=detail,
+                action=action_dict,
+            )
+            # Retry once with rejection detail for LLM agents, then fallback
+            if agent.agent_type == "llm":
+                logger.info(
+                    "Retrying action for %s in game %s after rejection: %s",
+                    player_id, game_id, detail,
+                )
+                try:
+                    action = await agent.decide_action(
+                        game_state, player_state, rejection_detail=detail
+                    )
+                except Exception:
+                    logger.exception(
+                        "Agent %s retry failed in game %s", player_id, game_id
+                    )
+                    return
+                action_dict = action.model_dump()
+                result = await self._send_action(game_id, player_id, action_dict)
+                if isinstance(result, dict) and result.get("error"):
+                    agent.agent_trace(
+                        "action_rejected_retry_failed",
+                        detail=result.get("detail", ""),
+                        action=action_dict,
+                    )
+                    # Fall back to rule-based agent
+                    logger.warning(
+                        "Retry also rejected for %s in game %s, using fallback",
+                        player_id, game_id,
+                    )
+                    fallback_action = await agent._fallback.decide_action(
+                        game_state, player_state
+                    )
+                    agent.agent_trace(
+                        "fallback_after_rejection",
+                        action=fallback_action.model_dump(),
+                    )
+                    action = fallback_action
+                    action_dict = action.model_dump()
+                    result = await self._send_action(game_id, player_id, action_dict)
+                    if isinstance(result, dict) and result.get("error"):
+                        return
+            else:
+                return
 
         await agent.save_knowledge()
 
