@@ -55,7 +55,7 @@
                   <svg width="10" height="10" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10" fill="#c9a84c" stroke="#8b7635" stroke-width="2" />
                   </svg>
-                  {{ p.chips.toLocaleString() }}
+                  ${{ Number(p.chips).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                 </span>
               </div>
               <div class="seat-num">#{{ idx + 1 }}</div>

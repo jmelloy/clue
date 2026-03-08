@@ -1900,6 +1900,11 @@ def _holdem_player_name(state, player_id: str) -> str:
     return player.name if player else player_id
 
 
+def _format_currency(amount: int | float) -> str:
+    """Format an integer chip amount as dollars and cents (e.g. $1,000.00)."""
+    return f"${amount:,.2f}"
+
+
 async def _holdem_broadcast_chat(game_id: str, text: str, player_id: str | None = None):
     """Broadcast a chat message for a Hold'em game."""
     timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -2060,19 +2065,19 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
         await _holdem_broadcast_chat(game_id, f"{actor_name} checks.", player_id)
     elif isinstance(result, CallResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} calls {result.amount}.", player_id
+            game_id, f"{actor_name} calls {_format_currency(result.amount)}.", player_id
         )
     elif isinstance(result, BetResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} bets {result.amount}.", player_id
+            game_id, f"{actor_name} bets {_format_currency(result.amount)}.", player_id
         )
     elif isinstance(result, RaiseResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} raises to {result.amount}.", player_id
+            game_id, f"{actor_name} raises to {_format_currency(result.amount)}.", player_id
         )
     elif isinstance(result, AllInResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} goes all-in for {result.amount}!", player_id
+            game_id, f"{actor_name} goes all-in for {_format_currency(result.amount)}!", player_id
         )
 
     # Broadcast updated state and community cards if they changed
@@ -2103,12 +2108,12 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
         if hand_result.winning_hand:
             await _holdem_broadcast_chat(
                 game_id,
-                f"{winner_names} wins the pot ({hand_result.pot}) with {hand_result.winning_hand}!",
+                f"{winner_names} wins the pot ({_format_currency(hand_result.pot)}) with {hand_result.winning_hand}!",
             )
         else:
             await _holdem_broadcast_chat(
                 game_id,
-                f"{winner_names} takes the pot ({hand_result.pot}).",
+                f"{winner_names} takes the pot ({_format_currency(hand_result.pot)}).",
             )
 
     if state.status == "finished":
