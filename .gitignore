@@ -215,3 +215,7 @@ __marimo__/
 
 mage-output/
 dump.rdb
+
+# Playwright
+screenshots/
+test-results/
