@@ -2443,6 +2443,66 @@ async def _run_holdem_agent_loop(game_id: str):
         logger.info("Holdem agent loop ended for game %s", game_id)
 
 
+@app.get("/api/holdem/games/{game_id}/debug")
+async def holdem_get_game_debug(
+    game_id: str,
+    log_offset: int = 0,
+    chat_offset: int = 0,
+):
+    """Return comprehensive debug data for a Hold'em game: state, player cards,
+    agent configs, game log, and chat messages.
+
+    Offset params allow incremental fetching.
+    """
+    game = HoldemGame(game_id, redis_client)
+    state = await game.get_state()
+    if state is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    log_key = f"holdem:{game_id}:log"
+    chat_key = f"holdem:{game_id}:chat"
+
+    log_raw, chat_raw = await asyncio.gather(
+        redis_client.lrange(log_key, log_offset, -1),
+        redis_client.lrange(chat_key, chat_offset, -1),
+    )
+
+    game_log = [json.loads(e) for e in log_raw]
+    chat = [json.loads(e) for e in chat_raw]
+
+    # Collect player cards (hole cards)
+    player_ids = [p.id for p in state.players]
+    card_keys = [f"holdem:{game_id}:cards:{pid}" for pid in player_ids]
+    card_raws = await asyncio.gather(*[redis_client.get(k) for k in card_keys])
+    player_cards = {}
+    for pid, raw in zip(player_ids, card_raws):
+        if raw:
+            cards = json.loads(raw)
+            player_cards[pid] = [
+                f"{c['rank']}{c['suit'][0].upper()}" if isinstance(c, dict) else str(c)
+                for c in cards
+            ]
+        else:
+            player_cards[pid] = []
+
+    # Collect agent configs from Redis
+    config_keys = [f"holdem:{game_id}:agent_config:{pid}" for pid in player_ids]
+    config_raws = await asyncio.gather(*[redis_client.get(k) for k in config_keys])
+    agent_configs = {}
+    for pid, raw in zip(player_ids, config_raws):
+        if raw:
+            agent_configs[pid] = json.loads(raw)
+
+    return {
+        "game_id": game_id,
+        "state": state.model_dump(),
+        "player_cards": player_cards,
+        "agent_configs": agent_configs,
+        "game_log": game_log,
+        "chat": chat,
+    }
+
+
 @app.post("/api/holdem/games/{game_id}/add_agent")
 async def holdem_add_agent(game_id: str, req: HoldemAddAgentRequest | None = None):
     """Add an AI agent to a Hold'em game in the waiting room."""
@@ -2549,8 +2609,9 @@ async def spa_clue_route(game_id: str):
 
 
 @app.get("/holdem/{game_id}")
+@app.get("/holdem/{game_id}/debug")
 async def spa_holdem_route(game_id: str):
-    """Serve index.html for /holdem/{id} so the Vue SPA can handle routing."""
+    """Serve index.html for /holdem/{id} and /holdem/{id}/debug so the Vue SPA can handle routing."""
     index = _static_dir / "index.html"
     if index.exists():
         return FileResponse(str(index))
