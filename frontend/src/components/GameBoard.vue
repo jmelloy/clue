@@ -154,8 +154,19 @@
           <div class="shown-card-notice">
             <span class="shown-card-icon">&#128065;</span>
             <div>
-              <strong>{{ playerName(cardShown.by) }}</strong> showed you:
-              <span class="shown-card-name">{{ cardShown.card }}</span>
+              <div v-if="cardShown.suspect" class="shown-card-suggestion">
+                You suggested:
+                <span class="highlight-suspect">{{ cardShown.suspect }}</span>,
+                <span class="highlight-weapon">{{ cardShown.weapon }}</span>,
+                <span class="highlight-room">{{ cardShown.room }}</span>
+              </div>
+              <template v-if="cardShown.card">
+                <strong>{{ playerName(cardShown.by) }}</strong> showed you:
+                <span class="shown-card-name">{{ cardShown.card }}</span>
+              </template>
+              <template v-else>
+                No one could show a card.
+              </template>
             </div>
             <button class="dismiss-btn" @click="$emit('dismiss-card-shown')">&times;</button>
           </div>
@@ -371,9 +382,17 @@
     <Teleport to="body">
       <div v-if="cardShown && !cardShownDismissedOnce" class="card-shown-overlay" @click="dismissCardShownOverlay">
         <div class="card-shown-banner" @click.stop>
-          <div class="card-shown-banner-label">Card Revealed</div>
-          <div class="card-shown-banner-from">{{ playerName(cardShown.by) }} showed you:</div>
-          <div class="card-shown-banner-card physical-card" :class="cardCategory(cardShown.card)">
+          <div class="card-shown-banner-label">{{ cardShown.card ? 'Card Revealed' : 'No One Could Show' }}</div>
+          <div v-if="cardShown.suspect" class="card-shown-banner-suggestion">
+            You suggested:
+            <span class="highlight-suspect">{{ cardShown.suspect }}</span>
+            with the
+            <span class="highlight-weapon">{{ cardShown.weapon }}</span>
+            in the
+            <span class="highlight-room">{{ cardShown.room }}</span>
+          </div>
+          <div v-if="cardShown.card" class="card-shown-banner-from">{{ playerName(cardShown.by) }} showed you:</div>
+          <div v-if="cardShown.card" class="card-shown-banner-card physical-card" :class="cardCategory(cardShown.card)">
             <div class="physical-card-header">
               <span class="physical-card-icon">{{ cardIcon(cardShown.card) }}</span>
               <span class="physical-card-title">{{ cardShown.card }}</span>
@@ -387,6 +406,7 @@
               <span class="physical-card-icon">{{ cardIcon(cardShown.card) }}</span>
             </div>
           </div>
+          <div v-else class="card-shown-banner-noshow">No one could disprove your suggestion!</div>
           <button class="card-shown-banner-dismiss" @click="dismissCardShownOverlay">Got it</button>
         </div>
       </div>
@@ -763,9 +783,9 @@ onUnmounted(() => {
 watch(
   () => props.cardShown,
   (shown) => {
-    if (shown?.card) {
+    if (shown) {
       cardShownDismissedOnce.value = false
-      if (notesRef.value) {
+      if (shown.card && notesRef.value) {
         notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
       }
     }
@@ -1917,9 +1937,27 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.2);
 }
 
+.card-shown-banner-suggestion {
+  font-size: 0.9rem;
+  color: #c8bca8;
+  margin-bottom: 0.25rem;
+}
+
+.card-shown-banner-noshow {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #d4a849;
+  padding: 1rem;
+}
+
 .card-shown-banner-from {
   font-size: 1rem;
   color: #c8bca8;
+}
+
+.shown-card-suggestion {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
 }
 
 .card-shown-banner-card {
