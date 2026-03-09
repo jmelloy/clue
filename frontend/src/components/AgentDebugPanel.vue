@@ -39,7 +39,9 @@
             <span class="info-label">Turn:</span>
             <span v-if="isTheirTurn" class="info-value turn-active">
               Their turn
-              <span v-if="turnState">({{ turnState.diceRolled ? 'rolled' : 'not rolled' }}<span v-if="turnState.lastRoll">, {{ turnState.lastRoll.reduce((a, b) => a + b, 0) }} spaces</span>{{ turnState.moved ? ', moved' : '' }})</span>
+              <span v-if="turnState">({{ turnState.diceRolled ? 'rolled' : 'not rolled' }}<span
+                  v-if="turnState.lastRoll">, {{turnState.lastRoll.reduce((a, b) => a + b, 0)}} spaces</span>{{
+                    turnState.moved ? ', moved' : '' }})</span>
             </span>
             <span v-else class="info-value turn-waiting">Waiting</span>
           </div>

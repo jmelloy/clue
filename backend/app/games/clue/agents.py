@@ -1699,9 +1699,7 @@ class LLMAgent(BaseAgent):
             f"Unknown rooms: {unknown_rooms}",
         ]
         if self.unrefuted_suggestions:
-            context_lines.append(
-                f"Unrefuted suggestions: {self.unrefuted_suggestions}"
-            )
+            context_lines.append(f"Unrefuted suggestions: {self.unrefuted_suggestions}")
 
         # Include recent inference log entries for context
         unseen_inferences = {
@@ -1730,7 +1728,7 @@ class LLMAgent(BaseAgent):
         )
         user = "\n".join(context_lines)
 
-        response = await self._call_llm(system, user, model=self.nano_model)
+        response = await self._call_llm(system, user)
         if response and isinstance(response, str):
             # Strip any accidental JSON wrapping
             memory_text = response.strip().strip('"').strip()
