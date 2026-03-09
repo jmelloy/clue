@@ -871,7 +871,13 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   transition: background 0.3s, color 0.3s;
+  /* Safe area insets for notched/rounded-corner devices */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 #clue-app {

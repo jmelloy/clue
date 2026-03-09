@@ -183,6 +183,7 @@ async function startGame() {
 .waiting-room {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   font-family: 'Crimson Text', Georgia, serif;
   background: var(--bg-page);

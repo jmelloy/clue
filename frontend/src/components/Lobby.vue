@@ -480,6 +480,7 @@ async function observeGame() {
 .lobby {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   font-family: 'DM Sans', system-ui, sans-serif;
   background: var(--bg-page);

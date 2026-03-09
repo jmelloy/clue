@@ -188,6 +188,7 @@ onMounted(fetchGames)
   font-family: 'Crimson Text', Georgia, serif;
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .admin-header {
