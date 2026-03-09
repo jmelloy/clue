@@ -12,7 +12,6 @@ from app.games.holdem.agents import (
 from app.games.holdem.game import HoldemGame
 from app.games.holdem.models import Card, HoldemGameState
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -80,7 +79,9 @@ class TestPostflopStrength:
     def test_flush_strong(self):
         hole = [_c("A", "hearts"), _c("K", "hearts")]
         community = [
-            _c("2", "hearts"), _c("7", "hearts"), _c("9", "hearts"),
+            _c("2", "hearts"),
+            _c("7", "hearts"),
+            _c("9", "hearts"),
         ]
         strength = _postflop_strength(hole, community)
         assert strength >= 0.70
@@ -94,7 +95,9 @@ class TestPostflopStrength:
     def test_full_house_very_strong(self):
         hole = [_c("K", "hearts"), _c("K", "spades")]
         community = [
-            _c("K", "clubs"), _c("7", "diamonds"), _c("7", "hearts"),
+            _c("K", "clubs"),
+            _c("7", "diamonds"),
+            _c("7", "hearts"),
         ]
         strength = _postflop_strength(hole, community)
         assert strength >= 0.80
@@ -114,7 +117,8 @@ class TestHoldemAgentDecisions:
 
     def test_agent_creation_all_params(self):
         agent = HoldemAgent(
-            "P1", "TestBot",
+            "P1",
+            "TestBot",
             aggression=0.8,
             tightness=0.7,
             bluff_frequency=0.2,
@@ -135,7 +139,8 @@ class TestHoldemAgentDecisions:
 
     def test_all_params_clamped(self):
         agent = HoldemAgent(
-            "P1", "TestBot",
+            "P1",
+            "TestBot",
             tightness=5.0,
             bluff_frequency=-1.0,
             slowplay_frequency=2.0,
@@ -176,7 +181,9 @@ class TestHoldemAgentDecisions:
 async def test_two_agent_game_completes(redis):
     """Two agents play a game to completion."""
     game = HoldemGame("AGENT2", redis)
-    await game.create(buy_in=50)  # Small buy-in (2.5 big blinds) forces fast elimination
+    await game.create(
+        buy_in=50
+    )  # Small buy-in (2.5 big blinds) forces fast elimination
     await game.add_player("P0", "Bot1", player_type="holdem_agent")
     await game.add_player("P1", "Bot2", player_type="holdem_agent")
     state = await game.start()
@@ -212,9 +219,9 @@ async def test_two_agent_game_completes(redis):
                 await game.process_action(whose_turn, {"type": "fold"})
 
     state = await game.get_state()
-    assert state.status == "finished", (
-        f"Game didn't finish in {max_actions} actions (hand {state.hand_number})"
-    )
+    assert (
+        state.status == "finished"
+    ), f"Game didn't finish in {max_actions} actions (hand {state.hand_number})"
 
 
 @pytest.mark.asyncio
@@ -228,9 +235,15 @@ async def test_three_agent_game_completes(redis):
     state = await game.start()
 
     agents = {
-        "P0": HoldemAgent("P0", "Bot1", aggression=0.6, tightness=0.3, bluff_frequency=0.2),
-        "P1": HoldemAgent("P1", "Bot2", aggression=0.7, tightness=0.5, slowplay_frequency=0.3),
-        "P2": HoldemAgent("P2", "Bot3", aggression=0.8, tightness=0.8, bluff_frequency=0.05),
+        "P0": HoldemAgent(
+            "P0", "Bot1", aggression=0.6, tightness=0.3, bluff_frequency=0.2
+        ),
+        "P1": HoldemAgent(
+            "P1", "Bot2", aggression=0.7, tightness=0.5, slowplay_frequency=0.3
+        ),
+        "P2": HoldemAgent(
+            "P2", "Bot3", aggression=0.8, tightness=0.8, bluff_frequency=0.05
+        ),
     }
 
     max_actions = 1500
@@ -258,9 +271,9 @@ async def test_three_agent_game_completes(redis):
                 await game.process_action(whose_turn, {"type": "fold"})
 
     state = await game.get_state()
-    assert state.status == "finished", (
-        f"Game didn't finish in {max_actions} actions (hand {state.hand_number})"
-    )
+    assert (
+        state.status == "finished"
+    ), f"Game didn't finish in {max_actions} actions (hand {state.hand_number})"
 
 
 @pytest.mark.asyncio
@@ -294,7 +307,12 @@ async def test_agent_always_returns_valid_action(redis):
 
         action = agent.decide_action(state, player_state)
         assert action.type in player_state.available_actions or action.type in {
-            "fold", "check", "call", "bet", "raise", "all_in"
+            "fold",
+            "check",
+            "call",
+            "bet",
+            "raise",
+            "all_in",
         }, f"Agent returned invalid action: {action.type}"
 
         try:
@@ -311,7 +329,9 @@ async def test_agent_always_returns_valid_action(redis):
 async def test_agent_plays_multiple_hands(redis):
     """Agents successfully play through multiple hands."""
     game = HoldemGame("MULTI", redis)
-    await game.create(buy_in=1000)  # Large stacks with low aggression to avoid first-hand all-in
+    await game.create(
+        buy_in=1000
+    )  # Large stacks with low aggression to avoid first-hand all-in
     await game.add_player("P0", "Bot1", player_type="holdem_agent")
     await game.add_player("P1", "Bot2", player_type="holdem_agent")
     state = await game.start()
@@ -350,6 +370,6 @@ async def test_agent_plays_multiple_hands(redis):
 
     state = await game.get_state()
     # Game either finished or played through multiple hands
-    assert state.hand_number > initial_hand + 1 or state.status == "finished", (
-        f"Agents didn't play through multiple hands (hand {state.hand_number})"
-    )
+    assert (
+        state.hand_number > initial_hand + 1 or state.status == "finished"
+    ), f"Agents didn't play through multiple hands (hand {state.hand_number})"

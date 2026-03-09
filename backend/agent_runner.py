@@ -49,7 +49,7 @@ _RUNNER_ID = f"{socket.gethostname()}:{os.getpid()}"
 # Distributed-lock settings: the lock TTL must be long enough that a single
 # heartbeat interval never starves it, but short enough that a dead runner
 # releases games quickly.
-_LOCK_TTL = 30          # seconds — Redis key expiry
+_LOCK_TTL = 30  # seconds — Redis key expiry
 _LOCK_RENEW_INTERVAL = 10  # seconds — how often the heartbeat refreshes the TTL
 
 
@@ -167,9 +167,7 @@ class AgentRunner:
             # game.  SET NX EX means "set only if not already set, with an
             # expiry" — if another runner holds the lock this returns None.
             lock_key = f"game:{game_id}:agent_lock"
-            acquired = await self.redis.set(
-                lock_key, _RUNNER_ID, nx=True, ex=_LOCK_TTL
-            )
+            acquired = await self.redis.set(lock_key, _RUNNER_ID, nx=True, ex=_LOCK_TTL)
             if not acquired:
                 logger.debug(
                     "Game %s is already locked by another runner — skipping",
@@ -260,7 +258,8 @@ class AgentRunner:
         ]
         if wanderers_needing_legacy_seed:
             real_agents = {
-                pid: a for pid, a in agents.items()
+                pid: a
+                for pid, a in agents.items()
                 if a.agent_type != "wanderer" and a.own_cards
             }
             if real_agents:
@@ -272,18 +271,14 @@ class AgentRunner:
         try:
             # Launch a WebSocket connection per agent
             tasks = [
-                asyncio.create_task(
-                    self._run_agent_ws(game_id, pid, agent)
-                )
+                asyncio.create_task(self._run_agent_ws(game_id, pid, agent))
                 for pid, agent in agents.items()
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     pid = list(agents.keys())[i]
-                    logger.error(
-                        "Agent %s in game %s failed: %s", pid, game_id, result
-                    )
+                    logger.error("Agent %s in game %s failed: %s", pid, game_id, result)
         except asyncio.CancelledError:
             logger.info("Agent tasks cancelled for game %s", game_id)
         finally:
@@ -321,9 +316,7 @@ class AgentRunner:
                     await self.redis.delete(f"game:{game_id}:agent_config")
                     logger.info("Agents finished for game %s", game_id)
             except Exception:
-                logger.exception(
-                    "Error during agent cleanup for game %s", game_id
-                )
+                logger.exception("Error during agent cleanup for game %s", game_id)
 
     # ------------------------------------------------------------------
     # Lock heartbeat
@@ -371,9 +364,7 @@ class AgentRunner:
             try:
                 async for raw_msg in ws:
                     msg = json.loads(raw_msg)
-                    done = await self._handle_message(
-                        game_id, player_id, agent, msg
-                    )
+                    done = await self._handle_message(game_id, player_id, agent, msg)
                     if done:
                         return
                 # Server closed the connection cleanly
@@ -442,9 +433,7 @@ class AgentRunner:
     # Action handlers
     # ------------------------------------------------------------------
 
-    async def _handle_your_turn(
-        self, game_id: str, player_id: str, agent: BaseAgent
-    ):
+    async def _handle_your_turn(self, game_id: str, player_id: str, agent: BaseAgent):
         """React to a your_turn message: fetch state, decide, and send action."""
         # Pace non-LLM agents for human observers
         if agent.agent_type != "llm":
@@ -510,7 +499,9 @@ class AgentRunner:
             if agent.agent_type == "llm":
                 logger.info(
                     "Retrying action for %s in game %s after rejection: %s",
-                    player_id, game_id, detail,
+                    player_id,
+                    game_id,
+                    detail,
                 )
                 try:
                     action = await agent.decide_action(
@@ -532,7 +523,8 @@ class AgentRunner:
                     # Fall back to rule-based agent
                     logger.warning(
                         "Retry also rejected for %s in game %s, using fallback",
-                        player_id, game_id,
+                        player_id,
+                        game_id,
                     )
                     fallback_action = await agent._fallback.decide_action(
                         game_state, player_state
@@ -613,9 +605,7 @@ class AgentRunner:
             await self._send_chat(game_id, player_id, chat_msg)
 
     @staticmethod
-    def _handle_suggestion_observation(
-        player_id: str, agent: BaseAgent, msg: dict
-    ):
+    def _handle_suggestion_observation(player_id: str, agent: BaseAgent, msg: dict):
         """Update agent observations from a suggestion_made broadcast."""
         suggesting_pid = msg.get("player_id")
         agent.observe_suggestion(
@@ -653,9 +643,7 @@ class AgentRunner:
                 json=debug_info,
             )
         except Exception:
-            logger.debug(
-                "Failed to send debug for %s in game %s", player_id, game_id
-            )
+            logger.debug("Failed to send debug for %s in game %s", player_id, game_id)
 
     async def _send_action(self, game_id: str, player_id: str, action: dict) -> dict:
         """Send an action to the backend via the HTTP API."""

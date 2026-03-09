@@ -280,6 +280,3 @@ def test_room_has_infinite_capacity(board):
         occupied={(ballroom.row, ballroom.col)},
     )
     assert ballroom in reached, "Room should be reachable regardless of occupants"
-
-
-

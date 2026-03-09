@@ -886,8 +886,8 @@ async def test_free_suggest_then_end_turn(game: ClueGame):
     assert "end_turn" in actions
     assert "accuse" in actions
     assert "suggest" not in actions  # already suggested this turn
-    assert "roll" not in actions     # can't roll after suggesting
-    assert "move" not in actions     # can't move after suggesting
+    assert "roll" not in actions  # can't roll after suggesting
+    assert "move" not in actions  # can't move after suggesting
 
     await game.process_action(other_id, {"type": "end_turn"})
 
@@ -1234,9 +1234,7 @@ async def test_room_players_do_not_block(game: ClueGame):
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Should still be able to reach hallway/rooms (door is not blocked)
-    assert (
-        len(targets.reachable_positions) > 0 or len(targets.reachable_rooms) > 0
-    )
+    assert len(targets.reachable_positions) > 0 or len(targets.reachable_rooms) > 0
 
 
 @pytest.mark.asyncio
@@ -1516,8 +1514,9 @@ async def test_two_eliminations_last_player_wins(game: ClueGame):
     state = await game.get_state()
     assert state.status == "finished"
     # Last remaining real player wins
-    p3 = next(p for p in state.players if p.id not in (p1_id, p2_id)
-              and p.type != "wanderer")
+    p3 = next(
+        p for p in state.players if p.id not in (p1_id, p2_id) and p.type != "wanderer"
+    )
     assert state.winner == p3.id
 
 
@@ -1556,9 +1555,9 @@ async def test_eliminated_player_moved_off_door(game: ClueGame):
     # P1 should no longer be on a door square
     sq = SQUARES.get(p1_pos)
     assert sq is not None, f"Position {p1_pos} not found in board squares"
-    assert sq.type != SquareType.DOOR, (
-        f"Eliminated player should not remain on door square {p1_pos}"
-    )
+    assert (
+        sq.type != SquareType.DOOR
+    ), f"Eliminated player should not remain on door square {p1_pos}"
 
 
 @pytest.mark.asyncio

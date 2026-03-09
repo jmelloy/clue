@@ -266,10 +266,7 @@ class ClueGame:
                 actions.append("secret_passage")
             actions.append("roll")
             # If pulled into a room by a suggestion, can suggest without rolling
-            if (
-                current_room
-                and state.was_moved_by_suggestion.get(player_id)
-            ):
+            if current_room and state.was_moved_by_suggestion.get(player_id):
                 actions.append("suggest")
         elif state.dice_rolled and not state.moved:
             # Phase 2: dice rolled, choose room to move toward
@@ -391,7 +388,9 @@ class ClueGame:
 
         state.status = "playing"
         # Miss Scarlett always goes first (official rules)
-        scarlett = next((p for p in players if p.character == "Miss Scarlett"), players[0])
+        scarlett = next(
+            (p for p in players if p.character == "Miss Scarlett"), players[0]
+        )
         state.whose_turn = scarlett.id
         state.turn_number = 1
         state.dice_rolled = False
@@ -515,7 +514,10 @@ class ClueGame:
         if state.status != "playing":
             raise ValueError("Game is not in progress")
 
-        if not isinstance(action, (ShowCardAction, EndTurnAction)) and state.whose_turn != player_id:
+        if (
+            not isinstance(action, (ShowCardAction, EndTurnAction))
+            and state.whose_turn != player_id
+        ):
             raise ValueError("It is not your turn")
 
         # end_turn is always allowed: no-op if not your turn, force-finish if
@@ -551,9 +553,7 @@ class ClueGame:
         else:
             raise ValueError(f"Unknown action type: {action.type}")
 
-    async def _handle_roll(
-        self, state: GameState, player_id: str
-    ) -> RollResult:
+    async def _handle_roll(self, state: GameState, player_id: str) -> RollResult:
         """Roll the dice without moving. The player then chooses a room."""
         if state.dice_rolled:
             raise ValueError("You already rolled this turn")
@@ -1006,9 +1006,7 @@ class ClueGame:
         # Should never happen if there's at least one active player
         return active[0].id if active else current_player_id
 
-    async def _handle_end_turn(
-        self, state: GameState, player_id: str
-    ) -> EndTurnResult:
+    async def _handle_end_turn(self, state: GameState, player_id: str) -> EndTurnResult:
         if state.pending_show_card:
             raise ValueError(
                 "Cannot end turn while waiting for a player to show a card"

@@ -15,15 +15,14 @@ import fakeredis.aioredis as fakeredis
 from app.games.clue.game import SUSPECTS, WEAPONS, ROOMS
 from app.games.clue.agents import RandomAgent
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 # Use fixed subsets for predictable tests
 S = SUSPECTS[:6]  # 6 suspects
-W = WEAPONS[:6]   # 6 weapons
-R = ROOMS[:9]     # 9 rooms
+W = WEAPONS[:6]  # 6 weapons
+R = ROOMS[:9]  # 9 rooms
 
 PLAYERS = ["P_SELF", "P_ALICE", "P_BOB", "P_CAROL", "P_DAVE"]
 
@@ -71,13 +70,13 @@ class TestDirectInference:
             room=R[1],
         )
 
-        assert R[1] in agent.inferred_cards, (
-            f"Agent should have inferred {R[1]} but inferred_cards = {agent.inferred_cards}"
-        )
+        assert (
+            R[1] in agent.inferred_cards
+        ), f"Agent should have inferred {R[1]} but inferred_cards = {agent.inferred_cards}"
         assert R[1] in agent.known_cards
-        assert R[1] in agent.player_has_cards.get(PLAYERS[2], set()), (
-            "Agent should track that Bob has the inferred card"
-        )
+        assert R[1] in agent.player_has_cards.get(
+            PLAYERS[2], set()
+        ), "Agent should track that Bob has the inferred card"
 
     def test_no_inference_when_two_unknown(self):
         """If 2+ cards are possible, no inference should be made."""
@@ -307,24 +306,36 @@ class TestCascadeInference:
         # Suggestion A: S[1]/W[1]/R[1], Bob shows. Can't infer (3 unknown).
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
-            shown_by=PLAYERS[2], players_without_match=[],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+            shown_by=PLAYERS[2],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
         )
 
         # Suggestion B: S[0]/W[1]/R[2], Carol shows.
         # S[0] is ours → Carol can't have it. W[1] and R[2] unknown → 2 poss.
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[0], weapon=W[1], room=R[2],
-            shown_by=PLAYERS[3], players_without_match=[],
+            suspect=S[0],
+            weapon=W[1],
+            room=R[2],
+            shown_by=PLAYERS[3],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[3], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[1], room=R[2],
+            shown_by=PLAYERS[3],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[1],
+            room=R[2],
         )
 
         # Now learn S[1] and R[1] directly
@@ -332,15 +343,15 @@ class TestCascadeInference:
         agent.observe_shown_card(R[1], shown_by=PLAYERS[4])
 
         # Cascade step 1: Suggestion A resolves — Bob showed W[1]
-        assert W[1] in agent.known_cards, (
-            f"Should cascade-infer {W[1]} from suggestion A"
-        )
+        assert (
+            W[1] in agent.known_cards
+        ), f"Should cascade-infer {W[1]} from suggestion A"
 
         # Cascade step 2: W[1] is now known (Bob has it). Suggestion B:
         # S[0] is ours, W[1] is Bob's → only R[2] left → Carol showed R[2]
-        assert R[2] in agent.known_cards, (
-            f"Should cascade-infer {R[2]} from suggestion B"
-        )
+        assert (
+            R[2] in agent.known_cards
+        ), f"Should cascade-infer {R[2]} from suggestion B"
 
     def test_deep_cascade_chain(self):
         """A chain of 3 inferences triggered by a single new card.
@@ -356,32 +367,53 @@ class TestCascadeInference:
 
         # Suggestion A
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[1], weapon=W[1], room=R[1],
-            shown_by=PLAYERS[2], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+            shown_by=PLAYERS[2],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
         )
 
         # Suggestion B
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[2], weapon=W[1], room=R[2],
-            shown_by=PLAYERS[3], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[2],
+            weapon=W[1],
+            room=R[2],
+            shown_by=PLAYERS[3],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[3], shown_to=PLAYERS[1],
-            suspect=S[2], weapon=W[1], room=R[2],
+            shown_by=PLAYERS[3],
+            shown_to=PLAYERS[1],
+            suspect=S[2],
+            weapon=W[1],
+            room=R[2],
         )
 
         # Suggestion C
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[2], weapon=W[2], room=R[3],
-            shown_by=PLAYERS[4], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[2],
+            weapon=W[2],
+            room=R[3],
+            shown_by=PLAYERS[4],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[4], shown_to=PLAYERS[1],
-            suspect=S[2], weapon=W[2], room=R[3],
+            shown_by=PLAYERS[4],
+            shown_to=PLAYERS[1],
+            suspect=S[2],
+            weapon=W[2],
+            room=R[3],
         )
 
         # Nothing inferred yet
@@ -412,8 +444,11 @@ class TestCascadeInference:
 
         # Set up so we can infer R[1]
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
 
         assert R[1] in agent.known_cards
@@ -427,8 +462,11 @@ class TestCascadeInference:
 
         # Infer R[1]
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
         assert R[1] in agent.inferred_cards
 
@@ -451,7 +489,9 @@ class TestObserveSuggestionFlow:
 
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
             shown_by=PLAYERS[2],
             players_without_match=[PLAYERS[3]],
         )
@@ -469,7 +509,9 @@ class TestObserveSuggestionFlow:
 
         assert len(agent.unrefuted_suggestions) == 1
         assert agent.unrefuted_suggestions[0] == {
-            "suspect": S[1], "weapon": W[1], "room": R[1],
+            "suspect": S[1],
+            "weapon": W[1],
+            "room": R[1],
         }
 
     def test_own_shown_card_not_inferred_from(self):
@@ -479,7 +521,9 @@ class TestObserveSuggestionFlow:
         # We showed a card in a suggestion
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[0], weapon=W[1], room=R[1],
+            suspect=S[0],
+            weapon=W[1],
+            room=R[1],
             shown_by=PLAYERS[0],  # self
             players_without_match=[],
         )
@@ -499,7 +543,9 @@ class TestObserveSuggestionFlow:
         # We suggest, Carol shows us W[1]
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[0],  # self
-            suspect=S[1], weapon=W[1], room=R[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
             shown_by=PLAYERS[3],
             players_without_match=[PLAYERS[2]],
         )
@@ -522,22 +568,28 @@ class TestDebugInfoReflectsInferences:
 
         # Infer R[1]
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
 
         debug = agent.get_debug_info()
-        assert R[1] in debug["inferred_cards"], (
-            f"Debug inferred_cards should include inferred card {R[1]}"
-        )
+        assert (
+            R[1] in debug["inferred_cards"]
+        ), f"Debug inferred_cards should include inferred card {R[1]}"
 
     def test_debug_unknowns_exclude_inferences(self):
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
         # Infer R[1]
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
 
         debug = agent.get_debug_info()
@@ -547,8 +599,11 @@ class TestDebugInfoReflectsInferences:
         agent = _make_agent(own_cards=[S[0], W[0], R[0]])
 
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
 
         debug = agent.get_debug_info()
@@ -580,34 +635,55 @@ class TestJWC88JScenario:
 
         # Suggestion 1: S[1]/W[1]/R[1], Bob shows. 3 unknown, can't infer.
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[1], weapon=W[1], room=R[1],
-            shown_by=PLAYERS[2], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+            shown_by=PLAYERS[2],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
         )
 
         # Suggestion 2: S[0]/W[1]/R[2], Carol shows.
         # S[0] is ours → Carol can't have it. W[1] unknown, R[2] unknown → 2 poss.
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[0], weapon=W[1], room=R[2],
-            shown_by=PLAYERS[3], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[1],
+            room=R[2],
+            shown_by=PLAYERS[3],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[3], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[1], room=R[2],
+            shown_by=PLAYERS[3],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[1],
+            room=R[2],
         )
 
         # Suggestion 3: S[0]/W[0]/R[3], Dave shows.
         # S[0] and W[0] are ours → Dave showed R[3]. Direct inference!
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[0], weapon=W[0], room=R[3],
-            shown_by=PLAYERS[4], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[3],
+            shown_by=PLAYERS[4],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[4], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[3],
+            shown_by=PLAYERS[4],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[3],
         )
         assert R[3] in agent.known_cards, "Should directly infer R[3]"
 
@@ -625,17 +701,15 @@ class TestJWC88JScenario:
 
         # Verify ALL inferred + shown cards are in known_cards
         expected_known = {S[0], W[0], R[0], S[1], R[1], W[1], R[2], R[3]}
-        assert expected_known <= agent.known_cards, (
-            f"Missing from known_cards: {expected_known - agent.known_cards}"
-        )
+        assert (
+            expected_known <= agent.known_cards
+        ), f"Missing from known_cards: {expected_known - agent.known_cards}"
 
         # Verify debug info matches
         debug = agent.get_debug_info()
         all_debug_cards = set(debug["seen_cards"]) | set(debug["inferred_cards"])
         for card in expected_known:
-            assert card in all_debug_cards, (
-                f"Debug cards missing {card}"
-            )
+            assert card in all_debug_cards, f"Debug cards missing {card}"
 
 
 # ---------------------------------------------------------------------------
@@ -695,8 +769,11 @@ class TestKnowledgePersistence:
 
         # Infer R[1]
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
         assert R[1] in agent.inferred_cards
 
@@ -714,8 +791,11 @@ class TestKnowledgePersistence:
 
         # Infer R[1] — this creates a card_inference_log entry
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[0], weapon=W[0], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[0],
+            weapon=W[0],
+            room=R[1],
         )
         assert R[1] in agent.card_inference_log
 
@@ -744,7 +824,9 @@ class TestKnowledgePersistence:
         agent = _make_agent_with_redis(redis)
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
             shown_by=PLAYERS[3],
             players_without_match=[PLAYERS[2]],
         )
@@ -761,7 +843,9 @@ class TestKnowledgePersistence:
         agent = _make_agent_with_redis(redis)
         agent.observe_suggestion(
             suggesting_player_id=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
             shown_by=PLAYERS[2],
             players_without_match=[],
         )
@@ -815,12 +899,19 @@ class TestKnowledgePersistence:
 
         # Build suggestion history
         agent.observe_suggestion(
-            suggesting_player_id=PLAYERS[1], suspect=S[1], weapon=W[1], room=R[1],
-            shown_by=PLAYERS[2], players_without_match=[],
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+            shown_by=PLAYERS[2],
+            players_without_match=[],
         )
         agent.observe_card_shown_to_other(
-            shown_by=PLAYERS[2], shown_to=PLAYERS[1],
-            suspect=S[1], weapon=W[1], room=R[1],
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
         )
         await agent.save_knowledge()
 
@@ -832,9 +923,9 @@ class TestKnowledgePersistence:
         agent2.observe_shown_card(S[1], shown_by=PLAYERS[3])
         agent2.observe_shown_card(W[1], shown_by=PLAYERS[4])
 
-        assert R[1] in agent2.known_cards, (
-            "Cascade inference should work after loading saved state"
-        )
+        assert (
+            R[1] in agent2.known_cards
+        ), "Cascade inference should work after loading saved state"
 
     @pytest.mark.asyncio
     async def test_own_cards_always_in_seen_after_load(self, redis):

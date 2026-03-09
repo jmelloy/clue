@@ -52,7 +52,7 @@ def _evaluate_five(cards: list[Card]) -> tuple:
     unique_vals = sorted(set(values), reverse=True)
     if len(unique_vals) >= 5:
         for i in range(len(unique_vals) - 4):
-            window = unique_vals[i:i + 5]
+            window = unique_vals[i : i + 5]
             if window[0] - window[4] == 4:
                 is_straight = True
                 straight_high = window[0]
@@ -64,6 +64,7 @@ def _evaluate_five(cards: list[Card]) -> tuple:
 
     # Count rank groups
     from collections import Counter
+
     counts = Counter(values)
     groups = sorted(counts.items(), key=lambda x: (x[1], x[0]), reverse=True)
 
