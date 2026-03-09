@@ -81,12 +81,12 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   overflow: hidden;
 }
 
-/* Sizes: tiny (32x44), mini (40x56), small (44x62), medium (62x88), large (68x96) */
+/* Sizes: tiny (32x44), mini (40x56), small (44x62), medium (62x88), large (100x140) */
 .card-tiny { width: 32px; height: 44px; border-radius: 4px; }
 .card-mini { width: 40px; height: 56px; }
 .card-small { width: 44px; height: 62px; }
 .card-medium { width: 62px; height: 88px; }
-.card-large { width: 68px; height: 96px; }
+.card-large { width: 100px; height: 140px; border-radius: 8px; }
 
 .playing-card.suit-hearts,
 .playing-card.suit-diamonds {
@@ -119,22 +119,23 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 
 .card-rank {
   font-family: 'Fira Code', monospace;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
-.card-large .card-rank { font-size: 0.9rem; }
-.card-small .card-rank { font-size: 0.65rem; }
-.card-mini .card-rank { font-size: 0.6rem; }
-.card-tiny .card-rank { font-size: 0.55rem; }
+.card-large .card-rank { font-size: 0.75rem; }
+.card-small .card-rank { font-size: 0.6rem; }
+.card-mini .card-rank { font-size: 0.55rem; }
+.card-tiny .card-rank { font-size: 0.5rem; }
 
 .card-suit-small {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   line-height: 1;
 }
 
-.card-mini .card-suit-small { font-size: 0.5rem; }
-.card-tiny .card-suit-small { font-size: 0.45rem; }
+.card-large .card-suit-small { font-size: 0.6rem; }
+.card-mini .card-suit-small { font-size: 0.45rem; }
+.card-tiny .card-suit-small { font-size: 0.4rem; }
 
 .card-pips {
   position: absolute;
@@ -144,30 +145,44 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   right: 6px;
 }
 
+.card-large .card-pips {
+  top: 24px;
+  bottom: 24px;
+  left: 10px;
+  right: 10px;
+}
+
 .pip {
   position: absolute;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   line-height: 1;
   opacity: 0.9;
 }
 
-.pips-1 .pip { font-size: 1.6rem; }
-.card-large .pips-1 .pip { font-size: 1.8rem; }
+.card-large .pip { font-size: 1.1rem; }
+
+.pips-1 .pip { font-size: 1.8rem; }
+.card-large .pips-1 .pip { font-size: 2.8rem; }
 
 .pips-2 .pip,
 .pips-3 .pip {
-  font-size: 0.85rem;
+  font-size: 1rem;
+}
+
+.card-large .pips-2 .pip,
+.card-large .pips-3 .pip {
+  font-size: 1.3rem;
 }
 
 .card-face-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   opacity: 0.85;
 }
 
-.card-large .card-face-center { font-size: 2rem; }
+.card-large .card-face-center { font-size: 3.2rem; }
 
 .card-face-symbol {
   line-height: 1;

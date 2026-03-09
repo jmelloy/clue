@@ -59,7 +59,23 @@ export const FaceDown: Story = {
 }
 
 export const Large: Story = {
-  args: { rank: 'A', suit: 'hearts', size: 'large' }
+  args: { rank: 'K', suit: 'hearts', size: 'large' }
+}
+
+/** Large cards showing all pip counts */
+export const LargeAllRanks: Story = {
+  render: () => ({
+    components: { PlayingCard },
+    template: `
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; padding: 20px; background: #1a1a2e; border-radius: 12px;">
+        <PlayingCard v-for="rank in ranks" :key="rank" :rank="rank" suit="spades" size="large" />
+      </div>
+    `,
+    setup() {
+      const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+      return { ranks }
+    }
+  })
 }
 
 export const Small: Story = {
@@ -68,11 +84,17 @@ export const Small: Story = {
 
 /** All 13 ranks of a single suit */
 export const FullSuit: Story = {
+  args: {
+    suit: 'clubs',
+    size: 'medium',
+    faceDown: true
+  },
+
   render: () => ({
     components: { PlayingCard },
     template: `
       <div style="display: flex; gap: 8px; flex-wrap: wrap; padding: 20px;">
-        <PlayingCard v-for="rank in ranks" :key="rank" :rank="rank" suit="spades" />
+        <PlayingCard v-for="rank in ranks" :key="rank" :rank="rank" :suit="suit" :size="size" :faceDown="faceDown" />
       </div>
     `,
     setup() {
@@ -106,18 +128,18 @@ export const HoldemHand: Story = {
       <div style="padding: 20px;">
         <div style="margin-bottom: 12px; font-weight: 600; color: #666;">Hole Cards</div>
         <div style="display: flex; gap: 6px; margin-bottom: 24px;">
-          <PlayingCard rank="A" suit="hearts" size="large"
+          <PlayingCard rank="A" suit="hearts" size="medium"
             style="transform: rotate(-4deg);" />
-          <PlayingCard rank="K" suit="hearts" size="large"
+          <PlayingCard rank="K" suit="hearts" size="medium"
             style="transform: rotate(4deg);" />
         </div>
         <div style="margin-bottom: 12px; font-weight: 600; color: #666;">Community Cards</div>
         <div style="display: flex; gap: 8px;">
-          <PlayingCard rank="Q" suit="hearts" />
-          <PlayingCard rank="J" suit="hearts" />
-          <PlayingCard rank="10" suit="hearts" />
-          <PlayingCard rank="3" suit="clubs" />
-          <PlayingCard rank="7" suit="spades" />
+          <PlayingCard rank="Q" suit="hearts" size="large" />
+          <PlayingCard rank="J" suit="hearts" size="large" />
+          <PlayingCard rank="10" suit="hearts" size="large" />
+          <PlayingCard rank="3" suit="clubs" size="large" />
+          <PlayingCard rank="7" suit="spades" size="large" />
         </div>
         <div style="margin-top: 12px; color: #dc2626; font-weight: bold;">Royal Flush!</div>
       </div>

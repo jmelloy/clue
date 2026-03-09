@@ -57,9 +57,8 @@
             <!-- Dealer Button -->
             <div v-if="idx === gameState?.dealer_index" class="dealer-btn">D</div>
 
-            <!-- Player bet on felt -->
-            <div v-if="p.current_bet > 0 && !p.folded" class="bet-on-felt"
-              :style="getBetPosition(idx, activePlayers.length)">
+            <!-- Player bet above seat -->
+            <div v-if="p.current_bet > 0 && !p.folded" class="bet-above-seat">
               <div class="bet-chip-stacks">
                 <div v-for="(chip, ci) in chipStackVisual(p.current_bet, 6)" :key="ci" class="bet-chip"
                   :class="`chip-${chip}`" :style="{ '--bi': ci }"></div>
@@ -125,8 +124,8 @@
               <TransitionGroup name="card-deal">
                 <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
                   :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }">
-                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" />
-                  <PlayingCard v-else :faceDown="true" />
+                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" />
+                  <PlayingCard v-else :faceDown="true" size="large" />
                 </div>
               </TransitionGroup>
             </div>
@@ -173,12 +172,12 @@
         <div class="hole-cards">
           <template v-if="yourCards.length">
             <PlayingCard v-for="(c, i) in yourCards" :key="i"
-              :rank="c.rank" :suit="c.suit" size="large" class="hole-card"
+              :rank="c.rank" :suit="c.suit" size="medium" class="hole-card"
               :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
           </template>
           <template v-else>
-            <PlayingCard :faceDown="true" size="large" class="hole-card" :style="{ '--tilt': '-4deg' }" />
-            <PlayingCard :faceDown="true" size="large" class="hole-card" :style="{ '--tilt': '4deg' }" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" />
           </template>
         </div>
       </div>
@@ -554,16 +553,6 @@ function getSeatPositions(total) {
   return positions
 }
 
-function getBetPosition(idx, total) {
-  // Place bets closer to center than the seat
-  const positions = getSeatPositions(total)
-  const pos = positions[idx]
-  const cx = 50,
-    cy = 50
-  const x = cx + (pos.x - cx) * 0.55
-  const y = cy + (pos.y - cy) * 0.55
-  return { left: `${x}%`, top: `${y}%`, position: 'absolute', transform: 'translate(-50%, -50%)' }
-}
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -1184,37 +1173,37 @@ watch(
   }
 }
 
-/* Bet chips on felt */
-.bet-on-felt {
+/* Bet chips above seat */
+.bet-above-seat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  z-index: 4;
+  gap: 0.1rem;
+  margin-bottom: 0.15rem;
 }
 
 .bet-chip-stacks {
   position: relative;
-  width: 28px;
-  height: 32px;
+  width: 22px;
+  height: 26px;
 }
 
 .bet-chip {
   position: absolute;
-  bottom: calc(var(--bi) * 4px);
+  bottom: calc(var(--bi) * 3px);
   left: 0;
-  width: 28px;
-  height: 8px;
+  width: 22px;
+  height: 7px;
   border-radius: 50%;
   border: 1.5px solid rgba(0, 0, 0, 0.35);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.bet-on-felt span {
+.bet-above-seat span {
   font-family: 'Fira Code', monospace;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--gold-bright, #f0c040);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
