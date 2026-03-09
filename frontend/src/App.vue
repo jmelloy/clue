@@ -34,14 +34,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useTheme } from './composables/useTheme'
-import Lobby from './components/Lobby.vue'
-import WaitingRoom from './components/WaitingRoom.vue'
-import GameBoard from './components/GameBoard.vue'
-import PokerWaitingRoom from './components/PokerWaitingRoom.vue'
-import PokerTable from './components/PokerTable.vue'
-import AdminGames from './components/AdminGames.vue'
-import GameDebug from './components/GameDebug.vue'
-import HoldemDebug from './components/HoldemDebug.vue'
+import Lobby from './components/common/Lobby.vue'
+import AdminGames from './components/common/AdminGames.vue'
+import WaitingRoom from './components/clue/WaitingRoom.vue'
+import GameBoard from './components/clue/GameBoard.vue'
+import GameDebug from './components/clue/GameDebug.vue'
+import PokerWaitingRoom from './components/holdem/PokerWaitingRoom.vue'
+import PokerTable from './components/holdem/PokerTable.vue'
+import HoldemDebug from './components/holdem/HoldemDebug.vue'
 
 const gameId = ref(null)
 const playerId = ref(null)
