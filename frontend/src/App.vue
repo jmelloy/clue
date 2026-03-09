@@ -16,7 +16,7 @@
         :auto-show-card-timer="autoShowCardTimer" :reachable-rooms="reachableRooms"
         :reachable-positions="reachablePositions" :saved-notes="savedNotes" :agent-debug-data="agentDebugData"
         :observer-player-state="observerPlayerState" @action="sendAction" @send-chat="sendChat"
-        @dismiss-card-shown="cardShown = null" @select-player="onObserverSelectPlayer" />
+        @dismiss-card-shown="onDismissCardShown" @select-player="onObserverSelectPlayer" />
     </template>
 
     <!-- Texas Hold'em views -->
@@ -682,6 +682,16 @@ async function sendAction(action) {
       // rely on WS updates
     }
   }
+}
+
+function onDismissCardShown() {
+  cardShown.value = null
+  // Tell the backend the banner is dismissed so it can start the auto-end timer
+  fetch(`/api/clue/games/${gameId.value}/ack_card_shown`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId.value })
+  })
 }
 
 async function sendChat(text) {

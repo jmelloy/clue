@@ -785,8 +785,14 @@ async def _execute_action(
     # Publish observation events to Redis for external agent runners
     await _publish_agent_event(game_id, player_id, action, result)
 
-    # Check if the current player should get an auto-end-turn timer
-    await _maybe_start_auto_end_timer(game_id)
+    # Check if the current player should get an auto-end-turn timer.
+    # Skip when the card-shown banner will be visible to the player — the
+    # frontend will call /ack_card_shown after the player dismisses it.
+    _banner_visible = isinstance(result, ShowCardResult) or (
+        isinstance(result, SuggestResult) and result.pending_show_by is None
+    )
+    if not _banner_visible:
+        await _maybe_start_auto_end_timer(game_id)
 
     return result
 
@@ -1826,6 +1832,25 @@ async def submit_action(game_id: str, req: ActionRequest):
     if state:
         response["available_actions"] = game.get_available_actions(req.player_id, state)
     return response
+
+
+@app.post("/api/clue/games/{game_id}/ack_card_shown")
+async def ack_card_shown(game_id: str, req: dict):
+    """Called when a player dismisses the card-shown banner.
+
+    Starts the auto-end-turn timer now that the player can see their actions.
+    """
+    player_id = req.get("player_id")
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id required")
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if not state or state.status != "playing":
+        return OkResponse()
+    # Only start the timer if it's actually this player's turn
+    if state.whose_turn == player_id:
+        await _maybe_start_auto_end_timer(game_id)
+    return OkResponse()
 
 
 # ---------------------------------------------------------------------------
