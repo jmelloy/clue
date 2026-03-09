@@ -611,7 +611,8 @@ async def _execute_action(
             )
 
         # "dragged_to_room" reaction — if the piece was physically moved
-        if moved_suspect_player:
+        # Skip if the player dragged themselves (they made the suggestion)
+        if moved_suspect_player and moved_suspect_player != player_id:
             dragged_msg = generate_character_chat(
                 suspect_character,
                 "dragged_to_room",
