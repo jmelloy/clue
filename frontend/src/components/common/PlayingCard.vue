@@ -7,16 +7,18 @@
       <span class="card-rank">{{ rank }}</span>
       <span class="card-suit-small">{{ suitSymbol }}</span>
     </span>
-    <div v-if="isFaceCard" class="card-face-center">
-      <span class="card-face-symbol">{{ faceSymbol }}</span>
-    </div>
-    <div v-else class="card-pips" :class="'pips-' + pipCount">
-      <span v-for="(pos, i) in pips" :key="i" class="pip" :style="{
-        top: pos[0] + '%',
-        left: pos[1] + '%',
-        transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)'
-      }">{{ suitSymbol }}</span>
-    </div>
+    <template v-if="showCenter">
+      <div v-if="isFaceCard" class="card-face-center">
+        <span class="card-face-symbol">{{ faceSymbol }}</span>
+      </div>
+      <div v-else class="card-pips" :class="'pips-' + pipCount">
+        <span v-for="(pos, i) in pips" :key="i" class="pip" :style="{
+          top: pos[0] + '%',
+          left: pos[1] + '%',
+          transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)'
+        }">{{ suitSymbol }}</span>
+      </div>
+    </template>
     <span class="card-corner bottom-right">
       <span class="card-rank">{{ rank }}</span>
       <span class="card-suit-small">{{ suitSymbol }}</span>
@@ -31,7 +33,7 @@ const props = defineProps({
   rank: { type: String, default: 'A' },
   suit: { type: String, default: 'spades' },
   faceDown: { type: Boolean, default: false },
-  size: { type: String, default: 'medium', validator: v => ['small', 'medium', 'large'].includes(v) }
+  size: { type: String, default: 'medium', validator: v => ['tiny', 'mini', 'small', 'medium', 'large'].includes(v) }
 })
 
 const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
@@ -55,6 +57,7 @@ const suitClass = computed(() => `suit-${props.suit}`)
 const sizeClass = computed(() => `card-${props.size}`)
 const isFaceCard = computed(() => ['J', 'Q', 'K'].includes(props.rank))
 const faceSymbol = computed(() => FACE_SYMBOLS[props.rank] ?? '')
+const showCenter = computed(() => !['tiny', 'mini'].includes(props.size))
 
 const pipCount = computed(() => {
   const n = parseInt(props.rank)
@@ -78,9 +81,12 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   overflow: hidden;
 }
 
+/* Sizes: tiny (32x44), mini (40x56), small (44x62), medium (62x88), large (68x96) */
+.card-tiny { width: 32px; height: 44px; border-radius: 4px; }
+.card-mini { width: 40px; height: 56px; }
 .card-small { width: 44px; height: 62px; }
 .card-medium { width: 62px; height: 88px; }
-.card-large { width: 80px; height: 114px; }
+.card-large { width: 68px; height: 96px; }
 
 .playing-card.suit-hearts,
 .playing-card.suit-diamonds {
@@ -117,22 +123,18 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   font-weight: 600;
 }
 
-.card-large .card-rank {
-  font-size: 1rem;
-}
-
-.card-small .card-rank {
-  font-size: 0.65rem;
-}
+.card-large .card-rank { font-size: 0.9rem; }
+.card-small .card-rank { font-size: 0.65rem; }
+.card-mini .card-rank { font-size: 0.6rem; }
+.card-tiny .card-rank { font-size: 0.55rem; }
 
 .card-suit-small {
   font-size: 0.65rem;
   line-height: 1;
 }
 
-.card-large .card-suit-small {
-  font-size: 0.8rem;
-}
+.card-mini .card-suit-small { font-size: 0.5rem; }
+.card-tiny .card-suit-small { font-size: 0.45rem; }
 
 .card-pips {
   position: absolute;
@@ -149,13 +151,8 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   opacity: 0.9;
 }
 
-.pips-1 .pip {
-  font-size: 1.6rem;
-}
-
-.card-large .pips-1 .pip {
-  font-size: 2.2rem;
-}
+.pips-1 .pip { font-size: 1.6rem; }
+.card-large .pips-1 .pip { font-size: 1.8rem; }
 
 .pips-2 .pip,
 .pips-3 .pip {
@@ -170,9 +167,7 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   opacity: 0.85;
 }
 
-.card-large .card-face-center {
-  font-size: 2.4rem;
-}
+.card-large .card-face-center { font-size: 2rem; }
 
 .card-face-symbol {
   line-height: 1;

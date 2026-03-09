@@ -15,7 +15,7 @@ const meta: Meta<typeof PlayingCard> = {
     },
     size: {
       control: 'select',
-      options: ['small', 'medium', 'large']
+      options: ['tiny', 'mini', 'small', 'medium', 'large']
     },
     faceDown: { control: 'boolean' }
   },
@@ -141,25 +141,21 @@ export const DealInProgress: Story = {
   })
 }
 
-/** All three sizes side by side */
+/** All five sizes side by side */
 export const Sizes: Story = {
   render: () => ({
     components: { PlayingCard },
     template: `
       <div style="display: flex; gap: 16px; align-items: flex-end; padding: 20px;">
-        <div style="text-align: center;">
-          <PlayingCard rank="A" suit="spades" size="small" />
-          <div style="margin-top: 8px; font-size: 12px; color: #666;">Small</div>
-        </div>
-        <div style="text-align: center;">
-          <PlayingCard rank="A" suit="spades" size="medium" />
-          <div style="margin-top: 8px; font-size: 12px; color: #666;">Medium</div>
-        </div>
-        <div style="text-align: center;">
-          <PlayingCard rank="A" suit="spades" size="large" />
-          <div style="margin-top: 8px; font-size: 12px; color: #666;">Large</div>
+        <div v-for="size in sizes" :key="size" style="text-align: center;">
+          <PlayingCard rank="A" suit="spades" :size="size" />
+          <div style="margin-top: 8px; font-size: 12px; color: #666;">{{ size }}</div>
         </div>
       </div>
-    `
+    `,
+    setup() {
+      const sizes = ['tiny', 'mini', 'small', 'medium', 'large']
+      return { sizes }
+    }
   })
 }
