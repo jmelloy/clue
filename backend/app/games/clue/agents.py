@@ -109,7 +109,6 @@ _CHAT_PROBABILITY: dict[str, float] = {
     "show_card": 0.5,
     "secret_passage": 0.9,
     "suspected": 0.85,
-    "dragged_to_room": 0.9,
 }
 
 # Per-character, per-action message templates.  Use {dice}, {room}, {suspect},
@@ -157,11 +156,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "How predictable, {accuser}. Blame the beautiful woman.",
             "{accuser}, darling, you're grasping at straws. It's almost sad.",
             "I grew up in this house. I know its secrets better than any of you.",
-        ],
-        "dragged_to_room": [
-            "The {room}? Boddy and I had our last argument here...",
             "Being dragged to the {room}. How undignified.",
-            "Fine. The {room}. But I'm not the one you should be watching.",
             "The {room} again? This place has too many ghosts.",
         ],
     },
@@ -207,12 +202,8 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "That's a dangerous accusation, {accuser}. I've ended careers over less.",
             "{accuser}, you clearly don't know who you're dealing with.",
             "Suspect me? I've been paying too much to keep my name clean for this!",
-        ],
-        "dragged_to_room": [
             "I did NOT authorize this movement to the {room}!",
-            "The {room}? I was conducting my own investigation, thank you!",
             "Forced relocation to the {room}. This is beneath a man of my rank.",
-            "The {room}... fine. But I'll be the one asking questions here.",
         ],
     },
     "Mrs. White": {
@@ -257,12 +248,8 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "If you're coming for me, bring better evidence.",
             "Suspect me all you want — you're still wrong.",
             "{accuser}, try that accusation when you've done your homework.",
-        ],
-        "dragged_to_room": [
             "Pulled into the {room}? Fine — let's do this.",
-            "The {room} again? Someone really wants answers.",
             "Dragged to the {room}. Hope this is worth it.",
-            "{room}? Sure. Let's see what falls apart.",
         ],
     },
     "Reverend Green": {
@@ -307,12 +294,8 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "Suspect the reverend? How very... perceptive of you, {accuser}.",
             "I forgive you, {accuser}. Truly. But do stop digging into my past.",
             "{accuser}, I've talked my way out of far worse accusations than this.",
-        ],
-        "dragged_to_room": [
-            "The {room}? I was perfectly comfortable where nobody could find me.",
             "Summoned to the {room}... this is exactly the kind of attention I don't need.",
             "Being dragged to the {room} like a suspect. How uncomfortably familiar.",
-            "The {room}? Fine. But if anyone asks, I was here the whole time.",
         ],
     },
     "Mrs. Peacock": {
@@ -357,11 +340,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "Suspecting me? Darling, all my husbands died of perfectly natural causes, {accuser}.",
             "{accuser}, I didn't come here to be accused. I came here for... other reasons.",
             "How dare you, {accuser}. I am a SOCIALITE, not a suspect!",
-        ],
-        "dragged_to_room": [
             "The {room}?! I was NOT invited to be dragged about like luggage!",
-            "Being summoned to the {room}... how very inconsiderate.",
-            "The {room}? Mr. Boddy proposed to me here. Before his... accident.",
             "Marched to the {room} without so much as a proper invitation!",
         ],
     },
@@ -407,11 +386,7 @@ CHARACTER_CHAT: dict[str, dict[str, list[str]]] = {
             "{accuser}, I've been too busy mourning my lost expeditions to plot anything!",
             "Suspect me? I came here hoping Boddy would fund my next dig, not to kill anyone!",
             "{accuser}, your theory has more holes than a Mesopotamian ruin.",
-        ],
-        "dragged_to_room": [
-            "The {room}?! I was in the middle of an important deduction!",
             "Being dragged to the {room} like an artifact to a museum...",
-            "The {room}. At least there might be something interesting to examine here.",
             "Forced to the {room}? This is NOT how an expedition works!",
         ],
     },
@@ -423,8 +398,6 @@ _GENERIC_CHAT: dict[str, list[str]] = {
         "Me?! You've got the wrong person, {accuser}!",
         "That's a bold claim, {accuser}. Bold and wrong.",
         "Oh, so NOW I'm a suspect? Unbelievable, {accuser}!",
-    ],
-    "dragged_to_room": [
         "Hey! I didn't want to go to the {room}!",
         "Being dragged to the {room}... how rude!",
     ],
@@ -445,7 +418,7 @@ def generate_character_chat(
     """Generate a chat message for a character without needing an agent instance.
 
     Used by main.py to make ANY piece trash talk (including human players'
-    pieces) when they're suspected or dragged to a room.
+    pieces) when they're suspected.
     """
     prob = _CHAT_PROBABILITY.get(action_type, 0.5)
     if random.random() > prob:

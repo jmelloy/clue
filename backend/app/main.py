@@ -610,21 +610,6 @@ async def _execute_action(
                 suspect_pid,
             )
 
-        # "dragged_to_room" reaction — if the piece was physically moved
-        # Skip if the player dragged themselves (they made the suggestion)
-        if moved_suspect_player and moved_suspect_player != player_id:
-            dragged_msg = generate_character_chat(
-                suspect_character,
-                "dragged_to_room",
-                {"room": result.room, "accuser": accuser_name},
-            )
-            if dragged_msg:
-                await _broadcast_chat(
-                    game_id,
-                    f"{suspect_character}: {dragged_msg}",
-                    moved_suspect_player,
-                )
-
     elif isinstance(result, ShowCardResult):
         shown_by_name = _player_name(state, player_id)
         shown_to_name = _player_name(state, result.suggesting_player_id)
