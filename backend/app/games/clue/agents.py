@@ -88,12 +88,6 @@ def _compute_room_distances(
     return results
 
 
-def _clip_text(value: str, limit: int = 1200) -> str:
-    """Return text clipped to a max length for safer log output."""
-    if len(value) <= limit:
-        return value
-    return f"{value[:limit]}... [truncated {len(value) - limit} chars]"
-
 
 # ---------------------------------------------------------------------------
 # Character personality chat templates
@@ -1765,8 +1759,8 @@ class LLMAgent(BaseAgent):
         self.agent_trace(
             "llm_request",
             model=effective_model,
-            system_prompt=_clip_text(system_prompt),
-            user_prompt=_clip_text(user_prompt),
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
         )
 
         headers = {
@@ -1830,11 +1824,11 @@ class LLMAgent(BaseAgent):
                     return parsed
                 except json.JSONDecodeError:
                     self.agent_trace(
-                        "json_parse_failed", method="substring", text=_clip_text(text)
+                        "json_parse_failed", method="substring", text=text
                     )
             else:
                 self.agent_trace(
-                    "json_parse_failed", reason="no_json_braces", text=_clip_text(text)
+                    "json_parse_failed", reason="no_json_braces", text=text
                 )
         return None
 
@@ -2126,7 +2120,7 @@ class LLMAgent(BaseAgent):
             else:
                 self.agent_trace(
                     "llm_json_parse_failed",
-                    response_preview=_clip_text(response_text),
+                    response_preview=response_text,
                 )
         else:
             self.agent_trace("llm_no_response")
@@ -2179,7 +2173,7 @@ class LLMAgent(BaseAgent):
             else:
                 self.agent_trace(
                     "llm_show_card_parse_failed",
-                    response_preview=_clip_text(response_text),
+                    response_preview=response_text,
                 )
 
         # Fallback
