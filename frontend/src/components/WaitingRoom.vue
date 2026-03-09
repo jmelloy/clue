@@ -37,7 +37,7 @@
 
         <div class="suspects-grid">
           <!-- Filled seats -->
-          <div v-for="p in players" :key="p.id" class="suspect-card" :class="{ 'is-you': p.id === playerId }">
+          <div v-for="(p, i) in players" :key="p.id" class="suspect-card" :class="{ 'is-you': p.id === playerId }" :style="{ '--i': i }">
             <div class="suspect-token" :class="{ 'has-portrait': CARD_IMAGES[p.character] }" :style="tokenStyle(p)">
               <img v-if="CARD_IMAGES[p.character]" :src="CARD_IMAGES[p.character]" :alt="p.character"
                 class="suspect-portrait" />
@@ -54,7 +54,7 @@
           </div>
 
           <!-- Empty seats -->
-          <div v-for="n in 6 - players.length" :key="'empty-' + n" class="suspect-card empty">
+          <div v-for="n in 6 - players.length" :key="'empty-' + n" class="suspect-card empty" :style="{ '--i': players.length + n - 1 }">
             <div class="suspect-token empty-token">?</div>
             <div class="suspect-details">
               <span class="suspect-name empty-name">Awaiting suspect...</span>
@@ -440,28 +440,9 @@ async function startGame() {
   animation: suspect-enter 0.4s ease-out both;
 }
 
-.suspect-card:nth-child(1) {
-  animation-delay: 0.3s;
-}
-
-.suspect-card:nth-child(2) {
-  animation-delay: 0.4s;
-}
-
-.suspect-card:nth-child(3) {
-  animation-delay: 0.5s;
-}
-
-.suspect-card:nth-child(4) {
-  animation-delay: 0.6s;
-}
-
-.suspect-card:nth-child(5) {
-  animation-delay: 0.7s;
-}
-
-.suspect-card:nth-child(6) {
-  animation-delay: 0.8s;
+/* Staggered entry: each card delays 0.1s more than the previous, starting at 0.3s */
+.suspect-card {
+  animation-delay: calc(0.3s + 0.1s * var(--i, 0));
 }
 
 @keyframes suspect-enter {

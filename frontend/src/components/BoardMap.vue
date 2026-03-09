@@ -699,21 +699,21 @@ function tokenStyle(token) {
    - Tile pitch: ~53.7px wide × ~51.7px tall (24 cols × 25 rows)
    - Grid origin: ~(79, 74), Grid end: ~(1369, 1367)
    - Insets tuned visually with Playwright debug overlay */
-[data-theme="vintage"] .board-grid {
-  background: transparent;
-  background-image: none;
+/* In vintage mode, position grid + overlay over just the playable area */
+[data-theme="vintage"] .board-grid,
+[data-theme="vintage"] .board-overlay {
   top: 5.0%;
   left: 5.5%;
   right: 5.0%;
   bottom: 5.0%;
 }
 
-/* In vintage mode, the overlay also needs matching inset */
+[data-theme="vintage"] .board-grid {
+  background: transparent;
+  background-image: none;
+}
+
 [data-theme="vintage"] .board-overlay {
-  top: 5.0%;
-  left: 5.5%;
-  right: 5.0%;
-  bottom: 5.0%;
   width: auto;
   height: auto;
 }
@@ -729,12 +729,17 @@ function tokenStyle(token) {
   filter: var(--board-room-filter);
 }
 
-[data-theme="vintage"] .cell-room {
-  border-color: transparent;
-}
-
 [data-theme="light"] .cell-room {
   border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* In vintage mode, hide all room borders — the board image provides them */
+[data-theme="vintage"] .cell-room,
+[data-theme="vintage"] .room-edge-top,
+[data-theme="vintage"] .room-edge-right,
+[data-theme="vintage"] .room-edge-bottom,
+[data-theme="vintage"] .room-edge-left {
+  border-color: transparent;
 }
 
 /* ── Room boundary gold walls (inset border around each room) ── */
@@ -750,16 +755,11 @@ function tokenStyle(token) {
 .room-edge-bottom { border-bottom: 2px solid #c8a84e; }
 .room-edge-left { border-left: 2px solid #c8a84e; }
 
-[data-theme="light"] .room-edge-top { border-top-color: #b8963e; }
-[data-theme="light"] .room-edge-right { border-right-color: #b8963e; }
-[data-theme="light"] .room-edge-bottom { border-bottom-color: #b8963e; }
-[data-theme="light"] .room-edge-left { border-left-color: #b8963e; }
-
-[data-theme="vintage"] .room-edge-top,
-[data-theme="vintage"] .room-edge-right,
-[data-theme="vintage"] .room-edge-bottom,
-[data-theme="vintage"] .room-edge-left {
-  border-color: transparent;
+[data-theme="light"] .room-edge-top,
+[data-theme="light"] .room-edge-right,
+[data-theme="light"] .room-edge-bottom,
+[data-theme="light"] .room-edge-left {
+  border-color: #b8963e;
 }
 
 .cell-door {
@@ -1223,31 +1223,15 @@ function tokenStyle(token) {
   animation: token-pulse 2s ease-in-out infinite;
 }
 
-.player-token.is-turn.has-image {
-  animation: token-pulse-img 2s ease-in-out infinite;
-}
-
 @keyframes token-pulse {
 
   0%,
   100% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 4px 1px rgba(212, 168, 73, 0.5);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 4px 1px rgba(212, 168, 73, 0.5);
   }
 
   50% {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 10px 5px rgba(212, 168, 73, 0.7);
-  }
-}
-
-@keyframes token-pulse-img {
-
-  0%,
-  100% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 4px 1px rgba(212, 168, 73, 0.5);
-  }
-
-  50% {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 10px 5px rgba(212, 168, 73, 0.7);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 10px 5px rgba(212, 168, 73, 0.7);
   }
 }
 

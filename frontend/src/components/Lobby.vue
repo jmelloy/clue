@@ -877,10 +877,16 @@ async function observeGame() {
 /* ==============================
    BUTTONS
    ============================== */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  cursor: pointer;
+}
+
 /* extends .btn-accent from components.css */
 .btn-primary {
   padding: 0.6rem 1.25rem;
-  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.88rem;
   letter-spacing: 0.02em;
 }
@@ -899,9 +905,7 @@ async function observeGame() {
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
-  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.85rem;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -931,9 +935,7 @@ async function observeGame() {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.8rem;
-  cursor: pointer;
   transition: color 0.2s;
   text-decoration: underline;
   text-underline-offset: 3px;
