@@ -181,6 +181,7 @@ async function startGame() {
   font-family: 'Outfit', system-ui, sans-serif;
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
