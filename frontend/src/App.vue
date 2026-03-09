@@ -862,8 +862,9 @@ setInterval(() => {
 }
 
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -884,7 +885,7 @@ body {
   max-width: 1080px;
   margin: 0 auto;
   padding: 0.75rem;
-  overflow-x: hidden;
+  overflow-x: clip;
   box-sizing: border-box;
 }
 </style>
