@@ -10,7 +10,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CARD_IMAGES, abbr, characterColors } from '../constants/clue'
+import { CARD_IMAGES, abbr, characterColors } from '../../constants/clue'
 
 const props = defineProps({
   character: { type: String, required: true },

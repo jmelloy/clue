@@ -219,3 +219,6 @@ dump.rdb
 # Playwright
 screenshots/
 test-results/
+
+*storybook.log
+storybook-static

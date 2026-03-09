@@ -125,32 +125,8 @@
               <TransitionGroup name="card-deal">
                 <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
                   :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }">
-                  <div v-if="card.dealt" class="playing-card" :class="suitClass(card.suit)">
-                    <span class="card-corner top-left">
-                      <span class="card-rank">{{ card.rank }}</span>
-                      <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
-                    </span>
-                    <div v-if="isFaceCard(card.rank)" class="card-face-center">
-                      <span class="card-face-symbol">{{ FACE_SYMBOLS[card.rank] }}</span>
-                    </div>
-                    <div v-else class="card-pips" :class="'pips-' + pipCount(card.rank)">
-                      <span v-for="(pos, pi) in pipPositions(card.rank)" :key="pi" class="pip" :style="{
-                        top: pos[0] + '%',
-                        left: pos[1] + '%',
-                        transform:
-                          pos[0] > 50
-                            ? 'translate(-50%,-50%) rotate(180deg)'
-                            : 'translate(-50%,-50%)'
-                      }">{{ suitSymbol(card.suit) }}</span>
-                    </div>
-                    <span class="card-corner bottom-right">
-                      <span class="card-rank">{{ card.rank }}</span>
-                      <span class="card-suit-small">{{ suitSymbol(card.suit) }}</span>
-                    </span>
-                  </div>
-                  <div v-else class="playing-card card-back">
-                    <div class="card-back-pattern"></div>
-                  </div>
+                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" />
+                  <PlayingCard v-else :faceDown="true" />
                 </div>
               </TransitionGroup>
             </div>
@@ -182,12 +158,8 @@
             :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
             <span class="banner-hand-name">{{ playerName(pid) }}</span>
             <div class="banner-hand-cards">
-              <div v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" class="playing-card banner-mini-card" :class="suitClass(c.suit)">
-                <span class="card-corner top-left">
-                  <span class="card-rank">{{ c.rank }}</span>
-                  <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
-                </span>
-              </div>
+              <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit"
+                :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
             </div>
           </div>
         </div>
@@ -200,35 +172,13 @@
       <div class="hole-cards-area">
         <div class="hole-cards">
           <template v-if="yourCards.length">
-            <div v-for="(c, i) in yourCards" :key="i" class="playing-card hole-card" :class="suitClass(c.suit)"
-              :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }">
-              <span class="card-corner top-left">
-                <span class="card-rank">{{ c.rank }}</span>
-                <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
-              </span>
-              <div v-if="isFaceCard(c.rank)" class="card-face-center">
-                <span class="card-face-symbol">{{ FACE_SYMBOLS[c.rank] }}</span>
-              </div>
-              <div v-else class="card-pips" :class="'pips-' + pipCount(c.rank)">
-                <span v-for="(pos, pi) in pipPositions(c.rank)" :key="pi" class="pip" :style="{
-                  gridRow: pos[0] + 1,
-                  gridColumn: pos[1] + 1,
-                  transform: pos[0] > 2 ? 'rotate(180deg)' : ''
-                }">{{ suitSymbol(c.suit) }}</span>
-              </div>
-              <span class="card-corner bottom-right">
-                <span class="card-rank">{{ c.rank }}</span>
-                <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
-              </span>
-            </div>
+            <PlayingCard v-for="(c, i) in yourCards" :key="i"
+              :rank="c.rank" :suit="c.suit" size="large" class="hole-card"
+              :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
           </template>
           <template v-else>
-            <div class="playing-card card-back hole-card" :style="{ '--tilt': '-4deg' }">
-              <div class="card-back-pattern"></div>
-            </div>
-            <div class="playing-card card-back hole-card" :style="{ '--tilt': '4deg' }">
-              <div class="card-back-pattern"></div>
-            </div>
+            <PlayingCard :faceDown="true" size="large" class="hole-card" :style="{ '--tilt': '-4deg' }" />
+            <PlayingCard :faceDown="true" size="large" class="hole-card" :style="{ '--tilt': '4deg' }" />
           </template>
         </div>
       </div>
@@ -384,12 +334,8 @@
               <div v-for="(cards, pid) in showdownData.player_hands" :key="pid" class="showdown-player-hand">
                 <span class="sh-name">{{ playerName(pid) }}</span>
                 <div class="sh-cards">
-                  <div v-for="(c, i) in cards" :key="i" class="playing-card mini-card" :class="suitClass(c.suit)">
-                    <span class="card-corner top-left">
-                      <span class="card-rank">{{ c.rank }}</span>
-                      <span class="card-suit-small">{{ suitSymbol(c.suit) }}</span>
-                    </span>
-                  </div>
+                  <PlayingCard v-for="(c, i) in cards" :key="i"
+                    :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" />
                 </div>
               </div>
             </div>
@@ -426,6 +372,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import PlayingCard from '../common/PlayingCard.vue'
 
 const props = defineProps({
   gameId: String,
@@ -437,8 +384,6 @@ const props = defineProps({
   isObserver: { type: Boolean, default: false }
 })
 const emit = defineEmits(['action', 'send-chat', 'rebuy', 'decline-rebuy'])
-
-const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
 
 // Chip denominations: value, color name (used as CSS class), and display color
 const CHIP_DENOMS = [
@@ -618,110 +563,6 @@ function getBetPosition(idx, total) {
   const x = cx + (pos.x - cx) * 0.55
   const y = cy + (pos.y - cy) * 0.55
   return { left: `${x}%`, top: `${y}%`, position: 'absolute', transform: 'translate(-50%, -50%)' }
-}
-
-function suitSymbol(suit) {
-  return SUIT_SYMBOLS[suit] ?? suit?.[0]?.toUpperCase() ?? ''
-}
-
-function suitClass(suit) {
-  return `suit-${suit}`
-}
-
-const FACE_SYMBOLS = { J: '\u265E', Q: '\u2655', K: '\u2654' }
-
-function pipCount(rank) {
-  const n = parseInt(rank)
-  if (!isNaN(n) && n >= 2 && n <= 10) return n
-  if (rank === 'A') return 1
-  return 0 // face cards
-}
-
-function isFaceCard(rank) {
-  return rank === 'J' || rank === 'Q' || rank === 'K'
-}
-
-// Pip positions as [top%, left%] percentages within the pip area
-// Based on standard playing card pip layouts
-const PIP_LAYOUTS = {
-  1: [[50, 50]],
-  2: [
-    [18, 50],
-    [82, 50]
-  ],
-  3: [
-    [18, 50],
-    [50, 50],
-    [82, 50]
-  ],
-  4: [
-    [18, 28],
-    [18, 72],
-    [82, 28],
-    [82, 72]
-  ],
-  5: [
-    [18, 28],
-    [18, 72],
-    [50, 50],
-    [82, 28],
-    [82, 72]
-  ],
-  6: [
-    [18, 28],
-    [18, 72],
-    [50, 28],
-    [50, 72],
-    [82, 28],
-    [82, 72]
-  ],
-  7: [
-    [18, 28],
-    [18, 72],
-    [34, 50],
-    [50, 28],
-    [50, 72],
-    [82, 28],
-    [82, 72]
-  ],
-  8: [
-    [18, 28],
-    [18, 72],
-    [34, 50],
-    [50, 28],
-    [50, 72],
-    [66, 50],
-    [82, 28],
-    [82, 72]
-  ],
-  9: [
-    [18, 28],
-    [18, 72],
-    [38, 28],
-    [38, 72],
-    [50, 50],
-    [62, 28],
-    [62, 72],
-    [82, 28],
-    [82, 72]
-  ],
-  10: [
-    [18, 28],
-    [18, 72],
-    [30, 50],
-    [38, 28],
-    [38, 72],
-    [62, 28],
-    [62, 72],
-    [70, 50],
-    [82, 28],
-    [82, 72]
-  ]
-}
-
-function pipPositions(rank) {
-  const count = pipCount(rank)
-  return PIP_LAYOUTS[count] || []
 }
 
 function formatTime(ts) {
@@ -1460,120 +1301,6 @@ watch(
   }
 }
 
-.playing-card {
-  position: relative;
-  width: 62px;
-  height: 88px;
-  background: var(--card-face);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px var(--card-shadow);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.playing-card.suit-hearts,
-.playing-card.suit-diamonds {
-  color: var(--red-suit);
-}
-
-.playing-card.suit-clubs,
-.playing-card.suit-spades {
-  color: var(--black-suit);
-}
-
-.card-corner {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-}
-
-.card-corner.top-left {
-  top: 4px;
-  left: 5px;
-}
-
-.card-corner.bottom-right {
-  bottom: 4px;
-  right: 5px;
-  transform: rotate(180deg);
-}
-
-.card-rank {
-  font-family: 'Fira Code', monospace;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.card-suit-small {
-  font-size: 0.65rem;
-  line-height: 1;
-}
-
-.card-pips {
-  position: absolute;
-  top: 18px;
-  bottom: 18px;
-  left: 6px;
-  right: 6px;
-}
-
-.pip {
-  position: absolute;
-  font-size: 0.7rem;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.pips-1 .pip {
-  font-size: 1.6rem;
-}
-
-.pips-2 .pip,
-.pips-3 .pip {
-  font-size: 0.85rem;
-}
-
-.card-face-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-  opacity: 0.85;
-}
-
-.card-face-symbol {
-  line-height: 1;
-}
-
-.card-back {
-  background: var(--card-back);
-  border: 1px solid var(--card-back-border);
-}
-
-.card-back-pattern {
-  position: absolute;
-  inset: 3px;
-  border-radius: 3px;
-  border: 1px solid rgba(201, 168, 76, 0.2);
-  background: repeating-linear-gradient(45deg,
-      transparent,
-      transparent 3px,
-      rgba(201, 168, 76, 0.05) 3px,
-      rgba(201, 168, 76, 0.05) 4px);
-}
-
-.card-back-pattern::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(201, 168, 76, 0.15);
-  border-radius: 2px;
-}
-
 /* Transition group */
 .card-deal-enter-active {
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1608,8 +1335,6 @@ watch(
 }
 
 .hole-card {
-  width: 68px;
-  height: 96px;
   transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0px));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: default;
@@ -1618,18 +1343,6 @@ watch(
 .hole-card:hover {
   transform: rotate(0deg) translateY(-4px) scale(1.08);
   z-index: 2;
-}
-
-.hole-card .card-rank {
-  font-size: 0.9rem;
-}
-
-.hole-card .pips-1 .pip {
-  font-size: 1.8rem;
-}
-
-.hole-card .card-face-center {
-  font-size: 2rem;
 }
 
 /* ─── Action Buttons ─── */
@@ -2151,28 +1864,6 @@ watch(
   gap: 0.2rem;
 }
 
-.mini-card {
-  width: 40px;
-  height: 56px;
-  font-size: 0.75rem;
-}
-
-.mini-card .card-rank {
-  font-size: 0.6rem;
-}
-
-.mini-card .card-suit-small {
-  font-size: 0.5rem;
-}
-
-.mini-card .card-pips {
-  display: none;
-}
-
-.mini-card .card-face-center {
-  display: none;
-}
-
 .showdown-dismiss {
   background: var(--gold);
   color: var(--bg);
@@ -2371,25 +2062,6 @@ watch(
   gap: 0.15rem;
 }
 
-.banner-mini-card {
-  width: 32px;
-  height: 44px;
-  font-size: 0.65rem;
-  border-radius: 4px;
-}
-
-.banner-mini-card .card-rank {
-  font-size: 0.55rem;
-}
-
-.banner-mini-card .card-suit-small {
-  font-size: 0.45rem;
-}
-
-.banner-mini-card .card-pips,
-.banner-mini-card .card-face-center {
-  display: none;
-}
 
 .banner-slide-enter-active {
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -2419,25 +2091,25 @@ watch(
     aspect-ratio: 4 / 3;
   }
 
-  .playing-card {
+  .card-slot :deep(.playing-card) {
     width: 50px;
     height: 70px;
   }
 
   .hole-card {
-    width: 58px;
-    height: 82px;
+    width: 58px !important;
+    height: 82px !important;
   }
 
-  .card-rank {
+  .community-cards :deep(.card-rank) {
     font-size: 0.65rem;
   }
 
-  .pip {
+  .community-cards :deep(.pip) {
     font-size: 0.55rem;
   }
 
-  .pips-1 .pip {
+  .community-cards :deep(.pips-1 .pip) {
     font-size: 1.2rem;
   }
 
@@ -2520,14 +2192,14 @@ watch(
     padding: 0.5rem;
   }
 
-  .playing-card {
+  .card-slot :deep(.playing-card) {
     width: 44px;
     height: 62px;
   }
 
   .hole-card {
-    width: 52px;
-    height: 74px;
+    width: 52px !important;
+    height: 74px !important;
   }
 
   .bottom-dock {

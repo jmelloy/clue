@@ -9,7 +9,6 @@ from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Card representation
 # ---------------------------------------------------------------------------
@@ -93,6 +92,7 @@ class HoldemGameState(BaseModel):
 
 class HoldemHandResult(BaseModel):
     """Structured result of a completed hand for showdown broadcast."""
+
     winners: list[str] = Field(default_factory=list)
     winning_hand: str = ""
     pot: int = 0
@@ -101,6 +101,7 @@ class HoldemHandResult(BaseModel):
 
 class HoldemPlayerState(HoldemGameState):
     """Player-specific view including hole cards and available actions."""
+
     your_cards: list[Card] = Field(default_factory=list)
     your_player_id: str = ""
     available_actions: list[str] = Field(default_factory=list)
@@ -196,8 +197,14 @@ class ShowdownResult(HoldemActionResultBase):
 
 HoldemActionResult = Annotated[
     Union[
-        FoldResult, CheckResult, CallResult, BetResult,
-        RaiseResult, AllInResult, NewHandResult, ShowdownResult,
+        FoldResult,
+        CheckResult,
+        CallResult,
+        BetResult,
+        RaiseResult,
+        AllInResult,
+        NewHandResult,
+        ShowdownResult,
     ],
     Field(discriminator="type"),
 ]
@@ -270,6 +277,7 @@ class HoldemGameOverMessage(HoldemWSMessage):
 
 class HoldemRebuyPromptMessage(HoldemWSMessage):
     """Sent to a player who must rebuy or be eliminated."""
+
     type: Literal["rebuy_prompt"] = "rebuy_prompt"
     player_id: str = ""
     buy_in: int = 0
@@ -277,12 +285,14 @@ class HoldemRebuyPromptMessage(HoldemWSMessage):
 
 class HoldemPlayerEliminatedMessage(HoldemWSMessage):
     """Broadcast when a player is eliminated (didn't rebuy)."""
+
     type: Literal["player_eliminated"] = "player_eliminated"
     player_id: str = ""
 
 
 class HoldemRebuyMessage(HoldemWSMessage):
     """Broadcast when a player rebuys."""
+
     type: Literal["player_rebuy"] = "player_rebuy"
     player_id: str = ""
     chips: int = 0

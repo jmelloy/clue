@@ -358,9 +358,14 @@ class TestActionBroadcasts:
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
         if redis:
-            await _assign_characters(redis, game_id, {
-                pid1: "Miss Scarlett", pid2: "Colonel Mustard",
-            })
+            await _assign_characters(
+                redis,
+                game_id,
+                {
+                    pid1: "Miss Scarlett",
+                    pid2: "Colonel Mustard",
+                },
+            )
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
         state = await _start_game(http, game_id)
@@ -371,7 +376,9 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_move_broadcasts_player_moved(self, http, redis):
         """A roll+move action broadcasts player_moved to all connected players."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(
+            http, redis
+        )
         whose_turn = state["whose_turn"]
 
         await _submit_action(http, game_id, whose_turn, {"type": "roll"})
@@ -391,7 +398,9 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_move_sends_your_turn_to_mover(self, http, redis):
         """After moving to a room, the active player gets a your_turn with suggest available."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(
+            http, redis
+        )
         whose_turn = state["whose_turn"]
         active_ws = ws1 if whose_turn == pid1 else ws2
 
@@ -407,7 +416,9 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_suggestion_broadcasts(self, http, redis):
         """A suggestion broadcasts suggestion_made to all players."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(
+            http, redis
+        )
         whose_turn = state["whose_turn"]
 
         # Place player in room directly for suggestion test
@@ -443,9 +454,14 @@ class TestActionBroadcasts:
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
         # pid1 = Miss Scarlett (first turn), pid2 = Colonel Mustard
-        await _assign_characters(redis, game_id, {
-            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
-        })
+        await _assign_characters(
+            redis,
+            game_id,
+            {
+                pid1: "Miss Scarlett",
+                pid2: "Colonel Mustard",
+            },
+        )
         ws1 = await _connect_mock_ws(game_id, pid1)
         ws2 = await _connect_mock_ws(game_id, pid2)
         state = await _start_game(http, game_id)
@@ -488,15 +504,17 @@ class TestActionBroadcasts:
             msg = sugg[0]
             assert msg["moved_suspect_player"] == other_pid
             # current_room must be present and show the moved player in Kitchen
-            assert msg.get("current_room") is not None, (
-                "suggestion_made must include current_room when a suspect is moved"
-            )
+            assert (
+                msg.get("current_room") is not None
+            ), "suggestion_made must include current_room when a suspect is moved"
             assert msg["current_room"][other_pid] == "Kitchen"
 
     @pytest.mark.asyncio
     async def test_end_turn_broadcasts_game_state(self, http, redis):
         """Ending a turn broadcasts game_state with the next player's turn."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(
+            http, redis
+        )
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
 
@@ -517,7 +535,9 @@ class TestActionBroadcasts:
     @pytest.mark.asyncio
     async def test_your_turn_sent_to_next_player_only(self, http, redis):
         """After end_turn, only the next player gets a your_turn message."""
-        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(http, redis)
+        game_id, pid1, pid2, ws1, ws2, state = await self._setup_two_player_game(
+            http, redis
+        )
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
         other_ws = ws2 if whose_turn == pid1 else ws1
@@ -557,9 +577,14 @@ class TestShowCardFlow:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
-        await _assign_characters(redis, game_id, {
-            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
-        })
+        await _assign_characters(
+            redis,
+            game_id,
+            {
+                pid1: "Miss Scarlett",
+                pid2: "Colonel Mustard",
+            },
+        )
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
@@ -617,9 +642,15 @@ class TestShowCardFlow:
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
         pid3 = await _join_game(http, game_id, "Agent-3")
-        await _assign_characters(redis, game_id, {
-            pid1: "Miss Scarlett", pid2: "Colonel Mustard", pid3: "Mrs. White",
-        })
+        await _assign_characters(
+            redis,
+            game_id,
+            {
+                pid1: "Miss Scarlett",
+                pid2: "Colonel Mustard",
+                pid3: "Mrs. White",
+            },
+        )
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         all_pids = [pid1, pid2, pid3]
@@ -748,9 +779,7 @@ class TestShowCardFlow:
 
         # After suggestion, suggesting player gets your_turn with empty actions
         # (blocked by pending_show_card)
-        post_suggest_turns = [
-            m for m in ws_suggesting.sent if m["type"] == "your_turn"
-        ]
+        post_suggest_turns = [m for m in ws_suggesting.sent if m["type"] == "your_turn"]
         assert len(post_suggest_turns) >= 1
         assert post_suggest_turns[-1]["available_actions"] == []
 
@@ -764,20 +793,16 @@ class TestShowCardFlow:
         )
 
         # After show_card, suggesting player should get your_turn with end_turn
-        your_turns = [
-            m for m in ws_suggesting.sent if m["type"] == "your_turn"
-        ]
+        your_turns = [m for m in ws_suggesting.sent if m["type"] == "your_turn"]
         assert (
             len(your_turns) >= 1
         ), f"Suggesting player missing your_turn after show_card. Got: {[m['type'] for m in ws_suggesting.sent]}"
-        assert "end_turn" in your_turns[-1]["available_actions"], (
-            f"Expected end_turn in available_actions, got: {your_turns[-1]['available_actions']}"
-        )
+        assert (
+            "end_turn" in your_turns[-1]["available_actions"]
+        ), f"Expected end_turn in available_actions, got: {your_turns[-1]['available_actions']}"
 
         # Verify the suggesting player can actually end their turn
-        await _submit_action(
-            http, game_id, whose_turn, {"type": "end_turn"}
-        )
+        await _submit_action(http, game_id, whose_turn, {"type": "end_turn"})
         final = await _get_state(http, game_id)
         assert final["whose_turn"] != whose_turn, "Turn should have advanced"
 
@@ -835,9 +860,14 @@ class TestGameOverBroadcast:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
-        await _assign_characters(redis, game_id, {
-            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
-        })
+        await _assign_characters(
+            redis,
+            game_id,
+            {
+                pid1: "Miss Scarlett",
+                pid2: "Colonel Mustard",
+            },
+        )
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
         other_pid = pid2 if whose_turn == pid1 else pid1
@@ -915,9 +945,14 @@ class TestChatIntegration:
         game_id = await _create_game(http)
         pid1 = await _join_game(http, game_id, "Agent-1")
         pid2 = await _join_game(http, game_id, "Agent-2")
-        await _assign_characters(redis, game_id, {
-            pid1: "Miss Scarlett", pid2: "Colonel Mustard",
-        })
+        await _assign_characters(
+            redis,
+            game_id,
+            {
+                pid1: "Miss Scarlett",
+                pid2: "Colonel Mustard",
+            },
+        )
         state = await _start_game(http, game_id)
         whose_turn = state["whose_turn"]
 
@@ -965,8 +1000,12 @@ class TestAgentFullGameE2E:
 
         chars = {p["id"]: p["character"] for p in state["players"]}
         agents = {
-            pid1: RandomAgent(player_id=pid1, character=chars[pid1], cards=cards1_msg[0]["your_cards"]),
-            pid2: RandomAgent(player_id=pid2, character=chars[pid2], cards=cards2_msg[0]["your_cards"]),
+            pid1: RandomAgent(
+                player_id=pid1, character=chars[pid1], cards=cards1_msg[0]["your_cards"]
+            ),
+            pid2: RandomAgent(
+                player_id=pid2, character=chars[pid2], cards=cards2_msg[0]["your_cards"]
+            ),
         }
 
         ws1.drain()
@@ -1007,10 +1046,7 @@ class TestAgentFullGameE2E:
                 )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if (
-                    action.type == "suggest"
-                    and result.get("pending_show_by") is None
-                ):
+                if action.type == "suggest" and result.get("pending_show_by") is None:
                     agents[pid].observe_suggestion_no_show(
                         action.suspect,
                         action.weapon,
@@ -1100,10 +1136,7 @@ class TestAgentFullGameE2E:
                 )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if (
-                    action.type == "suggest"
-                    and result.get("pending_show_by") is None
-                ):
+                if action.type == "suggest" and result.get("pending_show_by") is None:
                     agents[pid].observe_suggestion_no_show(
                         action.suspect,
                         action.weapon,
@@ -1186,10 +1219,7 @@ class TestAgentFullGameE2E:
                 )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if (
-                    action.type == "suggest"
-                    and result.get("pending_show_by") is None
-                ):
+                if action.type == "suggest" and result.get("pending_show_by") is None:
                     agents[pid].observe_suggestion_no_show(
                         action.suspect,
                         action.weapon,
@@ -1274,10 +1304,7 @@ class TestAgentFullGameE2E:
                 )
                 result = await _submit_action(http, game_id, pid, action)
 
-                if (
-                    action.type == "suggest"
-                    and result.get("pending_show_by") is None
-                ):
+                if action.type == "suggest" and result.get("pending_show_by") is None:
                     agents[pid].observe_suggestion_no_show(
                         action.suspect,
                         action.weapon,
@@ -1431,7 +1458,9 @@ class TestAgentLoopWatchdog:
         await _agent_loop_watchdog(game_id)
 
         # Watchdog should NOT create a new task for a finished game
-        assert game_id not in _agent_tasks, "Watchdog should not create task for finished game"
+        assert (
+            game_id not in _agent_tasks
+        ), "Watchdog should not create task for finished game"
 
     @pytest.mark.asyncio
     async def test_watchdog_skips_when_task_already_running(self, http, redis):
@@ -1448,9 +1477,9 @@ class TestAgentLoopWatchdog:
         await _agent_loop_watchdog(game_id)
 
         # The task should be the same object — not replaced
-        assert _agent_tasks.get(game_id) is existing_task, (
-            "Watchdog should not replace an already-running agent task"
-        )
+        assert (
+            _agent_tasks.get(game_id) is existing_task
+        ), "Watchdog should not replace an already-running agent task"
 
         # Clean up
         if existing_task and not existing_task.done():
@@ -1488,8 +1517,12 @@ class TestAgentLoopWatchdog:
                 f"Wanderer {pid} config must include wanderer_seed so restarts have the "
                 "same initial card knowledge"
             )
-            assert "card" in seed and seed["card"], "wanderer_seed must have a non-empty card"
-            assert "shown_by" in seed and seed["shown_by"], "wanderer_seed must have a shown_by player id"
+            assert (
+                "card" in seed and seed["card"]
+            ), "wanderer_seed must have a non-empty card"
+            assert (
+                "shown_by" in seed and seed["shown_by"]
+            ), "wanderer_seed must have a shown_by player id"
 
         # Clean up the agent task
         task = _agent_tasks.get(game_id)
@@ -1513,7 +1546,9 @@ class TestAgentLoopWatchdog:
         config_raw = await redis.get(f"game:{game_id}:agent_config")
         config = json.loads(config_raw)
         wanderer_pid, wanderer_info = next(
-            (pid, info) for pid, info in config.items() if info.get("type") == "wanderer"
+            (pid, info)
+            for pid, info in config.items()
+            if info.get("type") == "wanderer"
         )
         seed = wanderer_info["wanderer_seed"]
         assert seed is not None
@@ -1532,12 +1567,14 @@ class TestAgentLoopWatchdog:
 
         # The restarted wanderer agent should have the seeded card in seen_cards
         agents = _game_agents.get(game_id, {})
-        assert wanderer_pid in agents, "Watchdog should have recreated the wanderer agent"
+        assert (
+            wanderer_pid in agents
+        ), "Watchdog should have recreated the wanderer agent"
         wanderer_agent = agents[wanderer_pid]
         assert isinstance(wanderer_agent, WandererAgent)
-        assert seed["card"] in wanderer_agent.seen_cards, (
-            "Wanderer agent must have the seed card in seen_cards after watchdog restart"
-        )
+        assert (
+            seed["card"] in wanderer_agent.seen_cards
+        ), "Wanderer agent must have the seed card in seen_cards after watchdog restart"
 
         # Clean up
         new_task = _agent_tasks.get(game_id)

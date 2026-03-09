@@ -19,7 +19,6 @@ import fakeredis.aioredis as fakeredis
 from app.games.clue.game import ClueGame
 from agent_runner import AgentRunner, _LOCK_TTL, _RUNNER_ID, _release_lock, _renew_lock
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -88,9 +87,9 @@ class TestAgentRunnerLock:
 
         # Lock is set synchronously inside _discover_games before the task runs
         lock_val = await redis.get(f"game:{game_id}:agent_lock")
-        assert lock_val == _RUNNER_ID, (
-            "Discovery should have set the lock to this runner's ID"
-        )
+        assert (
+            lock_val == _RUNNER_ID
+        ), "Discovery should have set the lock to this runner's ID"
 
         # Wait for the background task to execute
         await asyncio.wait_for(done_event.wait(), timeout=2)
@@ -110,9 +109,9 @@ class TestAgentRunnerLock:
         await runner._discover_games()
 
         # Our runner should not have claimed the game
-        assert game_id not in runner.managed_games, (
-            "Runner must not manage a game already locked by a peer"
-        )
+        assert (
+            game_id not in runner.managed_games
+        ), "Runner must not manage a game already locked by a peer"
         # Lock value must still belong to the other runner
         lock_val = await redis.get(f"game:{game_id}:agent_lock")
         assert lock_val == other_runner_id
@@ -134,9 +133,7 @@ class TestAgentRunnerLock:
         await runner._run_game(game_id, config)
 
         lock_val = await redis.get(f"game:{game_id}:agent_lock")
-        assert lock_val is None, (
-            "_run_game must delete the lock in its finally block"
-        )
+        assert lock_val is None, "_run_game must delete the lock in its finally block"
 
     @pytest.mark.asyncio
     async def test_lock_not_deleted_when_held_by_other(self, runner, redis):
@@ -160,9 +157,9 @@ class TestAgentRunnerLock:
 
         # Lock should still belong to the other runner, not be deleted
         lock_val = await redis.get(f"game:{game_id}:agent_lock")
-        assert lock_val == other_id, (
-            "_run_game must not delete a lock it no longer owns"
-        )
+        assert (
+            lock_val == other_id
+        ), "_run_game must not delete a lock it no longer owns"
 
 
 # ---------------------------------------------------------------------------
@@ -262,9 +259,9 @@ class TestAgentRunnerConfigPreservation:
         await runner._run_game(game_id, config)
 
         remaining = await redis.get(config_key)
-        assert remaining is None, (
-            "Agent config key must be deleted when the game has ended"
-        )
+        assert (
+            remaining is None
+        ), "Agent config key must be deleted when the game has ended"
 
     @pytest.mark.asyncio
     async def test_finished_game_removed_from_managed_on_rediscovery(
@@ -280,9 +277,9 @@ class TestAgentRunnerConfigPreservation:
         await runner._discover_games()
 
         remaining = await redis.get(config_key)
-        assert remaining is None, (
-            "Discovery should delete config key for games that no longer exist"
-        )
+        assert (
+            remaining is None
+        ), "Discovery should delete config key for games that no longer exist"
         assert game_id not in runner.managed_games
 
 
@@ -360,9 +357,9 @@ class TestWandererSeedReplay:
 
         # Wanderer has no hand cards; legacy seeding gives exactly 1 card from
         # the donor's hand {"Knife", "Revolver"}.
-        assert seen_cards_on_start["W0"].issubset({"Knife", "Revolver"}), (
-            "Legacy-path wanderer must receive exactly one of the donor's cards"
-        )
-        assert len(seen_cards_on_start["W0"]) == 1, (
-            "Legacy-path wanderer must receive exactly one seeded card"
-        )
+        assert seen_cards_on_start["W0"].issubset(
+            {"Knife", "Revolver"}
+        ), "Legacy-path wanderer must receive exactly one of the donor's cards"
+        assert (
+            len(seen_cards_on_start["W0"]) == 1
+        ), "Legacy-path wanderer must receive exactly one seeded card"

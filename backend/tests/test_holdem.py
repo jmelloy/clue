@@ -26,7 +26,6 @@ from app.games.holdem.hand_eval import (
     ROYAL_FLUSH,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -58,78 +57,137 @@ def _c(rank: str, suit: str) -> Card:
 
 class TestHandEvaluation:
     def test_high_card(self):
-        cards = [_c("2", "hearts"), _c("5", "diamonds"), _c("9", "clubs"),
-                 _c("J", "spades"), _c("A", "hearts")]
+        cards = [
+            _c("2", "hearts"),
+            _c("5", "diamonds"),
+            _c("9", "clubs"),
+            _c("J", "spades"),
+            _c("A", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == HIGH_CARD
 
     def test_one_pair(self):
-        cards = [_c("A", "hearts"), _c("A", "diamonds"), _c("3", "clubs"),
-                 _c("7", "spades"), _c("9", "hearts")]
+        cards = [
+            _c("A", "hearts"),
+            _c("A", "diamonds"),
+            _c("3", "clubs"),
+            _c("7", "spades"),
+            _c("9", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == ONE_PAIR
 
     def test_two_pair(self):
-        cards = [_c("K", "hearts"), _c("K", "diamonds"), _c("5", "clubs"),
-                 _c("5", "spades"), _c("9", "hearts")]
+        cards = [
+            _c("K", "hearts"),
+            _c("K", "diamonds"),
+            _c("5", "clubs"),
+            _c("5", "spades"),
+            _c("9", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == TWO_PAIR
 
     def test_three_of_a_kind(self):
-        cards = [_c("Q", "hearts"), _c("Q", "diamonds"), _c("Q", "clubs"),
-                 _c("5", "spades"), _c("9", "hearts")]
+        cards = [
+            _c("Q", "hearts"),
+            _c("Q", "diamonds"),
+            _c("Q", "clubs"),
+            _c("5", "spades"),
+            _c("9", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == THREE_OF_A_KIND
 
     def test_straight(self):
-        cards = [_c("5", "hearts"), _c("6", "diamonds"), _c("7", "clubs"),
-                 _c("8", "spades"), _c("9", "hearts")]
+        cards = [
+            _c("5", "hearts"),
+            _c("6", "diamonds"),
+            _c("7", "clubs"),
+            _c("8", "spades"),
+            _c("9", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == STRAIGHT
 
     def test_ace_low_straight(self):
-        cards = [_c("A", "hearts"), _c("2", "diamonds"), _c("3", "clubs"),
-                 _c("4", "spades"), _c("5", "hearts")]
+        cards = [
+            _c("A", "hearts"),
+            _c("2", "diamonds"),
+            _c("3", "clubs"),
+            _c("4", "spades"),
+            _c("5", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == STRAIGHT
         assert score[1] == 5  # 5-high straight
 
     def test_flush(self):
-        cards = [_c("2", "hearts"), _c("5", "hearts"), _c("8", "hearts"),
-                 _c("J", "hearts"), _c("A", "hearts")]
+        cards = [
+            _c("2", "hearts"),
+            _c("5", "hearts"),
+            _c("8", "hearts"),
+            _c("J", "hearts"),
+            _c("A", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == FLUSH
 
     def test_full_house(self):
-        cards = [_c("10", "hearts"), _c("10", "diamonds"), _c("10", "clubs"),
-                 _c("K", "spades"), _c("K", "hearts")]
+        cards = [
+            _c("10", "hearts"),
+            _c("10", "diamonds"),
+            _c("10", "clubs"),
+            _c("K", "spades"),
+            _c("K", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == FULL_HOUSE
 
     def test_four_of_a_kind(self):
-        cards = [_c("7", "hearts"), _c("7", "diamonds"), _c("7", "clubs"),
-                 _c("7", "spades"), _c("K", "hearts")]
+        cards = [
+            _c("7", "hearts"),
+            _c("7", "diamonds"),
+            _c("7", "clubs"),
+            _c("7", "spades"),
+            _c("K", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == FOUR_OF_A_KIND
 
     def test_straight_flush(self):
-        cards = [_c("5", "clubs"), _c("6", "clubs"), _c("7", "clubs"),
-                 _c("8", "clubs"), _c("9", "clubs")]
+        cards = [
+            _c("5", "clubs"),
+            _c("6", "clubs"),
+            _c("7", "clubs"),
+            _c("8", "clubs"),
+            _c("9", "clubs"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == STRAIGHT_FLUSH
 
     def test_royal_flush(self):
-        cards = [_c("10", "spades"), _c("J", "spades"), _c("Q", "spades"),
-                 _c("K", "spades"), _c("A", "spades")]
+        cards = [
+            _c("10", "spades"),
+            _c("J", "spades"),
+            _c("Q", "spades"),
+            _c("K", "spades"),
+            _c("A", "spades"),
+        ]
         score = evaluate_hand(cards)
         assert score[0] == ROYAL_FLUSH
 
     def test_best_of_seven(self):
         """Evaluate the best 5-card hand from 7 cards."""
         cards = [
-            _c("A", "hearts"), _c("K", "hearts"),  # hole cards
-            _c("Q", "hearts"), _c("J", "hearts"), _c("10", "hearts"),  # community
-            _c("2", "clubs"), _c("3", "diamonds"),
+            _c("A", "hearts"),
+            _c("K", "hearts"),  # hole cards
+            _c("Q", "hearts"),
+            _c("J", "hearts"),
+            _c("10", "hearts"),  # community
+            _c("2", "clubs"),
+            _c("3", "diamonds"),
         ]
         score = evaluate_hand(cards)
         assert score[0] == ROYAL_FLUSH
@@ -149,8 +207,13 @@ class TestHandEvaluation:
         assert flush > pair
 
     def test_hand_name(self):
-        cards = [_c("A", "hearts"), _c("A", "diamonds"), _c("A", "clubs"),
-                 _c("K", "spades"), _c("K", "hearts")]
+        cards = [
+            _c("A", "hearts"),
+            _c("A", "diamonds"),
+            _c("A", "clubs"),
+            _c("K", "spades"),
+            _c("K", "hearts"),
+        ]
         score = evaluate_hand(cards)
         assert hand_name(score) == "Full House"
 
@@ -333,9 +396,7 @@ async def test_bet_action(redis):
 
     # Now we should be on the flop
     if "bet" in available:
-        result = await game.process_action(
-            whose_turn, {"type": "bet", "amount": 50}
-        )
+        result = await game.process_action(whose_turn, {"type": "bet", "amount": 50})
         assert result.type == "bet"
         assert result.amount == 50
 
@@ -347,9 +408,7 @@ async def test_raise_action(redis):
 
     available = game.get_available_actions(whose_turn, state)
     if "raise" in available:
-        result = await game.process_action(
-            whose_turn, {"type": "raise", "amount": 60}
-        )
+        result = await game.process_action(whose_turn, {"type": "raise", "amount": 60})
         assert result.type == "raise"
 
 
@@ -403,9 +462,7 @@ async def test_minimum_bet_enforced(redis):
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
         with pytest.raises(ValueError, match="Minimum bet"):
-            await game.process_action(
-                whose_turn, {"type": "bet", "amount": 1}
-            )
+            await game.process_action(whose_turn, {"type": "bet", "amount": 1})
 
 
 @pytest.mark.asyncio
@@ -430,13 +487,9 @@ async def test_bet_must_be_chip_multiple(redis):
     if "bet" in available:
         # 23 is not a multiple of 5 — should be rejected
         with pytest.raises(ValueError, match="multiple of 5"):
-            await game.process_action(
-                whose_turn, {"type": "bet", "amount": 23}
-            )
+            await game.process_action(whose_turn, {"type": "bet", "amount": 23})
         # 25 is a multiple of 5 (one 25-chip) — valid
-        result = await game.process_action(
-            whose_turn, {"type": "bet", "amount": 25}
-        )
+        result = await game.process_action(whose_turn, {"type": "bet", "amount": 25})
         assert result.type == "bet"
         assert result.amount == 25
 
@@ -466,13 +519,9 @@ async def test_raise_must_be_chip_multiple(redis):
     if "raise" in available:
         # 63 is not a multiple of 5
         with pytest.raises(ValueError, match="multiple of 5"):
-            await game.process_action(
-                whose_turn, {"type": "raise", "amount": 63}
-            )
+            await game.process_action(whose_turn, {"type": "raise", "amount": 63})
         # 65 is valid (multiple of 5: e.g. 25 + 4×10)
-        result = await game.process_action(
-            whose_turn, {"type": "raise", "amount": 65}
-        )
+        result = await game.process_action(whose_turn, {"type": "raise", "amount": 65})
         assert result.type == "raise"
 
 
@@ -522,9 +571,7 @@ async def test_valid_chip_amounts_accepted(redis):
     available = game.get_available_actions(whose_turn, state)
     if "bet" in available:
         # 25 (one red chip) is valid
-        result = await game.process_action(
-            whose_turn, {"type": "bet", "amount": 25}
-        )
+        result = await game.process_action(whose_turn, {"type": "bet", "amount": 25})
         assert result.type == "bet"
         assert result.amount == 25
 
@@ -626,17 +673,13 @@ async def test_chip_validation_in_three_player_game(redis):
     # Try an invalid bet amount
     if "bet" in available:
         with pytest.raises(ValueError, match="multiple of 5"):
-            await game.process_action(
-                whose_turn, {"type": "bet", "amount": 33}
-            )
+            await game.process_action(whose_turn, {"type": "bet", "amount": 33})
     if "raise" in available:
         # Raise amount must exceed amount_to_call + big_blind AND be a chip
         # multiple.  Use 43 which is above the min raise (40) but not a
         # multiple of 5.
         with pytest.raises(ValueError, match="multiple of 5"):
-            await game.process_action(
-                whose_turn, {"type": "raise", "amount": 43}
-            )
+            await game.process_action(whose_turn, {"type": "raise", "amount": 43})
 
 
 # ---------------------------------------------------------------------------
@@ -700,9 +743,9 @@ async def test_complete_hand_to_showdown(redis):
 
     assert state is not None
     # The hand number should have advanced (meaning at least one hand completed)
-    assert state.hand_number > initial_hand, (
-        f"Hand didn't complete in {max_actions} actions"
-    )
+    assert (
+        state.hand_number > initial_hand
+    ), f"Hand didn't complete in {max_actions} actions"
 
 
 @pytest.mark.asyncio

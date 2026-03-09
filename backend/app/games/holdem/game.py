@@ -139,7 +139,9 @@ class HoldemGame:
         return await self._load_state()
 
     async def add_player(
-        self, player_id: str, player_name: str,
+        self,
+        player_id: str,
+        player_name: str,
         player_type: str = "human",
     ) -> HoldemPlayer:
         state = await self._load_state()
@@ -153,7 +155,9 @@ class HoldemGame:
             raise ValueError("Already joined")
 
         player = HoldemPlayer(
-            id=player_id, name=player_name, chips=state.buy_in,
+            id=player_id,
+            name=player_name,
+            chips=state.buy_in,
             player_type=player_type,
         )
         state.players.append(player)
@@ -265,7 +269,6 @@ class HoldemGame:
         if first_actor_id is None:
             await self._advance_betting_round(state)
 
-
     def get_available_actions(
         self, player_id: str, state: HoldemGameState
     ) -> list[str]:
@@ -335,9 +338,7 @@ class HoldemGame:
 
         available = self.get_available_actions(player_id, state)
         if action.type not in available:
-            raise ValueError(
-                f"Action '{action.type}' is not available at this time"
-            )
+            raise ValueError(f"Action '{action.type}' is not available at this time")
 
         player = next(p for p in state.players if p.id == player_id)
 
@@ -375,9 +376,7 @@ class HoldemGame:
         )
 
         # Check if only one player remains
-        active_unfolded = [
-            p for p in state.players if p.active and not p.folded
-        ]
+        active_unfolded = [p for p in state.players if p.active and not p.folded]
         if len(active_unfolded) == 1:
             # Last player standing wins
             winner = active_unfolded[0]
@@ -531,9 +530,7 @@ class HoldemGame:
 
     def _get_can_act(self, state: HoldemGameState) -> list[HoldemPlayer]:
         """Players who can still take an action (not folded, not all-in)."""
-        return [
-            p for p in state.players if p.active and not p.folded and not p.all_in
-        ]
+        return [p for p in state.players if p.active and not p.folded and not p.all_in]
 
     async def _advance_turn(self, state: HoldemGameState):
         """Advance to the next player or next betting round."""
@@ -572,9 +569,7 @@ class HoldemGame:
             return True
 
         # All players who can act must have matched the current bet
-        all_matched = all(
-            p.current_bet == state.current_bet for p in can_act
-        )
+        all_matched = all(p.current_bet == state.current_bet for p in can_act)
 
         if not all_matched:
             return False

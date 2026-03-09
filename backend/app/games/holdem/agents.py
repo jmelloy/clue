@@ -87,29 +87,53 @@ def get_personality(name: str | None = None) -> tuple[str, dict]:
         return name, dict(PERSONALITIES[name])
     chosen_name = random.choice(PERSONALITY_NAMES)
     return chosen_name, dict(PERSONALITIES[chosen_name])
+
+
 # ---------------------------------------------------------------------------
 # Preflop hand strength — simple lookup for starting hand categories
 # ---------------------------------------------------------------------------
 
 # Premium hands (top ~5%): high pairs, AKs
 _PREMIUM = {
-    ("A", "A"), ("K", "K"), ("Q", "Q"), ("J", "J"),
+    ("A", "A"),
+    ("K", "K"),
+    ("Q", "Q"),
+    ("J", "J"),
     ("A", "K"),  # suited or unsuited
 }
 
 # Strong hands (top ~15%): medium pairs, strong aces/kings
 _STRONG = {
-    ("10", "10"), ("9", "9"), ("8", "8"),
-    ("A", "Q"), ("A", "J"), ("A", "10"),
-    ("K", "Q"), ("K", "J"),
+    ("10", "10"),
+    ("9", "9"),
+    ("8", "8"),
+    ("A", "Q"),
+    ("A", "J"),
+    ("A", "10"),
+    ("K", "Q"),
+    ("K", "J"),
 }
 
 # Playable hands (top ~30%): small pairs, suited connectors, suited aces
 _PLAYABLE = {
-    ("7", "7"), ("6", "6"), ("5", "5"), ("4", "4"), ("3", "3"), ("2", "2"),
-    ("A", "9"), ("A", "8"), ("A", "7"), ("A", "6"), ("A", "5"), ("A", "4"),
-    ("A", "3"), ("A", "2"),
-    ("K", "10"), ("Q", "J"), ("Q", "10"), ("J", "10"),
+    ("7", "7"),
+    ("6", "6"),
+    ("5", "5"),
+    ("4", "4"),
+    ("3", "3"),
+    ("2", "2"),
+    ("A", "9"),
+    ("A", "8"),
+    ("A", "7"),
+    ("A", "6"),
+    ("A", "5"),
+    ("A", "4"),
+    ("A", "3"),
+    ("A", "2"),
+    ("K", "10"),
+    ("Q", "J"),
+    ("Q", "10"),
+    ("J", "10"),
 }
 
 
@@ -257,9 +281,7 @@ class HoldemAgent:
         else:
             strength = _preflop_strength(hole_cards)
 
-        player = next(
-            (p for p in state.players if p.id == self.player_id), None
-        )
+        player = next((p for p in state.players if p.id == self.player_id), None)
         if not player:
             return FoldAction()
 
@@ -267,7 +289,9 @@ class HoldemAgent:
         pot = state.pot
 
         # Pot odds: what fraction of the new pot are we risking?
-        pot_odds = amount_to_call / (pot + amount_to_call) if (pot + amount_to_call) > 0 else 0
+        pot_odds = (
+            amount_to_call / (pot + amount_to_call) if (pot + amount_to_call) > 0 else 0
+        )
 
         # Tightness adjustment: tight players perceive their hands as weaker
         # (raises the bar for playing), loose players perceive them as stronger
@@ -275,13 +299,17 @@ class HoldemAgent:
         adjusted_strength = strength + tightness_shift
 
         # Add some randomness scaled by aggression
-        effective_strength = adjusted_strength + (random.random() * 0.15 - 0.05) * (1 + self.aggression)
+        effective_strength = adjusted_strength + (random.random() * 0.15 - 0.05) * (
+            1 + self.aggression
+        )
         effective_strength = max(0.0, min(1.0, effective_strength))
 
         # Bluff check: occasionally inflate perceived strength with a weak hand
         bluffing = False
         if strength < 0.35 and random.random() < self.bluff_frequency:
-            effective_strength = 0.55 + random.random() * 0.30  # pretend decent-to-strong
+            effective_strength = (
+                0.55 + random.random() * 0.30
+            )  # pretend decent-to-strong
             bluffing = True
 
         # Slowplay check: occasionally deflate perceived strength with a strong hand
@@ -306,7 +334,13 @@ class HoldemAgent:
         )
 
         return self._choose_action(
-            available, effective_strength, pot_odds, amount_to_call, pot, player.chips, state
+            available,
+            effective_strength,
+            pot_odds,
+            amount_to_call,
+            pot,
+            player.chips,
+            state,
         )
 
     def _choose_action(
@@ -330,8 +364,13 @@ class HoldemAgent:
             if "all_in" in available and (strength >= 0.90 or short_stack):
                 return AllInAction()
             if "raise" in available:
-                raise_amount = self._compute_raise(pot, amount_to_call, chips, strength, state)
-                if raise_amount < amount_to_call + state.big_blind and "all_in" in available:
+                raise_amount = self._compute_raise(
+                    pot, amount_to_call, chips, strength, state
+                )
+                if (
+                    raise_amount < amount_to_call + state.big_blind
+                    and "all_in" in available
+                ):
                     return AllInAction()
                 return RaiseAction(amount=raise_amount)
             if "bet" in available:
@@ -363,8 +402,13 @@ class HoldemAgent:
                     return CallAction()
                 return FoldAction()
             if "raise" in available and random.random() < self.aggression * 0.3:
-                raise_amount = self._compute_raise(pot, amount_to_call, chips, strength, state)
-                if raise_amount < amount_to_call + state.big_blind and "all_in" in available:
+                raise_amount = self._compute_raise(
+                    pot, amount_to_call, chips, strength, state
+                )
+                if (
+                    raise_amount < amount_to_call + state.big_blind
+                    and "all_in" in available
+                ):
                     return AllInAction()
                 return RaiseAction(amount=raise_amount)
 
@@ -372,7 +416,11 @@ class HoldemAgent:
         if strength >= 0.25:
             if "check" in available:
                 return CheckAction()
-            if "call" in available and amount_to_call <= state.big_blind and random.random() < 0.5:
+            if (
+                "call" in available
+                and amount_to_call <= state.big_blind
+                and random.random() < 0.5
+            ):
                 return CallAction()
             if short_stack and "all_in" in available and random.random() < 0.3:
                 return AllInAction()
@@ -399,7 +447,11 @@ class HoldemAgent:
         return max(min_bet, amount)
 
     def _compute_raise(
-        self, pot: int, amount_to_call: int, chips: int, strength: float,
+        self,
+        pot: int,
+        amount_to_call: int,
+        chips: int,
+        strength: float,
         state: HoldemGameState,
     ) -> int:
         """Compute a raise amount (total bet including call portion)."""
@@ -421,9 +473,9 @@ class HoldemAgent:
         if random.random() > self.chat_frequency:
             return None
 
-        options = _PERSONALITY_CHAT.get(
-            self.personality, _DEFAULT_CHAT
-        ).get(action_type)
+        options = _PERSONALITY_CHAT.get(self.personality, _DEFAULT_CHAT).get(
+            action_type
+        )
 
         if not options:
             options = _DEFAULT_CHAT.get(action_type, ["Hmm..."])
@@ -439,14 +491,22 @@ _DEFAULT_CHAT: dict[str, list[str]] = {
     "fold": ["Not my hand.", "I'll sit this one out.", "Too rich for my blood."],
     "check": ["Check.", "I'll check here.", "Let's see what comes."],
     "call": ["I'll call.", "I'm in.", "Let's see the next card."],
-    "bet": ["Putting some chips out there.", "Let's make it interesting.", "I like what I see."],
+    "bet": [
+        "Putting some chips out there.",
+        "Let's make it interesting.",
+        "I like what I see.",
+    ],
     "raise": ["Raising it up.", "Let's go bigger.", "I think I've got something here."],
     "all_in": ["All in!", "Going for it all!", "Let's gamble!"],
 }
 
 _PERSONALITY_CHAT: dict[str, dict[str, list[str]]] = {
     "Rock": {
-        "fold": ["I'll wait for a better spot.", "Patience pays.", "Not worth the risk."],
+        "fold": [
+            "I'll wait for a better spot.",
+            "Patience pays.",
+            "Not worth the risk.",
+        ],
         "check": ["Check.", "No need to rush."],
         "call": ["I'll see it.", "Alright, I'll call."],
         "bet": ["I've got something here.", "Time to value bet."],
@@ -490,7 +550,11 @@ _PERSONALITY_CHAT: dict[str, dict[str, list[str]]] = {
         "check": ["Check. For now.", "Trapping…"],
         "call": ["Call. Let's dance.", "I'm not going anywhere."],
         "bet": ["Bet. Put up or shut up.", "Applying pressure.", "Let's go."],
-        "raise": ["Raise! Keep up.", "Re-raise. Your move.", "Putting you to the test."],
+        "raise": [
+            "Raise! Keep up.",
+            "Re-raise. Your move.",
+            "Putting you to the test.",
+        ],
         "all_in": ["All in. Do you have it?", "Shove. Call me if you dare."],
     },
 }

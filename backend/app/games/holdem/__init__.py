@@ -5,6 +5,11 @@ from .game import HoldemGame
 from .hand_eval import evaluate_hand, hand_name
 
 __all__ = [
-    "HoldemAgent", "HoldemGame", "evaluate_hand", "hand_name",
-    "PERSONALITIES", "PERSONALITY_NAMES", "get_personality",
+    "HoldemAgent",
+    "HoldemGame",
+    "evaluate_hand",
+    "hand_name",
+    "PERSONALITIES",
+    "PERSONALITY_NAMES",
+    "get_personality",
 ]

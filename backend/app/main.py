@@ -1189,7 +1189,9 @@ async def _run_agent_loop(game_id: str):
                     if agent.agent_type == "llm":
                         logger.info(
                             "Retrying action for %s in game %s after rejection: %s",
-                            pid, game_id, detail,
+                            pid,
+                            game_id,
+                            detail,
                         )
                         try:
                             action = await agent.decide_action(
@@ -1205,7 +1207,8 @@ async def _run_agent_loop(game_id: str):
                             )
                             logger.warning(
                                 "Retry also failed for %s in game %s, using fallback",
-                                pid, game_id,
+                                pid,
+                                game_id,
                             )
                             try:
                                 fallback_action = await agent._fallback.decide_action(
@@ -1221,13 +1224,16 @@ async def _run_agent_loop(game_id: str):
                             except Exception:
                                 logger.exception(
                                     "Fallback also failed for %s in game %s",
-                                    pid, game_id,
+                                    pid,
+                                    game_id,
                                 )
                                 continue
                     else:
                         logger.warning(
                             "Action rejected for non-LLM agent %s in game %s: %s",
-                            pid, game_id, detail,
+                            pid,
+                            game_id,
+                            detail,
                         )
                         continue
 
@@ -1485,7 +1491,9 @@ async def get_game_debug(
     player_memory = {}
     for pid, entries in zip(player_ids, memory_raws):
         if entries:
-            player_memory[pid] = [e.decode() if isinstance(e, bytes) else e for e in entries]
+            player_memory[pid] = [
+                e.decode() if isinstance(e, bytes) else e for e in entries
+            ]
 
     # Get agent debug info (reuse existing logic)
     agent_debug_resp = await get_agent_debug(game_id)
@@ -2147,11 +2155,15 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
         )
     elif isinstance(result, RaiseResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} raises to {_format_currency(result.amount)}.", player_id
+            game_id,
+            f"{actor_name} raises to {_format_currency(result.amount)}.",
+            player_id,
         )
     elif isinstance(result, AllInResult):
         await _holdem_broadcast_chat(
-            game_id, f"{actor_name} goes all-in for {_format_currency(result.amount)}!", player_id
+            game_id,
+            f"{actor_name} goes all-in for {_format_currency(result.amount)}!",
+            player_id,
         )
 
     # Broadcast updated state and community cards if they changed
@@ -2323,9 +2335,13 @@ async def holdem_rebuy(game_id: str, req: HoldemRebuyRequest):
     name = _holdem_player_name(state, req.player_id)
     await manager.broadcast(
         game_id,
-        HoldemRebuyMessage(player_id=req.player_id, chips=player.chips if player else 0),
+        HoldemRebuyMessage(
+            player_id=req.player_id, chips=player.chips if player else 0
+        ),
     )
-    await _holdem_broadcast_chat(game_id, f"{name} rebuys for {_format_currency(state.buy_in)}!")
+    await _holdem_broadcast_chat(
+        game_id, f"{name} rebuys for {_format_currency(state.buy_in)}!"
+    )
 
     # If the game advanced to a new hand, notify players
     if state.status == "playing" and state.whose_turn:
@@ -2365,7 +2381,9 @@ async def holdem_decline_rebuy(game_id: str, req: HoldemRebuyRequest):
     return HoldemOkResponse()
 
 
-async def _holdem_notify_new_hand(game_id: str, state: HoldemGameState, game: HoldemGame):
+async def _holdem_notify_new_hand(
+    game_id: str, state: HoldemGameState, game: HoldemGame
+):
     """Notify all players about a new hand starting."""
     for player in state.players:
         if player.active:
@@ -2379,10 +2397,13 @@ async def _holdem_notify_new_hand(game_id: str, state: HoldemGameState, game: Ho
                     available_actions=game.get_available_actions(player.id, state),
                 ),
             )
-    await manager.broadcast(game_id, HoldemNewHandMessage(
-        hand_number=state.hand_number,
-        dealer=state.players[state.dealer_index].id if state.players else "",
-    ))
+    await manager.broadcast(
+        game_id,
+        HoldemNewHandMessage(
+            hand_number=state.hand_number,
+            dealer=state.players[state.dealer_index].id if state.players else "",
+        ),
+    )
     if state.whose_turn:
         await manager.send_to_player(
             game_id,

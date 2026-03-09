@@ -498,9 +498,9 @@ import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
 import AgentDebugPanel from './AgentDebugPanel.vue'
-import ThemeSwitcher from './ThemeSwitcher.vue'
+import ThemeSwitcher from '../common/ThemeSwitcher.vue'
 import PlayerPawn from './PlayerPawn.vue'
-import { useTheme } from '../composables/useTheme'
+import { useTheme } from '../../composables/useTheme'
 import {
   SUSPECTS,
   WEAPONS,
@@ -510,7 +510,7 @@ import {
   cardIcon,
   hasCardImage as _hasCardImage,
   cardImageUrl as _cardImageUrl,
-} from '../constants/clue'
+} from '../../constants/clue'
 
 const { theme } = useTheme()
 const hasCardImage = (card) => _hasCardImage(card, theme.value)

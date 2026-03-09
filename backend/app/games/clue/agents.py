@@ -36,7 +36,6 @@ from .models import (
     action_adapter,
 )
 
-
 logger = logging.getLogger(__name__)
 
 # Global flag — set via AGENT_TRACE=1 env var to enable for all games
