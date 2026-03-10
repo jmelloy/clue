@@ -1690,9 +1690,31 @@ class WandererAgent(BaseAgent):
     ``observe_shown_card``.  If through passive observation and inference
     the wanderer deduces the full solution (exactly 1 unknown in each
     category), it will make an accusation.
+
+    Defaults to ``inference_level="basic"`` since wanderers never suggest
+    but need to track cards shown to them (the initial seed card).
     """
 
     agent_type = "wanderer"
+
+    def __init__(
+        self,
+        player_id: str,
+        character: str,
+        cards: list[str],
+        redis_client=None,
+        game_id: str = "",
+        *,
+        inference_level: str = INFERENCE_BASIC,
+    ):
+        super().__init__(
+            player_id=player_id,
+            character=character,
+            cards=cards,
+            redis_client=redis_client,
+            game_id=game_id,
+            inference_level=inference_level,
+        )
 
     def generate_chat(
         self, action_type: str, context: dict | None = None
