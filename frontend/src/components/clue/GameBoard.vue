@@ -683,6 +683,7 @@ const cardShownDismissedOnce = ref(false)
 
 function dismissCardShownOverlay() {
   cardShownDismissedOnce.value = true
+  emit('dismiss-card-shown')
 }
 
 // Game over overlay state
