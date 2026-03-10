@@ -1653,6 +1653,11 @@ class RandomAgent(BaseAgent):
     ) -> tuple[str, str, str]:
         """Pick suspect and weapon for a suggestion, returning (suspect, weapon, reason).
 
+        When a category is narrowed to exactly one unknown (the likely
+        solution), use a card from our own hand for that category instead.
+        This adds unpredictability and lets the suggestion focus on
+        narrowing other categories that still have multiple unknowns.
+
         At advanced inference level, prioritize items from unrefuted
         suggestions to verify suspected solution components.
         """
@@ -1679,22 +1684,38 @@ class RandomAgent(BaseAgent):
             suspect = (
                 random.choice(unrefuted_suspects)
                 if unrefuted_suspects
-                else self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
+                else self._pick_narrowed_or_unknown(unknown_suspects, SUSPECTS)
             )
             weapon = (
                 random.choice(unrefuted_weapons)
                 if unrefuted_weapons
-                else self._pick_unknown_or_random(unknown_weapons, WEAPONS)
+                else self._pick_narrowed_or_unknown(unknown_weapons, WEAPONS)
             )
             return suspect, weapon, "unrefuted_guided"
 
-        suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
-        weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
+        suspect = self._pick_narrowed_or_unknown(unknown_suspects, SUSPECTS)
+        weapon = self._pick_narrowed_or_unknown(unknown_weapons, WEAPONS)
         return suspect, weapon, "random_unknown"
 
-    @staticmethod
-    def _pick_unknown_or_random(unknown: list[str], full_list: list[str]) -> str:
-        """Pick a random unknown card, or any card if all are known."""
+    def _pick_narrowed_or_unknown(
+        self, unknown: list[str], full_list: list[str]
+    ) -> str:
+        """Pick a card for a suggestion category.
+
+        If the category is narrowed to exactly one unknown (likely the
+        solution), prefer a card from our own hand instead — this avoids
+        always suggesting the deduced solution card (which is predictable
+        and reveals our knowledge) and lets us gather info on other
+        categories.  If we have no hand cards in this category, fall back
+        to the single unknown.
+        """
+        if len(unknown) == 1:
+            # Category is narrowed — use a hand card as a decoy if possible
+            own_in_category = [c for c in full_list if c in self.own_cards]
+            if own_in_category:
+                return random.choice(own_in_category)
+            # No hand cards in this category; use the single unknown
+            return unknown[0]
         if unknown:
             return random.choice(unknown)
         return random.choice(full_list)
