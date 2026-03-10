@@ -66,13 +66,14 @@
       <!-- Add agents -->
       <div class="agent-controls" v-if="players.length < 6">
         <div class="difficulty-selector">
-          <label class="difficulty-label">Difficulty</label>
-          <div class="difficulty-toggle">
+          <label class="difficulty-label" id="difficulty-label">Difficulty</label>
+          <div class="difficulty-toggle" role="group" aria-labelledby="difficulty-label">
             <button
               v-for="d in difficulties"
               :key="d.value"
               class="difficulty-btn"
               :class="{ active: difficulty === d.value, [d.value]: true }"
+              :aria-pressed="difficulty === d.value"
               @click="difficulty = d.value"
             >{{ d.label }}</button>
           </div>
