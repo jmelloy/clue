@@ -540,7 +540,7 @@ class JoinRequest(BaseModel):
 
 class AddAgentRequest(BaseModel):
     agent_type: str = "agent"  # "agent" or "llm_agent"
-    inference_level: str = "standard"  # "none", "basic", "standard", "advanced"
+    inference_level: Literal["none", "basic", "standard", "advanced"] = "standard"
 
 
 class ActionRequest(BaseModel):

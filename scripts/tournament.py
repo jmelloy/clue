@@ -28,12 +28,11 @@ import argparse
 import asyncio
 import itertools
 import json
-import math
 import random
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 # Add backend/ to path so we can import app.*
@@ -42,10 +41,11 @@ sys.path.insert(0, str(_backend))
 
 import fakeredis.aioredis as fakeredis  # noqa: E402
 
-from app.games.clue.game import ClueGame, SUSPECTS, WEAPONS, ROOMS  # noqa: E402
+from app.games.clue.game import ClueGame  # noqa: E402
 from app.games.clue.agents import (  # noqa: E402
     RandomAgent,
     WandererAgent,
+    LLMAgent,
     INFERENCE_NONE,
     INFERENCE_BASIC,
     INFERENCE_STANDARD,
@@ -117,6 +117,7 @@ class AgentConfig:
     """Configuration for a single agent in a tournament game."""
 
     inference_level: str = INFERENCE_STANDARD
+    agent_type: str = "random"  # "random" or "llm"
     secret_passage_chance: float | None = None
     explore_chance: float | None = None
     chat_frequency: float | None = None
@@ -148,7 +149,8 @@ async def run_single_game(
     dict with keys: winner, winner_level, turns, actions, accusations,
                     wrong_accusations, finished, agent_levels
     """
-    if redis is None:
+    owns_redis = redis is None
+    if owns_redis:
         redis = fakeredis.FakeRedis(decode_responses=True)
 
     # Normalize roster to AgentConfig objects
@@ -172,7 +174,7 @@ async def run_single_game(
     state = await game.start()
 
     # Create agents with specified configs
-    agents: dict[str, RandomAgent | WandererAgent] = {}
+    agents: dict[str, RandomAgent | WandererAgent | LLMAgent] = {}
     agent_levels: dict[str, str] = {}
     for idx, p in enumerate(state.players):
         cards = await game._load_player_cards(p.id)
@@ -188,6 +190,14 @@ async def run_single_game(
                 cards=cards,
             )
             agent_levels[p.id] = "wanderer"
+        elif cfg.agent_type == "llm":
+            agents[p.id] = LLMAgent(
+                player_id=p.id,
+                character=p.character,
+                cards=cards,
+                inference_level=cfg.inference_level,
+            )
+            agent_levels[p.id] = cfg.display_label
         else:
             agents[p.id] = RandomAgent(
                 player_id=p.id,
@@ -279,7 +289,8 @@ async def run_single_game(
         state = await game.get_state()
         actions_taken += 1
 
-    await redis.aclose()
+    if owns_redis:
+        await redis.aclose()
 
     return {
         "winner": state.winner,
@@ -314,7 +325,7 @@ def generate_round_robin_rosters(
 
 async def run_tournament(
     num_games: int = 1000,
-    roster: list[str] | None = None,
+    roster: list[str] | list[AgentConfig] | None = None,
     num_players: int = 3,
     round_robin: bool = True,
     quiet: bool = False,
@@ -325,8 +336,8 @@ async def run_tournament(
     ----------
     num_games : int
         Total number of games to run.
-    roster : list[str] | None
-        Fixed roster of inference levels (e.g. ["advanced", "none", "standard"]).
+    roster : list[str] | list[AgentConfig] | None
+        Fixed roster of inference levels or AgentConfig objects.
         If None, uses round-robin across all matchups.
     num_players : int
         Number of players per game (only used for round-robin).
@@ -335,9 +346,20 @@ async def run_tournament(
     quiet : bool
         Suppress per-game output.
     """
+    # Collect all unique labels for stats tracking
+    all_labels: set[str] = set()
+    if roster:
+        for entry in roster:
+            if isinstance(entry, AgentConfig):
+                all_labels.add(entry.display_label)
+            else:
+                all_labels.add(entry)
+    if not all_labels:
+        all_labels = set(INFERENCE_LEVELS)
+
     stats: dict[str, PlayerStats] = {}
-    for level in INFERENCE_LEVELS:
-        stats[level] = PlayerStats(inference_level=level)
+    for label in all_labels | set(INFERENCE_LEVELS):
+        stats[label] = PlayerStats(inference_level=label)
 
     # Matchup-specific tracking: (level_a, level_b) -> {wins_a, wins_b}
     matchup_wins: dict[tuple[str, str], dict[str, int]] = defaultdict(
@@ -384,9 +406,11 @@ async def run_tournament(
         games_finished += 1
         winner_level = result["winner_level"]
 
-        # Update per-level stats
+        # Update per-level stats (lazily create for wanderers / custom labels)
         levels_in_game = list(result["agent_levels"].values())
         for level in levels_in_game:
+            if level not in stats:
+                stats[level] = PlayerStats(inference_level=level)
             stats[level].games += 1
 
         if winner_level:
@@ -693,6 +717,15 @@ def main():
         help="Random seed for reproducibility.",
     )
     parser.add_argument(
+        "--llm", type=int, default=0, metavar="N",
+        help="Include N LLM agents in each game. They replace the first N "
+             "roster slots. Requires LLM_API_KEY env var.",
+    )
+    parser.add_argument(
+        "--llm-level", type=str, default="advanced",
+        help="Inference level for LLM agents (default: advanced).",
+    )
+    parser.add_argument(
         "--style-test", action="store_true",
         help="Test style parameters (secret_passage_chance, explore_chance) "
              "instead of inference levels.",
@@ -705,6 +738,11 @@ def main():
 
     if args.seed is not None:
         random.seed(args.seed)
+
+    if args.llm > 0:
+        import os
+        if not os.getenv("LLM_API_KEY"):
+            parser.error("--llm requires LLM_API_KEY environment variable")
 
     if args.style_test:
         print(f"Running {args.games} style-parameter games at inference={args.style_level}...")
@@ -728,8 +766,45 @@ def main():
                     f"Must be one of: {INFERENCE_LEVELS}"
                 )
 
+    # Build AgentConfig roster with LLM agents if requested
+    config_roster: list[AgentConfig] | None = None
+    if args.llm > 0:
+        if roster:
+            # Replace first N slots with LLM agents
+            config_roster = []
+            for i, level in enumerate(roster):
+                if i < args.llm:
+                    config_roster.append(AgentConfig(
+                        inference_level=args.llm_level,
+                        agent_type="llm",
+                        label=f"llm({args.llm_level})",
+                    ))
+                else:
+                    config_roster.append(AgentConfig(
+                        inference_level=level,
+                        label=level,
+                    ))
+        else:
+            # Default: N LLM agents + fill remaining with advanced
+            config_roster = []
+            for i in range(args.players):
+                if i < args.llm:
+                    config_roster.append(AgentConfig(
+                        inference_level=args.llm_level,
+                        agent_type="llm",
+                        label=f"llm({args.llm_level})",
+                    ))
+                else:
+                    config_roster.append(AgentConfig(
+                        inference_level=INFERENCE_ADVANCED,
+                        label="advanced",
+                    ))
+
     print(f"Running {args.games} tournament games...")
-    if roster:
+    if config_roster:
+        labels = [c.display_label for c in config_roster]
+        print(f"  Fixed roster: {labels}")
+    elif roster:
         print(f"  Fixed roster: {roster}")
     else:
         print(f"  Round-robin mode, {args.players} players per game")
@@ -737,7 +812,7 @@ def main():
     results = asyncio.run(
         run_tournament(
             num_games=args.games,
-            roster=roster,
+            roster=config_roster or roster,
             num_players=args.players,
             quiet=args.quiet,
         )

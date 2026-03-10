@@ -756,6 +756,13 @@ class BaseAgent(ABC):
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
         """Called when a suggestion gets no card shown by anyone."""
+        if self.inference_level in (INFERENCE_NONE, INFERENCE_BASIC):
+            self.agent_trace(
+                "observe_suggestion_no_show",
+                suspect=suspect, weapon=weapon, room=room,
+                skipped=self.inference_level,
+            )
+            return
         self.unrefuted_suggestions.append(
             {"suspect": suspect, "weapon": weapon, "room": room}
         )
@@ -1112,8 +1119,9 @@ class BaseAgent(ABC):
             (unknown_weapons, unknown_weapons_in_unrefuted, WEAPONS),
             (unknown_rooms, unknown_rooms_in_unrefuted, ROOMS),
         ]:
-            # If there's exactly one unknown in a category AND it appears
-            # in at least one unrefuted suggestion, we're confident
+            # If there are exactly two unknowns in a category and only one
+            # appears in unrefuted suggestions, the OTHER unknown can be
+            # inferred as belonging to a player (not the solution).
             if (
                 len(category_unknowns) == 2
                 and len(unrefuted_unknowns) == 1
