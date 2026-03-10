@@ -65,12 +65,26 @@
 
       <!-- Add agents -->
       <div class="agent-controls" v-if="players.length < 6">
-        <button class="btn-agent" @click="addAgent('agent')" :disabled="addingAgent">
-          <span class="btn-agent-icon">&#x1F3B2;</span> Add Agent
-        </button>
-        <button class="btn-agent btn-agent-llm" @click="addAgent('llm_agent')" :disabled="addingAgent">
-          <span class="btn-agent-icon">&#x1F9E0;</span> Add LLM Agent
-        </button>
+        <div class="difficulty-selector">
+          <label class="difficulty-label">Difficulty</label>
+          <div class="difficulty-toggle">
+            <button
+              v-for="d in difficulties"
+              :key="d.value"
+              class="difficulty-btn"
+              :class="{ active: difficulty === d.value, [d.value]: true }"
+              @click="difficulty = d.value"
+            >{{ d.label }}</button>
+          </div>
+        </div>
+        <div class="agent-buttons">
+          <button class="btn-agent" @click="addAgent('agent')" :disabled="addingAgent">
+            <span class="btn-agent-icon">&#x1F3B2;</span> Add Agent
+          </button>
+          <button class="btn-agent btn-agent-llm" @click="addAgent('llm_agent')" :disabled="addingAgent">
+            <span class="btn-agent-icon">&#x1F9E0;</span> Add LLM Agent
+          </button>
+        </div>
       </div>
 
       <!-- Start game -->
@@ -103,6 +117,15 @@ const emit = defineEmits(['game-started', 'leave-game'])
 const error = ref('')
 const copied = ref(false)
 const addingAgent = ref(false)
+const difficulty = ref('medium')
+
+const difficulties = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' }
+]
+
+const difficultyToInference = { easy: 'basic', medium: 'standard', hard: 'advanced' }
 
 function tokenStyle(player) {
   const { bg, text } = characterColors(player.character)
@@ -147,7 +170,7 @@ async function addAgent(agentType) {
     const res = await fetch(`/api/clue/games/${props.gameId}/add_agent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agent_type: agentType })
+      body: JSON.stringify({ agent_type: agentType, inference_level: difficultyToInference[difficulty.value] })
     })
     if (!res.ok) {
       const data = await res.json()
@@ -597,10 +620,73 @@ async function startGame() {
 /* === Agent controls === */
 .agent-controls {
   display: flex;
-  gap: 0.5rem;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
   animation: fade-in 0.6s ease-out 0.5s both;
+}
+
+.agent-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.difficulty-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.difficulty-toggle {
+  display: flex;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 168, 73, 0.15);
+}
+
+.difficulty-btn {
+  padding: 0.3rem 0.7rem;
+  border: none;
+  background: transparent;
+  color: #6a6050;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.difficulty-btn + .difficulty-btn {
+  border-left: 1px solid rgba(212, 168, 73, 0.15);
+}
+
+.difficulty-btn:hover:not(.active) {
+  background: rgba(212, 168, 73, 0.04);
+  color: #8a7e6b;
+}
+
+.difficulty-btn.active.easy {
+  background: rgba(76, 175, 80, 0.15);
+  color: #6abf6e;
+}
+
+.difficulty-btn.active.medium {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.difficulty-btn.active.hard {
+  background: rgba(198, 60, 60, 0.15);
+  color: #d46a6a;
 }
 
 .btn-agent {
@@ -723,9 +809,9 @@ async function startGame() {
     gap: 0.5rem;
   }
 
-  .agent-controls {
+  .agent-buttons {
     flex-direction: column;
-    align-items: center;
+    width: 100%;
   }
 
   .btn-agent {
