@@ -1675,8 +1675,12 @@ async def join_game(game_id: str, req: JoinRequest):
 async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     """Add an AI agent to a game in the waiting room."""
     agent_type = req.agent_type if req else "agent"
+    inference_level = req.inference_level if req else "standard"
     if agent_type not in _AGENT_PLAYER_TYPES:
         raise HTTPException(status_code=400, detail="Invalid agent type")
+    from app.games.clue.agents import INFERENCE_LEVELS
+    if inference_level not in INFERENCE_LEVELS:
+        raise HTTPException(status_code=400, detail=f"Invalid inference_level. Must be one of: {INFERENCE_LEVELS}")
 
     game = ClueGame(game_id, redis_client)
     state = await game.get_state()
@@ -1690,6 +1694,13 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
         player = await game.add_player(player_id, None, agent_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # Store inference_level preference for this agent (read at game start)
+    await redis_client.set(
+        f"game:{game_id}:agent_inference:{player_id}",
+        inference_level,
+        ex=86400,
+    )
 
     state = await game.get_state()
     await manager.broadcast(
@@ -1734,11 +1745,18 @@ async def start_game(game_id: str):
         # so watchdog restarts reproduce the same starting knowledge).
         agents: dict[str, BaseAgent] = {}
         agent_cards: dict[str, list[str]] = {}
+        agent_inference_levels: dict[str, str] = {}
         for player in agent_players:
             pid = player.id
             ptype = player.type
             cards = await game._load_player_cards(pid)
             agent_cards[pid] = cards
+            # Read per-agent inference level (default: standard)
+            inference_raw = await redis_client.get(
+                f"game:{game_id}:agent_inference:{pid}"
+            )
+            inf_level = inference_raw if inference_raw else "standard"
+            agent_inference_levels[pid] = inf_level
             if ptype == "llm_agent":
                 agent: BaseAgent = LLMAgent(
                     player_id=pid,
@@ -1746,6 +1764,7 @@ async def start_game(game_id: str):
                     cards=cards,
                     redis_client=redis_client,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
                 await agent.load_memory()
             elif ptype == "wanderer":
@@ -1755,6 +1774,7 @@ async def start_game(game_id: str):
                     cards=cards,
                     redis_client=redis_client,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
             else:
                 agent = RandomAgent(
@@ -1763,6 +1783,7 @@ async def start_game(game_id: str):
                     cards=cards,
                     redis_client=redis_client,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
             agents[pid] = agent
             logger.info(
@@ -1799,6 +1820,7 @@ async def start_game(game_id: str):
                 character=player.character,
                 cards=agent_cards[pid],
                 wanderer_seed=wanderer_seeds.get(pid),
+                inference_level=agent_inference_levels.get(pid, "standard"),
             )
         await redis_client.set(
             f"game:{game_id}:agent_config",

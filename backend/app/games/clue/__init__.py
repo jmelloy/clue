@@ -15,6 +15,11 @@ from .agents import (
     RandomAgent,
     WandererAgent,
     generate_character_chat,
+    INFERENCE_NONE,
+    INFERENCE_BASIC,
+    INFERENCE_STANDARD,
+    INFERENCE_ADVANCED,
+    INFERENCE_LEVELS,
 )
 
 __all__ = [
@@ -30,4 +35,9 @@ __all__ = [
     "RandomAgent",
     "WandererAgent",
     "generate_character_chat",
+    "INFERENCE_NONE",
+    "INFERENCE_BASIC",
+    "INFERENCE_STANDARD",
+    "INFERENCE_ADVANCED",
+    "INFERENCE_LEVELS",
 ]

@@ -194,6 +194,7 @@ class AgentRunner:
 
         for pid, info in config.items():
             ptype = info["type"]
+            inf_level = info.get("inference_level", "standard")
             if ptype == "llm_agent":
                 agent: BaseAgent = LLMAgent(
                     player_id=pid,
@@ -201,6 +202,7 @@ class AgentRunner:
                     cards=info["cards"],
                     redis_client=self.redis,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
             elif ptype == "wanderer":
                 agent = WandererAgent(
@@ -209,6 +211,7 @@ class AgentRunner:
                     cards=info["cards"],
                     redis_client=self.redis,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
             else:
                 agent = RandomAgent(
@@ -217,6 +220,7 @@ class AgentRunner:
                     cards=info["cards"],
                     redis_client=self.redis,
                     game_id=game_id,
+                    inference_level=inf_level,
                 )
 
             if ptype == "llm_agent":
