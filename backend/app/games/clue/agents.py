@@ -983,16 +983,22 @@ class BaseAgent(ABC):
     def _run_unrefuted_inference(self):
         """Use unrefuted suggestions to narrow the solution (advanced inference).
 
-        An unrefuted suggestion means no active player held any of those 3
-        cards.  Combined with directly observed cards (``seen_cards``), this
-        can pin down solution components.
+        An unrefuted suggestion means no other active player held any of those
+        3 cards.  This is powerful combined with what we know:
 
-        To avoid compounding errors from prior inferences, we only treat
-        cards in ``seen_cards`` (directly observed — own hand or shown to us)
-        as confirmed when checking unrefuted triples.  If 2 of the 3 cards
-        are directly confirmed held, the remaining card is the solution for
-        its category, and all OTHER cards in that category must be held by
-        someone.
+        1. **Own-hand check**: If we hold a card in the triple, we KNOW it's
+           not the solution.  That's safe to count as "confirmed held."
+        2. **Consistency check**: If we previously saw/inferred another player
+           holds card X, but our suggestion including X was unrefuted (they
+           didn't show it), that's a contradiction — likely that player was
+           eliminated.  We only trust cards in our own hand as "confirmed"
+           within the unrefuted triple.
+        3. **Cross-unrefuted**: When multiple unrefuted suggestions share a
+           category and we can eliminate candidates, narrow further.
+
+        If 2 of the 3 cards are confirmed held (by us), the remaining card
+        is the solution for its category.  We then mark all OTHER cards in
+        that category as "inferred" (held by someone).
         """
         changed = True
         while changed:
@@ -1002,11 +1008,33 @@ class BaseAgent(ABC):
                 weapon = entry["weapon"]
                 room = entry["room"]
 
-                # Only use directly observed cards (seen_cards) to avoid
-                # compounding inference errors from earlier deductions.
+                # For unrefuted suggestions, only our OWN hand is 100%
+                # trustworthy.  Cards "known" via inference might be wrong
+                # if the holder was eliminated (they don't show during
+                # suggestion checks).  However, cards in seen_cards that
+                # are also in own_cards are safe.  Cards shown to us by
+                # others are ALSO safe if the showing player is still active,
+                # but we can't easily check that.  Use own_cards as the
+                # conservative anchor, plus any card already in
+                # inferred_cards (from PREVIOUS unrefuted deductions or
+                # cascade inference that didn't involve this suggestion).
+                confirmed_in_triple = []
                 unknown_in_triple = []
                 for card in (suspect, weapon, room):
-                    if card not in self.seen_cards:
+                    if card in self.own_cards:
+                        confirmed_in_triple.append(card)
+                    elif card in self.known_cards:
+                        # Known but not own hand — trust it if it was
+                        # directly shown to us (in seen_cards, not just
+                        # inferred).  A card shown to us by player X
+                        # proves X has it regardless of elimination status.
+                        if card in self.seen_cards:
+                            confirmed_in_triple.append(card)
+                        else:
+                            # Inferred only — less trustworthy within
+                            # an unrefuted context, but still useful
+                            confirmed_in_triple.append(card)
+                    else:
                         unknown_in_triple.append(card)
 
                 if len(unknown_in_triple) == 1:
@@ -1034,9 +1062,83 @@ class BaseAgent(ABC):
                                 eliminated=other,
                             )
                             changed = True
+
+            # Cross-unrefuted: if multiple unrefuted suggestions exist,
+            # check if negative knowledge eliminates candidates.  E.g., if
+            # two unrefuted suggestions name different suspects but the same
+            # weapon/room (both unknown), we can't narrow further.  But if
+            # ALL unrefuted suggestions name the same unknown suspect, that
+            # suspect is very likely the solution.
+            if not changed and len(self.unrefuted_suggestions) >= 2:
+                changed = self._cross_unrefuted_inference()
+
             # After processing unrefuted suggestions, also run standard cascade
             if changed:
                 self._run_inference()
+
+    def _cross_unrefuted_inference(self) -> bool:
+        """Cross-reference multiple unrefuted suggestions for deductions.
+
+        If all unrefuted suggestions agree on the same unknown card for a
+        category, and we've eliminated all other candidates in that category
+        through regular inference, we can narrow the solution.
+
+        Also: if we know N-1 cards in a category are held by players, the
+        remaining one is the solution.  Unrefuted suggestions can confirm
+        this when the remaining candidate appears in an unrefuted triple.
+        """
+        changed = False
+
+        # Collect unknown cards from unrefuted suggestions per category
+        unknown_suspects_in_unrefuted: set[str] = set()
+        unknown_weapons_in_unrefuted: set[str] = set()
+        unknown_rooms_in_unrefuted: set[str] = set()
+
+        for entry in self.unrefuted_suggestions:
+            s, w, r = entry["suspect"], entry["weapon"], entry["room"]
+            if s not in self.known_cards:
+                unknown_suspects_in_unrefuted.add(s)
+            if w not in self.known_cards:
+                unknown_weapons_in_unrefuted.add(w)
+            if r not in self.known_cards:
+                unknown_rooms_in_unrefuted.add(r)
+
+        # For each category: if all unrefuted suggestions point to the same
+        # unknown card AND that's the only unknown left, the solution is found.
+        unknown_suspects, unknown_weapons, unknown_rooms = self._get_unknowns()
+
+        for category_unknowns, unrefuted_unknowns, all_cards in [
+            (unknown_suspects, unknown_suspects_in_unrefuted, SUSPECTS),
+            (unknown_weapons, unknown_weapons_in_unrefuted, WEAPONS),
+            (unknown_rooms, unknown_rooms_in_unrefuted, ROOMS),
+        ]:
+            # If there's exactly one unknown in a category AND it appears
+            # in at least one unrefuted suggestion, we're confident
+            if (
+                len(category_unknowns) == 2
+                and len(unrefuted_unknowns) == 1
+            ):
+                solution_card = next(iter(unrefuted_unknowns))
+                other_unknown = [c for c in category_unknowns if c != solution_card]
+                if other_unknown:
+                    for other in other_unknown:
+                        if other not in self.known_cards:
+                            self.inferred_cards.add(other)
+                            reason = (
+                                f"Cross-referencing unrefuted suggestions: "
+                                f"'{solution_card}' is the only unrefuted "
+                                f"candidate — '{other}' must be held by someone."
+                            )
+                            self.card_inference_log.setdefault(other, []).append(reason)
+                            self._pending_inferences.append(f"CROSS-UNREFUTED: {reason}")
+                            self.agent_trace(
+                                "cross_unrefuted_inference",
+                                solution_card=solution_card,
+                                eliminated=other,
+                            )
+                            changed = True
+
+        return changed
 
     # ------------------------------------------------------------------
     # Helpers
