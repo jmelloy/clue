@@ -45,6 +45,18 @@ _GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in (
     "yes",
 )
 
+# ---------------------------------------------------------------------------
+# Inference levels — controls how much deductive reasoning agents perform.
+# Higher levels strictly include all logic from lower levels.
+# ---------------------------------------------------------------------------
+
+INFERENCE_NONE = "none"  # Only tracks own cards
+INFERENCE_BASIC = "basic"  # Tracks cards directly shown to agent
+INFERENCE_STANDARD = "standard"  # + negative knowledge + cascade inference
+INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions to narrow solution
+
+INFERENCE_LEVELS = [INFERENCE_NONE, INFERENCE_BASIC, INFERENCE_STANDARD, INFERENCE_ADVANCED]
+
 
 def _compute_room_distances(
     current_room: str | None, player_position: list | None
@@ -450,7 +462,15 @@ class BaseAgent(ABC):
         cards: list[str],
         redis_client=None,
         game_id: str = "",
+        *,
+        inference_level: str = INFERENCE_STANDARD,
     ):
+        if inference_level not in INFERENCE_LEVELS:
+            raise ValueError(
+                f"Invalid inference_level '{inference_level}'. "
+                f"Must be one of: {INFERENCE_LEVELS}"
+            )
+        self.inference_level: str = inference_level
         self.own_cards: set[str] = set(cards)
         self.seen_cards: set[str] = set(cards)  # own hand + directly shown
         self.inferred_cards: set[str] = set()  # deduced via elimination
@@ -478,7 +498,7 @@ class BaseAgent(ABC):
         self._game_id = game_id
         self._trace_enabled: bool | None = None  # None = check game state / env
 
-        self.agent_trace("agent_created", cards=sorted(cards))
+        self.agent_trace("agent_created", cards=sorted(cards), inference_level=inference_level)
 
     @property
     def known_cards(self) -> set[str]:
@@ -495,6 +515,7 @@ class BaseAgent(ABC):
     def get_knowledge_state(self) -> dict:
         """Export all inference/knowledge state as a serializable dict."""
         return {
+            "inference_level": self.inference_level,
             "seen_cards": sorted(self.seen_cards),
             "inferred_cards": sorted(self.inferred_cards),
             "shown_to": {k: sorted(v) for k, v in self.shown_to.items()},
@@ -711,6 +732,9 @@ class BaseAgent(ABC):
 
     def observe_shown_card(self, card: str, shown_by: str | None = None):
         """Called when another player shows us a card."""
+        if self.inference_level == INFERENCE_NONE:
+            self.agent_trace("observe_shown_card", card=card, skipped="inference_none")
+            return
         is_new = card not in self.known_cards
         self.seen_cards.add(card)
         # If it was previously only inferred, promote to seen
@@ -724,8 +748,10 @@ class BaseAgent(ABC):
             is_new=is_new,
             total_seen=len(self.seen_cards),
         )
-        if is_new:
+        if is_new and self.inference_level in (INFERENCE_STANDARD, INFERENCE_ADVANCED):
             self._run_inference()
+        if is_new and self.inference_level == INFERENCE_ADVANCED:
+            self._run_unrefuted_inference()
         self._enqueue_save_knowledge()
 
     def observe_suggestion_no_show(self, suspect: str, weapon: str, room: str):
@@ -744,6 +770,8 @@ class BaseAgent(ABC):
             room=room,
             total_unrefuted=len(self.unrefuted_suggestions),
         )
+        if self.inference_level == INFERENCE_ADVANCED:
+            self._run_unrefuted_inference()
         self._enqueue_save_knowledge()
 
     def observe_card_shown_to_other(
@@ -756,7 +784,15 @@ class BaseAgent(ABC):
         A card is impossible for the shower if: it's in our hand (unique),
         it's known to be held by a different player, or the shower is known
         not to have it.
+
+        Requires inference_level >= standard to attempt deduction.
         """
+        if self.inference_level in (INFERENCE_NONE, INFERENCE_BASIC):
+            self.agent_trace(
+                "observe_card_shown_to_other",
+                skipped=self.inference_level,
+            )
+            return
         inferred = self._try_infer_shown_card(shown_by, suspect, weapon, room)
         if inferred:
             self.agent_trace(
@@ -839,7 +875,14 @@ class BaseAgent(ABC):
 
         Records the suggestion and tracks negative knowledge: players who
         were checked and couldn't show don't have any of the suggested cards.
+        Negative knowledge tracking requires inference_level >= standard.
         """
+        if self.inference_level == INFERENCE_NONE:
+            self.agent_trace(
+                "observe_suggestion", skipped="inference_none",
+            )
+            return
+
         entry = {
             "suggesting_player_id": suggesting_player_id,
             "suspect": suspect,
@@ -850,10 +893,12 @@ class BaseAgent(ABC):
         }
         self.suggestion_log.append(entry)
 
-        # Players who were checked and couldn't show lack ALL three cards
-        suggested_cards = {suspect, weapon, room}
-        for pid in players_without_match:
-            self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
+        # Negative knowledge requires standard+ inference
+        if self.inference_level in (INFERENCE_STANDARD, INFERENCE_ADVANCED):
+            # Players who were checked and couldn't show lack ALL three cards
+            suggested_cards = {suspect, weapon, room}
+            for pid in players_without_match:
+                self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
 
         if players_without_match:
             names = ", ".join(self._name(pid) for pid in players_without_match)
@@ -935,6 +980,64 @@ class BaseAgent(ABC):
                     self.inferred_cards.add(inferred)
                     changed = True
 
+    def _run_unrefuted_inference(self):
+        """Use unrefuted suggestions to narrow the solution (advanced inference).
+
+        An unrefuted suggestion means no active player held any of those 3
+        cards.  Combined with directly observed cards (``seen_cards``), this
+        can pin down solution components.
+
+        To avoid compounding errors from prior inferences, we only treat
+        cards in ``seen_cards`` (directly observed — own hand or shown to us)
+        as confirmed when checking unrefuted triples.  If 2 of the 3 cards
+        are directly confirmed held, the remaining card is the solution for
+        its category, and all OTHER cards in that category must be held by
+        someone.
+        """
+        changed = True
+        while changed:
+            changed = False
+            for entry in self.unrefuted_suggestions:
+                suspect = entry["suspect"]
+                weapon = entry["weapon"]
+                room = entry["room"]
+
+                # Only use directly observed cards (seen_cards) to avoid
+                # compounding inference errors from earlier deductions.
+                unknown_in_triple = []
+                for card in (suspect, weapon, room):
+                    if card not in self.seen_cards:
+                        unknown_in_triple.append(card)
+
+                if len(unknown_in_triple) == 1:
+                    card = unknown_in_triple[0]
+                    # card is the solution for its category — mark all
+                    # OTHER cards in that category as "inferred" (held by
+                    # someone), which narrows _get_unknowns().
+                    category = (
+                        SUSPECTS if card in SUSPECTS
+                        else WEAPONS if card in WEAPONS
+                        else ROOMS
+                    )
+                    for other in category:
+                        if other != card and other not in self.known_cards:
+                            self.inferred_cards.add(other)
+                            reason = (
+                                f"Unrefuted suggestion {suspect}/{weapon}/{room} "
+                                f"pins '{card}' as solution — so '{other}' must be held by someone."
+                            )
+                            self.card_inference_log.setdefault(other, []).append(reason)
+                            self._pending_inferences.append(f"UNREFUTED DEDUCTION: {reason}")
+                            self.agent_trace(
+                                "unrefuted_inference",
+                                solution_card=card,
+                                eliminated=other,
+                            )
+                            changed = True
+            # After processing unrefuted suggestions, also run standard cascade
+            if changed:
+                self._run_inference()
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -1002,6 +1105,7 @@ class BaseAgent(ABC):
         info: dict = {
             "player_id": self.player_id,
             "agent_type": self.agent_type,
+            "inference_level": self.inference_level,
             "character": self.character,
             "status": status,
             "action_description": action_description,
@@ -1086,6 +1190,7 @@ class RandomAgent(BaseAgent):
         redis_client=None,
         game_id: str = "",
         *,
+        inference_level: str = INFERENCE_STANDARD,
         secret_passage_chance: float | None = None,
         explore_chance: float | None = None,
         chat_frequency: float | None = None,
@@ -1096,6 +1201,7 @@ class RandomAgent(BaseAgent):
             cards=cards,
             redis_client=redis_client,
             game_id=game_id,
+            inference_level=inference_level,
         )
         self.secret_passage_chance = (
             secret_passage_chance
@@ -1172,15 +1278,16 @@ class RandomAgent(BaseAgent):
         # Phase 1: suggest first if already in a room (e.g. moved by suggestion)
         room = current_room.get(player_id)
         if room and "suggest" in available:
-            suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
-            weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
+            suspect, weapon, reason = self._pick_suggestion(
+                unknown_suspects, unknown_weapons, room
+            )
             self.rooms_suggested_in.add(room)
             self.agent_trace(
                 "suggest",
                 suspect=suspect,
                 weapon=weapon,
                 room=room,
-                reason="prioritized",
+                reason=reason,
             )
             return SuggestAction(suspect=suspect, weapon=weapon, room=room)
 
@@ -1418,6 +1525,49 @@ class RandomAgent(BaseAgent):
 
         return random.choices(rooms_list, weights=weights, k=1)[0]
 
+    def _pick_suggestion(
+        self,
+        unknown_suspects: list[str],
+        unknown_weapons: list[str],
+        room: str,
+    ) -> tuple[str, str, str]:
+        """Pick suspect and weapon for a suggestion, returning (suspect, weapon, reason).
+
+        At advanced inference level, prioritize items from unrefuted
+        suggestions to verify suspected solution components.
+        """
+        if self.inference_level == INFERENCE_ADVANCED and self.unrefuted_suggestions:
+            # Find unrefuted suggestions matching our current room
+            for entry in self.unrefuted_suggestions:
+                if entry["room"] == room:
+                    s = entry["suspect"]
+                    w = entry["weapon"]
+                    if s in unknown_suspects and w in unknown_weapons:
+                        return s, w, "verify_unrefuted"
+
+            # Even if not in the same room, use unrefuted suspects/weapons
+            unrefuted_suspects = [
+                e["suspect"] for e in self.unrefuted_suggestions
+                if e["suspect"] in unknown_suspects
+            ]
+            unrefuted_weapons = [
+                e["weapon"] for e in self.unrefuted_suggestions
+                if e["weapon"] in unknown_weapons
+            ]
+            suspect = (
+                random.choice(unrefuted_suspects) if unrefuted_suspects
+                else self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
+            )
+            weapon = (
+                random.choice(unrefuted_weapons) if unrefuted_weapons
+                else self._pick_unknown_or_random(unknown_weapons, WEAPONS)
+            )
+            return suspect, weapon, "unrefuted_guided"
+
+        suspect = self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
+        weapon = self._pick_unknown_or_random(unknown_weapons, WEAPONS)
+        return suspect, weapon, "random_unknown"
+
     @staticmethod
     def _pick_unknown_or_random(unknown: list[str], full_list: list[str]) -> str:
         """Pick a random unknown card, or any card if all are known."""
@@ -1616,6 +1766,8 @@ class LLMAgent(BaseAgent):
         cards: list[str],
         redis_client=None,
         game_id: str = "",
+        *,
+        inference_level: str = INFERENCE_ADVANCED,
     ):
         super().__init__(
             player_id=player_id,
@@ -1623,6 +1775,7 @@ class LLMAgent(BaseAgent):
             cards=cards,
             redis_client=redis_client,
             game_id=game_id,
+            inference_level=inference_level,
         )
         self.api_url = os.getenv(
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
@@ -1640,6 +1793,7 @@ class LLMAgent(BaseAgent):
             cards=cards,
             redis_client=redis_client,
             game_id=game_id,
+            inference_level=inference_level,
             secret_passage_chance=0.50,
             explore_chance=0.50,
             chat_frequency=0.50,

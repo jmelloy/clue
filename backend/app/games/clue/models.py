@@ -516,6 +516,7 @@ class AgentPlayerConfig(BaseModel):
     character: str
     cards: list[str]
     wanderer_seed: WandererSeed | None = None
+    inference_level: str = "standard"
 
 
 class ChatContext(BaseModel):
@@ -539,6 +540,7 @@ class JoinRequest(BaseModel):
 
 class AddAgentRequest(BaseModel):
     agent_type: str = "agent"  # "agent" or "llm_agent"
+    inference_level: str = "standard"  # "none", "basic", "standard", "advanced"
 
 
 class ActionRequest(BaseModel):
