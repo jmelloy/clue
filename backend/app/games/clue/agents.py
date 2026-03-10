@@ -1914,6 +1914,8 @@ class LLMAgent(BaseAgent):
         game_id: str = "",
         *,
         inference_level: str = INFERENCE_ADVANCED,
+        model: str | None = None,
+        nano_model: str | None = None,
     ):
         super().__init__(
             player_id=player_id,
@@ -1927,8 +1929,8 @@ class LLMAgent(BaseAgent):
             "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
         )
         self.api_key = os.getenv("LLM_API_KEY", "")
-        self.model = os.getenv("LLM_MODEL", "gpt-5-mini")
-        self.nano_model = os.getenv("LLM_NANO_MODEL", "gpt-5-nano")
+        self.model = model or os.getenv("LLM_MODEL", "gpt-5-mini")
+        self.nano_model = nano_model or os.getenv("LLM_NANO_MODEL", "gpt-5-nano")
         self.memory: list[str] = []
 
         # Fallback agent shares our observation state — LLM agents always
@@ -2306,6 +2308,19 @@ class LLMAgent(BaseAgent):
                     "validation_failed", reason="invalid_room", room=action.get("room")
                 )
                 return False
+            # Must suggest the room the player is currently in
+            if game_state and player_state:
+                current_room = game_state.current_room.get(
+                    player_state.your_player_id
+                )
+                if current_room and action.get("room") != current_room:
+                    self.agent_trace(
+                        "validation_failed",
+                        reason="room_mismatch",
+                        current_room=current_room,
+                        suggested_room=action.get("room"),
+                    )
+                    return False
 
         elif action_type == "accuse":
             if action.get("suspect") not in SUSPECTS:
