@@ -212,7 +212,8 @@ async def run_single_game(
 
     # Show one random card to each wanderer
     real_agents = {
-        pid: a for pid, a in agents.items()
+        pid: a
+        for pid, a in agents.items()
         if a.agent_type != "wanderer" and a.own_cards
     }
     if real_agents:
@@ -277,7 +278,9 @@ async def run_single_game(
                     )
                 if shown_by is None:
                     agent.observe_suggestion_no_show(
-                        action.suspect, action.weapon, action.room,
+                        action.suspect,
+                        action.weapon,
+                        action.room,
                     )
 
             if action.type == "accuse":
@@ -477,7 +480,9 @@ def print_report(results: dict):
     # Sort by ELO descending
     sorted_stats = sorted(stats.values(), key=lambda s: s.elo, reverse=True)
 
-    print(f"  {'Level':<12} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}")
+    print(
+        f"  {'Level':<12} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
+    )
     print("  " + "-" * 53)
     for s in sorted_stats:
         if s.games == 0:
@@ -696,42 +701,64 @@ def main():
         description="Run ELO-style tournament for Clue agents with different inference levels."
     )
     parser.add_argument(
-        "--games", "-n", type=int, default=1000,
+        "--games",
+        "-n",
+        type=int,
+        default=1000,
         help="Number of games to run (default: 1000)",
     )
     parser.add_argument(
-        "--players", "-p", type=int, default=3,
+        "--players",
+        "-p",
+        type=int,
+        default=3,
         help="Players per game for round-robin mode (default: 3)",
     )
     parser.add_argument(
-        "--roster", "-r", type=str, default=None,
+        "--roster",
+        "-r",
+        type=str,
+        default=None,
         help="Comma-separated inference levels (e.g. 'advanced,standard,none'). "
-             "Overrides round-robin.",
+        "Overrides round-robin.",
     )
     parser.add_argument(
-        "--quiet", "-q", action="store_true",
+        "--quiet",
+        "-q",
+        action="store_true",
         help="Suppress per-game output.",
     )
     parser.add_argument(
-        "--seed", "-s", type=int, default=None,
+        "--seed",
+        "-s",
+        type=int,
+        default=None,
         help="Random seed for reproducibility.",
     )
     parser.add_argument(
-        "--llm", type=int, default=0, metavar="N",
+        "--llm",
+        type=int,
+        default=0,
+        metavar="N",
         help="Include N LLM agents in each game. They replace the first N "
-             "roster slots. Requires LLM_API_KEY env var.",
+        "roster slots. Requires LLM_API_KEY env var.",
     )
     parser.add_argument(
-        "--llm-level", type=str, default="advanced",
+        "--llm-level",
+        type=str,
+        default="advanced",
         help="Inference level for LLM agents (default: advanced).",
     )
     parser.add_argument(
-        "--style-test", action="store_true",
+        "--style-test",
+        action="store_true",
         help="Test style parameters (secret_passage_chance, explore_chance) "
-             "instead of inference levels.",
+        "instead of inference levels.",
     )
     parser.add_argument(
-        "--style-level", type=str, default="standard",
+        "--style-level",
+        type=str,
+        default="standard",
         help="Inference level to use for style tests (default: standard).",
     )
     args = parser.parse_args()
@@ -741,11 +768,14 @@ def main():
 
     if args.llm > 0:
         import os
+
         if not os.getenv("LLM_API_KEY"):
             parser.error("--llm requires LLM_API_KEY environment variable")
 
     if args.style_test:
-        print(f"Running {args.games} style-parameter games at inference={args.style_level}...")
+        print(
+            f"Running {args.games} style-parameter games at inference={args.style_level}..."
+        )
         results = asyncio.run(
             run_style_tournament(
                 num_games=args.games,
@@ -774,31 +804,39 @@ def main():
             config_roster = []
             for i, level in enumerate(roster):
                 if i < args.llm:
-                    config_roster.append(AgentConfig(
-                        inference_level=args.llm_level,
-                        agent_type="llm",
-                        label=f"llm({args.llm_level})",
-                    ))
+                    config_roster.append(
+                        AgentConfig(
+                            inference_level=args.llm_level,
+                            agent_type="llm",
+                            label=f"llm({args.llm_level})",
+                        )
+                    )
                 else:
-                    config_roster.append(AgentConfig(
-                        inference_level=level,
-                        label=level,
-                    ))
+                    config_roster.append(
+                        AgentConfig(
+                            inference_level=level,
+                            label=level,
+                        )
+                    )
         else:
             # Default: N LLM agents + fill remaining with advanced
             config_roster = []
             for i in range(args.players):
                 if i < args.llm:
-                    config_roster.append(AgentConfig(
-                        inference_level=args.llm_level,
-                        agent_type="llm",
-                        label=f"llm({args.llm_level})",
-                    ))
+                    config_roster.append(
+                        AgentConfig(
+                            inference_level=args.llm_level,
+                            agent_type="llm",
+                            label=f"llm({args.llm_level})",
+                        )
+                    )
                 else:
-                    config_roster.append(AgentConfig(
-                        inference_level=INFERENCE_ADVANCED,
-                        label="advanced",
-                    ))
+                    config_roster.append(
+                        AgentConfig(
+                            inference_level=INFERENCE_ADVANCED,
+                            label="advanced",
+                        )
+                    )
 
     print(f"Running {args.games} tournament games...")
     if config_roster:

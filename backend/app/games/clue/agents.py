@@ -55,7 +55,12 @@ INFERENCE_BASIC = "basic"  # Tracks cards directly shown to agent
 INFERENCE_STANDARD = "standard"  # + negative knowledge + cascade inference
 INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions to narrow solution
 
-INFERENCE_LEVELS = [INFERENCE_NONE, INFERENCE_BASIC, INFERENCE_STANDARD, INFERENCE_ADVANCED]
+INFERENCE_LEVELS = [
+    INFERENCE_NONE,
+    INFERENCE_BASIC,
+    INFERENCE_STANDARD,
+    INFERENCE_ADVANCED,
+]
 
 
 def _compute_room_distances(
@@ -97,7 +102,6 @@ def _compute_room_distances(
 
     results.sort(key=lambda x: x[1])
     return results
-
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +502,9 @@ class BaseAgent(ABC):
         self._game_id = game_id
         self._trace_enabled: bool | None = None  # None = check game state / env
 
-        self.agent_trace("agent_created", cards=sorted(cards), inference_level=inference_level)
+        self.agent_trace(
+            "agent_created", cards=sorted(cards), inference_level=inference_level
+        )
 
     @property
     def known_cards(self) -> set[str]:
@@ -759,7 +765,9 @@ class BaseAgent(ABC):
         if self.inference_level in (INFERENCE_NONE, INFERENCE_BASIC):
             self.agent_trace(
                 "observe_suggestion_no_show",
-                suspect=suspect, weapon=weapon, room=room,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
                 skipped=self.inference_level,
             )
             return
@@ -886,7 +894,8 @@ class BaseAgent(ABC):
         """
         if self.inference_level == INFERENCE_NONE:
             self.agent_trace(
-                "observe_suggestion", skipped="inference_none",
+                "observe_suggestion",
+                skipped="inference_none",
             )
             return
 
@@ -1050,9 +1059,9 @@ class BaseAgent(ABC):
                     # OTHER cards in that category as "inferred" (held by
                     # someone), which narrows _get_unknowns().
                     category = (
-                        SUSPECTS if card in SUSPECTS
-                        else WEAPONS if card in WEAPONS
-                        else ROOMS
+                        SUSPECTS
+                        if card in SUSPECTS
+                        else WEAPONS if card in WEAPONS else ROOMS
                     )
                     for other in category:
                         if other != card and other not in self.known_cards:
@@ -1062,7 +1071,9 @@ class BaseAgent(ABC):
                                 f"pins '{card}' as solution — so '{other}' must be held by someone."
                             )
                             self.card_inference_log.setdefault(other, []).append(reason)
-                            self._pending_inferences.append(f"UNREFUTED DEDUCTION: {reason}")
+                            self._pending_inferences.append(
+                                f"UNREFUTED DEDUCTION: {reason}"
+                            )
                             self.agent_trace(
                                 "unrefuted_inference",
                                 solution_card=card,
@@ -1122,10 +1133,7 @@ class BaseAgent(ABC):
             # If there are exactly two unknowns in a category and only one
             # appears in unrefuted suggestions, the OTHER unknown can be
             # inferred as belonging to a player (not the solution).
-            if (
-                len(category_unknowns) == 2
-                and len(unrefuted_unknowns) == 1
-            ):
+            if len(category_unknowns) == 2 and len(unrefuted_unknowns) == 1:
                 solution_card = next(iter(unrefuted_unknowns))
                 other_unknown = [c for c in category_unknowns if c != solution_card]
                 if other_unknown:
@@ -1138,7 +1146,9 @@ class BaseAgent(ABC):
                                 f"candidate — '{other}' must be held by someone."
                             )
                             self.card_inference_log.setdefault(other, []).append(reason)
-                            self._pending_inferences.append(f"CROSS-UNREFUTED: {reason}")
+                            self._pending_inferences.append(
+                                f"CROSS-UNREFUTED: {reason}"
+                            )
                             self.agent_trace(
                                 "cross_unrefuted_inference",
                                 solution_card=solution_card,
@@ -1657,19 +1667,23 @@ class RandomAgent(BaseAgent):
 
             # Even if not in the same room, use unrefuted suspects/weapons
             unrefuted_suspects = [
-                e["suspect"] for e in self.unrefuted_suggestions
+                e["suspect"]
+                for e in self.unrefuted_suggestions
                 if e["suspect"] in unknown_suspects
             ]
             unrefuted_weapons = [
-                e["weapon"] for e in self.unrefuted_suggestions
+                e["weapon"]
+                for e in self.unrefuted_suggestions
                 if e["weapon"] in unknown_weapons
             ]
             suspect = (
-                random.choice(unrefuted_suspects) if unrefuted_suspects
+                random.choice(unrefuted_suspects)
+                if unrefuted_suspects
                 else self._pick_unknown_or_random(unknown_suspects, SUSPECTS)
             )
             weapon = (
-                random.choice(unrefuted_weapons) if unrefuted_weapons
+                random.choice(unrefuted_weapons)
+                if unrefuted_weapons
                 else self._pick_unknown_or_random(unknown_weapons, WEAPONS)
             )
             return suspect, weapon, "unrefuted_guided"
@@ -1699,7 +1713,7 @@ class WandererAgent(BaseAgent):
     the wanderer deduces the full solution (exactly 1 unknown in each
     category), it will make an accusation.
 
-    Defaults to ``inference_level="basic"`` since wanderers never suggest
+    Defaults to ``inference_level="advanced"`` since wanderers never suggest
     but need to track cards shown to them (the initial seed card).
     """
 
@@ -1713,7 +1727,7 @@ class WandererAgent(BaseAgent):
         redis_client=None,
         game_id: str = "",
         *,
-        inference_level: str = INFERENCE_BASIC,
+        inference_level: str = INFERENCE_ADVANCED,
     ):
         super().__init__(
             player_id=player_id,
@@ -2108,9 +2122,7 @@ class LLMAgent(BaseAgent):
                     parsed = json.loads(text[start : end + 1])
                     return parsed
                 except json.JSONDecodeError:
-                    self.agent_trace(
-                        "json_parse_failed", method="substring", text=text
-                    )
+                    self.agent_trace("json_parse_failed", method="substring", text=text)
             else:
                 self.agent_trace(
                     "json_parse_failed", reason="no_json_braces", text=text
