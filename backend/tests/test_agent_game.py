@@ -272,7 +272,13 @@ async def test_agent_accuses_only_when_certain(redis):
 
 @pytest.mark.asyncio
 async def test_agent_never_suggests_own_cards(redis):
-    """The agent should prefer unknown cards in suggestions."""
+    """The agent should prefer unknown cards in suggestions.
+
+    When multiple unknowns exist in a category, the agent picks from
+    unknowns (not hand cards).  When narrowed to exactly 1 unknown, the
+    agent deliberately uses a hand card as a decoy to add randomness and
+    focus info-gathering on other categories.
+    """
     game, agents, state = await _setup_game(redis, num_agents=2)
     final_state, turns, log = await _run_game(game, agents, state)
 
@@ -280,20 +286,20 @@ async def test_agent_never_suggests_own_cards(redis):
         if action.type == "suggest":
             agent = agents[pid]
             cards = await game._load_player_cards(pid)
-            # Suspect and weapon should NOT be in the agent's hand
-            # (unless all suspects or all weapons are known)
             unknown_suspects = [s for s in SUSPECTS if s not in agent.known_cards]
             unknown_weapons = [w for w in WEAPONS if w not in agent.known_cards]
 
-            if unknown_suspects:
+            # Only assert hand-card avoidance when multiple unknowns exist;
+            # with exactly 1 unknown the agent intentionally uses hand cards.
+            if len(unknown_suspects) > 1:
                 assert action.suspect not in cards, (
                     f"Agent {pid} suggested a suspect from its own hand "
-                    f"when unknowns existed: {action.suspect}"
+                    f"when multiple unknowns existed: {action.suspect}"
                 )
-            if unknown_weapons:
+            if len(unknown_weapons) > 1:
                 assert action.weapon not in cards, (
                     f"Agent {pid} suggested a weapon from its own hand "
-                    f"when unknowns existed: {action.weapon}"
+                    f"when multiple unknowns existed: {action.weapon}"
                 )
 
 
