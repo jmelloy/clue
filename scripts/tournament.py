@@ -58,6 +58,7 @@ from app.games.clue.models import ShowCardAction, EndTurnAction  # noqa: E402
 logger = logging.getLogger(__name__)
 
 MAX_TURNS = 2000
+CONCURRENCY = 50  # Max parallel games
 
 
 # ---------------------------------------------------------------------------
@@ -180,8 +181,7 @@ def apply_llm_preset(config: "AgentConfig", preset_name: str) -> "AgentConfig":
     preset = LLM_PRESETS[preset_name]
     config.model = preset["model"]
     config.nano_model = preset["nano_model"]
-    if not config.label:
-        config.label = f"llm-{preset_name}"
+    config.label = f"llm-{preset_name}({config.inference_level})"
     return config
 
 
@@ -481,13 +481,13 @@ async def run_tournament(
     games_finished = 0
     games_timeout = 0
 
+    # Prepare all game configs up front (randomisation happens here)
+    prepared: list[tuple[int, list]] = []
     for i, game_roster in enumerate(rosters):
-        # Shuffle seats so position bias is controlled
         shuffled = list(game_roster)
         random.shuffle(shuffled)
 
         # In round-robin mode with LLM agents, build per-game configs
-        # with randomly chosen inference levels for the LLM slots
         if num_llm > 0 and not roster:
             configs = []
             for j, entry in enumerate(shuffled):
@@ -497,7 +497,6 @@ async def run_tournament(
                     cfg = AgentConfig(
                         inference_level=ll,
                         agent_type="llm",
-                        label=f"llm-{llm_preset}({ll})",
                     )
                     apply_llm_preset(cfg, llm_preset)
                     configs.append(cfg)
@@ -505,8 +504,20 @@ async def run_tournament(
                     configs.append(AgentConfig(inference_level=level, label=level))
             shuffled = configs
 
-        result = await run_single_game(f"T{i}", shuffled)
+        prepared.append((i, shuffled))
 
+    # Run games in parallel batches
+    sem = asyncio.Semaphore(CONCURRENCY)
+    completed = 0
+
+    async def _run(idx: int, game_configs: list) -> dict:
+        async with sem:
+            return await run_single_game(f"T{idx}", game_configs)
+
+    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
+    results_list = await asyncio.gather(*tasks)
+
+    for i, result in enumerate(results_list):
         if not result["finished"]:
             games_timeout += 1
             if not quiet:
@@ -547,10 +558,11 @@ async def run_tournament(
                     key = tuple(sorted([winner_level, level]))
                     matchup_wins[key][winner_level] += 1
 
-        if not quiet and (i + 1) % (max(num_games // 10, 1)) == 0:
+        completed += 1
+        if not quiet and completed % (max(num_games // 10, 1)) == 0:
             elapsed = time.time() - start_time
-            rate = (i + 1) / elapsed
-            print(f"  {i + 1}/{num_games} games ({rate:.1f} games/sec)")
+            rate = completed / elapsed
+            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
 
@@ -588,14 +600,14 @@ def print_report(results: dict):
     sorted_stats = sorted(stats.values(), key=lambda s: s.elo, reverse=True)
 
     print(
-        f"  {'Level':<12} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
+        f"  {'Level':<25} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
     )
     print("  " + "-" * 53)
     for s in sorted_stats:
         if s.games == 0:
             continue
         print(
-            f"  {s.inference_level:<12} {s.elo:>6.0f} {s.wins:>6} "
+            f"  {s.inference_level:<25} {s.elo:>6.0f} {s.wins:>6} "
             f"{s.games:>6} {s.win_rate:>6.1%} {s.avg_turns_to_win:>10.1f}"
         )
 
@@ -606,15 +618,15 @@ def print_report(results: dict):
         print("  HEAD-TO-HEAD WIN RATES:")
         print(f"  {'':>12}", end="")
         for level in levels_with_games:
-            print(f" {level[:8]:>8}", end="")
+            print(f" {level[:25]:>25}", end="")
         print()
-        print("  " + "-" * (12 + 9 * len(levels_with_games)))
+        print("  " + "-" * (12 + 25 * len(levels_with_games)))
 
         for row_level in levels_with_games:
             print(f"  {row_level:<12}", end="")
             for col_level in levels_with_games:
                 if row_level == col_level:
-                    print(f" {'---':>8}", end="")
+                    print(f" {'---':>25}", end="")
                     continue
                 key = tuple(sorted([row_level, col_level]))
                 data = matchup_wins.get(key, {})
@@ -622,7 +634,7 @@ def print_report(results: dict):
                 col_wins = data.get(col_level, 0)
                 total = row_wins + col_wins
                 if total == 0:
-                    print(f" {'N/A':>8}", end="")
+                    print(f" {'N/A':>25}", end="")
                 else:
                     rate = row_wins / total
                     print(f" {rate:>7.1%}", end="")
@@ -741,12 +753,25 @@ async def run_style_tournament(
     games_finished = 0
     games_timeout = 0
 
+    # Prepare all game configs up front
+    prepared: list[tuple[int, list]] = []
     for i, matchup in enumerate(rosters):
         configs = [profiles[name] for name in matchup]
         random.shuffle(configs)
+        prepared.append((i, configs))
 
-        result = await run_single_game(f"S{i}", configs)
+    # Run games in parallel batches
+    sem = asyncio.Semaphore(CONCURRENCY)
+    completed = 0
 
+    async def _run(idx: int, game_configs: list) -> dict:
+        async with sem:
+            return await run_single_game(f"S{idx}", game_configs)
+
+    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
+    results_list = await asyncio.gather(*tasks)
+
+    for i, result in enumerate(results_list):
         if not result["finished"]:
             games_timeout += 1
             continue
@@ -782,10 +807,11 @@ async def run_style_tournament(
                     key = tuple(sorted([winner_label, label]))
                     matchup_wins[key][winner_label] += 1
 
-        if not quiet and (i + 1) % 100 == 0:
+        completed += 1
+        if not quiet and completed % 100 == 0:
             elapsed = time.time() - start_time
-            rate = (i + 1) / elapsed
-            print(f"  {i + 1}/{num_games} games ({rate:.1f} games/sec)")
+            rate = completed / elapsed
+            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
     return {
@@ -922,7 +948,6 @@ def main():
                 cfg = AgentConfig(
                     inference_level=ll,
                     agent_type="llm",
-                    label=f"llm-{args.llm_preset}({ll})",
                 )
                 apply_llm_preset(cfg, args.llm_preset)
                 config_roster.append(cfg)
