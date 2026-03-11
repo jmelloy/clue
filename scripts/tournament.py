@@ -28,6 +28,7 @@ import argparse
 import asyncio
 import itertools
 import json
+import logging
 import random
 import sys
 import time
@@ -52,9 +53,12 @@ from app.games.clue.agents import (  # noqa: E402
     INFERENCE_ADVANCED,
     INFERENCE_LEVELS,
 )
-from app.games.clue.models import ShowCardAction  # noqa: E402
+from app.games.clue.models import ShowCardAction, EndTurnAction  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 MAX_TURNS = 2000
+CONCURRENCY = 50  # Max parallel games
 
 
 # ---------------------------------------------------------------------------
@@ -122,10 +126,63 @@ class AgentConfig:
     explore_chance: float | None = None
     chat_frequency: float | None = None
     label: str = ""  # Human-readable label for tracking
+    model: str | None = None  # LLM model override (main decisions)
+    nano_model: str | None = None  # LLM model override (quick ops)
 
     @property
     def display_label(self) -> str:
         return self.label or self.inference_level
+
+
+# ---------------------------------------------------------------------------
+# LLM model presets
+# ---------------------------------------------------------------------------
+
+LLM_PRESETS: dict[str, dict[str, str | None]] = {
+    "nano": {
+        "model": "gpt-5-nano",
+        "nano_model": "gpt-5-nano",
+        "description": "All nano — cheapest/fastest, both decisions and show_card",
+    },
+    "mini": {
+        "model": "gpt-5-mini",
+        "nano_model": "gpt-5-mini",
+        "description": "All mini — mid-tier for both decisions and show_card",
+    },
+    "standard": {
+        "model": "gpt-5-mini",
+        "nano_model": "gpt-5-nano",
+        "description": "Standard mix — mini for decisions, nano for show_card",
+    },
+    "large": {
+        "model": "gpt-5.4",
+        "nano_model": "gpt-5-mini",
+        "description": "Large — gpt-5.4 for decisions, mini for show_card",
+    },
+    "large-nano": {
+        "model": "gpt-5.4",
+        "nano_model": "gpt-5-nano",
+        "description": "Large + nano — gpt-5.4 for decisions, nano for show_card",
+    },
+    "random": {
+        "model": None,  # randomly chosen per agent
+        "nano_model": None,
+        "description": "Random — each agent gets a randomly chosen model preset",
+    },
+}
+
+_RANDOM_PRESET_POOL = ["nano", "mini", "standard", "large"]
+
+
+def apply_llm_preset(config: "AgentConfig", preset_name: str) -> "AgentConfig":
+    """Apply a named LLM preset to an AgentConfig, returning a new config."""
+    if preset_name == "random":
+        preset_name = random.choice(_RANDOM_PRESET_POOL)
+    preset = LLM_PRESETS[preset_name]
+    config.model = preset["model"]
+    config.nano_model = preset["nano_model"]
+    config.label = f"llm-{preset_name}({config.inference_level})"
+    return config
 
 
 async def run_single_game(
@@ -196,6 +253,8 @@ async def run_single_game(
                 character=p.character,
                 cards=cards,
                 inference_level=cfg.inference_level,
+                model=cfg.model,
+                nano_model=cfg.nano_model,
             )
             agent_levels[p.id] = cfg.display_label
         else:
@@ -262,7 +321,25 @@ async def run_single_game(
             agent = agents[pid]
             player_state = await game.get_player_state(pid)
             action = await agent.decide_action(state, player_state)
-            result = await game.process_action(pid, action)
+            try:
+                result = await game.process_action(pid, action)
+            except ValueError as e:
+                # LLM agents may produce invalid actions (e.g. wrong room);
+                # retry once with the error detail so the agent can correct.
+                logger.warning("Action rejected for %s: %s – retrying", pid, e)
+                action = await agent.decide_action(
+                    state, player_state, errors=1, rejection_detail=str(e)
+                )
+                try:
+                    result = await game.process_action(pid, action)
+                except ValueError as e2:
+                    # Still failing – force an end_turn to avoid crashing
+                    logger.warning(
+                        "Retry also rejected for %s: %s – forcing end_turn",
+                        pid,
+                        e2,
+                    )
+                    result = await game.process_action(pid, EndTurnAction())
 
             if action.type == "suggest":
                 shown_by = getattr(result, "pending_show_by", None)
@@ -332,6 +409,9 @@ async def run_tournament(
     num_players: int = 3,
     round_robin: bool = True,
     quiet: bool = False,
+    num_llm: int = 0,
+    llm_level: str | None = None,
+    llm_preset: str = "standard",
 ) -> dict:
     """Run the full tournament and return results.
 
@@ -348,6 +428,14 @@ async def run_tournament(
         If True and no fixed roster, cycle through all matchup compositions.
     quiet : bool
         Suppress per-game output.
+    num_llm : int
+        Number of LLM agents per game. In round-robin mode, their inference
+        level is randomly chosen per game (unless llm_level is fixed).
+    llm_level : str | None
+        Fixed inference level for LLM agents. If None, randomly chosen per game.
+    llm_preset : str
+        LLM model preset name (see LLM_PRESETS). Controls which models are
+        used for main decisions vs quick operations.
     """
     # Collect all unique labels for stats tracking
     all_labels: set[str] = set()
@@ -393,13 +481,43 @@ async def run_tournament(
     games_finished = 0
     games_timeout = 0
 
+    # Prepare all game configs up front (randomisation happens here)
+    prepared: list[tuple[int, list]] = []
     for i, game_roster in enumerate(rosters):
-        # Shuffle seats so position bias is controlled
         shuffled = list(game_roster)
         random.shuffle(shuffled)
 
-        result = await run_single_game(f"T{i}", shuffled)
+        # In round-robin mode with LLM agents, build per-game configs
+        if num_llm > 0 and not roster:
+            configs = []
+            for j, entry in enumerate(shuffled):
+                level = entry if isinstance(entry, str) else entry.inference_level
+                if j < num_llm:
+                    ll = llm_level or random.choice(list(INFERENCE_LEVELS))
+                    cfg = AgentConfig(
+                        inference_level=ll,
+                        agent_type="llm",
+                    )
+                    apply_llm_preset(cfg, llm_preset)
+                    configs.append(cfg)
+                else:
+                    configs.append(AgentConfig(inference_level=level, label=level))
+            shuffled = configs
 
+        prepared.append((i, shuffled))
+
+    # Run games in parallel batches
+    sem = asyncio.Semaphore(CONCURRENCY)
+    completed = 0
+
+    async def _run(idx: int, game_configs: list) -> dict:
+        async with sem:
+            return await run_single_game(f"T{idx}", game_configs)
+
+    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
+    results_list = await asyncio.gather(*tasks)
+
+    for i, result in enumerate(results_list):
         if not result["finished"]:
             games_timeout += 1
             if not quiet:
@@ -440,10 +558,11 @@ async def run_tournament(
                     key = tuple(sorted([winner_level, level]))
                     matchup_wins[key][winner_level] += 1
 
-        if not quiet and (i + 1) % 100 == 0:
+        completed += 1
+        if not quiet and completed % (max(num_games // 10, 1)) == 0:
             elapsed = time.time() - start_time
-            rate = (i + 1) / elapsed
-            print(f"  {i + 1}/{num_games} games ({rate:.1f} games/sec)")
+            rate = completed / elapsed
+            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
 
@@ -481,14 +600,14 @@ def print_report(results: dict):
     sorted_stats = sorted(stats.values(), key=lambda s: s.elo, reverse=True)
 
     print(
-        f"  {'Level':<12} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
+        f"  {'Level':<25} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
     )
     print("  " + "-" * 53)
     for s in sorted_stats:
         if s.games == 0:
             continue
         print(
-            f"  {s.inference_level:<12} {s.elo:>6.0f} {s.wins:>6} "
+            f"  {s.inference_level:<25} {s.elo:>6.0f} {s.wins:>6} "
             f"{s.games:>6} {s.win_rate:>6.1%} {s.avg_turns_to_win:>10.1f}"
         )
 
@@ -499,15 +618,15 @@ def print_report(results: dict):
         print("  HEAD-TO-HEAD WIN RATES:")
         print(f"  {'':>12}", end="")
         for level in levels_with_games:
-            print(f" {level[:8]:>8}", end="")
+            print(f" {level[:25]:>25}", end="")
         print()
-        print("  " + "-" * (12 + 9 * len(levels_with_games)))
+        print("  " + "-" * (12 + 25 * len(levels_with_games)))
 
         for row_level in levels_with_games:
             print(f"  {row_level:<12}", end="")
             for col_level in levels_with_games:
                 if row_level == col_level:
-                    print(f" {'---':>8}", end="")
+                    print(f" {'---':>25}", end="")
                     continue
                 key = tuple(sorted([row_level, col_level]))
                 data = matchup_wins.get(key, {})
@@ -515,7 +634,7 @@ def print_report(results: dict):
                 col_wins = data.get(col_level, 0)
                 total = row_wins + col_wins
                 if total == 0:
-                    print(f" {'N/A':>8}", end="")
+                    print(f" {'N/A':>25}", end="")
                 else:
                     rate = row_wins / total
                     print(f" {rate:>7.1%}", end="")
@@ -634,12 +753,25 @@ async def run_style_tournament(
     games_finished = 0
     games_timeout = 0
 
+    # Prepare all game configs up front
+    prepared: list[tuple[int, list]] = []
     for i, matchup in enumerate(rosters):
         configs = [profiles[name] for name in matchup]
         random.shuffle(configs)
+        prepared.append((i, configs))
 
-        result = await run_single_game(f"S{i}", configs)
+    # Run games in parallel batches
+    sem = asyncio.Semaphore(CONCURRENCY)
+    completed = 0
 
+    async def _run(idx: int, game_configs: list) -> dict:
+        async with sem:
+            return await run_single_game(f"S{idx}", game_configs)
+
+    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
+    results_list = await asyncio.gather(*tasks)
+
+    for i, result in enumerate(results_list):
         if not result["finished"]:
             games_timeout += 1
             continue
@@ -675,10 +807,11 @@ async def run_style_tournament(
                     key = tuple(sorted([winner_label, label]))
                     matchup_wins[key][winner_label] += 1
 
-        if not quiet and (i + 1) % 100 == 0:
+        completed += 1
+        if not quiet and completed % 100 == 0:
             elapsed = time.time() - start_time
-            rate = (i + 1) / elapsed
-            print(f"  {i + 1}/{num_games} games ({rate:.1f} games/sec)")
+            rate = completed / elapsed
+            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
     return {
@@ -746,8 +879,16 @@ def main():
     parser.add_argument(
         "--llm-level",
         type=str,
-        default="advanced",
         help="Inference level for LLM agents (default: advanced).",
+    )
+    parser.add_argument(
+        "--llm-preset",
+        type=str,
+        default="standard",
+        choices=list(LLM_PRESETS.keys()),
+        help="LLM model preset: "
+        + ", ".join(f"'{k}' ({v['description']})" for k, v in LLM_PRESETS.items())
+        + " (default: standard).",
     )
     parser.add_argument(
         "--style-test",
@@ -796,47 +937,27 @@ def main():
                     f"Must be one of: {INFERENCE_LEVELS}"
                 )
 
-    # Build AgentConfig roster with LLM agents if requested
+    # Build AgentConfig roster with LLM agents if requested (fixed roster only)
     config_roster: list[AgentConfig] | None = None
-    if args.llm > 0:
-        if roster:
-            # Replace first N slots with LLM agents
-            config_roster = []
-            for i, level in enumerate(roster):
-                if i < args.llm:
-                    config_roster.append(
-                        AgentConfig(
-                            inference_level=args.llm_level,
-                            agent_type="llm",
-                            label=f"llm({args.llm_level})",
-                        )
+    if args.llm > 0 and roster:
+        # Replace first N slots with LLM agents
+        config_roster = []
+        for i, level in enumerate(roster):
+            if i < args.llm:
+                ll = args.llm_level or random.choice(INFERENCE_LEVELS)
+                cfg = AgentConfig(
+                    inference_level=ll,
+                    agent_type="llm",
+                )
+                apply_llm_preset(cfg, args.llm_preset)
+                config_roster.append(cfg)
+            else:
+                config_roster.append(
+                    AgentConfig(
+                        inference_level=level,
+                        label=level,
                     )
-                else:
-                    config_roster.append(
-                        AgentConfig(
-                            inference_level=level,
-                            label=level,
-                        )
-                    )
-        else:
-            # Default: N LLM agents + fill remaining with advanced
-            config_roster = []
-            for i in range(args.players):
-                if i < args.llm:
-                    config_roster.append(
-                        AgentConfig(
-                            inference_level=args.llm_level,
-                            agent_type="llm",
-                            label=f"llm({args.llm_level})",
-                        )
-                    )
-                else:
-                    config_roster.append(
-                        AgentConfig(
-                            inference_level=INFERENCE_ADVANCED,
-                            label="advanced",
-                        )
-                    )
+                )
 
     print(f"Running {args.games} tournament games...")
     if config_roster:
@@ -844,6 +965,13 @@ def main():
         print(f"  Fixed roster: {labels}")
     elif roster:
         print(f"  Fixed roster: {roster}")
+    elif args.llm > 0:
+        ll_desc = args.llm_level or "random"
+        print(
+            f"  Round-robin mode, {args.players} players per game, "
+            f"{args.llm} LLM agent(s) with inference={ll_desc}, "
+            f"preset={args.llm_preset} per game"
+        )
     else:
         print(f"  Round-robin mode, {args.players} players per game")
 
@@ -853,6 +981,9 @@ def main():
             roster=config_roster or roster,
             num_players=args.players,
             quiet=args.quiet,
+            num_llm=args.llm if not config_roster else 0,
+            llm_level=args.llm_level,
+            llm_preset=args.llm_preset,
         )
     )
 
