@@ -81,12 +81,12 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   overflow: hidden;
 }
 
-/* Sizes: tiny (32x44), mini (40x56), small (44x62), medium (62x88), large (100x140) */
+/* Sizes: tiny (32x44), mini (40x56), small (44x62), medium (62x88), large (80x112) */
 .card-tiny { width: 32px; height: 44px; border-radius: 4px; }
 .card-mini { width: 40px; height: 56px; }
 .card-small { width: 44px; height: 62px; }
 .card-medium { width: 62px; height: 88px; }
-.card-large { width: 100px; height: 140px; border-radius: 8px; }
+.card-large { width: 80px; height: 112px; border-radius: 8px; }
 
 .playing-card.suit-hearts,
 .playing-card.suit-diamonds {
@@ -146,10 +146,10 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 }
 
 .card-large .card-pips {
-  top: 24px;
-  bottom: 24px;
-  left: 10px;
-  right: 10px;
+  top: 20px;
+  bottom: 20px;
+  left: 8px;
+  right: 8px;
 }
 
 .pip {
@@ -159,10 +159,10 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   opacity: 0.9;
 }
 
-.card-large .pip { font-size: 1.1rem; }
+.card-large .pip { font-size: 0.9rem; }
 
 .pips-1 .pip { font-size: 1.8rem; }
-.card-large .pips-1 .pip { font-size: 2.8rem; }
+.card-large .pips-1 .pip { font-size: 2.2rem; }
 
 .pips-2 .pip,
 .pips-3 .pip {
@@ -171,7 +171,7 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 
 .card-large .pips-2 .pip,
 .card-large .pips-3 .pip {
-  font-size: 1.3rem;
+  font-size: 1.05rem;
 }
 
 .pips-8 .pip { font-size: 0.72rem; }
@@ -182,9 +182,9 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 .card-small .pips-9 .pip { font-size: 0.5rem; }
 .card-small .pips-10 .pip { font-size: 0.45rem; }
 
-.card-large .pips-8 .pip { font-size: 0.9rem; }
-.card-large .pips-9 .pip { font-size: 0.82rem; }
-.card-large .pips-10 .pip { font-size: 0.75rem; }
+.card-large .pips-8 .pip { font-size: 0.72rem; }
+.card-large .pips-9 .pip { font-size: 0.65rem; }
+.card-large .pips-10 .pip { font-size: 0.6rem; }
 
 .card-face-center {
   display: flex;
@@ -194,7 +194,7 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   opacity: 0.85;
 }
 
-.card-large .card-face-center { font-size: 3.2rem; }
+.card-large .card-face-center { font-size: 2.5rem; }
 
 .card-face-symbol {
   line-height: 1;
