@@ -2441,6 +2441,17 @@ async def _holdem_notify_new_hand(
 # ---------------------------------------------------------------------------
 
 
+async def _holdem_agent_fallback(
+    game_id: str, player_id: str, player_state
+) -> None:
+    """Try to check or fold for an agent whose action failed."""
+    if player_state and player_state.available_actions:
+        if "check" in player_state.available_actions:
+            await _holdem_execute_action(game_id, player_id, CheckAction())
+        elif "fold" in player_state.available_actions:
+            await _holdem_execute_action(game_id, player_id, FoldAction())
+
+
 async def _run_holdem_agent_loop(game_id: str):
     """Background task that drives holdem agent players."""
     agents = _holdem_agents.get(game_id)
@@ -2489,8 +2500,13 @@ async def _run_holdem_agent_loop(game_id: str):
                             # If game advanced to new hand, notify
                             if state.whose_turn:
                                 await _holdem_notify_new_hand(game_id, state, game)
-                        except ValueError:
-                            pass
+                        except Exception:
+                            logger.warning(
+                                "Holdem agent %s rebuy failed in game %s",
+                                agent_id,
+                                game_id,
+                                exc_info=True,
+                            )
 
                 # Re-check after potential rebuys
                 if not state or state.status != "playing":
@@ -2514,30 +2530,57 @@ async def _run_holdem_agent_loop(game_id: str):
                     await asyncio.sleep(0.5)
                     continue
 
-                action = agent.decide_action(state, player_state)
-                logger.info(
-                    "Holdem agent %s taking action %s in game %s",
-                    whose_turn,
-                    action.type,
-                    game_id,
-                )
-
                 try:
-                    await _holdem_execute_action(game_id, whose_turn, action)
-                except ValueError as exc:
-                    logger.warning("Holdem agent %s action failed: %s", whose_turn, exc)
-                    # Fallback: check or fold
-                    if "check" in player_state.available_actions:
-                        await _holdem_execute_action(game_id, whose_turn, CheckAction())
-                    elif "fold" in player_state.available_actions:
-                        await _holdem_execute_action(game_id, whose_turn, FoldAction())
-
-                # Chat
-                chat_msg = agent.generate_chat(action.type)
-                if chat_msg:
-                    await _holdem_broadcast_chat(
-                        game_id, f"{agent.name}: {chat_msg}", whose_turn
+                    action = agent.decide_action(state, player_state)
+                    logger.info(
+                        "Holdem agent %s taking action %s in game %s",
+                        whose_turn,
+                        action.type,
+                        game_id,
                     )
+
+                    try:
+                        await _holdem_execute_action(game_id, whose_turn, action)
+                    except ValueError as exc:
+                        logger.warning(
+                            "Holdem agent %s action failed: %s", whose_turn, exc
+                        )
+                        # Fallback: check or fold
+                        await _holdem_agent_fallback(
+                            game_id, whose_turn, player_state
+                        )
+
+                    # Chat (non-critical — don't let it kill the loop)
+                    try:
+                        chat_msg = agent.generate_chat(action.type)
+                        if chat_msg:
+                            await _holdem_broadcast_chat(
+                                game_id, f"{agent.name}: {chat_msg}", whose_turn
+                            )
+                    except Exception:
+                        logger.warning(
+                            "Holdem agent %s chat failed in game %s",
+                            whose_turn,
+                            game_id,
+                            exc_info=True,
+                        )
+
+                except Exception:
+                    logger.exception(
+                        "Holdem agent %s crashed in game %s, attempting fallback",
+                        whose_turn,
+                        game_id,
+                    )
+                    try:
+                        # Re-fetch state in case it changed
+                        ps = await game.get_player_state(whose_turn)
+                        await _holdem_agent_fallback(game_id, whose_turn, ps)
+                    except Exception:
+                        logger.exception(
+                            "Holdem agent %s fallback also failed in game %s",
+                            whose_turn,
+                            game_id,
+                        )
             else:
                 # Human player's turn or no turn — poll
                 await asyncio.sleep(0.5)
