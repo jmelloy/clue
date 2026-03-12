@@ -29,6 +29,8 @@ import asyncio
 import itertools
 import json
 import logging
+import multiprocessing
+import os
 import random
 import sys
 import time
@@ -58,7 +60,8 @@ from app.games.clue.models import ShowCardAction, EndTurnAction  # noqa: E402
 logger = logging.getLogger(__name__)
 
 MAX_TURNS = 2000
-CONCURRENCY = 50  # Max parallel games
+DEFAULT_WORKERS = min(os.cpu_count() or 4, 8)  # CPUs capped at 8
+BATCH_SIZE = 20  # Games per worker task
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +390,29 @@ async def run_single_game(
 
 
 # ---------------------------------------------------------------------------
+# Multiprocessing worker
+# ---------------------------------------------------------------------------
+
+
+def _run_game_batch(args: tuple) -> list[dict]:
+    """Worker function: run a batch of games in a subprocess.
+
+    Each worker gets its own asyncio event loop and fakeredis instance.
+    Must be a top-level function so it can be pickled by multiprocessing.
+    """
+    batch = args  # list of (game_id, roster_configs)
+
+    async def _run_batch():
+        results = []
+        for game_id, configs in batch:
+            result = await run_single_game(game_id, configs)
+            results.append(result)
+        return results
+
+    return asyncio.run(_run_batch())
+
+
+# ---------------------------------------------------------------------------
 # Tournament orchestrator
 # ---------------------------------------------------------------------------
 
@@ -405,7 +431,7 @@ def generate_round_robin_rosters(
     return [list(r) for r in rosters]
 
 
-async def run_tournament(
+def run_tournament(
     num_games: int = 1000,
     roster: list[str] | list[AgentConfig] | None = None,
     num_players: int = 3,
@@ -414,6 +440,7 @@ async def run_tournament(
     num_llm: int = 0,
     llm_level: str | None = None,
     llm_preset: str = "standard",
+    workers: int = DEFAULT_WORKERS,
 ) -> dict:
     """Run the full tournament and return results.
 
@@ -438,6 +465,8 @@ async def run_tournament(
     llm_preset : str
         LLM model preset name (see LLM_PRESETS). Controls which models are
         used for main decisions vs quick operations.
+    workers : int
+        Number of worker processes.
     """
     # Collect all unique labels for stats tracking
     all_labels: set[str] = set()
@@ -482,7 +511,7 @@ async def run_tournament(
     games_timeout = 0
 
     # Prepare all game configs up front (randomisation happens here)
-    prepared: list[tuple[int, list]] = []
+    prepared: list[tuple[str, list]] = []
     for i, game_roster in enumerate(rosters):
         shuffled = list(game_roster)
         random.shuffle(shuffled)
@@ -506,71 +535,64 @@ async def run_tournament(
                     configs.append(AgentConfig(inference_level=level, label=level))
             shuffled = configs
 
-        prepared.append((i, shuffled))
+        prepared.append((f"T{i}", shuffled))
 
-    # Run games in parallel batches
-    sem = asyncio.Semaphore(CONCURRENCY)
+    # Split into batches and run across worker processes
+    batches = []
+    for i in range(0, len(prepared), BATCH_SIZE):
+        batches.append(prepared[i : i + BATCH_SIZE])
+
     completed = 0
+    with multiprocessing.Pool(processes=workers) as pool:
+        for batch_results in pool.imap_unordered(_run_game_batch, batches):
+            for result in batch_results:
+                if not result["finished"]:
+                    games_timeout += 1
+                    if not quiet:
+                        print(
+                            f"  Game {result['id']}: TIMEOUT after {result['actions']} actions"
+                        )
+                    continue
 
-    async def _run(idx: int, game_configs: list) -> dict:
-        async with sem:
-            return await run_single_game(f"T{idx}", game_configs)
+                games_finished += 1
+                winner_level = result["winner_level"]
 
-    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
-    results_list = await asyncio.gather(*tasks)
+                # Update per-level stats (lazily create for wanderers / custom labels)
+                levels_in_game = list(result["agent_levels"].values())
+                for level in levels_in_game:
+                    if level not in stats:
+                        stats[level] = PlayerStats(inference_level=level)
+                    stats[level].games += 1
 
-    for i, result in enumerate(results_list):
-        if not result["finished"]:
-            games_timeout += 1
-            if not quiet:
-                print(
-                    f"  Game {result['id']}: TIMEOUT after {result['actions']} actions"
-                )
-            continue
+                if winner_level:
+                    stats[winner_level].wins += 1
+                    stats[winner_level].total_turns_to_win += result["turns"]
 
-        games_finished += 1
-        winner_level = result["winner_level"]
+                    # Mark losses for non-winners
+                    for pid, level in result["agent_levels"].items():
+                        if pid != result["winner"]:
+                            stats[level].losses += 1
 
-        # Update per-level stats (lazily create for wanderers / custom labels)
-        levels_in_game = list(result["agent_levels"].values())
-        # if not quiet:
-        #     print(
-        #         f"  Game {result['id']}: Winner={winner_level}, Levels={levels_in_game} time={result['time']:.1f}s"
-        #     )
-        for level in levels_in_game:
-            if level not in stats:
-                stats[level] = PlayerStats(inference_level=level)
-            stats[level].games += 1
+                    # ELO updates: winner vs each loser
+                    for pid, level in result["agent_levels"].items():
+                        if pid != result["winner"] and level != winner_level:
+                            w_elo = stats[winner_level].elo
+                            l_elo = stats[level].elo
+                            new_w, new_l = update_elo(w_elo, l_elo)
+                            stats[winner_level].elo = new_w
+                            stats[level].elo = new_l
 
-        if winner_level:
-            stats[winner_level].wins += 1
-            stats[winner_level].total_turns_to_win += result["turns"]
+                    # Track matchup results
+                    for pid, level in result["agent_levels"].items():
+                        if pid != result["winner"]:
+                            key = tuple(sorted([winner_level, level]))
+                            matchup_wins[key][winner_level] += 1
 
-            # Mark losses for non-winners
-            for pid, level in result["agent_levels"].items():
-                if pid != result["winner"]:
-                    stats[level].losses += 1
-
-            # ELO updates: winner vs each loser
-            for pid, level in result["agent_levels"].items():
-                if pid != result["winner"] and level != winner_level:
-                    w_elo = stats[winner_level].elo
-                    l_elo = stats[level].elo
-                    new_w, new_l = update_elo(w_elo, l_elo)
-                    stats[winner_level].elo = new_w
-                    stats[level].elo = new_l
-
-            # Track matchup results
-            for pid, level in result["agent_levels"].items():
-                if pid != result["winner"]:
-                    key = tuple(sorted([winner_level, level]))
-                    matchup_wins[key][winner_level] += 1
-
-        completed += 1
-        if not quiet and completed % (max(num_games // 10, 1)) == 0:
-            elapsed = time.time() - start_time
-            rate = completed / elapsed
-            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
+                completed += 1
+                if not quiet and completed % (max(num_games // 10, 1)) == 0:
+                    elapsed = time.time() - start_time
+                    rate = completed / elapsed
+                    print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
 
@@ -691,10 +713,11 @@ def print_report(results: dict):
 # ---------------------------------------------------------------------------
 
 
-async def run_style_tournament(
+def run_style_tournament(
     num_games: int = 200,
     inference_level: str = INFERENCE_STANDARD,
     quiet: bool = False,
+    workers: int = DEFAULT_WORKERS,
 ) -> dict:
     """Test different style parameter combinations at a fixed inference level.
 
@@ -764,64 +787,61 @@ async def run_style_tournament(
     games_timeout = 0
 
     # Prepare all game configs up front
-    prepared: list[tuple[int, list]] = []
+    prepared: list[tuple[str, list]] = []
     for i, matchup in enumerate(rosters):
         configs = [profiles[name] for name in matchup]
         random.shuffle(configs)
-        prepared.append((i, configs))
+        prepared.append((f"S{i}", configs))
 
-    # Run games in parallel batches
-    sem = asyncio.Semaphore(CONCURRENCY)
+    # Split into batches and run across worker processes
+    batches = []
+    for i in range(0, len(prepared), BATCH_SIZE):
+        batches.append(prepared[i : i + BATCH_SIZE])
+
     completed = 0
+    with multiprocessing.Pool(processes=workers) as pool:
+        for batch_results in pool.imap_unordered(_run_game_batch, batches):
+            for result in batch_results:
+                if not result["finished"]:
+                    games_timeout += 1
+                    continue
 
-    async def _run(idx: int, game_configs: list) -> dict:
-        async with sem:
-            return await run_single_game(f"S{idx}", game_configs)
+                games_finished += 1
+                winner_label = result.get("winner_level")
 
-    tasks = [_run(idx, cfgs) for idx, cfgs in prepared]
-    results_list = await asyncio.gather(*tasks)
+                levels_in_game = list(result["agent_levels"].values())
+                for label in levels_in_game:
+                    if label in stats:
+                        stats[label].games += 1
 
-    for i, result in enumerate(results_list):
-        if not result["finished"]:
-            games_timeout += 1
-            continue
+                if winner_label and winner_label in stats:
+                    stats[winner_label].wins += 1
+                    stats[winner_label].total_turns_to_win += result["turns"]
 
-        games_finished += 1
-        winner_label = result.get("winner_level")
+                    for pid, label in result["agent_levels"].items():
+                        if pid != result["winner"] and label in stats:
+                            stats[label].losses += 1
 
-        levels_in_game = list(result["agent_levels"].values())
-        for label in levels_in_game:
-            if label in stats:
-                stats[label].games += 1
+                    # ELO
+                    for pid, label in result["agent_levels"].items():
+                        if pid != result["winner"] and label != winner_label:
+                            if label in stats and winner_label in stats:
+                                w_elo = stats[winner_label].elo
+                                l_elo = stats[label].elo
+                                new_w, new_l = update_elo(w_elo, l_elo)
+                                stats[winner_label].elo = new_w
+                                stats[label].elo = new_l
 
-        if winner_label and winner_label in stats:
-            stats[winner_label].wins += 1
-            stats[winner_label].total_turns_to_win += result["turns"]
+                    for pid, label in result["agent_levels"].items():
+                        if pid != result["winner"]:
+                            key = tuple(sorted([winner_label, label]))
+                            matchup_wins[key][winner_label] += 1
 
-            for pid, label in result["agent_levels"].items():
-                if pid != result["winner"] and label in stats:
-                    stats[label].losses += 1
-
-            # ELO
-            for pid, label in result["agent_levels"].items():
-                if pid != result["winner"] and label != winner_label:
-                    if label in stats and winner_label in stats:
-                        w_elo = stats[winner_label].elo
-                        l_elo = stats[label].elo
-                        new_w, new_l = update_elo(w_elo, l_elo)
-                        stats[winner_label].elo = new_w
-                        stats[label].elo = new_l
-
-            for pid, label in result["agent_levels"].items():
-                if pid != result["winner"]:
-                    key = tuple(sorted([winner_label, label]))
-                    matchup_wins[key][winner_label] += 1
-
-        completed += 1
-        if not quiet and completed % 100 == 0:
-            elapsed = time.time() - start_time
-            rate = completed / elapsed
-            print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
+                completed += 1
+                if not quiet and completed % 100 == 0:
+                    elapsed = time.time() - start_time
+                    rate = completed / elapsed
+                    print(f"  {completed}/{num_games} games ({rate:.1f} games/sec)")
 
     elapsed = time.time() - start_time
     return {
@@ -912,6 +932,13 @@ def main():
         default="standard",
         help="Inference level to use for style tests (default: standard).",
     )
+    parser.add_argument(
+        "--workers",
+        "-w",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Number of worker processes (default: {DEFAULT_WORKERS}).",
+    )
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -925,14 +952,14 @@ def main():
 
     if args.style_test:
         print(
-            f"Running {args.games} style-parameter games at inference={args.style_level}..."
+            f"Running {args.games} style-parameter games at inference={args.style_level} "
+            f"({args.workers} workers)..."
         )
-        results = asyncio.run(
-            run_style_tournament(
-                num_games=args.games,
-                inference_level=args.style_level,
-                quiet=args.quiet,
-            )
+        results = run_style_tournament(
+            num_games=args.games,
+            inference_level=args.style_level,
+            quiet=args.quiet,
+            workers=args.workers,
         )
         print_report(results)
         return
@@ -969,7 +996,7 @@ def main():
                     )
                 )
 
-    print(f"Running {args.games} tournament games...")
+    print(f"Running {args.games} tournament games ({args.workers} workers)...")
     if config_roster:
         labels = [c.display_label for c in config_roster]
         print(f"  Fixed roster: {labels}")
@@ -985,16 +1012,15 @@ def main():
     else:
         print(f"  Round-robin mode, {args.players} players per game")
 
-    results = asyncio.run(
-        run_tournament(
-            num_games=args.games,
-            roster=config_roster or roster,
-            num_players=args.players,
-            quiet=args.quiet,
-            num_llm=args.llm if not config_roster else 0,
-            llm_level=args.llm_level,
-            llm_preset=args.llm_preset,
-        )
+    results = run_tournament(
+        num_games=args.games,
+        roster=config_roster or roster,
+        num_players=args.players,
+        quiet=args.quiet,
+        num_llm=args.llm if not config_roster else 0,
+        llm_level=args.llm_level,
+        llm_preset=args.llm_preset,
+        workers=args.workers,
     )
 
     print_report(results)
