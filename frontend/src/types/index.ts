@@ -11,6 +11,8 @@ export type GameType = 'clue' | 'holdem'
 export type GameStatus = 'waiting' | 'playing' | 'finished'
 export type PlayerType = 'human' | 'agent' | 'llm_agent' | 'wanderer'
 export type Theme = 'dark' | 'light' | 'vintage'
+/** Image-based deck style, or 'css' for the built-in CSS/Unicode rendering. */
+export type Deck = 'css' | 'classic' | 'modern' | 'vintage'
 
 // ---------------------------------------------------------------------------
 // Clue types

@@ -2,8 +2,8 @@
 """
 Generate images of a standard 52-card deck in 3 different visual styles.
 
-Output structure:
-  scripts/card_images/
+Output structure (default):
+  frontend/public/images/cards/
     classic/   - Traditional serif style, cream background, ornamental border
     modern/    - Minimalist geometric style, white background, colour accent bar
     vintage/   - Aged-paper retro style, Liberation Serif, double-line border
@@ -742,8 +742,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default=str(Path(__file__).parent / "card_images"),
-        help="Output directory (default: scripts/card_images/)",
+        default=str(Path(__file__).parent.parent / "frontend" / "public" / "images" / "cards"),
+        help="Output directory (default: frontend/public/images/cards/)",
     )
     parser.add_argument(
         "--style",
