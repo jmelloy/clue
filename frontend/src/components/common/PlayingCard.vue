@@ -30,13 +30,13 @@
         <span v-for="(pos, i) in pips" :key="i" class="pip" :style="{
           top: pos[0] + '%',
           left: pos[1] + '%',
-          transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)'
+          transform: 'translate(-50%,-50%)'
         }">{{ suitSymbol }}</span>
       </div>
     </template>
     <span class="card-corner bottom-right">
-      <span class="card-rank">{{ rank }}</span>
       <span class="card-suit-small">{{ suitSymbol }}</span>
+      <span class="card-rank">{{ rank }}</span>
     </span>
   </div>
 </template>

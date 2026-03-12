@@ -233,21 +233,14 @@ class Theme:
         for row_pct, col_pct in PIP_LAYOUTS.get(count, []):
             px = left + int(area_w * col_pct / 100)
             py = top + int(area_h * row_pct / 100)
-            # rotate bottom pips 180°
             bbox = draw.textbbox((0, 0), symbol, font=pip_font)
             pw = bbox[2] - bbox[0]
             ph = bbox[3] - bbox[1]
             x = px - pw // 2
             y = py - ph // 2
-            if row_pct > 50:
-                # render on a small sub-image and rotate
-                tmp = Image.new("RGBA", (pw + 4, ph + 4), (0, 0, 0, 0))
-                td = ImageDraw.Draw(tmp)
-                td.text((2, 2), symbol, font=pip_font, fill=color)
-                tmp = tmp.rotate(180)
-                draw._image.paste(tmp, (x - 2, y - 2), tmp)
-            else:
-                draw.text((x, y), symbol, font=pip_font, fill=color)
+            # All pips rendered in the same orientation — rotating Unicode symbols
+            # 180° makes them look wrong (e.g. ♠ looks like ♥), so keep them upright.
+            draw.text((x, y), symbol, font=pip_font, fill=color)
 
 
 # ---------------------------------------------------------------------------
@@ -302,24 +295,28 @@ class ClassicTheme(Theme):
             centered_text(draw, pad_x + 14, pad_y + 38, symbol, suit_font, color)
         else:
             cx = self.W - pad_x - 14
-            cy = self.H - pad_y - 14
-            # render upside-down
+            # Compute glyph heights so we can position without overflow.
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
+            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
+            sw = bbox_s[2] - bbox_s[0]
+            sh = bbox_s[3] - bbox_s[1]
+
+            # Anchor rank's bottom edge to the bottom margin; suit goes above.
+            # Extra 4 px keeps the rank glyph clear of the rounded corner arc.
+            cy = self.H - pad_y - 4 - rh // 2        # rank centre y
+            suit_cy = cy - rh // 2 - 6 - sh // 2     # suit centre y (above rank)
+
             tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
             tmp_r = tmp_r.rotate(180)
             draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
 
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-            sy = cy + rh // 2 + 6
             tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
             tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, sy - 2), tmp_s)
+            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
@@ -412,23 +409,25 @@ class ModernTheme(Theme):
             centered_text(draw, pad_x + 16, pad_y + 42, symbol, suit_font, color)
         else:
             cx = self.W - pad_x - 16
-            cy = self.H - pad_y - 16
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
+            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
+            sw = bbox_s[2] - bbox_s[0]
+            sh = bbox_s[3] - bbox_s[1]
+
+            cy = self.H - pad_y - 4 - rh // 2
+            suit_cy = cy - rh // 2 - 6 - sh // 2
+
             tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
             tmp_r = tmp_r.rotate(180)
             draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
 
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-            sy = cy + rh // 2 + 8
             tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
             tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, sy - 2), tmp_s)
+            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
 
     def draw_center(self, draw, rank, suit, fonts):
         # accent bars drawn here because we need suit colour
@@ -545,23 +544,25 @@ class VintageTheme(Theme):
             centered_text(draw, pad_x + 12, pad_y + 36, symbol, suit_font, color)
         else:
             cx = self.W - pad_x - 12
-            cy = self.H - pad_y - 12
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
+            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
+            sw = bbox_s[2] - bbox_s[0]
+            sh = bbox_s[3] - bbox_s[1]
+
+            cy = self.H - pad_y - 4 - rh // 2
+            suit_cy = cy - rh // 2 - 6 - sh // 2
+
             tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
             tmp_r = tmp_r.rotate(180)
             draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
 
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-            sy = cy + rh // 2 + 8
             tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
             ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
             tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, sy - 2), tmp_s)
+            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
