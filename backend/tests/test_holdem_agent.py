@@ -151,25 +151,28 @@ class TestHoldemAgentDecisions:
         assert agent.slowplay_frequency == 1.0
         assert agent.chat_frequency == 0.0
 
-    def test_generate_chat_sometimes_returns_none(self):
+    @pytest.mark.asyncio
+    async def test_generate_chat_sometimes_returns_none(self):
         """Chat generation is probabilistic — just verify it returns string or None."""
         agent = HoldemAgent("P1", "TestBot")
         results = set()
         for _ in range(100):
-            result = agent.generate_chat("fold")
+            result = await agent.generate_chat("fold")
             results.add(type(result))
         # Should get both None and str across many tries
         assert type(None) in results or str in results
 
-    def test_chat_frequency_zero_never_chats(self):
+    @pytest.mark.asyncio
+    async def test_chat_frequency_zero_never_chats(self):
         agent = HoldemAgent("P1", "TestBot", chat_frequency=0.0)
         for _ in range(50):
-            assert agent.generate_chat("fold") is None
+            assert await agent.generate_chat("fold") is None
 
-    def test_chat_frequency_one_always_chats(self):
+    @pytest.mark.asyncio
+    async def test_chat_frequency_one_always_chats(self):
         agent = HoldemAgent("P1", "TestBot", chat_frequency=1.0)
         for _ in range(50):
-            assert agent.generate_chat("fold") is not None
+            assert await agent.generate_chat("fold") is not None
 
 
 # ---------------------------------------------------------------------------
