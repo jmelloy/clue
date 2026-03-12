@@ -98,6 +98,7 @@ class HoldemHandResult(BaseModel):
     winning_hand: str = ""
     pot: int = 0
     player_hands: dict[str, list[Card]] = Field(default_factory=dict)
+    community_cards: list[Card] = Field(default_factory=list)
 
 
 class HoldemPlayerState(HoldemGameState):
@@ -194,6 +195,7 @@ class ShowdownResult(HoldemActionResultBase):
     winning_hand: str = ""
     pot: int = 0
     player_hands: dict[str, list[Card]] = Field(default_factory=dict)
+    community_cards: list[Card] = Field(default_factory=list)
 
 
 HoldemActionResult = Annotated[
@@ -263,6 +265,7 @@ class HoldemShowdownMessage(HoldemWSMessage):
     winning_hand: str = ""
     pot: int = 0
     player_hands: dict[str, list[Card]] = Field(default_factory=dict)
+    community_cards: list[Card] = Field(default_factory=list)
 
 
 class HoldemNewHandMessage(HoldemWSMessage):

@@ -2234,6 +2234,7 @@ async def _holdem_execute_action(game_id: str, player_id: str, action):
                 winning_hand=hand_result.winning_hand,
                 pot=hand_result.pot,
                 player_hands=hand_result.player_hands,
+                community_cards=hand_result.community_cards,
             ),
         )
         winner_names = ", ".join(
