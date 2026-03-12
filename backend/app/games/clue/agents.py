@@ -53,7 +53,7 @@ _GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in (
 INFERENCE_NONE = "none"  # Only tracks own cards
 INFERENCE_BASIC = "basic"  # Tracks cards directly shown to agent
 INFERENCE_STANDARD = "standard"  # + negative knowledge + immediate inference (no cascade)
-INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions to narrow solution
+INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions and cascade inference to narrow solution
 
 INFERENCE_LEVELS = [
     INFERENCE_NONE,
