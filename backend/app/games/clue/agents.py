@@ -753,7 +753,6 @@ class BaseAgent(ABC):
         )
         if is_new and self.inference_level == INFERENCE_ADVANCED:
             self._run_inference()
-        if is_new and self.inference_level == INFERENCE_ADVANCED:
             self._run_unrefuted_inference()
         self._enqueue_save_knowledge()
 
