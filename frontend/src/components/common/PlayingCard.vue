@@ -178,6 +178,10 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 .pips-9 .pip { font-size: 0.65rem; }
 .pips-10 .pip { font-size: 0.6rem; }
 
+.card-small .pips-8 .pip { font-size: 0.55rem; }
+.card-small .pips-9 .pip { font-size: 0.5rem; }
+.card-small .pips-10 .pip { font-size: 0.45rem; }
+
 .card-large .pips-8 .pip { font-size: 0.9rem; }
 .card-large .pips-9 .pip { font-size: 0.82rem; }
 .card-large .pips-10 .pip { font-size: 0.75rem; }
