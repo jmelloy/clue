@@ -356,13 +356,13 @@ class ClassicTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        cx_offset = 42  # horizontal center of corner column
-        top_y = 30      # top of rank text
+        cx_offset = 48  # horizontal center of corner column
+        top_y = 34      # top of rank text
         if top_left:
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rh = bbox_r[3] - bbox_r[1]
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
-            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
             _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
                                  self.W, self.H, cx_offset, top_y)
@@ -452,13 +452,13 @@ class ModernTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        cx_offset = 40
-        top_y = 26
+        cx_offset = 46
+        top_y = 30
         if top_left:
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rh = bbox_r[3] - bbox_r[1]
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
-            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
             _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
                                  self.W, self.H, cx_offset, top_y)
@@ -572,13 +572,13 @@ class VintageTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        cx_offset = 42
-        top_y = 32
+        cx_offset = 48
+        top_y = 36
         if top_left:
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rh = bbox_r[3] - bbox_r[1]
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
-            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
             _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
                                  self.W, self.H, cx_offset, top_y)
@@ -670,7 +670,7 @@ def build_fonts(theme_name: str, W: int, H: int) -> dict:
     cfg = THEME_FONTS[theme_name]
     scale = W / 500  # relative to 500 px wide reference
     return {
-        "rank": load_font(cfg["rank_name"], int(52 * scale)),
+        "rank": load_font(cfg["rank_name"], int(46 * scale)),
         "suit": load_font(cfg["suit_name"], int(42 * scale)),
         "pip": load_font(cfg["pip_name"], int(80 * scale)),
         "face_rank": load_font(cfg["face_name"], int(160 * scale)),
