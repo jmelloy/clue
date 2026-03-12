@@ -125,7 +125,7 @@
                 <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
                   :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }">
                   <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" />
-                  <PlayingCard v-else :faceDown="true" size="large" />
+                  <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" />
                 </div>
               </TransitionGroup>
             </div>
@@ -176,8 +176,8 @@
               :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
           </template>
           <template v-else>
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" />
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" :rotation="deckRotation" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" :rotation="deckRotation" />
           </template>
         </div>
       </div>
@@ -452,6 +452,14 @@ const showRebuyPrompt = ref(false)
 
 const communityCards = computed(() => props.gameState?.community_cards ?? [])
 const activePlayers = computed(() => props.gameState?.players ?? [])
+
+// Small rotation for face-down card backs — changes each hand to give the
+// "dealt from a shuffled deck" visual. Value cycles gently between -4 and 4 deg.
+const deckRotation = computed(() => {
+  const h = props.gameState?.hand_number ?? 0
+  const rotations = [-4, -2, 0, 2, 4, 3, -3, 1, -1]
+  return rotations[h % rotations.length]
+})
 
 const communityCardSlots = computed(() => {
   const cards = communityCards.value
@@ -1324,13 +1332,13 @@ watch(
 }
 
 .hole-card {
-  transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0px));
+  transform: rotate(calc(var(--tilt, 0deg) + var(--deck-rotation, 0deg))) translateY(var(--lift, 0px));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: default;
 }
 
 .hole-card:hover {
-  transform: rotate(0deg) translateY(-4px) scale(1.08);
+  transform: rotate(var(--deck-rotation, 0deg)) translateY(-4px) scale(1.08);
   z-index: 2;
 }
 

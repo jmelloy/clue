@@ -1,7 +1,22 @@
 <template>
-  <div v-if="faceDown" class="playing-card card-back" :class="sizeClass">
+  <!-- Image mode: deck is not 'css' and image hasn't errored -->
+  <div v-if="useImageMode" class="playing-card card-img-wrap" :class="sizeClass"
+    :style="rotationStyle">
+    <img
+      :src="imgSrc"
+      :alt="faceDown ? 'card back' : `${rank} of ${suit}`"
+      class="card-img"
+      @error="onImgError"
+    />
+  </div>
+
+  <!-- CSS fallback: face-down -->
+  <div v-else-if="faceDown" class="playing-card card-back" :class="sizeClass"
+    :style="rotationStyle">
     <div class="card-back-pattern"></div>
   </div>
+
+  <!-- CSS fallback: face-up -->
   <div v-else class="playing-card" :class="[suitClass, sizeClass]">
     <span class="card-corner top-left">
       <span class="card-rank">{{ rank }}</span>
@@ -15,26 +30,69 @@
         <span v-for="(pos, i) in pips" :key="i" class="pip" :style="{
           top: pos[0] + '%',
           left: pos[1] + '%',
-          transform: pos[0] > 50 ? 'translate(-50%,-50%) rotate(180deg)' : 'translate(-50%,-50%)'
+          transform: 'translate(-50%,-50%)'
         }">{{ suitSymbol }}</span>
       </div>
     </template>
     <span class="card-corner bottom-right">
-      <span class="card-rank">{{ rank }}</span>
       <span class="card-suit-small">{{ suitSymbol }}</span>
+      <span class="card-rank">{{ rank }}</span>
     </span>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useDeck } from '../../composables/useDeck'
 
 const props = defineProps({
   rank: { type: String, default: 'A' },
   suit: { type: String, default: 'spades' },
   faceDown: { type: Boolean, default: false },
-  size: { type: String, default: 'medium', validator: v => ['tiny', 'mini', 'small', 'medium', 'large'].includes(v) }
+  size: { type: String, default: 'medium', validator: v => ['tiny', 'mini', 'small', 'medium', 'large'].includes(v) },
+  /**
+   * Explicit deck override. When omitted the globally active deck from
+   * useDeck() is used. Pass 'css' to force the CSS/Unicode rendering.
+   */
+  deck: { type: String, default: null },
+  /**
+   * Rotation in degrees applied to face-down cards to give a "dealt from
+   * a deck" appearance. Positive = clockwise, negative = counter-clockwise.
+   */
+  rotation: { type: Number, default: 0 },
 })
+
+const { deck: globalDeck } = useDeck()
+
+// Resolved deck: explicit prop > global selection
+const activeDeck = computed(() => props.deck ?? globalDeck.value)
+
+// Whether to attempt image rendering for this card
+const imgError = ref(false)
+const useImageMode = computed(() => activeDeck.value !== 'css' && !imgError.value)
+
+// Image src path: /images/cards/{deck}/{rank}_{suit}.png  or  back.png
+const imgSrc = computed(() => {
+  const base = `/images/cards/${activeDeck.value}`
+  return props.faceDown ? `${base}/back.png` : `${base}/${props.rank}_${props.suit}.png`
+})
+
+// Reset error state whenever the resolved image path changes so that switching
+// decks (or flipping a card) after a load failure retries the new image.
+watch(imgSrc, () => { imgError.value = false })
+
+function onImgError() {
+  imgError.value = true
+}
+
+// Apply rotation via a CSS custom property so it composes with parent
+// transforms (e.g. PokerTable's .hole-card tilt/lift) rather than replacing them.
+const rotationStyle = computed(() => {
+  if (props.rotation === 0) return undefined
+  return { '--deck-rotation': `${props.rotation}deg` }
+})
+
+// ── CSS-mode helpers (unchanged from original) ─────────────────────────────
 
 const SUIT_SYMBOLS = { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }
 const FACE_SYMBOLS = { J: '\u265E', Q: '\u2655', K: '\u2654' }
@@ -70,6 +128,32 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
 </script>
 
 <style scoped>
+/* ── Image mode wrapper ─────────────────────────────────────────────────── */
+.card-img-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px var(--card-shadow, rgba(0, 0, 0, 0.35));
+  background: transparent;
+  padding: 0;
+  transform: rotate(var(--deck-rotation, 0deg));
+  transition: transform 0.2s ease;
+}
+
+.card-img-wrap.card-large { border-radius: 8px; }
+.card-img-wrap.card-tiny  { border-radius: 4px; }
+
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+/* ── CSS rendering (original, unchanged) ────────────────────────────────── */
 .playing-card {
   position: relative;
   background: var(--card-face, #f5f1e8);
