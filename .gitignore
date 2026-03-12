@@ -216,6 +216,9 @@ __marimo__/
 mage-output/
 dump.rdb
 
+# Generated card images
+scripts/card_images/
+
 # Playwright
 screenshots/
 test-results/
