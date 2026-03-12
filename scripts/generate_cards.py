@@ -16,9 +16,10 @@ Usage:
 """
 
 import argparse
-import math
+import io
 import random
-import sys
+import urllib.request
+import zipfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -68,8 +69,6 @@ PIP_LAYOUTS: dict[int, list[tuple[int, int]]] = {
     ],
 }
 
-FACE_UNICODE = {"J": "\u265E", "Q": "\u2655", "K": "\u2654"}
-
 
 def pip_count(rank: str) -> int:
     if rank == "A":
@@ -84,59 +83,61 @@ def pip_count(rank: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Font helpers
+# Font helpers — cross-platform via bundled DejaVu fonts
 # ---------------------------------------------------------------------------
 
-_FONT_SEARCH_PATHS = [
-    "/usr/share/fonts/truetype/dejavu/",
-    "/usr/share/fonts/truetype/liberation/",
-    "/usr/share/fonts/truetype/lato/",
-    "/usr/share/fonts/truetype/freefont/",
-    "/usr/share/fonts/truetype/ubuntu/",
-    "/usr/local/share/fonts/",
-]
+_FONT_CACHE_DIR = Path(__file__).parent / "fonts"
+
+# DejaVu 2.37 from GitHub — freely licensed, excellent Unicode coverage
+_DEJAVU_ZIP_URL = (
+    "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/"
+    "version_2_37/dejavu-fonts-ttf-2.37.zip"
+)
+
+# Font files we need (paths inside the zip)
+_DEJAVU_FONTS = {
+    "DejaVuSerif-Bold.ttf": "dejavu-fonts-ttf-2.37/ttf/DejaVuSerif-Bold.ttf",
+    "DejaVuSerif.ttf": "dejavu-fonts-ttf-2.37/ttf/DejaVuSerif.ttf",
+    "DejaVuSans-Bold.ttf": "dejavu-fonts-ttf-2.37/ttf/DejaVuSans-Bold.ttf",
+    "DejaVuSans.ttf": "dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf",
+}
 
 
-def find_font(name: str) -> str | None:
-    """Return the first filesystem path that matches *name* (case-insensitive).
+def _ensure_fonts() -> None:
+    """Download and cache DejaVu fonts if not already present."""
+    _FONT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    missing = [name for name in _DEJAVU_FONTS if not (_FONT_CACHE_DIR / name).exists()]
+    if not missing:
+        return
 
-    Args:
-        name: Font filename fragment to search for (e.g. 'DejaVuSerif-Bold').
-
-    Returns:
-        Absolute path to the font file, or ``None`` if not found.
-    """
-    for base in _FONT_SEARCH_PATHS:
-        p = Path(base)
-        if not p.exists():
-            continue
-        for f in p.glob("*.ttf"):
-            if name.lower() in f.name.lower():
-                return str(f)
-    return None
+    print(f"  Downloading DejaVu fonts to {_FONT_CACHE_DIR} …")
+    resp = urllib.request.urlopen(_DEJAVU_ZIP_URL)
+    data = resp.read()
+    with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        for local_name, zip_path in _DEJAVU_FONTS.items():
+            dest = _FONT_CACHE_DIR / local_name
+            if not dest.exists():
+                dest.write_bytes(zf.read(zip_path))
+                print(f"    ✓ {local_name}")
+    print()
 
 
-def load_font(name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    """Load a TrueType font by name fragment at the requested pixel *size*.
-
-    Searches :data:`_FONT_SEARCH_PATHS` via :func:`find_font`.  Falls back to
-    Pillow's built-in bitmap font if the named font cannot be located or loaded.
-
-    Args:
-        name: Font filename fragment (case-insensitive, e.g. 'Lato-Bold').
-        size: Desired font size in pixels.
-
-    Returns:
-        A :class:`~PIL.ImageFont.FreeTypeFont` on success, or the Pillow default
-        :class:`~PIL.ImageFont.ImageFont` on failure.
-    """
-    path = find_font(name)
-    if path:
-        try:
-            return ImageFont.truetype(path, size)
-        except OSError:
-            pass
-    return ImageFont.load_default()
+def load_font(name: str, size: int) -> ImageFont.FreeTypeFont:
+    """Load a bundled DejaVu font by filename at the requested pixel *size*."""
+    path = _FONT_CACHE_DIR / name
+    if path.exists():
+        return ImageFont.truetype(str(path), size)
+    # Fallback: try system paths (Linux package installs)
+    for base in [
+        "/usr/share/fonts/truetype/dejavu/",
+        "/usr/share/fonts/truetype/liberation/",
+    ]:
+        p = Path(base) / name
+        if p.exists():
+            return ImageFont.truetype(str(p), size)
+    raise FileNotFoundError(
+        f"Font {name!r} not found. Run the script again to auto-download fonts."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +169,44 @@ def centered_text(
     w = bbox[2] - bbox[0]
     h = bbox[3] - bbox[1]
     draw.text((cx - w // 2, cy - h // 2), text, font=font, fill=fill)
+
+
+# ---------------------------------------------------------------------------
+# Shared corner helper — draw the bottom-right corner (rotated 180°)
+# ---------------------------------------------------------------------------
+
+def _draw_rotated_corner(
+    draw: ImageDraw.ImageDraw,
+    rank: str,
+    suit: str,
+    rank_font: ImageFont.FreeTypeFont,
+    suit_font: ImageFont.FreeTypeFont,
+    color: tuple,
+    W: int,
+    H: int,
+    cx_offset: int,
+    top_y: int,
+) -> None:
+    """Render rank + suit in the bottom-right corner (unrotated, reading from corner).
+
+    In a digital card game cards are never held upside-down, so we keep text
+    readable rather than rotating 180° (which garbles multi-char ranks like "10"
+    and makes ♥ look like ♠).
+    """
+    symbol = SUIT_SYMBOLS[suit]
+    bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
+    rh = bbox_r[3] - bbox_r[1]
+    bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
+    sh = bbox_s[3] - bbox_s[1]
+
+    # Mirror the top-left layout: suit closest to corner, rank above
+    cx = W - cx_offset
+    suit_bottom = H - top_y
+    suit_cy = suit_bottom - sh // 2
+    rank_cy = suit_cy - sh // 2 - 12 - rh // 2
+
+    centered_text(draw, cx, rank_cy, rank, rank_font, color)
+    centered_text(draw, cx, suit_cy, symbol, suit_font, color)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +281,34 @@ class Theme:
             # 180° makes them look wrong (e.g. ♠ looks like ♥), so keep them upright.
             draw.text((x, y), symbol, font=pip_font, fill=color)
 
+    def _draw_face_center(
+        self,
+        draw: ImageDraw.ImageDraw,
+        rank: str,
+        suit: str,
+        face_rank_font: ImageFont.FreeTypeFont,
+        face_suit_font: ImageFont.FreeTypeFont,
+        color: tuple,
+    ) -> None:
+        """Draw a large rank letter with suit symbol below it, centered on the card."""
+        symbol = SUIT_SYMBOLS[suit]
+        cx, cy = self.W // 2, self.H // 2
+
+        # Measure both glyphs
+        bbox_r = draw.textbbox((0, 0), rank, font=face_rank_font)
+        rh = bbox_r[3] - bbox_r[1]
+        bbox_s = draw.textbbox((0, 0), symbol, font=face_suit_font)
+        sh = bbox_s[3] - bbox_s[1]
+
+        # Stack rank above suit with a small gap
+        gap = 8
+        total_h = rh + gap + sh
+        rank_cy = cy - total_h // 2 + rh // 2
+        suit_cy = cy + total_h // 2 - sh // 2
+
+        centered_text(draw, cx, rank_cy, rank, face_rank_font, color)
+        centered_text(draw, cx, suit_cy, symbol, face_suit_font, color)
+
 
 # ---------------------------------------------------------------------------
 # Theme 1 — Classic
@@ -289,45 +356,27 @@ class ClassicTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        pad_x, pad_y = 22, 20
+        cx_offset = 42  # horizontal center of corner column
+        top_y = 30      # top of rank text
         if top_left:
-            centered_text(draw, pad_x + 14, pad_y + 14, rank, rank_font, color)
-            centered_text(draw, pad_x + 14, pad_y + 38, symbol, suit_font, color)
-        else:
-            cx = self.W - pad_x - 14
-            # Compute glyph heights so we can position without overflow.
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
-            rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-
-            # Anchor rank's bottom edge to the bottom margin; suit goes above.
-            # Extra 4 px keeps the rank glyph clear of the rounded corner arc.
-            cy = self.H - pad_y - 4 - rh // 2        # rank centre y
-            suit_cy = cy - rh // 2 - 6 - sh // 2     # suit centre y (above rank)
-
-            tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
-            tmp_r = tmp_r.rotate(180)
-            draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
-
-            tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
-            tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
+            centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+        else:
+            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
+                                 self.W, self.H, cx_offset, top_y)
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
-        if rank in FACE_UNICODE:
-            sym = FACE_UNICODE[rank]
-            centered_text(draw, self.W // 2, self.H // 2, sym, fonts["face"], color)
+        if rank in ("J", "Q", "K"):
+            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
+                                   fonts["face_suit"], color)
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.12)
-                margin_y = int(self.H * 0.16)
+                margin_x = int(self.W * 0.08)
+                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
                     (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
@@ -403,44 +452,29 @@ class ModernTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        pad_x, pad_y = 18, 16
+        cx_offset = 40
+        top_y = 26
         if top_left:
-            centered_text(draw, pad_x + 16, pad_y + 16, rank, rank_font, color)
-            centered_text(draw, pad_x + 16, pad_y + 42, symbol, suit_font, color)
-        else:
-            cx = self.W - pad_x - 16
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
-            rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-
-            cy = self.H - pad_y - 4 - rh // 2
-            suit_cy = cy - rh // 2 - 6 - sh // 2
-
-            tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
-            tmp_r = tmp_r.rotate(180)
-            draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
-
-            tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
-            tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
+            centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+        else:
+            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
+                                 self.W, self.H, cx_offset, top_y)
 
     def draw_center(self, draw, rank, suit, fonts):
         # accent bars drawn here because we need suit colour
         self._draw_accent_bar(draw, suit)
         color = self.suit_color(suit)
-        if rank in FACE_UNICODE:
-            sym = FACE_UNICODE[rank]
-            centered_text(draw, self.W // 2, self.H // 2, sym, fonts["face"], color)
+        if rank in ("J", "Q", "K"):
+            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
+                                   fonts["face_suit"], color)
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.13)
-                margin_y = int(self.H * 0.15)
+                margin_x = int(self.W * 0.08)
+                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
                     (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
@@ -538,42 +572,27 @@ class VintageTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        pad_x, pad_y = 24, 22
+        cx_offset = 42
+        top_y = 32
         if top_left:
-            centered_text(draw, pad_x + 12, pad_y + 12, rank, rank_font, color)
-            centered_text(draw, pad_x + 12, pad_y + 36, symbol, suit_font, color)
-        else:
-            cx = self.W - pad_x - 12
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
-            rw = bbox_r[2] - bbox_r[0]
             rh = bbox_r[3] - bbox_r[1]
-            bbox_s = draw.textbbox((0, 0), symbol, font=suit_font)
-            sw = bbox_s[2] - bbox_s[0]
-            sh = bbox_s[3] - bbox_s[1]
-
-            cy = self.H - pad_y - 4 - rh // 2
-            suit_cy = cy - rh // 2 - 6 - sh // 2
-
-            tmp_r = Image.new("RGBA", (rw + 4, rh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_r).text((2, 2), rank, font=rank_font, fill=color)
-            tmp_r = tmp_r.rotate(180)
-            draw._image.paste(tmp_r, (cx - rw // 2 - 2, cy - rh // 2 - 2), tmp_r)
-
-            tmp_s = Image.new("RGBA", (sw + 4, sh + 4), (0, 0, 0, 0))
-            ImageDraw.Draw(tmp_s).text((2, 2), symbol, font=suit_font, fill=color)
-            tmp_s = tmp_s.rotate(180)
-            draw._image.paste(tmp_s, (cx - sw // 2 - 2, suit_cy - sh // 2 - 2), tmp_s)
+            centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 12, symbol, suit_font, color)
+        else:
+            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
+                                 self.W, self.H, cx_offset, top_y)
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
-        if rank in FACE_UNICODE:
-            sym = FACE_UNICODE[rank]
-            centered_text(draw, self.W // 2, self.H // 2, sym, fonts["face"], color)
+        if rank in ("J", "Q", "K"):
+            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
+                                   fonts["face_suit"], color)
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.12)
-                margin_y = int(self.H * 0.15)
+                margin_x = int(self.W * 0.08)
+                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
                     (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
@@ -627,22 +646,22 @@ class VintageTheme(Theme):
 
 THEME_FONTS = {
     "classic": {
-        "rank_name": "DejaVuSerif-Bold",
-        "suit_name": "DejaVuSerif-Bold",
-        "pip_name": "DejaVuSerif",
-        "face_name": "DejaVuSerif-Bold",
+        "rank_name": "DejaVuSerif-Bold.ttf",
+        "suit_name": "DejaVuSerif-Bold.ttf",
+        "pip_name": "DejaVuSerif.ttf",
+        "face_name": "DejaVuSerif-Bold.ttf",
     },
     "modern": {
-        "rank_name": "Lato-Bold",
-        "suit_name": "Lato-Bold",
-        "pip_name": "Lato-Regular",
-        "face_name": "Lato-Bold",
+        "rank_name": "DejaVuSans-Bold.ttf",
+        "suit_name": "DejaVuSans-Bold.ttf",
+        "pip_name": "DejaVuSans.ttf",
+        "face_name": "DejaVuSans-Bold.ttf",
     },
     "vintage": {
-        "rank_name": "LiberationSerif-Bold",
-        "suit_name": "LiberationSerif-Regular",
-        "pip_name": "LiberationSerif-Regular",
-        "face_name": "LiberationSerif-Bold",
+        "rank_name": "DejaVuSerif-Bold.ttf",
+        "suit_name": "DejaVuSerif.ttf",
+        "pip_name": "DejaVuSerif.ttf",
+        "face_name": "DejaVuSerif-Bold.ttf",
     },
 }
 
@@ -651,10 +670,11 @@ def build_fonts(theme_name: str, W: int, H: int) -> dict:
     cfg = THEME_FONTS[theme_name]
     scale = W / 500  # relative to 500 px wide reference
     return {
-        "rank": load_font(cfg["rank_name"], int(44 * scale)),
-        "suit": load_font(cfg["suit_name"], int(30 * scale)),
-        "pip": load_font(cfg["pip_name"], int(54 * scale)),
-        "face": load_font(cfg["face_name"], int(180 * scale)),
+        "rank": load_font(cfg["rank_name"], int(52 * scale)),
+        "suit": load_font(cfg["suit_name"], int(42 * scale)),
+        "pip": load_font(cfg["pip_name"], int(80 * scale)),
+        "face_rank": load_font(cfg["face_name"], int(160 * scale)),
+        "face_suit": load_font(cfg["suit_name"], int(120 * scale)),
     }
 
 
@@ -699,6 +719,7 @@ THEMES: dict[str, Theme] = {
 
 
 def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
+    _ensure_fonts()
     output_dir.mkdir(parents=True, exist_ok=True)
     total = len(styles) * (52 + 1)  # 52 cards + back per theme
     done = 0

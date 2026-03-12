@@ -225,3 +225,6 @@ test-results/
 
 *storybook.log
 storybook-static
+
+# Downloaded fonts for card generation
+scripts/fonts/
