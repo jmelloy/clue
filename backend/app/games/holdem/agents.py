@@ -4,11 +4,15 @@ HoldemAgent uses a simple rule-based strategy:
 - Evaluates hand strength based on hole cards and community cards
 - Makes betting decisions based on hand strength relative to pot odds
 - Varies play style with configurable aggression
+- Uses LLM nano for personality-driven chat when available
 """
 
 import logging
+import os
 import random
 from itertools import combinations
+
+import httpx
 
 from .hand_eval import evaluate_hand, HAND_NAMES, ONE_PAIR, TWO_PAIR, FLUSH, STRAIGHT
 from .models import (
@@ -87,6 +91,55 @@ def get_personality(name: str | None = None) -> tuple[str, dict]:
         return name, dict(PERSONALITIES[name])
     chosen_name = random.choice(PERSONALITY_NAMES)
     return chosen_name, dict(PERSONALITIES[chosen_name])
+
+
+# ---------------------------------------------------------------------------
+# LLM personality prompts — give each archetype a distinct voice
+# ---------------------------------------------------------------------------
+
+_PERSONALITY_SYSTEM_PROMPTS: dict[str, str] = {
+    "Rock": (
+        "You are a tight, patient poker player named {name}. You barely talk, "
+        "and when you do it's dry, understated wit. You've been playing poker "
+        "since before these kids were born. Think grizzled old-timer energy. "
+        "You fold a lot and you're proud of it."
+    ),
+    "Maniac": (
+        "You are a chaotic, hyperactive poker player named {name}. You're loud, "
+        "unpredictable, and you LOVE going all in. You trash talk constantly, "
+        "use too many exclamation marks, and reference action movies. You think "
+        "every hand is THE hand. You're having the time of your life."
+    ),
+    "Shark": (
+        "You are a cold, calculating poker pro named {name}. You speak in "
+        "clipped, confident phrases. You occasionally drop poker math into "
+        "conversation to intimidate people. You respect good play and mock "
+        "bad play with subtle sarcasm. Think sunglasses-at-the-table energy."
+    ),
+    "Fish": (
+        "You are a lovable beginner poker player named {name}. You don't fully "
+        "understand the rules and you're having a blast anyway. You ask dumb "
+        "questions, misuse poker terminology hilariously, and get excited about "
+        "bad hands. You think a pair of 3s is amazing."
+    ),
+    "Nit": (
+        "You are an extremely cautious poker player named {name}. You are "
+        "paranoid that everyone has a better hand. You fold almost everything "
+        "and complain about your cards constantly. You keep track of every chip "
+        "you lose and mention it. You are not having fun but can't stop playing."
+    ),
+    "LAG": (
+        "You are a loose-aggressive poker player named {name}. You're smooth, "
+        "cocky, and love applying pressure. You narrate your own plays like a "
+        "sports commentator. You give opponents nicknames. You bluff with "
+        "theatrical confidence and act shocked when caught."
+    ),
+}
+
+_DEFAULT_PERSONALITY_PROMPT = (
+    "You are a poker player named {name}. You have a fun, "
+    "distinct personality at the table. Be witty and entertaining."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +302,13 @@ class HoldemAgent:
         self.bluff_frequency = max(0.0, min(1.0, bluff_frequency))
         self.slowplay_frequency = max(0.0, min(1.0, slowplay_frequency))
         self.chat_frequency = max(0.0, min(1.0, chat_frequency))
+
+        # LLM nano config for personality-driven chat
+        self.llm_api_url = os.getenv(
+            "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
+        )
+        self.llm_api_key = os.getenv("LLM_API_KEY", "")
+        self.llm_nano_model = os.getenv("LLM_NANO_MODEL", "gpt-5-nano")
         logger.info(
             "[holdem_agent] Created agent %s (%s) personality=%s aggression=%.2f "
             "tightness=%.2f bluff=%.2f slowplay=%.2f chat=%.2f",
@@ -468,11 +528,18 @@ class HoldemAgent:
             amount = max(min_raise, amount)
         return amount
 
-    def generate_chat(self, action_type: str, **kwargs) -> str | None:
-        """Occasionally generate a personality-flavored chat message."""
+    async def generate_chat(self, action_type: str, **kwargs) -> str | None:
+        """Generate a personality-flavored chat message, using LLM nano when available."""
         if random.random() > self.chat_frequency:
             return None
 
+        # Try LLM nano first for dynamic, personality-driven chat
+        if self.llm_api_key:
+            llm_msg = await self._llm_chat(action_type, **kwargs)
+            if llm_msg:
+                return llm_msg
+
+        # Fall back to template chat
         options = _PERSONALITY_CHAT.get(self.personality, _DEFAULT_CHAT).get(
             action_type
         )
@@ -481,6 +548,53 @@ class HoldemAgent:
             options = _DEFAULT_CHAT.get(action_type, ["Hmm..."])
 
         return random.choice(options)
+
+    async def _llm_chat(self, action_type: str, **kwargs) -> str | None:
+        """Call LLM nano for a short, in-character chat line."""
+        system_template = _PERSONALITY_SYSTEM_PROMPTS.get(
+            self.personality, _DEFAULT_PERSONALITY_PROMPT
+        )
+        system = system_template.format(name=self.name)
+
+        context_parts = [f"You just decided to: {action_type}."]
+        if kwargs.get("community_cards"):
+            context_parts.append(f"Community cards: {kwargs['community_cards']}")
+        if kwargs.get("pot"):
+            context_parts.append(f"Pot size: {kwargs['pot']}")
+
+        user = (
+            " ".join(context_parts)
+            + "\n\nSay ONE short sentence (under 15 words) in character. "
+            "Be funny, witty, or dramatic. No quotes. No emojis. Just the line."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.llm_api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.llm_nano_model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "max_tokens": 50,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(
+                    self.llm_api_url, json=payload, headers=headers
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"].strip().strip('"')
+                if content:
+                    return content
+        except Exception as exc:
+            logger.debug("[holdem_agent:%s] LLM chat failed: %s", self.player_id, exc)
+
+        return None
 
 
 # ---------------------------------------------------------------------------

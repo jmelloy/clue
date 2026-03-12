@@ -199,16 +199,31 @@ _holdem_agents: dict[str, dict[str, HoldemAgent]] = {}
 _holdem_agent_tasks: dict[str, asyncio.Task] = {}
 
 _HOLDEM_AGENT_NAMES = [
-    "Ace",
-    "Bluff",
-    "Chip",
-    "Dealer",
-    "Edge",
-    "Flop",
-    "Gambit",
-    "High Card",
-    "Jackpot",
-    "Kicker",
+    "Ace Ventura",
+    "Bluff Daddy",
+    "Chip Hazard",
+    "The Dealer of Doom",
+    "Lady Luck",
+    "Floppy McFlopface",
+    "Gambit the Unreadable",
+    "High Card Houdini",
+    "Jackpot Jenkins",
+    "Kicker? I Hardly Know Her",
+    "All-In Alan",
+    "Fold McFoldington",
+    "River Rat Rick",
+    "Pocket Rocket Pete",
+    "The Velvet Hammer",
+    "Sir Bets-a-Lot",
+    "Check Norris",
+    "Phil Hellmouth",
+    "Tilt McGee",
+    "Raise the Roof Reggie",
+    "No Limit Nancy",
+    "Fishy McFishface",
+    "The Gutshot Kid",
+    "Bad Beat Barbara",
+    "Stone Cold Bluffer",
 ]
 
 
@@ -2563,7 +2578,11 @@ async def _run_holdem_agent_loop(game_id: str):
 
                     # Chat (non-critical — don't let it kill the loop)
                     try:
-                        chat_msg = agent.generate_chat(action.type)
+                        chat_msg = await agent.generate_chat(
+                            action.type,
+                            community_cards=[str(c) for c in state.community_cards] if state.community_cards else None,
+                            pot=state.pot,
+                        )
                         if chat_msg:
                             await _holdem_broadcast_chat(
                                 game_id, f"{agent.name}: {chat_msg}", whose_turn
