@@ -13,7 +13,7 @@ import pytest_asyncio
 import fakeredis.aioredis as fakeredis
 
 from app.games.clue.game import SUSPECTS, WEAPONS, ROOMS
-from app.games.clue.agents import RandomAgent
+from app.games.clue.agents import RandomAgent, INFERENCE_ADVANCED, INFERENCE_STANDARD
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -27,7 +27,7 @@ R = ROOMS[:9]  # 9 rooms
 PLAYERS = ["P_SELF", "P_ALICE", "P_BOB", "P_CAROL", "P_DAVE"]
 
 
-def _make_agent(own_cards: list[str] | None = None) -> RandomAgent:
+def _make_agent(own_cards: list[str] | None = None, inference_level: str = INFERENCE_STANDARD) -> RandomAgent:
     """Create a RandomAgent with known hand and deterministic style."""
     cards = own_cards or [S[0], W[0], R[0]]
     agent = RandomAgent(
@@ -37,6 +37,7 @@ def _make_agent(own_cards: list[str] | None = None) -> RandomAgent:
         secret_passage_chance=0.5,
         explore_chance=0.5,
         chat_frequency=0.0,
+        inference_level=inference_level,
     )
     agent.player_names = {
         PLAYERS[0]: "Miss Scarlett",
@@ -255,7 +256,7 @@ class TestCascadeInference:
 
     def test_cascade_from_shown_card(self):
         """Directly shown card triggers cascade on old suggestions."""
-        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_ADVANCED)
 
         # Old suggestion: Alice suggests S[1]/W[1]/R[1], Bob shows a card.
         # We can't infer (all 3 unknown).
@@ -294,6 +295,36 @@ class TestCascadeInference:
             f"known_cards = {sorted(agent.known_cards)}"
         )
 
+    def test_standard_does_not_cascade(self):
+        """STANDARD (medium) agents do immediate inference but NOT cascade."""
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_STANDARD)
+
+        # Old suggestion: Alice suggests S[1]/W[1]/R[1], Bob shows a card.
+        agent.observe_suggestion(
+            suggesting_player_id=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+            shown_by=PLAYERS[2],
+            players_without_match=[],
+        )
+        agent.observe_card_shown_to_other(
+            shown_by=PLAYERS[2],
+            shown_to=PLAYERS[1],
+            suspect=S[1],
+            weapon=W[1],
+            room=R[1],
+        )
+
+        # Learn S[1] and W[1] — an ADVANCED agent would cascade and infer R[1]
+        agent.observe_shown_card(S[1], shown_by=PLAYERS[3])
+        agent.observe_shown_card(W[1], shown_by=PLAYERS[4])
+
+        # STANDARD should NOT cascade back to the old suggestion
+        assert R[1] not in agent.known_cards, (
+            "STANDARD agent should not cascade-infer from old suggestions"
+        )
+
     def test_cascade_chain_multiple_suggestions(self):
         """Inferring one card cascades to resolve another old suggestion.
 
@@ -301,7 +332,7 @@ class TestCascadeInference:
         W[1] now known (Bob has it) → suggestion B (S[0]/W[1]/R[2] by Carol)
         resolves because S[0] is ours and W[1] is Bob's → Carol showed R[2].
         """
-        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_ADVANCED)
 
         # Suggestion A: S[1]/W[1]/R[1], Bob shows. Can't infer (3 unknown).
         agent.observe_suggestion(
@@ -363,7 +394,7 @@ class TestCascadeInference:
 
         We learn S[1] and R[1] → infer W[1] from A → infer from B → infer from C.
         """
-        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_ADVANCED)
 
         # Suggestion A
         agent.observe_suggestion(
@@ -516,7 +547,7 @@ class TestObserveSuggestionFlow:
 
     def test_own_shown_card_not_inferred_from(self):
         """Don't try to infer when WE are the one who showed the card."""
-        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_ADVANCED)
 
         # We showed a card in a suggestion
         agent.observe_suggestion(
@@ -629,7 +660,7 @@ class TestJWC88JScenario:
         Models the JWC88J game pattern: a series of suggestions where
         inference + cascade produce multiple new known cards.
         """
-        agent = _make_agent(own_cards=[S[0], W[0], R[0]])
+        agent = _make_agent(own_cards=[S[0], W[0], R[0]], inference_level=INFERENCE_ADVANCED)
 
         # --- Build up suggestion history ---
 
@@ -727,7 +758,7 @@ async def redis():
 GAME_ID = "TEST_GAME"
 
 
-def _make_agent_with_redis(redis, own_cards=None):
+def _make_agent_with_redis(redis, own_cards=None, inference_level=INFERENCE_STANDARD):
     cards = own_cards or [S[0], W[0], R[0]]
     agent = RandomAgent(
         player_id=PLAYERS[0],
@@ -738,6 +769,7 @@ def _make_agent_with_redis(redis, own_cards=None):
         secret_passage_chance=0.5,
         explore_chance=0.5,
         chat_frequency=0.0,
+        inference_level=inference_level,
     )
     agent.player_names = {pid: f"Player-{i}" for i, pid in enumerate(PLAYERS)}
     return agent
@@ -895,7 +927,7 @@ class TestKnowledgePersistence:
     @pytest.mark.asyncio
     async def test_cascade_works_after_restore(self, redis):
         """After loading state, cascade inference still works on old suggestions."""
-        agent = _make_agent_with_redis(redis)
+        agent = _make_agent_with_redis(redis, inference_level=INFERENCE_ADVANCED)
 
         # Build suggestion history
         agent.observe_suggestion(
@@ -916,7 +948,7 @@ class TestKnowledgePersistence:
         await agent.save_knowledge()
 
         # Simulate restart: new agent, load state
-        agent2 = _make_agent_with_redis(redis)
+        agent2 = _make_agent_with_redis(redis, inference_level=INFERENCE_ADVANCED)
         await agent2.load_knowledge()
 
         # Learn S[1] and W[1] → should cascade to infer R[1]

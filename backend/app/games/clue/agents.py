@@ -52,8 +52,8 @@ _GLOBAL_AGENT_TRACE = os.getenv("AGENT_TRACE", "").strip().lower() in (
 
 INFERENCE_NONE = "none"  # Only tracks own cards
 INFERENCE_BASIC = "basic"  # Tracks cards directly shown to agent
-INFERENCE_STANDARD = "standard"  # + negative knowledge + cascade inference
-INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions to narrow solution
+INFERENCE_STANDARD = "standard"  # + negative knowledge + immediate inference (no cascade)
+INFERENCE_ADVANCED = "advanced"  # + uses unrefuted suggestions and cascade inference to narrow solution
 
 INFERENCE_LEVELS = [
     INFERENCE_NONE,
@@ -751,9 +751,8 @@ class BaseAgent(ABC):
             is_new=is_new,
             total_seen=len(self.seen_cards),
         )
-        if is_new and self.inference_level in (INFERENCE_STANDARD, INFERENCE_ADVANCED):
-            self._run_inference()
         if is_new and self.inference_level == INFERENCE_ADVANCED:
+            self._run_inference()
             self._run_unrefuted_inference()
         self._enqueue_save_knowledge()
 
@@ -822,7 +821,8 @@ class BaseAgent(ABC):
             self.card_inference_log.setdefault(inferred, []).append(reason)
             self._pending_inferences.append(f"DEDUCED: {reason}")
             self.inferred_cards.add(inferred)
-            self._run_inference()
+            if self.inference_level == INFERENCE_ADVANCED:
+                self._run_inference()
         else:
             suggested_cards = {suspect, weapon, room}
             possible = self._possible_cards_for_player(shown_by, suggested_cards)
