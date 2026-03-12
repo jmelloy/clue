@@ -692,7 +692,6 @@ def render_card(
     draw = ImageDraw.Draw(img, "RGBA")
 
     theme.draw_background(draw, img)
-    theme.draw_border(draw)
 
     theme.draw_corner(draw, rank, suit, True, fonts["rank"], fonts["suit"])
     theme.draw_corner(draw, rank, suit, False, fonts["rank"], fonts["suit"])
