@@ -799,7 +799,7 @@ class BaseAgent(ABC):
 
         Requires inference_level >= standard to attempt deduction.
         """
-        if self.inference_level in (INFERENCE_NONE):
+        if self.inference_level in (INFERENCE_NONE, INFERENCE_BASIC):
             self.agent_trace(
                 "observe_card_shown_to_other",
                 skipped=self.inference_level,
@@ -868,10 +868,35 @@ class BaseAgent(ABC):
         if len(possible) == 1:
             inferred_card = next(iter(possible))
             if inferred_card in self.known_cards:
+                self.agent_trace(
+                    "infer_skip_already_known",
+                    shown_by=shown_by,
+                    card=inferred_card,
+                    suspect=suspect,
+                    weapon=weapon,
+                    room=room,
+                )
                 return None  # Already known, no new information
             self.inferred_cards.add(inferred_card)
             self.player_has_cards.setdefault(shown_by, set()).add(inferred_card)
+            self.agent_trace(
+                "infer_success",
+                shown_by=shown_by,
+                inferred_card=inferred_card,
+                suspect=suspect,
+                weapon=weapon,
+                room=room,
+            )
             return inferred_card
+        self.agent_trace(
+            "infer_ambiguous",
+            shown_by=shown_by,
+            suspect=suspect,
+            weapon=weapon,
+            room=room,
+            possible_count=len(possible),
+            possible_cards=sorted(possible),
+        )
         return None
 
     def observe_suggestion(
@@ -912,13 +937,29 @@ class BaseAgent(ABC):
             suggested_cards = {suspect, weapon, room}
             for pid in players_without_match:
                 self.player_not_has_cards.setdefault(pid, set()).update(suggested_cards)
+            if players_without_match:
+                self.agent_trace(
+                    "negative_knowledge",
+                    suggesting_player_id=suggesting_player_id,
+                    suspect=suspect,
+                    weapon=weapon,
+                    room=room,
+                    players_without_match=players_without_match,
+                )
 
+        # Build pending inference messages scoped to this agent's perspective.
+        # Only include players OTHER than ourselves in the "could not show" list
+        # to avoid self-referential or misleading messages.
         if players_without_match:
-            names = ", ".join(self._name(pid) for pid in players_without_match)
-            self._pending_inferences.append(
-                f"NEGATIVE: {self._name(suggesting_player_id)} suggested {suspect}/{weapon}/{room}. "
-                f"Players [{names}] could NOT show any of these cards."
-            )
+            other_without = [
+                pid for pid in players_without_match if pid != self.player_id
+            ]
+            if other_without:
+                names = ", ".join(self._name(pid) for pid in other_without)
+                self._pending_inferences.append(
+                    f"NEGATIVE: {self._name(suggesting_player_id)} suggested {suspect}/{weapon}/{room}. "
+                    f"Players [{names}] could NOT show any of these cards."
+                )
         if (
             shown_by
             and shown_by != self.player_id
