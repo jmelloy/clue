@@ -85,6 +85,7 @@ class HoldemGameState(BaseModel):
     # Track who has acted this betting round
     last_raiser: Optional[str] = None
     actions_this_round: int = 0
+    last_raise_size: int = 0  # size of the last bet/raise (for min-raise rule)
 
     # Result of the last completed hand (persists until next action)
     last_hand_result: Optional["HoldemHandResult"] = None

@@ -517,11 +517,11 @@ async def test_raise_must_be_chip_multiple(redis):
         available = game.get_available_actions(whose_turn, state)
 
     if "raise" in available:
-        # 63 is not a multiple of 5
+        # 83 is not a multiple of 5 (raise portion 43 meets min raise of 40)
         with pytest.raises(ValueError, match="multiple of 5"):
-            await game.process_action(whose_turn, {"type": "raise", "amount": 63})
-        # 65 is valid (multiple of 5: e.g. 25 + 4×10)
-        result = await game.process_action(whose_turn, {"type": "raise", "amount": 65})
+            await game.process_action(whose_turn, {"type": "raise", "amount": 83})
+        # 85 is valid (multiple of 5, raise portion 45 meets min raise of 40)
+        result = await game.process_action(whose_turn, {"type": "raise", "amount": 85})
         assert result.type == "raise"
 
 

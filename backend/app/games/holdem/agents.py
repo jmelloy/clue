@@ -367,8 +367,10 @@ class HoldemAgent:
                 raise_amount = self._compute_raise(
                     pot, amount_to_call, chips, strength, state
                 )
+                last_raise = getattr(state, 'last_raise_size', state.big_blind)
+                min_raise_total = amount_to_call + max(state.big_blind, last_raise)
                 if (
-                    raise_amount < amount_to_call + state.big_blind
+                    raise_amount < min_raise_total
                     and "all_in" in available
                 ):
                     return AllInAction()
@@ -405,8 +407,10 @@ class HoldemAgent:
                 raise_amount = self._compute_raise(
                     pot, amount_to_call, chips, strength, state
                 )
+                last_raise = getattr(state, 'last_raise_size', state.big_blind)
+                min_raise_total = amount_to_call + max(state.big_blind, last_raise)
                 if (
-                    raise_amount < amount_to_call + state.big_blind
+                    raise_amount < min_raise_total
                     and "all_in" in available
                 ):
                     return AllInAction()
@@ -455,7 +459,8 @@ class HoldemAgent:
         state: HoldemGameState,
     ) -> int:
         """Compute a raise amount (total bet including call portion)."""
-        min_raise = amount_to_call + state.big_blind
+        last_raise = getattr(state, 'last_raise_size', state.big_blind)
+        min_raise = amount_to_call + max(state.big_blind, last_raise)
         # Raise between min and 2.5x pot based on strength
         fraction = 0.5 + (strength - 0.5) * 2.0
         fraction = max(0.5, min(2.5, fraction))
