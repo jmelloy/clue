@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDeck } from '../../composables/useDeck'
 
 const props = defineProps({
@@ -77,14 +77,19 @@ const imgSrc = computed(() => {
   return props.faceDown ? `${base}/back.png` : `${base}/${props.rank}_${props.suit}.png`
 })
 
+// Reset error state whenever the resolved image path changes so that switching
+// decks (or flipping a card) after a load failure retries the new image.
+watch(imgSrc, () => { imgError.value = false })
+
 function onImgError() {
   imgError.value = true
 }
 
-// Apply rotation only to face-down (deck) cards
+// Apply rotation via a CSS custom property so it composes with parent
+// transforms (e.g. PokerTable's .hole-card tilt/lift) rather than replacing them.
 const rotationStyle = computed(() => {
   if (props.rotation === 0) return undefined
-  return { transform: `rotate(${props.rotation}deg)` }
+  return { '--deck-rotation': `${props.rotation}deg` }
 })
 
 // ── CSS-mode helpers (unchanged from original) ─────────────────────────────
@@ -133,6 +138,7 @@ const pips = computed(() => PIP_LAYOUTS[pipCount.value] || [])
   box-shadow: 0 2px 8px var(--card-shadow, rgba(0, 0, 0, 0.35));
   background: transparent;
   padding: 0;
+  transform: rotate(var(--deck-rotation, 0deg));
   transition: transform 0.2s ease;
 }
 

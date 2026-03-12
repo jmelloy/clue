@@ -1332,13 +1332,13 @@ watch(
 }
 
 .hole-card {
-  transform: rotate(var(--tilt, 0deg)) translateY(var(--lift, 0px));
+  transform: rotate(calc(var(--tilt, 0deg) + var(--deck-rotation, 0deg))) translateY(var(--lift, 0px));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: default;
 }
 
 .hole-card:hover {
-  transform: rotate(0deg) translateY(-4px) scale(1.08);
+  transform: rotate(var(--deck-rotation, 0deg)) translateY(-4px) scale(1.08);
   z-index: 2;
 }
 
