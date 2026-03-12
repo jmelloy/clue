@@ -190,6 +190,7 @@ class HoldemGame:
         state.betting_round = "preflop"
         state.last_raiser = None
         state.actions_this_round = 0
+        state.last_raise_size = state.big_blind  # initial min raise = big blind
 
         # Reset per-hand player state
         for p in state.players:
@@ -296,7 +297,10 @@ class HoldemGame:
             # Must call or raise
             if player.chips >= amount_to_call:
                 actions.append("call")
-            if player.chips > amount_to_call:
+            # Only offer raise if player can meet the minimum raise
+            min_raise_size = max(state.big_blind, state.last_raise_size)
+            min_raise_total = amount_to_call + min_raise_size
+            if player.chips >= min_raise_total:
                 actions.append("raise")
 
         # Can always go all-in if they have chips
@@ -446,6 +450,7 @@ class HoldemGame:
         state.current_bet = player.current_bet
         state.pot += amount
         state.last_raiser = player.id
+        state.last_raise_size = amount  # opening bet sets the raise size
         state.actions_this_round = 1
         if player.chips == 0:
             player.all_in = True
@@ -467,8 +472,10 @@ class HoldemGame:
         """Handle a raise. `amount` is the TOTAL bet the player wants to make."""
         amount_to_call = state.current_bet - player.current_bet
         raise_portion = amount - amount_to_call
-        if raise_portion < state.big_blind and amount < player.chips:
-            raise ValueError(f"Minimum raise is {state.big_blind}")
+        # Min raise must be at least the size of the last bet/raise
+        min_raise = max(state.big_blind, state.last_raise_size)
+        if raise_portion < min_raise and amount < player.chips:
+            raise ValueError(f"Minimum raise is {min_raise}")
         if amount % MIN_CHIP != 0 and amount < player.chips:
             raise ValueError(f"Raise must be a multiple of {MIN_CHIP}")
         if amount > player.chips:
@@ -479,6 +486,7 @@ class HoldemGame:
         state.current_bet = player.current_bet
         state.pot += amount
         state.last_raiser = player.id
+        state.last_raise_size = raise_portion  # track for next min-raise
         state.actions_this_round = 1
         if player.chips == 0:
             player.all_in = True
@@ -499,10 +507,14 @@ class HoldemGame:
     ) -> AllInResult:
         amount = player.chips
         player.chips = 0
+        old_current_bet = state.current_bet
         player.current_bet += amount
         if player.current_bet > state.current_bet:
+            raise_portion = player.current_bet - old_current_bet
             state.current_bet = player.current_bet
             state.last_raiser = player.id
+            if raise_portion > state.last_raise_size:
+                state.last_raise_size = raise_portion
             state.actions_this_round = 1
         else:
             state.actions_this_round += 1
@@ -594,6 +606,7 @@ class HoldemGame:
         state.current_bet = 0
         state.last_raiser = None
         state.actions_this_round = 0
+        state.last_raise_size = state.big_blind  # reset to big blind each round
 
         deck = await self._load_deck()
 

@@ -221,13 +221,13 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="betAmount = gameState?.big_blind ?? 20" class="pill">Min</button>
-                  <button @click="betAmount = roundToChip((myPlayer?.chips ?? 0) / 3)" class="pill">
-                    &frac13;
+                  <button @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 3))" class="pill">
+                    &frac13; Pot
                   </button>
-                  <button @click="betAmount = roundToChip((myPlayer?.chips ?? 0) / 2)" class="pill">
-                    &frac12;
+                  <button @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 2))" class="pill">
+                    &frac12; Pot
                   </button>
-                  <button @click="betAmount = myPlayer?.chips ?? 0" class="pill">Max</button>
+                  <button @click="betAmount = roundToChip(gameState?.pot ?? 0)" class="pill">Pot</button>
                 </div>
                 <div class="range-track">
                   <input type="range" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0"
@@ -250,13 +250,13 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="raiseAmount = minRaise" class="pill">Min</button>
-                  <button @click="raiseAmount = roundToChip((myPlayer?.chips ?? 0) / 2)" class="pill">
-                    &frac12;
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip((gameState?.pot ?? 0) / 2))" class="pill">
+                    &frac12; Pot
                   </button>
-                  <button @click="raiseAmount = roundToChip(((myPlayer?.chips ?? 0) * 3) / 4)" class="pill">
-                    &frac34;
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(((gameState?.pot ?? 0) * 3) / 4))" class="pill">
+                    &frac34; Pot
                   </button>
-                  <button @click="raiseAmount = myPlayer?.chips ?? 0" class="pill">Pot</button>
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(gameState?.pot ?? 0))" class="pill">Pot</button>
                 </div>
                 <div class="range-track">
                   <input type="range" :min="minRaise" :max="myPlayer?.chips ?? 0" :step="MIN_CHIP"
@@ -478,7 +478,8 @@ const amountToCall = computed(() => {
 const minRaise = computed(() => {
   const call = amountToCall.value
   const bb = props.gameState?.big_blind ?? 20
-  return call + bb
+  const lastRaise = props.gameState?.last_raise_size ?? bb
+  return call + Math.max(bb, lastRaise)
 })
 
 const canFold = computed(() => props.availableActions.includes('fold'))
