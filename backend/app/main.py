@@ -565,9 +565,20 @@ async def _execute_action(
             )
             # Auto-show if the player has exactly one matching card
             await _maybe_start_auto_show_card_timer(game_id)
+            skipped_names = [
+                _player_name(state, pid)
+                for pid in result.players_without_match
+                if not _is_wanderer(state, pid)
+            ]
+            skipped_text = ""
+            if skipped_names:
+                skipped_text = (
+                    f" {', '.join(skipped_names)} couldn't help."
+                )
             chat_text = (
                 f"{actor_name} suggests {result.suspect} with the {result.weapon}"
-                f" in the {result.room}. {pending_by_name} must show a card."
+                f" in the {result.room}.{skipped_text}"
+                f" {pending_by_name} must show a card."
             )
         else:
             chat_text = (
