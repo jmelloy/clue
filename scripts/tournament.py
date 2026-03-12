@@ -149,7 +149,7 @@ LLM_PRESETS: dict[str, dict[str, str | None]] = {
         "nano_model": "gpt-5-mini",
         "description": "All mini — mid-tier for both decisions and show_card",
     },
-    "standard": {
+    "regular": {
         "model": "gpt-5-mini",
         "nano_model": "gpt-5-nano",
         "description": "Standard mix — mini for decisions, nano for show_card",
@@ -159,7 +159,7 @@ LLM_PRESETS: dict[str, dict[str, str | None]] = {
         "nano_model": "gpt-5-mini",
         "description": "Large — gpt-5.4 for decisions, mini for show_card",
     },
-    "large-nano": {
+    "ln": {
         "model": "gpt-5.4",
         "nano_model": "gpt-5-nano",
         "description": "Large + nano — gpt-5.4 for decisions, nano for show_card",
@@ -171,7 +171,7 @@ LLM_PRESETS: dict[str, dict[str, str | None]] = {
     },
 }
 
-_RANDOM_PRESET_POOL = ["nano", "mini", "standard", "large"]
+_RANDOM_PRESET_POOL = ["nano", "mini", "regular", "large"]
 
 
 def apply_llm_preset(config: "AgentConfig", preset_name: str) -> "AgentConfig":
@@ -181,7 +181,7 @@ def apply_llm_preset(config: "AgentConfig", preset_name: str) -> "AgentConfig":
     preset = LLM_PRESETS[preset_name]
     config.model = preset["model"]
     config.nano_model = preset["nano_model"]
-    config.label = f"llm-{preset_name}({config.inference_level})"
+    config.label = f"llm-{preset_name}-{config.inference_level}"
     return config
 
 
@@ -222,11 +222,11 @@ async def run_single_game(
     await game.create()
 
     # Add players — all as "agent" type
-    player_ids = []
+    player_ids = dict[str, AgentConfig]()
     for i in range(len(configs)):
         pid = f"P{i}"
         await game.add_player(pid, f"Bot-{i}", "agent")
-        player_ids.append(pid)
+        player_ids[pid] = configs[i]
 
     state = await game.start()
 
@@ -235,10 +235,9 @@ async def run_single_game(
     agent_levels: dict[str, str] = {}
     for idx, p in enumerate(state.players):
         cards = await game._load_player_cards(p.id)
-        if idx < len(configs):
-            cfg = configs[idx]
-        else:
-            cfg = AgentConfig()  # default for wanderer fillers
+        cfg = player_ids.get(p.id, AgentConfig())  # default config if not in player_ids
+        if not cfg:
+            cfg = AgentConfig()  # fallback to default if somehow missing
 
         if p.type == "wanderer":
             agents[p.id] = WandererAgent(
@@ -246,7 +245,7 @@ async def run_single_game(
                 character=p.character,
                 cards=cards,
             )
-            agent_levels[p.id] = "wanderer"
+            agent_levels[p.id] = "wanderer-advanced"
         elif cfg.agent_type == "llm":
             agents[p.id] = LLMAgent(
                 player_id=p.id,
@@ -287,6 +286,7 @@ async def run_single_game(
     for a in agents.values():
         a.player_names = player_names
 
+    start = time.time()
     # Run game loop
     actions_taken = 0
     wrong_accusations = 0
@@ -373,6 +373,7 @@ async def run_single_game(
         await redis.aclose()
 
     return {
+        "id": game_id,
         "winner": state.winner,
         "winner_level": agent_levels.get(state.winner, "?") if state.winner else None,
         "turns": state.turn_number if hasattr(state, "turn_number") else actions_taken,
@@ -381,6 +382,7 @@ async def run_single_game(
         "wrong_accusations": wrong_accusations,
         "finished": state.status == "finished",
         "agent_levels": agent_levels,
+        "time": time.time() - start,
     }
 
 
@@ -449,8 +451,6 @@ async def run_tournament(
         all_labels = set(INFERENCE_LEVELS)
 
     stats: dict[str, PlayerStats] = {}
-    for label in all_labels | set(INFERENCE_LEVELS):
-        stats[label] = PlayerStats(inference_level=label)
 
     # Matchup-specific tracking: (level_a, level_b) -> {wins_a, wins_b}
     matchup_wins: dict[tuple[str, str], dict[str, int]] = defaultdict(
@@ -493,7 +493,9 @@ async def run_tournament(
             for j, entry in enumerate(shuffled):
                 level = entry if isinstance(entry, str) else entry.inference_level
                 if j < num_llm:
-                    ll = llm_level or random.choice(list(INFERENCE_LEVELS))
+                    ll = llm_level or random.choice(
+                        [lvl for lvl in INFERENCE_LEVELS if lvl != INFERENCE_NONE]
+                    )
                     cfg = AgentConfig(
                         inference_level=ll,
                         agent_type="llm",
@@ -521,7 +523,9 @@ async def run_tournament(
         if not result["finished"]:
             games_timeout += 1
             if not quiet:
-                print(f"  Game {i}: TIMEOUT after {result['actions']} actions")
+                print(
+                    f"  Game {result['id']}: TIMEOUT after {result['actions']} actions"
+                )
             continue
 
         games_finished += 1
@@ -529,6 +533,10 @@ async def run_tournament(
 
         # Update per-level stats (lazily create for wanderers / custom labels)
         levels_in_game = list(result["agent_levels"].values())
+        # if not quiet:
+        #     print(
+        #         f"  Game {result['id']}: Winner={winner_level}, Levels={levels_in_game} time={result['time']:.1f}s"
+        #     )
         for level in levels_in_game:
             if level not in stats:
                 stats[level] = PlayerStats(inference_level=level)
@@ -602,7 +610,7 @@ def print_report(results: dict):
     print(
         f"  {'Level':<25} {'ELO':>6} {'Wins':>6} {'Games':>6} {'Win%':>7} {'Avg Turns':>10}"
     )
-    print("  " + "-" * 53)
+    print("  " + "-" * 64)
     for s in sorted_stats:
         if s.games == 0:
             continue
@@ -616,17 +624,19 @@ def print_report(results: dict):
     if matchup_wins and len(levels_with_games) > 1:
         print()
         print("  HEAD-TO-HEAD WIN RATES:")
-        print(f"  {'':>12}", end="")
+        print(f"  {'':>25}", end="")
         for level in levels_with_games:
-            print(f" {level[:25]:>25}", end="")
+            names = level.split("-")  # shorten LLM presets for display
+            name = "-".join([n[0:2] for n in names][-2:])
+            print(f" {name:>7}", end="")
         print()
-        print("  " + "-" * (12 + 25 * len(levels_with_games)))
+        print("  " + "-" * (25 + 8 * len(levels_with_games)))
 
         for row_level in levels_with_games:
-            print(f"  {row_level:<12}", end="")
+            print(f"  {row_level:<25}", end="")
             for col_level in levels_with_games:
                 if row_level == col_level:
-                    print(f" {'---':>25}", end="")
+                    print(f" {'---':>7}", end="")
                     continue
                 key = tuple(sorted([row_level, col_level]))
                 data = matchup_wins.get(key, {})
@@ -634,7 +644,7 @@ def print_report(results: dict):
                 col_wins = data.get(col_level, 0)
                 total = row_wins + col_wins
                 if total == 0:
-                    print(f" {'N/A':>25}", end="")
+                    print(f" {'N/A':>7}", end="")
                 else:
                     rate = row_wins / total
                     print(f" {rate:>7.1%}", end="")
@@ -884,11 +894,11 @@ def main():
     parser.add_argument(
         "--llm-preset",
         type=str,
-        default="standard",
+        default="regular",
         choices=list(LLM_PRESETS.keys()),
         help="LLM model preset: "
         + ", ".join(f"'{k}' ({v['description']})" for k, v in LLM_PRESETS.items())
-        + " (default: standard).",
+        + " (default: regular).",
     )
     parser.add_argument(
         "--style-test",

@@ -738,9 +738,6 @@ class BaseAgent(ABC):
 
     def observe_shown_card(self, card: str, shown_by: str | None = None):
         """Called when another player shows us a card."""
-        if self.inference_level == INFERENCE_NONE:
-            self.agent_trace("observe_shown_card", card=card, skipped="inference_none")
-            return
         is_new = card not in self.known_cards
         self.seen_cards.add(card)
         # If it was previously only inferred, promote to seen
@@ -802,7 +799,7 @@ class BaseAgent(ABC):
 
         Requires inference_level >= standard to attempt deduction.
         """
-        if self.inference_level in (INFERENCE_NONE, INFERENCE_BASIC):
+        if self.inference_level in (INFERENCE_NONE):
             self.agent_trace(
                 "observe_card_shown_to_other",
                 skipped=self.inference_level,
@@ -2331,9 +2328,7 @@ class LLMAgent(BaseAgent):
                 return False
             # Must suggest the room the player is currently in
             if game_state and player_state:
-                current_room = game_state.current_room.get(
-                    player_state.your_player_id
-                )
+                current_room = game_state.current_room.get(player_state.your_player_id)
                 if current_room and action.get("room") != current_room:
                     self.agent_trace(
                         "validation_failed",
