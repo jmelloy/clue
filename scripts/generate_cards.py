@@ -343,7 +343,7 @@ class ClassicTheme(Theme):
     BLACK = (28, 28, 46)
     BACK_BG = (26, 77, 46)  # dark green
     BACK_ACCENT = (201, 168, 76)  # gold
-    CORNER_GUTTER = 64
+    CORNER_GUTTER = 48
 
     # Cache extracted AI center images to avoid re-processing
     _center_cache: dict[str, Image.Image] = {}
