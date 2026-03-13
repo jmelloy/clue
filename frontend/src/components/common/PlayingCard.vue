@@ -43,7 +43,6 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useDeck } from '../../composables/useDeck'
 
 const props = defineProps({
   rank: { type: String, default: 'A' },
@@ -51,10 +50,10 @@ const props = defineProps({
   faceDown: { type: Boolean, default: false },
   size: { type: String, default: 'medium', validator: v => ['tiny', 'mini', 'small', 'medium', 'large'].includes(v) },
   /**
-   * Explicit deck override. When omitted the globally active deck from
-   * useDeck() is used. Pass 'css' to force the CSS/Unicode rendering.
+   * Card deck/art style. Defaults to 'css' (Unicode rendering).
+   * Pass 'classic', 'modern', or 'vintage' for image-based rendering.
    */
-  deck: { type: String, default: null },
+  deck: { type: String, default: 'css' },
   /**
    * Rotation in degrees applied to face-down cards to give a "dealt from
    * a deck" appearance. Positive = clockwise, negative = counter-clockwise.
@@ -62,10 +61,7 @@ const props = defineProps({
   rotation: { type: Number, default: 0 },
 })
 
-const { deck: globalDeck } = useDeck()
-
-// Resolved deck: explicit prop > global selection
-const activeDeck = computed(() => props.deck ?? globalDeck.value)
+const activeDeck = computed(() => props.deck)
 
 // Whether to attempt image rendering for this card
 const imgError = ref(false)
