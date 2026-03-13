@@ -344,7 +344,7 @@ class ClassicTheme(Theme):
     BACK_BG = (26, 77, 46)  # dark green
     BACK_ACCENT = (201, 168, 76)  # gold
     CORNER_GUTTER = 48  # horizontal — matches corner text column width
-    CORNER_V_GUTTER = 100  # vertical — clears full corner text block height
+    CORNER_V_GUTTER = 85  # vertical — clears full corner text block height
 
     # Cache extracted AI center images to avoid re-processing
     _center_cache: dict[str, Image.Image] = {}
