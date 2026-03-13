@@ -2279,9 +2279,51 @@ watch(
     font-size: 0.8rem;
   }
 
+  /* Phone: switch hand cards to horizontal chip layout for readability */
+  .card-hand {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
   .hand-card {
-    width: 68px;
-    font-size: 0.65rem;
+    width: 100%;
+    flex-direction: row;
+    gap: 0.4rem;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    align-items: center;
+  }
+
+  .hand-card .card-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-position: center 15%;
+    flex-shrink: 0;
+  }
+
+  .hand-card .card-thumb.card-thumb-room {
+    border-radius: 6px;
+    object-position: center center;
+  }
+
+  .hand-card .card-thumb.card-thumb-weapon {
+    border-radius: 6px;
+    object-position: center center;
+  }
+
+  .hand-card .card-icon {
+    font-size: 1.3rem;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .hand-card .card-label {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    text-align: left;
+    line-height: 1.2;
   }
 
   .physical-card-image-frame {
@@ -2293,17 +2335,37 @@ watch(
   }
 
   .game-over-cards {
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
   .game-over-card.physical-card {
-    width: 100px;
+    width: 110px;
+  }
+  .game-over-card .physical-card-title {
+    font-size: 0.72rem;
   }
   .game-over-card-frame {
-    width: 85px;
-    height: 65px;
+    width: 90px;
+    height: 68px;
   }
   .game-over-banner {
-    padding: 1.5rem 1.5rem;
+    padding: 1.5rem 1rem;
+  }
+
+  /* Card shown banner on phone */
+  .card-shown-banner {
+    padding: 1.5rem 1.25rem;
+  }
+  .card-shown-banner-card.physical-card {
+    width: min(160px, 55vw);
+  }
+  .card-shown-banner-card.physical-card .physical-card-image-frame {
+    height: 100px;
+  }
+  .card-shown-banner-card.physical-card.card-suspect .physical-card-image-frame {
+    height: 100px;
+  }
+  .card-shown-banner-suggestion {
+    font-size: 0.82rem;
   }
 
   .legend-name,
@@ -2323,12 +2385,17 @@ watch(
   }
 
   .hand-card {
-    width: 60px;
-    font-size: 0.6rem;
+    padding: 4px 6px;
+    font-size: 0.75rem;
   }
 
-  .card-hand {
-    gap: 0.3rem;
+  .hand-card .card-thumb {
+    width: 30px;
+    height: 30px;
+  }
+
+  .hand-card .card-label {
+    font-size: 0.78rem;
   }
 
   .status-banner {
