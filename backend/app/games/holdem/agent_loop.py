@@ -22,7 +22,7 @@ class HoldemAgentRunner(AgentRunner):
     - ``get_player_state``      – async (player_id) -> HoldemPlayerState
     - ``execute_action``        – async (game_id, player_id, action) -> result
     - ``broadcast_chat``        – async (game_id, text, player_id=None) -> None
-    - ``rebuy``                 – async (game_id, player_id) -> new_state
+    - ``rebuy``                 – async (player_id) -> new_state
     - ``on_rebuy_success``      – async (game_id, agent_id, new_state) -> None
     - ``notify_new_hand``       – async (game_id, state) -> None
     - ``format_currency``       – (amount) -> str
