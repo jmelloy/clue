@@ -12,7 +12,7 @@ export type GameStatus = 'waiting' | 'playing' | 'finished'
 export type PlayerType = 'human' | 'agent' | 'llm_agent' | 'wanderer'
 export type Theme = 'dark' | 'light' | 'vintage'
 /** Image-based deck style, or 'css' for the built-in CSS/Unicode rendering. */
-export type Deck = 'css' | 'classic' | 'modern' | 'vintage'
+export type Deck = 'css' | 'classic' | 'modern' | 'vintage' | 'mage'
 
 // ---------------------------------------------------------------------------
 // Clue types

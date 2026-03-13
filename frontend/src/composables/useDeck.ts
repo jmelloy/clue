@@ -1,7 +1,7 @@
 import { ref, readonly, type DeepReadonly, type Ref } from 'vue'
 import type { Deck } from '../types'
 
-export const DECKS: Deck[] = ['css', 'classic', 'modern', 'vintage']
+export const DECKS: Deck[] = ['css', 'classic', 'modern', 'vintage', 'mage']
 const STORAGE_KEY = 'clue-deck'
 
 // Shared singleton state (mirrors the pattern used by useTheme)
