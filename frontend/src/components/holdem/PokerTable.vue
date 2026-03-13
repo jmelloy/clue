@@ -124,8 +124,8 @@
               <TransitionGroup name="card-deal">
                 <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
                   :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }">
-                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" />
-                  <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" />
+                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
+                  <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
                 </div>
               </TransitionGroup>
             </div>
@@ -155,7 +155,7 @@
         <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length" class="winner-banner-hands">
           <div v-if="winnerBanner.communityCards && winnerBanner.communityCards.length" class="banner-community-cards">
             <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i"
-              :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
+              :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" :deck="handDeck" />
           </div>
           <div class="banner-player-hands-row">
             <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
@@ -163,7 +163,7 @@
               <span class="banner-hand-name">{{ playerName(pid) }}</span>
               <div class="banner-hand-cards">
                 <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit"
-                  :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
+                  :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" :deck="handDeck" />
               </div>
             </div>
           </div>
@@ -178,12 +178,12 @@
         <div class="hole-cards">
           <template v-if="yourCards.length">
             <PlayingCard v-for="(c, i) in yourCards" :key="i"
-              :rank="c.rank" :suit="c.suit" size="medium" class="hole-card"
+              :rank="c.rank" :suit="c.suit" size="medium" class="hole-card" :deck="handDeck"
               :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
           </template>
           <template v-else>
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" :rotation="deckRotation" />
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" :rotation="deckRotation" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" :rotation="deckRotation" :deck="handDeck" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" :rotation="deckRotation" :deck="handDeck" />
           </template>
         </div>
       </div>
@@ -336,7 +336,7 @@
             </div>
             <div v-if="showdownData.community_cards && showdownData.community_cards.length" class="showdown-community-cards">
               <PlayingCard v-for="(c, i) in showdownData.community_cards" :key="'sc-' + i"
-                :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" />
+                :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" :deck="handDeck" />
             </div>
             <div class="showdown-divider"></div>
             <div class="showdown-hands">
@@ -344,7 +344,7 @@
                 <span class="sh-name">{{ playerName(pid) }}</span>
                 <div class="sh-cards">
                   <PlayingCard v-for="(c, i) in cards" :key="i"
-                    :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" />
+                    :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" :deck="handDeck" />
                 </div>
               </div>
             </div>
@@ -493,6 +493,14 @@ const deckRotation = computed(() => {
   const h = props.gameState?.hand_number ?? 0
   const rotations = [-4, -2, 0, 2, 4, 3, -3, 1, -1]
   return rotations[h % rotations.length]
+})
+
+// Rotate through deck art styles each hand so players see variety without
+// needing a theme picker on the main page.
+const DECK_STYLES = ['css', 'classic', 'modern', 'vintage']
+const handDeck = computed(() => {
+  const h = props.gameState?.hand_number ?? 0
+  return DECK_STYLES[h % DECK_STYLES.length]
 })
 
 const communityCardSlots = computed(() => {
