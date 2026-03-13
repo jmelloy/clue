@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 # Chip denominations (GCD determines bet granularity)
-CHIP_DENOMINATIONS = [500, 100, 25, 10]
+CHIP_DENOMINATIONS = [2000, 500, 100, 25, 10]
 MIN_CHIP = reduce(gcd, CHIP_DENOMINATIONS)  # 5 — all bets must be multiples of this
 
 RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
