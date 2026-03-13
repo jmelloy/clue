@@ -50,24 +50,37 @@ PIP_LAYOUTS: dict[int, list[tuple[int, int]]] = {
     6: [(22, 27), (22, 73), (50, 27), (50, 73), (78, 27), (78, 73)],
     7: [(22, 27), (22, 73), (36, 50), (50, 27), (50, 73), (78, 27), (78, 73)],
     8: [
-        (22, 27), (22, 73), (36, 50),
-        (50, 27), (50, 73),
-        (64, 50), (78, 27), (78, 73),
+        (22, 27),
+        (22, 73),
+        (36, 50),
+        (50, 27),
+        (50, 73),
+        (64, 50),
+        (78, 27),
+        (78, 73),
     ],
     9: [
-        (22, 27), (22, 73),
-        (41, 27), (41, 73),
+        (22, 27),
+        (22, 73),
+        (41, 27),
+        (41, 73),
         (50, 50),
-        (59, 27), (59, 73),
-        (78, 27), (78, 73),
+        (59, 27),
+        (59, 73),
+        (78, 27),
+        (78, 73),
     ],
     10: [
-        (22, 27), (22, 73),
+        (22, 27),
+        (22, 73),
         (33, 50),
-        (44, 27), (44, 73),
-        (65, 27), (65, 73),
+        (44, 27),
+        (44, 73),
+        (65, 27),
+        (65, 73),
         (76, 50),
-        (87, 27), (87, 73),
+        (87, 27),
+        (87, 73),
     ],
 }
 
@@ -146,6 +159,7 @@ def load_font(name: str, size: int) -> ImageFont.FreeTypeFont:
 # Drawing helpers
 # ---------------------------------------------------------------------------
 
+
 def draw_rounded_rect(
     draw: ImageDraw.ImageDraw,
     xy: tuple[int, int, int, int],
@@ -176,6 +190,7 @@ def centered_text(
 # ---------------------------------------------------------------------------
 # Shared corner helper — draw the bottom-right corner (rotated 180°)
 # ---------------------------------------------------------------------------
+
 
 def _draw_rotated_corner(
     draw: ImageDraw.ImageDraw,
@@ -214,6 +229,7 @@ def _draw_rotated_corner(
 # ---------------------------------------------------------------------------
 # Theme definitions
 # ---------------------------------------------------------------------------
+
 
 class Theme:
     name: str
@@ -311,16 +327,17 @@ class Theme:
 # Theme 1 — Classic
 # ---------------------------------------------------------------------------
 
+
 class ClassicTheme(Theme):
     """Traditional playing card: cream background, DejaVu Serif, ornamental border."""
 
     name = "classic"
 
-    BG = (245, 241, 232)        # cream
-    BORDER = (28, 28, 46)       # near-black
+    BG = (245, 241, 232)  # cream
+    BORDER = (28, 28, 46)  # near-black
     RED = (185, 28, 28)
     BLACK = (28, 28, 46)
-    BACK_BG = (26, 77, 46)      # dark green
+    BACK_BG = (26, 77, 46)  # dark green
     BACK_ACCENT = (201, 168, 76)  # gold
 
     def suit_color(self, suit: str) -> tuple:
@@ -354,21 +371,32 @@ class ClassicTheme(Theme):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
         cx_offset = 48  # horizontal center of corner column
-        top_y = 34      # top of rank text
+        top_y = 34  # top of rank text
         if top_left:
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
             rh = bbox_r[3] - bbox_r[1]
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
             centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
-            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
-                                 self.W, self.H, cx_offset, top_y)
+            _draw_rotated_corner(
+                draw,
+                rank,
+                suit,
+                rank_font,
+                suit_font,
+                color,
+                self.W,
+                self.H,
+                cx_offset,
+                top_y,
+            )
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
         if rank in ("J", "Q", "K"):
-            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
-                                   fonts["face_suit"], color)
+            self._draw_face_center(
+                draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
+            )
         else:
             count = pip_count(rank)
             if count:
@@ -390,7 +418,11 @@ class ClassicTheme(Theme):
         # diagonal hatch pattern
         spacing = 16
         for offset in range(-self.H, self.W + self.H, spacing):
-            draw.line([(offset, 0), (offset + self.H, self.H)], fill=(*self.BACK_ACCENT[:3], 30), width=1)
+            draw.line(
+                [(offset, 0), (offset + self.H, self.H)],
+                fill=(*self.BACK_ACCENT[:3], 30),
+                width=1,
+            )
         # inner frame
         m2 = 20
         draw_rounded_rect(
@@ -407,6 +439,7 @@ class ClassicTheme(Theme):
 # Theme 2 — Modern
 # ---------------------------------------------------------------------------
 
+
 class ModernTheme(Theme):
     """Minimalist flat design: white background, Lato Bold, colour accent bar."""
 
@@ -415,8 +448,8 @@ class ModernTheme(Theme):
     BG = (255, 255, 255)
     RED = (220, 38, 38)
     BLUE = (37, 99, 235)
-    BORDER = (229, 231, 235)    # light grey border
-    BACK_BG = (17, 24, 39)      # very dark navy
+    BORDER = (229, 231, 235)  # light grey border
+    BACK_BG = (17, 24, 39)  # very dark navy
 
     def suit_color(self, suit: str) -> tuple:
         return self.RED if suit in ("hearts", "diamonds") else self.BLUE
@@ -429,8 +462,12 @@ class ModernTheme(Theme):
 
     def draw_border(self, draw: ImageDraw.ImageDraw) -> None:
         draw_rounded_rect(
-            draw, (0, 0, self.W - 1, self.H - 1), 16,
-            fill=None, outline=self.BORDER, width=3,
+            draw,
+            (0, 0, self.W - 1, self.H - 1),
+            16,
+            fill=None,
+            outline=self.BORDER,
+            width=3,
         )
 
     def _draw_accent_bar(self, draw: ImageDraw.ImageDraw, suit: str) -> None:
@@ -451,16 +488,27 @@ class ModernTheme(Theme):
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
             centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
-            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
-                                 self.W, self.H, cx_offset, top_y)
+            _draw_rotated_corner(
+                draw,
+                rank,
+                suit,
+                rank_font,
+                suit_font,
+                color,
+                self.W,
+                self.H,
+                cx_offset,
+                top_y,
+            )
 
     def draw_center(self, draw, rank, suit, fonts):
         # accent bars drawn here because we need suit colour
         self._draw_accent_bar(draw, suit)
         color = self.suit_color(suit)
         if rank in ("J", "Q", "K"):
-            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
-                                   fonts["face_suit"], color)
+            self._draw_face_center(
+                draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
+            )
         else:
             count = pip_count(rank)
             if count:
@@ -494,17 +542,18 @@ class ModernTheme(Theme):
 # Theme 3 — Vintage
 # ---------------------------------------------------------------------------
 
+
 class VintageTheme(Theme):
     """Aged-paper retro style: warm beige, Liberation Serif, double-line border."""
 
     name = "vintage"
 
-    BG = (240, 230, 200)        # aged paper
-    DARK_RED = (120, 30, 30)    # burgundy
-    DARK_NAVY = (20, 20, 60)    # dark navy
-    BORDER_OUTER = (101, 67, 33)   # brown
+    BG = (240, 230, 200)  # aged paper
+    DARK_RED = (120, 30, 30)  # burgundy
+    DARK_NAVY = (20, 20, 60)  # dark navy
+    BORDER_OUTER = (101, 67, 33)  # brown
     BORDER_INNER = (160, 110, 60)  # lighter brown
-    BACK_BG = (55, 27, 12)        # dark walnut
+    BACK_BG = (55, 27, 12)  # dark walnut
 
     def suit_color(self, suit: str) -> tuple:
         return self.DARK_RED if suit in ("hearts", "diamonds") else self.DARK_NAVY
@@ -565,14 +614,25 @@ class VintageTheme(Theme):
             centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
             centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
         else:
-            _draw_rotated_corner(draw, rank, suit, rank_font, suit_font, color,
-                                 self.W, self.H, cx_offset, top_y)
+            _draw_rotated_corner(
+                draw,
+                rank,
+                suit,
+                rank_font,
+                suit_font,
+                color,
+                self.W,
+                self.H,
+                cx_offset,
+                top_y,
+            )
 
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
         if rank in ("J", "Q", "K"):
-            self._draw_face_center(draw, rank, suit, fonts["face_rank"],
-                                   fonts["face_suit"], color)
+            self._draw_face_center(
+                draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
+            )
         else:
             count = pip_count(rank)
             if count:
@@ -599,13 +659,21 @@ class VintageTheme(Theme):
         # concentric borders
         m = 12
         draw_rounded_rect(
-            draw, (m, m, self.W - m - 1, self.H - m - 1),
-            12, fill=None, outline=(160, 110, 60, 200), width=2,
+            draw,
+            (m, m, self.W - m - 1, self.H - m - 1),
+            12,
+            fill=None,
+            outline=(160, 110, 60, 200),
+            width=2,
         )
         m2 = 20
         draw_rounded_rect(
-            draw, (m2, m2, self.W - m2 - 1, self.H - m2 - 1),
-            8, fill=None, outline=(160, 110, 60, 120), width=1,
+            draw,
+            (m2, m2, self.W - m2 - 1, self.H - m2 - 1),
+            8,
+            fill=None,
+            outline=(160, 110, 60, 120),
+            width=1,
         )
         # centre medallion
         cx, cy = self.W // 2, self.H // 2
@@ -661,6 +729,7 @@ def build_fonts(theme_name: str, W: int, H: int) -> dict:
 # Card renderer
 # ---------------------------------------------------------------------------
 
+
 def render_card(
     theme: Theme,
     rank: str,
@@ -711,7 +780,12 @@ def render_back(theme: Theme) -> Image.Image:
 # AI-generated images directory
 _MAGE_IMAGE_DIR = Path(__file__).parent.parent / "mage-output" / "1 - Z-Image Turbo"
 _MAGE_RANK_MAP = {"A": "Ace", "J": "Jack", "Q": "Queen", "K": "King"}
-_MAGE_SUIT_MAP = {"clubs": "Clubs", "diamonds": "Diamonds", "hearts": "Hearts", "spades": "Spades"}
+_MAGE_SUIT_MAP = {
+    "clubs": "Clubs",
+    "diamonds": "Diamonds",
+    "hearts": "Hearts",
+    "spades": "Spades",
+}
 
 # Best variant index per card (0-indexed, selected by visual review)
 _MAGE_BEST_VARIANT: dict[str, int] = {
@@ -721,8 +795,8 @@ _MAGE_BEST_VARIANT: dict[str, int] = {
 # Corner regions to blank out (as fraction of card size).
 # The AI cards have rank/suit text in the top-left and bottom-right corners only.
 # Sized to cover rank text + suit symbol + any decorative pips near corners.
-_MAGE_CORNER_W = 0.20   # width of each corner region
-_MAGE_CORNER_H = 0.22   # height of each corner region
+_MAGE_CORNER_W = 0.20  # width of each corner region
+_MAGE_CORNER_H = 0.22  # height of each corner region
 
 # Minimal edge trim — just past the card border / rounded-corner area
 _MAGE_EDGE_TRIM = 0.03
@@ -737,6 +811,7 @@ def _find_mage_image(rank: str, suit: str) -> Path | None:
 
     card_name = f"{rank_name} of {suit_name}"
     import re
+
     pattern = re.compile(rf"^{re.escape(card_name)}_\d+\.jpg$")
     matches = sorted(f for f in _MAGE_IMAGE_DIR.iterdir() if pattern.match(f.name))
     if not matches:
@@ -746,9 +821,12 @@ def _find_mage_image(rank: str, suit: str) -> Path | None:
     return matches[min(idx, len(matches) - 1)]
 
 
-def _find_card_bounds(img: Image.Image, threshold: int = 240) -> tuple[int, int, int, int]:
+def _find_card_bounds(
+    img: Image.Image, threshold: int = 240
+) -> tuple[int, int, int, int]:
     """Find the bounding box of card content (non-white area)."""
     import numpy as np
+
     arr = np.array(img.convert("L"))
     h, w = arr.shape
 
@@ -758,7 +836,7 @@ def _find_card_bounds(img: Image.Image, threshold: int = 240) -> tuple[int, int,
             line = arr[i, :] if is_row else arr[:, i]
             if np.sum(line < threshold) / dim > 0.08:
                 return i
-        return iter_range[0] if hasattr(iter_range, '__getitem__') else 0
+        return iter_range[0] if hasattr(iter_range, "__getitem__") else 0
 
     top = first_content(range(h), True)
     bot = first_content(range(h - 1, -1, -1), True)
@@ -801,7 +879,7 @@ def _extract_mage_center(img_path: Path) -> Image.Image:
     arr[:corner_h, :corner_w, 3] = 0
 
     # Mask out the bottom-right corner (AI rank/suit text)
-    arr[th - corner_h:, tw - corner_w:, 3] = 0
+    arr[th - corner_h :, tw - corner_w :, 3] = 0
 
     # Replace remaining white/near-white background with transparency
     white_mask = (arr[:, :, 0] > 235) & (arr[:, :, 1] > 235) & (arr[:, :, 2] > 235)
@@ -888,7 +966,9 @@ def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
         style_dir = output_dir / style_name
         style_dir.mkdir(parents=True, exist_ok=True)
 
-        fonts = build_fonts(theme.name if theme.name in THEME_FONTS else "classic", W, H)
+        fonts = build_fonts(
+            theme.name if theme.name in THEME_FONTS else "classic", W, H
+        )
 
         for suit in SUITS:
             for rank in RANKS:
@@ -897,13 +977,21 @@ def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
                 img.convert("RGB").save(style_dir / filename, "PNG", optimize=True)
                 done += 1
                 pct = done * 100 // total
-                print(f"\r  [{pct:3d}%] {style_name}: {rank} of {suit}    ", end="", flush=True)
+                print(
+                    f"\r  [{pct:3d}%] {style_name}: {rank} of {suit}    ",
+                    end="",
+                    flush=True,
+                )
 
         # card back
         back = render_back(theme)
         back.convert("RGB").save(style_dir / "back.png", "PNG", optimize=True)
         done += 1
-        print(f"\r  [{done * 100 // total:3d}%] {style_name}: back              ", end="", flush=True)
+        print(
+            f"\r  [{done * 100 // total:3d}%] {style_name}: back              ",
+            end="",
+            flush=True,
+        )
 
         print(f"\n  ✓  {style_name}: {52 + 1} images → {style_dir}")
 
@@ -911,6 +999,7 @@ def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -920,7 +1009,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default=str(Path(__file__).parent.parent / "frontend" / "public" / "images" / "cards"),
+        default=str(
+            Path(__file__).parent.parent / "frontend" / "public" / "images" / "cards"
+        ),
         help="Output directory (default: frontend/public/images/cards/)",
     )
     parser.add_argument(
