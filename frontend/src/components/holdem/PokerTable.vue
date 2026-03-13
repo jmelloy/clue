@@ -2260,13 +2260,29 @@ watch(
   }
 
   .card-slot :deep(.playing-card) {
-    width: 44px;
-    height: 62px;
+    width: 48px;
+    height: 68px;
+  }
+
+  .card-slot :deep(.card-rank) {
+    font-size: 0.65rem;
+  }
+
+  .card-slot :deep(.card-suit-small) {
+    font-size: 0.5rem;
   }
 
   .hole-card {
-    width: 52px !important;
-    height: 74px !important;
+    width: 56px !important;
+    height: 80px !important;
+  }
+
+  .hole-card :deep(.card-rank) {
+    font-size: 0.7rem;
+  }
+
+  .hole-card :deep(.card-suit-small) {
+    font-size: 0.55rem;
   }
 
   .bottom-dock {
