@@ -2162,9 +2162,11 @@ async def holdem_start_game(game_id: str):
                 game_id,
             )
         _holdem_agents[game_id] = agents
-        _holdem_agent_tasks[game_id] = asyncio.create_task(
-            _run_holdem_agent_loop(game_id)
+        task = asyncio.create_task(_run_holdem_agent_loop(game_id))
+        task.add_done_callback(
+            lambda t, gid=game_id: _on_holdem_agent_loop_done(gid, t)
         )
+        _holdem_agent_tasks[game_id] = task
 
     return state.model_dump()
 
@@ -2466,6 +2468,79 @@ async def _holdem_notify_new_hand(
 # ---------------------------------------------------------------------------
 # Hold'em agent support
 # ---------------------------------------------------------------------------
+
+
+def _on_holdem_agent_loop_done(game_id: str, task: asyncio.Task) -> None:
+    """Callback invoked when a holdem agent-loop task finishes.
+
+    If the task ended for any reason other than explicit cancellation,
+    schedule a watchdog check so the loop can be restarted when the
+    game is still active.
+    """
+    if task.cancelled():
+        return
+    task.get_loop().create_task(_holdem_agent_loop_watchdog(game_id))
+
+
+async def _holdem_agent_loop_watchdog(game_id: str) -> None:
+    """Restart the holdem agent loop for *game_id* if the game is still active.
+
+    Called automatically via :func:`_on_holdem_agent_loop_done` whenever an
+    agent task exits.  Does nothing if the game has already ended or if a
+    fresh task is already running.
+    """
+    # Bail out if a fresh task was already started (race guard).
+    if game_id in _holdem_agent_tasks and not _holdem_agent_tasks[game_id].done():
+        return
+
+    try:
+        game = HoldemGame(game_id, redis_client)
+        state = await game.get_state()
+        if not state or state.status != "playing":
+            return
+
+        # Find agent players from game state
+        agent_players = [p for p in state.players if p.player_type == "holdem_agent"]
+        if not agent_players:
+            return
+
+        import json as _json
+
+        agents: dict[str, HoldemAgent] = {}
+        for player in agent_players:
+            config_raw = await redis_client.get(
+                f"holdem:{game_id}:agent_config:{player.id}"
+            )
+            config = _json.loads(config_raw) if config_raw else {}
+            agents[player.id] = HoldemAgent(
+                player_id=player.id,
+                name=player.name,
+                aggression=config.get("aggression", 0.5),
+                tightness=config.get("tightness", 0.5),
+                bluff_frequency=config.get("bluff_frequency", 0.15),
+                slowplay_frequency=config.get("slowplay_frequency", 0.1),
+                chat_frequency=config.get("chat_frequency", 0.3),
+                personality=config.get("personality"),
+            )
+
+        if not agents:
+            return
+
+        logger.warning(
+            "Restarting holdem agent loop for game %s with %d agent(s) after unexpected exit",
+            game_id,
+            len(agents),
+        )
+        _holdem_agents[game_id] = agents
+        task = asyncio.create_task(_run_holdem_agent_loop(game_id))
+        task.add_done_callback(
+            lambda t, gid=game_id: _on_holdem_agent_loop_done(gid, t)
+        )
+        _holdem_agent_tasks[game_id] = task
+    except Exception:
+        logger.exception(
+            "Error in holdem agent loop watchdog for game %s", game_id
+        )
 
 
 async def _holdem_agent_fallback(
