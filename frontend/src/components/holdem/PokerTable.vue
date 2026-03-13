@@ -240,8 +240,8 @@
                     :step="MIN_CHIP" v-model.number="betAmount" class="range-input" />
                 </div>
                 <div class="slider-confirm">
-                  <input type="number" v-model.number="betAmount" :min="gameState?.big_blind ?? 20"
-                    :max="myPlayer?.chips ?? 0" :step="MIN_CHIP" class="num-input" />
+                  <input type="number" v-model="betAmountDollars" :min="((gameState?.big_blind ?? 20) / 100).toFixed(2)"
+                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)" class="num-input" />
                   <button class="go-btn" @click="submitBet">
                     Bet {{ formatChips(betAmount) }}
                   </button>
@@ -269,8 +269,8 @@
                     v-model.number="raiseAmount" class="range-input" />
                 </div>
                 <div class="slider-confirm">
-                  <input type="number" v-model.number="raiseAmount" :min="minRaise" :max="myPlayer?.chips ?? 0"
-                    :step="MIN_CHIP" class="num-input" />
+                  <input type="number" v-model="raiseAmountDollars" :min="(minRaise / 100).toFixed(2)"
+                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)" class="num-input" />
                   <button class="go-btn" @click="submitRaise">
                     Raise {{ formatChips(raiseAmount) }}
                   </button>
@@ -448,6 +448,16 @@ const showBetInput = ref(false)
 const showRaiseInput = ref(false)
 const betAmount = ref(20)
 const raiseAmount = ref(40)
+
+// Dollar-display computed properties for the number inputs (internal state is cents)
+const betAmountDollars = computed({
+  get: () => (betAmount.value / 100).toFixed(2),
+  set: (v) => { betAmount.value = roundToChip(Math.round(parseFloat(v) * 100) || 0) }
+})
+const raiseAmountDollars = computed({
+  get: () => (raiseAmount.value / 100).toFixed(2),
+  set: (v) => { raiseAmount.value = roundToChip(Math.round(parseFloat(v) * 100) || 0) }
+})
 const chatInput = ref('')
 const chatContainer = ref(null)
 const chatOpen = ref(false)
