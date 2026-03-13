@@ -173,7 +173,7 @@ class _LoopRegistry:
 
     def cancel_all(self) -> None:
         """Cancel every running task and clear state.  Used during shutdown."""
-        for task in self.tasks.values():
+        for task in list(self.tasks.values()):
             task.cancel()
         self.tasks.clear()
         self.agents.clear()
