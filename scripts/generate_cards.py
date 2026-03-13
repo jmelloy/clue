@@ -331,7 +331,7 @@ class Theme:
 class ClassicTheme(Theme):
     """Traditional playing card: cream background, DejaVu Serif, ornamental border.
 
-    When AI-generated center artwork is available (in the mage-output directory),
+    When AI-generated center artwork is available (in the scripts/cards directory),
     it is composited into Aces and face cards automatically.
     """
 
