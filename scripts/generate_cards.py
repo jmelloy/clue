@@ -343,7 +343,8 @@ class ClassicTheme(Theme):
     BLACK = (28, 28, 46)
     BACK_BG = (26, 77, 46)  # dark green
     BACK_ACCENT = (201, 168, 76)  # gold
-    CORNER_GUTTER = 48
+    CORNER_GUTTER = 48    # horizontal — matches corner text column width
+    CORNER_V_GUTTER = 100  # vertical — clears full corner text block height
 
     # Cache extracted AI center images to avoid re-processing
     _center_cache: dict[str, Image.Image] = {}
@@ -425,10 +426,11 @@ class ClassicTheme(Theme):
         if rank in _AI_RANKS:
             center_art = self._get_center_art(rank, suit)
             if center_art is not None:
-                # Keep AI art inside the same gutter width reserved for corners.
-                gutter = self.CORNER_GUTTER
-                area_w = self.W - 2 * gutter
-                area_h = self.H - 2 * gutter
+                # Keep AI art inside the gutters reserved for corner text.
+                gutter_x = self.CORNER_GUTTER
+                gutter_y = self.CORNER_V_GUTTER
+                area_w = self.W - 2 * gutter_x
+                area_h = self.H - 2 * gutter_y
 
                 art_w, art_h = center_art.size
                 scale = min(area_w / art_w, area_h / art_h)
@@ -436,8 +438,8 @@ class ClassicTheme(Theme):
                 new_h = int(art_h * scale)
                 resized = center_art.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-                paste_x = gutter + (area_w - new_w) // 2
-                paste_y = gutter + (area_h - new_h) // 2
+                paste_x = gutter_x + (area_w - new_w) // 2
+                paste_y = gutter_y + (area_h - new_h) // 2
 
                 self._pending_paste = (resized, paste_x, paste_y)
                 return
