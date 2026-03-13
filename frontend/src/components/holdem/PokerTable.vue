@@ -396,6 +396,7 @@ const emit = defineEmits(['action', 'send-chat', 'rebuy', 'decline-rebuy'])
 
 // Chip denominations: value, color name (used as CSS class), and display color
 const CHIP_DENOMS = [
+  { value: 2000, color: 'black' },
   { value: 500, color: 'green' },
   { value: 100, color: 'blue' },
   { value: 25, color: 'red' },
@@ -1155,6 +1156,11 @@ watch(
 }
 
 /* ─── Chip denomination colors ─── */
+.chip-black {
+  background: #1a1a1a;
+  border-color: #444;
+}
+
 .chip-white {
   background: #e8e8e8;
   border-color: #bbb;
