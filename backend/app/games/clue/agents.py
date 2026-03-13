@@ -688,7 +688,7 @@ class BaseAgent(ABC):
         detail_str = (
             " | ".join(f"{k}={v}" for k, v in details.items()) if details else ""
         )
-        log_msg = f"[{self.agent_type}:{self.player_id}] {event}"
+        log_msg = f"[{self._game_id}:{self.player_id}] {event}"
         if detail_str:
             log_msg += f" | {detail_str}"
         logger.debug(log_msg)

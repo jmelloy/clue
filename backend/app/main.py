@@ -231,8 +231,12 @@ def _new_id(length: int = 6) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-def _new_player_id() -> str:
-    return _new_id(8)
+_AGENT_TYPE_PREFIX = {"agent": "R_", "llm_agent": "L_", "wanderer": "W_"}
+
+
+def _new_player_id(agent_type: str | None = None) -> str:
+    prefix = _AGENT_TYPE_PREFIX.get(agent_type, "") if agent_type else ""
+    return f"{prefix}{_new_id(8)}"
 
 
 # ---------------------------------------------------------------------------
@@ -1508,7 +1512,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    player_id = _new_player_id()
+    player_id = _new_player_id(agent_type=agent_type)
 
     try:
         # Pass None as the name; add_player assigns the character name for non-human types
