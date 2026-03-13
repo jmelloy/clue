@@ -329,7 +329,11 @@ class Theme:
 
 
 class ClassicTheme(Theme):
-    """Traditional playing card: cream background, DejaVu Serif, ornamental border."""
+    """Traditional playing card: cream background, DejaVu Serif, ornamental border.
+
+    When AI-generated center artwork is available (in the mage-output directory),
+    it is composited into Aces and face cards automatically.
+    """
 
     name = "classic"
 
@@ -339,6 +343,10 @@ class ClassicTheme(Theme):
     BLACK = (28, 28, 46)
     BACK_BG = (26, 77, 46)  # dark green
     BACK_ACCENT = (201, 168, 76)  # gold
+    CORNER_GUTTER = 64
+
+    # Cache extracted AI center images to avoid re-processing
+    _center_cache: dict[str, Image.Image] = {}
 
     def suit_color(self, suit: str) -> tuple:
         return self.RED if suit in ("hearts", "diamonds") else self.BLACK
@@ -370,7 +378,7 @@ class ClassicTheme(Theme):
     def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
         color = self.suit_color(suit)
         symbol = SUIT_SYMBOLS[suit]
-        cx_offset = 48  # horizontal center of corner column
+        cx_offset = self.CORNER_GUTTER  # horizontal center of corner column
         top_y = 34  # top of rank text
         if top_left:
             bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
@@ -391,8 +399,50 @@ class ClassicTheme(Theme):
                 top_y,
             )
 
+    def _get_center_art(self, rank: str, suit: str) -> Image.Image | None:
+        """Load and cache pre-cleaned AI artwork for a card.
+
+        Looks for RGBA PNGs produced by clean_cards.py in _AI_ART_DIR.
+        """
+        key = f"{rank}_{suit}"
+        if key in self._center_cache:
+            return self._center_cache[key]
+
+        art_path = _AI_ART_DIR / "classic" / f"{rank}_{suit}.png"
+        if not art_path.exists():
+            return None
+
+        img = Image.open(art_path)
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        self._center_cache[key] = img
+        return img
+
     def draw_center(self, draw, rank, suit, fonts):
         color = self.suit_color(suit)
+
+        # For A/J/Q/K: try pre-cleaned AI artwork first
+        if rank in _AI_RANKS:
+            center_art = self._get_center_art(rank, suit)
+            if center_art is not None:
+                # Keep AI art inside the same gutter width reserved for corners.
+                gutter = self.CORNER_GUTTER
+                area_w = self.W - 2 * gutter
+                area_h = self.H - 2 * gutter
+
+                art_w, art_h = center_art.size
+                scale = min(area_w / art_w, area_h / art_h)
+                new_w = int(art_w * scale)
+                new_h = int(art_h * scale)
+                resized = center_art.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                paste_x = gutter + (area_w - new_w) // 2
+                paste_y = gutter + (area_h - new_h) // 2
+
+                self._pending_paste = (resized, paste_x, paste_y)
+                return
+
+        # Face cards without AI art: use standard text rendering
         if rank in ("J", "Q", "K"):
             self._draw_face_center(
                 draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
@@ -741,11 +791,16 @@ def render_card(
 
     theme.draw_background(draw, img)
 
-    # draw_center may set _pending_paste (e.g. MageTheme with AI artwork)
+    # draw_center may set _pending_paste (ClassicTheme with AI artwork)
     theme._pending_paste = None  # type: ignore[attr-defined]
     theme.draw_center(draw, rank, suit, fonts)
 
-    # Composite AI artwork before drawing corners (corners draw on top)
+    # Draw corners first so AI artwork (with transparent corners) layers on top
+    theme.draw_corner(draw, rank, suit, True, fonts["rank"], fonts["suit"])
+    theme.draw_corner(draw, rank, suit, False, fonts["rank"], fonts["suit"])
+
+    # Composite AI artwork after corners — the extracted image has its corner
+    # regions masked to transparent, so the programmatic corners show through
     pending = getattr(theme, "_pending_paste", None)
     if pending is not None:
         art_img, px, py = pending
@@ -754,11 +809,6 @@ def render_card(
             art_img = art_img.convert("RGBA")
         img.paste(art_img, (px, py), art_img)
         theme._pending_paste = None  # type: ignore[attr-defined]
-        # Redraw after paste so the draw context reflects the composited image
-        draw = ImageDraw.Draw(img, "RGBA")
-
-    theme.draw_corner(draw, rank, suit, True, fonts["rank"], fonts["suit"])
-    theme.draw_corner(draw, rank, suit, False, fonts["rank"], fonts["suit"])
 
     return img
 
@@ -770,185 +820,19 @@ def render_back(theme: Theme) -> Image.Image:
 
 
 # ---------------------------------------------------------------------------
-# Main generation loop
+# Pre-cleaned AI art for face cards / aces
 # ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Theme 4 — Mage (AI-generated center art on classic card template)
-# ---------------------------------------------------------------------------
-
-# AI-generated images directory
-_MAGE_IMAGE_DIR = Path(__file__).parent.parent / "mage-output" / "1 - Z-Image Turbo"
-_MAGE_RANK_MAP = {"A": "Ace", "J": "Jack", "Q": "Queen", "K": "King"}
-_MAGE_SUIT_MAP = {
-    "clubs": "Clubs",
-    "diamonds": "Diamonds",
-    "hearts": "Hearts",
-    "spades": "Spades",
-}
-
-# Best variant index per card (0-indexed, selected by visual review)
-_MAGE_BEST_VARIANT: dict[str, int] = {
-    "Ace of Clubs": 2,  # variant 3: no inner border frame, fills card naturally
-}
-
-# Corner regions to blank out (as fraction of card size).
-# The AI cards have rank/suit text in the top-left and bottom-right corners only.
-# Sized to cover rank text + suit symbol + any decorative pips near corners.
-_MAGE_CORNER_W = 0.20  # width of each corner region
-_MAGE_CORNER_H = 0.22  # height of each corner region
-
-# Minimal edge trim — just past the card border / rounded-corner area
-_MAGE_EDGE_TRIM = 0.03
-
-
-def _find_mage_image(rank: str, suit: str) -> Path | None:
-    """Find the best AI-generated image for a given rank/suit."""
-    rank_name = _MAGE_RANK_MAP.get(rank)
-    suit_name = _MAGE_SUIT_MAP.get(suit)
-    if not rank_name or not suit_name:
-        return None
-
-    card_name = f"{rank_name} of {suit_name}"
-    import re
-
-    pattern = re.compile(rf"^{re.escape(card_name)}_\d+\.jpg$")
-    matches = sorted(f for f in _MAGE_IMAGE_DIR.iterdir() if pattern.match(f.name))
-    if not matches:
-        return None
-
-    idx = _MAGE_BEST_VARIANT.get(card_name, 0)
-    return matches[min(idx, len(matches) - 1)]
-
-
-def _find_card_bounds(
-    img: Image.Image, threshold: int = 240
-) -> tuple[int, int, int, int]:
-    """Find the bounding box of card content (non-white area)."""
-    import numpy as np
-
-    arr = np.array(img.convert("L"))
-    h, w = arr.shape
-
-    def first_content(iter_range, is_row):
-        dim = w if is_row else h
-        for i in iter_range:
-            line = arr[i, :] if is_row else arr[:, i]
-            if np.sum(line < threshold) / dim > 0.08:
-                return i
-        return iter_range[0] if hasattr(iter_range, "__getitem__") else 0
-
-    top = first_content(range(h), True)
-    bot = first_content(range(h - 1, -1, -1), True)
-    left = first_content(range(w), False)
-    right = first_content(range(w - 1, -1, -1), False)
-    return left, top, right + 1, bot + 1
-
-
-def _extract_mage_center(img_path: Path) -> Image.Image:
-    """Extract center artwork from an AI card image.
-
-    Instead of aggressively cropping all edges, this:
-    1. Crops to the card boundary (removes white margin)
-    2. Trims a thin edge strip (border/rounded corners)
-    3. Masks out the top-left and bottom-right corner regions (AI rank/suit text)
-    4. Makes white/near-white pixels transparent for clean compositing
-    """
-    import numpy as np
-
-    img = Image.open(img_path)
-
-    # Crop to card boundary (remove white margins)
-    bounds = _find_card_bounds(img)
-    card = img.crop(bounds)
-    cw, ch = card.size
-
-    # Trim thin edge strip (card border / rounded corners)
-    trim_x = int(cw * _MAGE_EDGE_TRIM)
-    trim_y = int(ch * _MAGE_EDGE_TRIM)
-    trimmed = card.crop((trim_x, trim_y, cw - trim_x, ch - trim_y))
-    tw, th = trimmed.size
-
-    # Convert to RGBA
-    rgba = trimmed.convert("RGBA")
-    arr = np.array(rgba)
-
-    # Mask out the top-left corner (AI rank/suit text)
-    corner_w = int(tw * _MAGE_CORNER_W)
-    corner_h = int(th * _MAGE_CORNER_H)
-    arr[:corner_h, :corner_w, 3] = 0
-
-    # Mask out the bottom-right corner (AI rank/suit text)
-    arr[th - corner_h :, tw - corner_w :, 3] = 0
-
-    # Replace remaining white/near-white background with transparency
-    white_mask = (arr[:, :, 0] > 235) & (arr[:, :, 1] > 235) & (arr[:, :, 2] > 235)
-    arr[white_mask, 3] = 0
-
-    return Image.fromarray(arr)
-
-
-class MageTheme(ClassicTheme):
-    """Classic card template with AI-generated center art for face cards and aces."""
-
-    name = "mage"
-
-    # Cache extracted center images to avoid re-processing
-    _center_cache: dict[str, Image.Image] = {}
-
-    def _get_center_art(self, rank: str, suit: str) -> Image.Image | None:
-        """Load and cache AI-generated center artwork for a card."""
-        key = f"{rank}_{suit}"
-        if key in self._center_cache:
-            return self._center_cache[key]
-
-        img_path = _find_mage_image(rank, suit)
-        if img_path is None or not img_path.exists():
-            return None
-
-        center = _extract_mage_center(img_path)
-        self._center_cache[key] = center
-        return center
-
-    def draw_center(self, draw, rank, suit, fonts):
-        color = self.suit_color(suit)
-
-        # For A/J/Q/K: composite AI artwork into the center area
-        if rank in _MAGE_RANK_MAP:
-            center_art = self._get_center_art(rank, suit)
-            if center_art is not None:
-                # Target area: full card interior (artwork fills edge-to-edge,
-                # corners are already masked out in the extracted image)
-                margin_x = int(self.W * 0.02)
-                margin_y = int(self.H * 0.02)
-                area_w = self.W - 2 * margin_x
-                area_h = self.H - 2 * margin_y
-
-                # Resize artwork to fit, maintaining aspect ratio
-                art_w, art_h = center_art.size
-                scale = min(area_w / art_w, area_h / art_h)
-                new_w = int(art_w * scale)
-                new_h = int(art_h * scale)
-                resized = center_art.resize((new_w, new_h), Image.LANCZOS)
-
-                # Center it in the target area
-                paste_x = margin_x + (area_w - new_w) // 2
-                paste_y = margin_y + (area_h - new_h) // 2
-
-                self._pending_paste = (resized, paste_x, paste_y)
-                return
-
-        # Number cards: use standard pip rendering
-        count = pip_count(rank)
-        if count:
-            self._draw_pips(draw, suit, count, fonts["pip"], color)
+# Directory of pre-cleaned RGBA PNGs produced by clean_cards.py.
+# Run:  python scripts/clean_cards.py mage-output/ --output mage-output/cleaned --remove-pips
+_AI_ART_DIR = Path(__file__).parent / "cards"
+_AI_RANKS = {"A", "J", "Q", "K"}
 
 
 THEMES: dict[str, Theme] = {
     "classic": ClassicTheme(),
     "modern": ModernTheme(),
     "vintage": VintageTheme(),
-    "mage": MageTheme(),
 }
 
 

@@ -67,38 +67,64 @@ MODEL_MAP = {
 
 
 def parse_batch_markdown(filepath: str) -> list[dict]:
-    """Parse a markdown file with ### Name, **Ratio:** X:Y, and > prompt entries.
+    """Parse a markdown file with # Section, ### Name, **Ratio:** X:Y, and > prompt entries.
 
-    Returns a list of dicts with keys: name, ratio, prompt.
+    Returns a list of dicts with keys: section, name, ratio, prompt.
+    The section comes from the most recent ``# Heading`` (h1) above each card entry.
+    If no ratio is specified per card, a default of ``2:3`` is used.
     """
     with open(filepath) as f:
         content = f.read()
 
     entries = []
-    # Split on ### headers (level 3)
-    sections = re.split(r"^### ", content, flags=re.MULTILINE)
+    current_section = None
 
-    for section in sections[1:]:  # skip preamble before first ###
-        lines = section.strip().split("\n")
-        name = lines[0].strip()
+    # Process line-by-line to track h1 sections and h3 card entries
+    # in document order, so each card gets the section that precedes it.
+    lines = content.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
 
-        # Extract ratio
-        ratio = None
-        for line in lines:
-            m = re.match(r"\*\*Ratio:\*\*\s*(\S+)", line)
-            if m:
-                ratio = m.group(1)
-                break
+        # Track h1 section headers (e.g. "# Classic Deck")
+        h1 = re.match(r"^#\s+(.+)", line)
+        if h1:
+            current_section = h1.group(1).strip()
+            i += 1
+            continue
 
-        # Extract prompt (blockquote lines starting with >)
-        prompt_lines = []
-        for line in lines:
-            if line.startswith(">"):
-                prompt_lines.append(line.lstrip("> ").strip())
+        # Detect h3 card entry (e.g. "### Ace of Hearts")
+        h3 = re.match(r"^###\s+(.+)", line)
+        if h3:
+            name = h3.group(1).strip()
+            ratio = "2:3"
+            prompt_lines = []
 
-        if prompt_lines and ratio:
-            prompt = " ".join(prompt_lines)
-            entries.append({"name": name, "ratio": ratio, "prompt": prompt})
+            # Scan forward for ratio and prompt blockquote
+            i += 1
+            while i < len(lines):
+                sub = lines[i]
+                # Stop at next heading
+                if re.match(r"^#{1,3}\s+", sub):
+                    break
+                rm = re.match(r"\*\*Ratio:\*\*\s*(\S+)", sub)
+                if rm:
+                    ratio = rm.group(1)
+                if sub.startswith(">"):
+                    prompt_lines.append(sub.lstrip("> ").strip())
+                i += 1
+
+            if prompt_lines:
+                prompt = " ".join(prompt_lines)
+                entries.append({
+                    "section": current_section,
+                    "name": name,
+                    "ratio": ratio,
+                    "prompt": prompt,
+                })
+            continue
+
+        i += 1
 
     return entries
 
@@ -347,8 +373,12 @@ async def main():
     if args.batch:
         prompts = parse_batch_markdown(args.batch)
         print(f"Loaded {len(prompts)} prompts from {args.batch}")
+        current_sec = None
         for entry in prompts:
-            print(f"  - {entry['name']} (ratio: {entry['ratio']})")
+            if entry.get("section") != current_sec:
+                current_sec = entry.get("section")
+                print(f"\n  [{current_sec}]")
+            print(f"    - {entry['name']} (ratio: {entry['ratio']})")
     else:
         prompts = [{"name": "prompt", "ratio": args.ratio, "prompt": args.prompt}]
 
@@ -357,6 +387,7 @@ async def main():
     # Build generation plan: each prompt N times per model
     # Model names must match keys in MODEL_MAP
     MODELS = [
+        ("Mango", 1),
         ("Z-Image Turbo", 3),
         ("FLUX.2 Dev", 2),
     ]
@@ -411,12 +442,23 @@ async def main():
             for entry in prompts:
                 for run in range(1, count + 1):
                     gen_num += 1
+                    section = entry.get("section") or ""
+                    section_label = f" [{section}]" if section else ""
                     print(
-                        f"\n[{gen_num}/{total_generations}] {entry['name']} — {model_name} (run {run}/{count})"
+                        f"\n[{gen_num}/{total_generations}]{section_label} {entry['name']} — {model_name} (run {run}/{count})"
                     )
 
                     if gen_num > 1:
                         await asyncio.sleep(args.delay)
+
+                    # Include section in output path for organization
+                    section_dir = section.replace(" ", "_") if section else ""
+                    model_dir = f"{batch} - {model_name}"
+                    sub_dir = (
+                        output_dir / section_dir / model_dir
+                        if section_dir
+                        else output_dir / model_dir
+                    )
 
                     try:
                         result = await generate_image(
@@ -424,7 +466,7 @@ async def main():
                             entry["prompt"],
                             model=None,  # already selected above
                             ratio=entry["ratio"],
-                            output_dir=output_dir / f"{batch} - {model_name}",
+                            output_dir=sub_dir,
                             name=entry.get("name"),
                         )
                     except Exception as e:
@@ -454,6 +496,7 @@ async def main():
 
                     results.append(
                         {
+                            "section": entry.get("section"),
                             "name": entry["name"],
                             "model": model_name,
                             "run": run,
@@ -465,9 +508,14 @@ async def main():
         print(f"\n{'='*60}")
         print(f"Done! Generated {len(results)} image(s)")
         print(f"{'='*60}")
+        current_sec = None
         for r in results:
+            if r.get("section") != current_sec:
+                current_sec = r.get("section")
+                if current_sec:
+                    print(f"\n  [{current_sec}]")
             status = f"-> {r['file']}" if r["file"] else "(not saved)"
-            print(f"  {r['name']} [{r['model']} #{r['run']}]: {status}")
+            print(f"    {r['name']} [{r['model']} #{r['run']}]: {status}")
 
         await browser.close()
 
