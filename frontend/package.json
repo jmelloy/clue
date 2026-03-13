@@ -20,7 +20,7 @@
     "@storybook/addon-a11y": "^10.2.16",
     "@storybook/addon-docs": "^10.2.16",
     "@storybook/addon-onboarding": "^10.2.16",
-    "@storybook/addon-vitest": "^10.2.16",
+    "@storybook/addon-vitest": "^10.2.19",
     "@storybook/vue3-vite": "^10.2.16",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitest/browser-playwright": "^4.0.18",
