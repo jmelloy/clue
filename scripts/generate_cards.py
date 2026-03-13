@@ -38,34 +38,36 @@ SUIT_SYMBOLS = {
     "clubs": "\u2663",
 }
 
-# Pip positions as (row %, col %) — matches PlayingCard.vue
+# Pip positions as (row %, col %) of the full card — derived from real
+# playing-card proportions (see 10♣ reference photo).  Columns sit at ~27%
+# and ~73% of card width; rows span from ~14% to ~86% of card height.
 PIP_LAYOUTS: dict[int, list[tuple[int, int]]] = {
     1: [(50, 50)],
-    2: [(18, 50), (82, 50)],
-    3: [(18, 50), (50, 50), (82, 50)],
-    4: [(18, 28), (18, 72), (82, 28), (82, 72)],
-    5: [(18, 28), (18, 72), (50, 50), (82, 28), (82, 72)],
-    6: [(18, 28), (18, 72), (50, 28), (50, 72), (82, 28), (82, 72)],
-    7: [(18, 28), (18, 72), (34, 50), (50, 28), (50, 72), (82, 28), (82, 72)],
+    2: [(14, 50), (86, 50)],
+    3: [(14, 50), (50, 50), (86, 50)],
+    4: [(14, 27), (14, 73), (86, 27), (86, 73)],
+    5: [(14, 27), (14, 73), (50, 50), (86, 27), (86, 73)],
+    6: [(14, 27), (14, 73), (50, 27), (50, 73), (86, 27), (86, 73)],
+    7: [(14, 27), (14, 73), (32, 50), (50, 27), (50, 73), (86, 27), (86, 73)],
     8: [
-        (18, 28), (18, 72), (34, 50),
-        (50, 28), (50, 72),
-        (66, 50), (82, 28), (82, 72),
+        (14, 27), (14, 73), (32, 50),
+        (50, 27), (50, 73),
+        (68, 50), (86, 27), (86, 73),
     ],
     9: [
-        (18, 28), (18, 72),
-        (38, 28), (38, 72),
+        (14, 27), (14, 73),
+        (38, 27), (38, 73),
         (50, 50),
-        (62, 28), (62, 72),
-        (82, 28), (82, 72),
+        (62, 27), (62, 73),
+        (86, 27), (86, 73),
     ],
     10: [
-        (18, 28), (18, 72),
-        (30, 50),
-        (38, 28), (38, 72),
-        (62, 28), (62, 72),
-        (70, 50),
-        (82, 28), (82, 72),
+        (14, 27), (14, 73),
+        (28, 50),
+        (38, 27), (38, 73),
+        (62, 27), (62, 73),
+        (72, 50),
+        (86, 27), (86, 73),
     ],
 }
 
@@ -375,11 +377,9 @@ class ClassicTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
+                    (0, 0, self.W, self.H),
                     color,
                 )
 
@@ -473,11 +473,9 @@ class ModernTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
+                    (0, 0, self.W, self.H),
                     color,
                 )
 
@@ -591,11 +589,9 @@ class VintageTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
                 self._draw_pips(
                     draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
+                    (0, 0, self.W, self.H),
                     color,
                 )
 
