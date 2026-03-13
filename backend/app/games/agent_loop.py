@@ -27,8 +27,6 @@ class AgentRunner(ABC):
     Optional overrides:
     - ``on_start``        – called once when the loop begins.
     - ``on_stop``         – called in the ``finally`` block.
-    - ``create_agents_from_config`` – rebuild agent instances for watchdog
-      restart.
     """
 
     def __init__(
