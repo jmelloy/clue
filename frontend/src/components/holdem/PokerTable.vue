@@ -151,14 +151,20 @@
           </span>
           <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
         </div>
-        <!-- Revealed hands row -->
+        <!-- Community cards + revealed hands row -->
         <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length" class="winner-banner-hands">
-          <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
-            :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
-            <span class="banner-hand-name">{{ playerName(pid) }}</span>
-            <div class="banner-hand-cards">
-              <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit"
-                :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
+          <div v-if="winnerBanner.communityCards && winnerBanner.communityCards.length" class="banner-community-cards">
+            <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i"
+              :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
+          </div>
+          <div class="banner-player-hands-row">
+            <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
+              :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
+              <span class="banner-hand-name">{{ playerName(pid) }}</span>
+              <div class="banner-hand-cards">
+                <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit"
+                  :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" />
+              </div>
             </div>
           </div>
         </div>
@@ -327,6 +333,10 @@
                 <circle cx="12" cy="12" r="6" fill="none" stroke="var(--gold-dim)" stroke-width="1.5" />
               </svg>
               {{ formatChips(showdownData.pot) }}
+            </div>
+            <div v-if="showdownData.community_cards && showdownData.community_cards.length" class="showdown-community-cards">
+              <PlayingCard v-for="(c, i) in showdownData.community_cards" :key="'sc-' + i"
+                :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" />
             </div>
             <div class="showdown-divider"></div>
             <div class="showdown-hands">
@@ -656,7 +666,8 @@ defineExpose({
       pot: data.pot,
       hand: data.winning_hand,
       playerHands: data.player_hands || {},
-      winnerIds: data.winners || []
+      winnerIds: data.winners || [],
+      communityCards: data.community_cards || []
     }
   },
   onRebuyPrompt() {
@@ -1836,6 +1847,13 @@ watch(
   margin-bottom: 1rem;
 }
 
+.showdown-community-cards {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
 .showdown-hands {
   display: flex;
   flex-direction: column;
@@ -2023,13 +2041,26 @@ watch(
 .winner-banner-hands {
   position: relative;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold-dim) 40%, transparent);
+}
+
+.banner-community-cards {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.banner-player-hands-row {
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 1.2rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid color-mix(in srgb, var(--gold-dim) 40%, transparent);
 }
 
 .banner-player-hand {

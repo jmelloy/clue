@@ -708,6 +708,7 @@ class HoldemGame:
             winning_hand=best_hand_name,
             pot=state.pot,
             player_hands=player_hands,
+            community_cards=list(state.community_cards),
         )
 
         await self._append_log(
