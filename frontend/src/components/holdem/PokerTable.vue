@@ -84,8 +84,8 @@
 
             <!-- Chip stack indicator for active players -->
             <div v-if="!p.folded && p.chips > 0" class="player-chip-stack">
-              <div v-for="(stack, si) in chipBreakdown(p.chips).slice(0, 4)" :key="si" class="pcs-stack">
-                <div v-for="n in Math.min(stack.count, 5)" :key="n" class="pcs-chip" :class="`chip-${stack.color}`"
+              <div v-for="(stack, si) in chipPiles(p.chips, 5).slice(0, 6)" :key="si" class="pcs-stack">
+                <div v-for="n in stack.count" :key="n" class="pcs-chip" :class="`chip-${stack.color}`"
                   :style="{ '--si': n - 1 }"></div>
               </div>
             </div>
@@ -110,8 +110,8 @@
           <div class="table-center">
             <div class="pot-area" v-if="(gameState?.pot ?? 0) > 0">
               <div class="pot-chips">
-                <div v-for="(stack, si) in chipBreakdown(gameState?.pot ?? 0).slice(0, 4)" :key="si" class="chip-stack">
-                  <div v-for="n in Math.min(stack.count, 6)" :key="n" class="mini-chip" :class="`chip-${stack.color}`"
+                <div v-for="(stack, si) in chipPiles(gameState?.pot ?? 0, 6).slice(0, 6)" :key="si" class="chip-stack">
+                  <div v-for="n in stack.count" :key="n" class="mini-chip" :class="`chip-${stack.color}`"
                     :style="{ '--i': n }"></div>
                 </div>
               </div>
@@ -426,6 +426,20 @@ function chipBreakdown(amount) {
     result.push({ color: 'white', count: 1 })
   }
   return result
+}
+
+// Split a chip breakdown into piles of at most `pileSize`, each pile is { color, count }
+function chipPiles(amount, pileSize = 5) {
+  const breakdown = chipBreakdown(amount)
+  const piles = []
+  for (const { color, count } of breakdown) {
+    let remaining = count
+    while (remaining > 0) {
+      piles.push({ color, count: Math.min(remaining, pileSize) })
+      remaining -= pileSize
+    }
+  }
+  return piles
 }
 
 // Build visual chip stacks for display (max chips per stack, returns flat list of chip colors)
