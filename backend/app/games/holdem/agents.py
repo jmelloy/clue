@@ -393,7 +393,7 @@ class HoldemAgent:
             slowplaying,
         )
 
-        return self._choose_action(
+        action = self._choose_action(
             available,
             effective_strength,
             pot_odds,
@@ -402,6 +402,14 @@ class HoldemAgent:
             player.chips,
             state,
         )
+        logger.debug(
+            "[holdem_agent:%s] decided action=%s (cards=%s community=%s)",
+            self.player_id,
+            action.type,
+            [str(c) for c in hole_cards],
+            [str(c) for c in community] if community else "none",
+        )
+        return action
 
     def _choose_action(
         self,
@@ -418,6 +426,19 @@ class HoldemAgent:
         # Short stack adjustment: with few big blinds left, be more aggressive
         bb_remaining = chips / state.big_blind if state.big_blind > 0 else 999
         short_stack = bb_remaining <= 5
+
+        logger.debug(
+            "[holdem_agent:%s] _choose_action strength=%.2f pot_odds=%.2f "
+            "to_call=%d pot=%d chips=%d short_stack=%s bb_remaining=%.1f",
+            self.player_id,
+            strength,
+            pot_odds,
+            amount_to_call,
+            pot,
+            chips,
+            short_stack,
+            bb_remaining,
+        )
 
         # Very strong hand — raise or bet aggressively
         if strength >= 0.75:
@@ -508,7 +529,16 @@ class HoldemAgent:
         # Round down to nearest chip denomination
         if amount < chips:
             amount = (amount // MIN_CHIP) * MIN_CHIP
-        return max(min_bet, amount)
+        final = max(min_bet, amount)
+        logger.debug(
+            "[holdem_agent:%s] _compute_bet pot=%d strength=%.2f fraction=%.2f -> %d",
+            self.player_id,
+            pot,
+            strength,
+            fraction,
+            final,
+        )
+        return final
 
     def _compute_raise(
         self,
@@ -531,17 +561,42 @@ class HoldemAgent:
         if amount < chips:
             amount = (amount // MIN_CHIP) * MIN_CHIP
             amount = max(min_raise, amount)
+        logger.debug(
+            "[holdem_agent:%s] _compute_raise pot=%d to_call=%d strength=%.2f "
+            "min_raise=%d -> %d",
+            self.player_id,
+            pot,
+            amount_to_call,
+            strength,
+            min_raise,
+            amount,
+        )
         return amount
 
     async def generate_chat(self, action_type: str, **kwargs) -> str | None:
         """Generate a personality-flavored chat message, using LLM nano when available."""
         if random.random() > self.chat_frequency:
+            logger.debug(
+                "[holdem_agent:%s] skipping chat (frequency=%.2f)",
+                self.player_id,
+                self.chat_frequency,
+            )
             return None
 
         # Try LLM nano first for dynamic, personality-driven chat
         if self.llm_api_key:
+            logger.debug(
+                "[holdem_agent:%s] attempting LLM chat for action=%s",
+                self.player_id,
+                action_type,
+            )
             llm_msg = await self._llm_chat(action_type, **kwargs)
             if llm_msg:
+                logger.debug(
+                    "[holdem_agent:%s] LLM chat: %s",
+                    self.player_id,
+                    llm_msg,
+                )
                 return llm_msg
 
         # Fall back to template chat
@@ -552,7 +607,14 @@ class HoldemAgent:
         if not options:
             options = _DEFAULT_CHAT.get(action_type, ["Hmm..."])
 
-        return random.choice(options)
+        msg = random.choice(options)
+        logger.debug(
+            "[holdem_agent:%s] template chat for action=%s: %s",
+            self.player_id,
+            action_type,
+            msg,
+        )
+        return msg
 
     async def _llm_chat(self, action_type: str, **kwargs) -> str | None:
         """Call LLM nano for a short, in-character chat line."""
