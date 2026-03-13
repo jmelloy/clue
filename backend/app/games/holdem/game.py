@@ -184,6 +184,12 @@ class HoldemGame:
     async def _deal_new_hand(self, state: HoldemGameState):
         """Deal a new hand — shuffle, post blinds, deal hole cards."""
         state.hand_number += 1
+        logger.info(
+            "[holdem:%s] Dealing hand #%d (%d active players)",
+            self.game_id,
+            state.hand_number,
+            len([p for p in state.players if p.active]),
+        )
         state.community_cards = []
         state.pot = 0
         state.current_bet = 0
@@ -346,6 +352,15 @@ class HoldemGame:
 
         player = next(p for p in state.players if p.id == player_id)
 
+        logger.debug(
+            "[holdem:%s] Processing action=%s from player=%s (hand #%d, round=%s)",
+            self.game_id,
+            action.type,
+            player_id,
+            state.hand_number,
+            state.betting_round,
+        )
+
         if isinstance(action, FoldAction):
             result = await self._handle_fold(state, player)
         elif isinstance(action, CheckAction):
@@ -384,6 +399,12 @@ class HoldemGame:
         if len(active_unfolded) == 1:
             # Last player standing wins
             winner = active_unfolded[0]
+            logger.info(
+                "[holdem:%s] All others folded — %s wins pot=%d",
+                self.game_id,
+                winner.id,
+                state.pot,
+            )
             winner.chips += state.pot
             # Store hand result for banner (no hands revealed on fold win)
             state.last_hand_result = HoldemHandResult(
@@ -613,6 +634,7 @@ class HoldemGame:
         active_in_hand = self._get_active_in_hand(state)
         can_act = self._get_can_act(state)
 
+        prev_round = state.betting_round
         if state.betting_round == "preflop":
             state.betting_round = "flop"
             # Deal 3 community cards (burn 1)
@@ -628,10 +650,27 @@ class HoldemGame:
             state.community_cards.append(deck.pop())
         elif state.betting_round == "river":
             state.betting_round = "showdown"
+            logger.debug(
+                "[holdem:%s] Advancing round %s -> %s (pot=%d, community=%s)",
+                self.game_id,
+                prev_round,
+                state.betting_round,
+                state.pot,
+                [str(c) for c in state.community_cards],
+            )
             await self._save_deck(deck)
             await self._save_state(state)
             await self._showdown(state)
             return
+
+        logger.debug(
+            "[holdem:%s] Advancing round %s -> %s (pot=%d, community=%s)",
+            self.game_id,
+            prev_round,
+            state.betting_round,
+            state.pot,
+            [str(c) for c in state.community_cards],
+        )
 
         await self._save_deck(deck)
         await self._append_log(
@@ -688,6 +727,14 @@ class HoldemGame:
             elif score == best_score:
                 winners.append(p.id)
 
+        logger.info(
+            "[holdem:%s] Showdown: winner(s)=%s hand=%s pot=%d",
+            self.game_id,
+            winners,
+            best_hand_name,
+            state.pot,
+        )
+
         # Split pot among winners
         share = state.pot // len(winners)
         remainder = state.pot % len(winners)
@@ -726,6 +773,13 @@ class HoldemGame:
         self, state: HoldemGameState, winners: list[str], hand_desc: str
     ):
         """End the current hand — check for tournament elimination and deal next."""
+        logger.debug(
+            "[holdem:%s] Hand #%d ended: winners=%s (%s)",
+            self.game_id,
+            state.hand_number,
+            winners,
+            hand_desc,
+        )
         # Handle players with 0 chips
         busted = [p for p in state.players if p.active and p.chips <= 0]
         if busted and state.allow_rebuys:
@@ -739,6 +793,9 @@ class HoldemGame:
         # No rebuys: eliminate busted players immediately
         for p in busted:
             p.active = False
+            logger.info(
+                "[holdem:%s] Player %s eliminated (0 chips)", self.game_id, p.id
+            )
 
         # Check if the game is over (only 1 player with chips)
         active_players = [p for p in state.players if p.active]
@@ -746,6 +803,11 @@ class HoldemGame:
             state.status = "finished"
             if active_players:
                 state.winner = active_players[0].id
+            logger.info(
+                "[holdem:%s] Game finished — winner=%s",
+                self.game_id,
+                state.winner,
+            )
             await self._save_state(state)
             return
 
