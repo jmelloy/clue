@@ -38,34 +38,36 @@ SUIT_SYMBOLS = {
     "clubs": "\u2663",
 }
 
-# Pip positions as (row %, col %) — matches PlayingCard.vue
+# Pip positions as (row %, col %) of the full card area.
+# Measured from real playing card photographs — pips span ~22% to ~88% vertically,
+# ~27% to ~74% horizontally. Each pip is ~21% of card width/height.
 PIP_LAYOUTS: dict[int, list[tuple[int, int]]] = {
     1: [(50, 50)],
-    2: [(18, 50), (82, 50)],
-    3: [(18, 50), (50, 50), (82, 50)],
-    4: [(18, 28), (18, 72), (82, 28), (82, 72)],
-    5: [(18, 28), (18, 72), (50, 50), (82, 28), (82, 72)],
-    6: [(18, 28), (18, 72), (50, 28), (50, 72), (82, 28), (82, 72)],
-    7: [(18, 28), (18, 72), (34, 50), (50, 28), (50, 72), (82, 28), (82, 72)],
+    2: [(22, 50), (78, 50)],
+    3: [(22, 50), (50, 50), (78, 50)],
+    4: [(22, 27), (22, 73), (78, 27), (78, 73)],
+    5: [(22, 27), (22, 73), (50, 50), (78, 27), (78, 73)],
+    6: [(22, 27), (22, 73), (50, 27), (50, 73), (78, 27), (78, 73)],
+    7: [(22, 27), (22, 73), (36, 50), (50, 27), (50, 73), (78, 27), (78, 73)],
     8: [
-        (18, 28), (18, 72), (34, 50),
-        (50, 28), (50, 72),
-        (66, 50), (82, 28), (82, 72),
+        (22, 27), (22, 73), (36, 50),
+        (50, 27), (50, 73),
+        (64, 50), (78, 27), (78, 73),
     ],
     9: [
-        (18, 28), (18, 72),
-        (38, 28), (38, 72),
+        (22, 27), (22, 73),
+        (41, 27), (41, 73),
         (50, 50),
-        (62, 28), (62, 72),
-        (82, 28), (82, 72),
+        (59, 27), (59, 73),
+        (78, 27), (78, 73),
     ],
     10: [
-        (18, 28), (18, 72),
-        (30, 50),
-        (38, 28), (38, 72),
-        (62, 28), (62, 72),
-        (70, 50),
-        (82, 28), (82, 72),
+        (22, 27), (22, 73),
+        (33, 50),
+        (44, 27), (44, 73),
+        (65, 27), (65, 73),
+        (76, 50),
+        (87, 27), (87, 73),
     ],
 }
 
@@ -262,23 +264,18 @@ class Theme:
         suit: str,
         count: int,
         pip_font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
-        pip_area: tuple[int, int, int, int],  # left, top, right, bottom
         color: tuple,
     ) -> None:
+        """Draw suit pips using PIP_LAYOUTS (card-% coordinates)."""
         symbol = SUIT_SYMBOLS[suit]
-        left, top, right, bottom = pip_area
-        area_w = right - left
-        area_h = bottom - top
         for row_pct, col_pct in PIP_LAYOUTS.get(count, []):
-            px = left + int(area_w * col_pct / 100)
-            py = top + int(area_h * row_pct / 100)
+            px = int(self.W * col_pct / 100)
+            py = int(self.H * row_pct / 100)
             bbox = draw.textbbox((0, 0), symbol, font=pip_font)
             pw = bbox[2] - bbox[0]
             ph = bbox[3] - bbox[1]
             x = px - pw // 2
             y = py - ph // 2
-            # All pips rendered in the same orientation — rotating Unicode symbols
-            # 180° makes them look wrong (e.g. ♠ looks like ♥), so keep them upright.
             draw.text((x, y), symbol, font=pip_font, fill=color)
 
     def _draw_face_center(
@@ -375,13 +372,7 @@ class ClassicTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
-                self._draw_pips(
-                    draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
-                    color,
-                )
+                self._draw_pips(draw, suit, count, fonts["pip"], color)
 
     def draw_card_back(self, img: Image.Image) -> None:
         draw = ImageDraw.Draw(img, "RGBA")
@@ -473,13 +464,7 @@ class ModernTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
-                self._draw_pips(
-                    draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
-                    color,
-                )
+                self._draw_pips(draw, suit, count, fonts["pip"], color)
 
     def draw_card_back(self, img: Image.Image) -> None:
         draw = ImageDraw.Draw(img, "RGBA")
@@ -591,13 +576,7 @@ class VintageTheme(Theme):
         else:
             count = pip_count(rank)
             if count:
-                margin_x = int(self.W * 0.08)
-                margin_y = int(self.H * 0.12)
-                self._draw_pips(
-                    draw, suit, count, fonts["pip"],
-                    (margin_x, margin_y, self.W - margin_x, self.H - margin_y),
-                    color,
-                )
+                self._draw_pips(draw, suit, count, fonts["pip"], color)
 
     def draw_card_back(self, img: Image.Image) -> None:
         draw = ImageDraw.Draw(img, "RGBA")
@@ -670,9 +649,9 @@ def build_fonts(theme_name: str, W: int, H: int) -> dict:
     cfg = THEME_FONTS[theme_name]
     scale = W / 500  # relative to 500 px wide reference
     return {
-        "rank": load_font(cfg["rank_name"], int(46 * scale)),
-        "suit": load_font(cfg["suit_name"], int(42 * scale)),
-        "pip": load_font(cfg["pip_name"], int(80 * scale)),
+        "rank": load_font(cfg["rank_name"], int(52 * scale)),
+        "suit": load_font(cfg["suit_name"], int(48 * scale)),
+        "pip": load_font(cfg["pip_name"], int(130 * scale)),
         "face_rank": load_font(cfg["face_name"], int(160 * scale)),
         "face_suit": load_font(cfg["suit_name"], int(120 * scale)),
     }
@@ -693,9 +672,24 @@ def render_card(
 
     theme.draw_background(draw, img)
 
+    # draw_center may set _pending_paste (e.g. MageTheme with AI artwork)
+    theme._pending_paste = None  # type: ignore[attr-defined]
+    theme.draw_center(draw, rank, suit, fonts)
+
+    # Composite AI artwork before drawing corners (corners draw on top)
+    pending = getattr(theme, "_pending_paste", None)
+    if pending is not None:
+        art_img, px, py = pending
+        # Convert AI art to RGBA for proper compositing
+        if art_img.mode != "RGBA":
+            art_img = art_img.convert("RGBA")
+        img.paste(art_img, (px, py), art_img)
+        theme._pending_paste = None  # type: ignore[attr-defined]
+        # Redraw after paste so the draw context reflects the composited image
+        draw = ImageDraw.Draw(img, "RGBA")
+
     theme.draw_corner(draw, rank, suit, True, fonts["rank"], fonts["suit"])
     theme.draw_corner(draw, rank, suit, False, fonts["rank"], fonts["suit"])
-    theme.draw_center(draw, rank, suit, fonts)
 
     return img
 
@@ -710,10 +704,173 @@ def render_back(theme: Theme) -> Image.Image:
 # Main generation loop
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Theme 4 — Mage (AI-generated center art on classic card template)
+# ---------------------------------------------------------------------------
+
+# AI-generated images directory
+_MAGE_IMAGE_DIR = Path(__file__).parent.parent / "mage-output" / "1 - Z-Image Turbo"
+_MAGE_RANK_MAP = {"A": "Ace", "J": "Jack", "Q": "Queen", "K": "King"}
+_MAGE_SUIT_MAP = {"clubs": "Clubs", "diamonds": "Diamonds", "hearts": "Hearts", "spades": "Spades"}
+
+# Best variant index per card (0-indexed, selected by visual review)
+_MAGE_BEST_VARIANT: dict[str, int] = {
+    "Ace of Clubs": 2,  # variant 3: no inner border frame, fills card naturally
+}
+
+# Corner regions to blank out (as fraction of card size).
+# The AI cards have rank/suit text in the top-left and bottom-right corners only.
+# Sized to cover rank text + suit symbol + any decorative pips near corners.
+_MAGE_CORNER_W = 0.20   # width of each corner region
+_MAGE_CORNER_H = 0.22   # height of each corner region
+
+# Minimal edge trim — just past the card border / rounded-corner area
+_MAGE_EDGE_TRIM = 0.03
+
+
+def _find_mage_image(rank: str, suit: str) -> Path | None:
+    """Find the best AI-generated image for a given rank/suit."""
+    rank_name = _MAGE_RANK_MAP.get(rank)
+    suit_name = _MAGE_SUIT_MAP.get(suit)
+    if not rank_name or not suit_name:
+        return None
+
+    card_name = f"{rank_name} of {suit_name}"
+    import re
+    pattern = re.compile(rf"^{re.escape(card_name)}_\d+\.jpg$")
+    matches = sorted(f for f in _MAGE_IMAGE_DIR.iterdir() if pattern.match(f.name))
+    if not matches:
+        return None
+
+    idx = _MAGE_BEST_VARIANT.get(card_name, 0)
+    return matches[min(idx, len(matches) - 1)]
+
+
+def _find_card_bounds(img: Image.Image, threshold: int = 240) -> tuple[int, int, int, int]:
+    """Find the bounding box of card content (non-white area)."""
+    import numpy as np
+    arr = np.array(img.convert("L"))
+    h, w = arr.shape
+
+    def first_content(iter_range, is_row):
+        dim = w if is_row else h
+        for i in iter_range:
+            line = arr[i, :] if is_row else arr[:, i]
+            if np.sum(line < threshold) / dim > 0.08:
+                return i
+        return iter_range[0] if hasattr(iter_range, '__getitem__') else 0
+
+    top = first_content(range(h), True)
+    bot = first_content(range(h - 1, -1, -1), True)
+    left = first_content(range(w), False)
+    right = first_content(range(w - 1, -1, -1), False)
+    return left, top, right + 1, bot + 1
+
+
+def _extract_mage_center(img_path: Path) -> Image.Image:
+    """Extract center artwork from an AI card image.
+
+    Instead of aggressively cropping all edges, this:
+    1. Crops to the card boundary (removes white margin)
+    2. Trims a thin edge strip (border/rounded corners)
+    3. Masks out the top-left and bottom-right corner regions (AI rank/suit text)
+    4. Makes white/near-white pixels transparent for clean compositing
+    """
+    import numpy as np
+
+    img = Image.open(img_path)
+
+    # Crop to card boundary (remove white margins)
+    bounds = _find_card_bounds(img)
+    card = img.crop(bounds)
+    cw, ch = card.size
+
+    # Trim thin edge strip (card border / rounded corners)
+    trim_x = int(cw * _MAGE_EDGE_TRIM)
+    trim_y = int(ch * _MAGE_EDGE_TRIM)
+    trimmed = card.crop((trim_x, trim_y, cw - trim_x, ch - trim_y))
+    tw, th = trimmed.size
+
+    # Convert to RGBA
+    rgba = trimmed.convert("RGBA")
+    arr = np.array(rgba)
+
+    # Mask out the top-left corner (AI rank/suit text)
+    corner_w = int(tw * _MAGE_CORNER_W)
+    corner_h = int(th * _MAGE_CORNER_H)
+    arr[:corner_h, :corner_w, 3] = 0
+
+    # Mask out the bottom-right corner (AI rank/suit text)
+    arr[th - corner_h:, tw - corner_w:, 3] = 0
+
+    # Replace remaining white/near-white background with transparency
+    white_mask = (arr[:, :, 0] > 235) & (arr[:, :, 1] > 235) & (arr[:, :, 2] > 235)
+    arr[white_mask, 3] = 0
+
+    return Image.fromarray(arr)
+
+
+class MageTheme(ClassicTheme):
+    """Classic card template with AI-generated center art for face cards and aces."""
+
+    name = "mage"
+
+    # Cache extracted center images to avoid re-processing
+    _center_cache: dict[str, Image.Image] = {}
+
+    def _get_center_art(self, rank: str, suit: str) -> Image.Image | None:
+        """Load and cache AI-generated center artwork for a card."""
+        key = f"{rank}_{suit}"
+        if key in self._center_cache:
+            return self._center_cache[key]
+
+        img_path = _find_mage_image(rank, suit)
+        if img_path is None or not img_path.exists():
+            return None
+
+        center = _extract_mage_center(img_path)
+        self._center_cache[key] = center
+        return center
+
+    def draw_center(self, draw, rank, suit, fonts):
+        color = self.suit_color(suit)
+
+        # For A/J/Q/K: composite AI artwork into the center area
+        if rank in _MAGE_RANK_MAP:
+            center_art = self._get_center_art(rank, suit)
+            if center_art is not None:
+                # Target area: full card interior (artwork fills edge-to-edge,
+                # corners are already masked out in the extracted image)
+                margin_x = int(self.W * 0.02)
+                margin_y = int(self.H * 0.02)
+                area_w = self.W - 2 * margin_x
+                area_h = self.H - 2 * margin_y
+
+                # Resize artwork to fit, maintaining aspect ratio
+                art_w, art_h = center_art.size
+                scale = min(area_w / art_w, area_h / art_h)
+                new_w = int(art_w * scale)
+                new_h = int(art_h * scale)
+                resized = center_art.resize((new_w, new_h), Image.LANCZOS)
+
+                # Center it in the target area
+                paste_x = margin_x + (area_w - new_w) // 2
+                paste_y = margin_y + (area_h - new_h) // 2
+
+                self._pending_paste = (resized, paste_x, paste_y)
+                return
+
+        # Number cards: use standard pip rendering
+        count = pip_count(rank)
+        if count:
+            self._draw_pips(draw, suit, count, fonts["pip"], color)
+
+
 THEMES: dict[str, Theme] = {
     "classic": ClassicTheme(),
     "modern": ModernTheme(),
     "vintage": VintageTheme(),
+    "mage": MageTheme(),
 }
 
 
@@ -731,12 +888,12 @@ def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
         style_dir = output_dir / style_name
         style_dir.mkdir(parents=True, exist_ok=True)
 
-        fonts = build_fonts(style_name, W, H)
+        fonts = build_fonts(theme.name if theme.name in THEME_FONTS else "classic", W, H)
 
         for suit in SUITS:
             for rank in RANKS:
-                img = render_card(theme, rank, suit, fonts)
                 filename = f"{rank}_{suit}.png"
+                img = render_card(theme, rank, suit, fonts)
                 img.convert("RGB").save(style_dir / filename, "PNG", optimize=True)
                 done += 1
                 pct = done * 100 // total
