@@ -106,6 +106,7 @@ class AgentRunner(ABC):
                 self.game_label,
                 self.game_id,
             )
+            raise
         except Exception:
             logger.exception(
                 "%s agent loop error in game %s",
