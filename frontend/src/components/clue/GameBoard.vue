@@ -897,9 +897,9 @@ watch(
 }
 
 .status-banner.eliminated {
-  background: rgba(200, 50, 50, 0.15);
-  color: #c44;
-  border: 1px solid rgba(200, 50, 50, 0.25);
+  background: var(--error-bg, color-mix(in srgb, var(--error) 15%, transparent));
+  color: var(--error);
+  border: 1px solid var(--error-border, color-mix(in srgb, var(--error) 25%, transparent));
 }
 
 .solution-detail {
@@ -1590,7 +1590,7 @@ watch(
 }
 
 .waiting-message.eliminated-message {
-  color: #c44;
+  color: var(--error);
   font-style: normal;
   font-weight: 600;
 }
