@@ -17,6 +17,9 @@
             <span class="highlight-room">{{ gameState.solution.room }}</span>
           </div>
         </div>
+        <div v-else-if="isEliminated" class="status-banner eliminated">
+          You have been eliminated
+        </div>
         <div v-else-if="isMyTurn" class="status-banner my-turn">
           Your turn! (Turn {{ gameState?.turn_number }})
         </div>
@@ -314,7 +317,10 @@
         <!-- Waiting message when not your turn -->
         <section v-if="!isMyTurn && !showCardRequest && gameState?.status === 'playing' && !isObserver"
           class="sidebar-panel waiting-panel">
-          <div class="waiting-message">
+          <div v-if="isEliminated" class="waiting-message eliminated-message">
+            You have been eliminated. Watching the game...
+          </div>
+          <div v-else class="waiting-message">
             Waiting for <strong>{{ currentPlayerName }}</strong>'s turn...
           </div>
         </section>
@@ -586,6 +592,10 @@ const timerForMe = computed(
 
 // Computed
 const isMyTurn = computed(() => props.gameState?.whose_turn === props.playerId)
+const isEliminated = computed(() => {
+  const me = props.gameState?.players?.find(p => p.id === props.playerId)
+  return me ? !me.active : false
+})
 const myCurrentRoom = computed(() => props.gameState?.current_room?.[props.playerId] ?? null)
 
 const canSecretPassage = computed(() => props.availableActions.includes('secret_passage'))
@@ -884,6 +894,12 @@ watch(
   background: rgba(46, 160, 80, 0.15);
   color: #4caf50;
   border: 1px solid rgba(46, 160, 80, 0.25);
+}
+
+.status-banner.eliminated {
+  background: var(--error-bg, color-mix(in srgb, var(--error) 15%, transparent));
+  color: var(--error);
+  border: 1px solid var(--error-border, color-mix(in srgb, var(--error) 25%, transparent));
 }
 
 .solution-detail {
@@ -1571,6 +1587,12 @@ watch(
   color: var(--text-muted);
   font-size: 0.9rem;
   font-style: italic;
+}
+
+.waiting-message.eliminated-message {
+  color: var(--error);
+  font-style: normal;
+  font-weight: 600;
 }
 
 /* Notes panel */
