@@ -2,6 +2,7 @@ name: Resize Images
 
 on:
   push:
+    branches: [main]
     paths:
       - "frontend/public/images/**"
     
@@ -24,25 +25,16 @@ jobs:
         run: sudo apt-get install -y imagemagick
 
       - name: Generate thumbnails
-        run: |
-          find frontend/public/images -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) \
-            ! -path "*/thumbnails/*" | while read img; do
-            dir=$(dirname "$img")
-            filename=$(basename "$img")
-            thumb_dir="$dir/thumbnails"
-            mkdir -p "$thumb_dir"
-            convert "$img" -resize 320x320 -quality 90 "$thumb_dir/$filename"
-            echo "Created thumbnail: $thumb_dir/$filename"
-          done
+        run: bash scripts/resize_thumbnails.sh
 
       - name: Commit thumbnails
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add frontend/public/images/
-          if git diff --cached --quiet; then
+          if [ -z "$(git status --porcelain frontend/public/images/)" ]; then
             echo "No thumbnail changes to commit"
           else
+            git add frontend/public/images/
             git commit -m "chore: regenerate image thumbnails [skip ci]"
             git push
           fi
