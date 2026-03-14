@@ -123,7 +123,8 @@
             <div class="community-cards">
               <TransitionGroup name="card-deal">
                 <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
-                  :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }">
+                  :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }"
+                  @click="card.dealt && openCardPreview(card)">
                   <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
                   <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
                 </div>
@@ -177,9 +178,11 @@
       <div class="hole-cards-area">
         <div class="hole-cards">
           <template v-if="yourCards.length">
-            <PlayingCard v-for="(c, i) in yourCards" :key="i"
-              :rank="c.rank" :suit="c.suit" size="medium" class="hole-card" :deck="handDeck"
-              :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
+            <div v-for="(c, i) in yourCards" :key="i" class="hole-card-clickable" @click="openCardPreview(c)">
+              <PlayingCard
+                :rank="c.rank" :suit="c.suit" size="medium" class="hole-card" :deck="handDeck"
+                :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
+            </div>
           </template>
           <template v-else>
             <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" :rotation="deckRotation" :deck="handDeck" />
@@ -376,6 +379,17 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Card Preview Lightbox -->
+    <Teleport to="body">
+      <div v-if="previewCard" class="card-preview-overlay" @click="previewCard = null">
+        <div class="card-preview-frame" @click.stop>
+          <PlayingCard :rank="previewCard.rank" :suit="previewCard.suit" size="large" :deck="handDeck" class="preview-card" />
+          <div class="card-preview-label">{{ previewCard.rank }} of {{ previewCard.suit }}</div>
+          <button class="card-preview-close" @click="previewCard = null">&times;</button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -484,6 +498,13 @@ const lastReadChat = ref(0)
 const sweepingChips = ref([])   // chips animating to center after a betting round ends
 const prevBettingRound = ref(null)
 const showRebuyPrompt = ref(false)
+const previewCard = ref(null)
+
+function openCardPreview(card) {
+  if (card.rank && card.suit) {
+    previewCard.value = { rank: card.rank, suit: card.suit }
+  }
+}
 
 const communityCards = computed(() => props.gameState?.community_cards ?? [])
 const activePlayers = computed(() => props.gameState?.players ?? [])
@@ -2310,5 +2331,87 @@ watch(
   .winner-crown {
     font-size: 1.1rem;
   }
+}
+
+/* ─── Clickable cards ─── */
+.card-slot {
+  cursor: pointer;
+}
+
+.hole-card-clickable {
+  cursor: pointer;
+  display: inline-flex;
+}
+
+/* ─── Card Preview Lightbox ─── */
+.card-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: cpFadeIn 0.2s ease;
+}
+
+@keyframes cpFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card-preview-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: cpReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cpReveal {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.preview-card {
+  width: 180px !important;
+  height: 252px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4), 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.card-preview-label {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #e8e0d0;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+
+.card-preview-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.6);
+  color: #e8e0d0;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.card-preview-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 </style>
