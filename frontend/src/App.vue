@@ -12,7 +12,7 @@
         @game-started="onGameStarted" @leave-game="leaveGame" />
       <GameBoard v-else :game-id="gameId" :player-id="playerId" :game-state="gameState" :board-data="boardData"
         :your-cards="yourCards" :available-actions="availableActions" :show-card-request="showCardRequest"
-        :card-shown="cardShown" :chat-messages="chatMessages" :is-observer="isObserver" :auto-end-timer="autoEndTimer"
+        :card-shown="cardShown" :suggestion-tracking="suggestionTracking" :chat-messages="chatMessages" :is-observer="isObserver" :auto-end-timer="autoEndTimer"
         :auto-show-card-timer="autoShowCardTimer" :reachable-rooms="reachableRooms"
         :reachable-positions="reachablePositions" :saved-notes="savedNotes" :agent-debug-data="agentDebugData"
         :observer-player-state="observerPlayerState" @action="sendAction" @send-chat="sendChat"
@@ -50,6 +50,7 @@ const yourCards = ref([])
 const availableActions = ref([])
 const showCardRequest = ref(null)
 const cardShown = ref(null)
+const suggestionTracking = ref(null)
 const chatMessages = ref([])
 const isObserver = ref(false)
 const urlGameId = ref(null)
@@ -428,6 +429,14 @@ function handleMessage(msg) {
         if (!msg.pending_show_by && msg.player_id === playerId.value) {
           cardShown.value = { card: null, by: null, suspect: msg.suspect, weapon: msg.weapon, room: msg.room }
         }
+        // Track negative knowledge: players who couldn't show any of the suggested cards
+        if (msg.players_without_match?.length) {
+          suggestionTracking.value = {
+            players_without_match: msg.players_without_match,
+            cards: [msg.suspect, msg.weapon, msg.room],
+            _ts: Date.now()
+          }
+        }
       }
       break
 
@@ -507,6 +516,7 @@ function resetState() {
   availableActions.value = []
   showCardRequest.value = null
   cardShown.value = null
+  suggestionTracking.value = null
   chatMessages.value = []
   isObserver.value = false
   autoEndTimer.value = null
