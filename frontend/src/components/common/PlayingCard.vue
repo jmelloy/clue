@@ -1,7 +1,7 @@
 <template>
   <!-- Image mode: deck is not 'css' and image hasn't errored -->
   <div v-if="useImageMode" class="playing-card card-img-wrap" :class="sizeClass"
-    :style="rotationStyle">
+    :style="rotationStyle" :title="faceDown ? '' : `${rank} of ${suit}`">
     <img
       :src="imgSrc"
       :alt="faceDown ? 'card back' : `${rank} of ${suit}`"
@@ -17,7 +17,7 @@
   </div>
 
   <!-- CSS fallback: face-up -->
-  <div v-else class="playing-card" :class="[suitClass, sizeClass]">
+  <div v-else class="playing-card" :class="[suitClass, sizeClass]" :title="`${rank} of ${suit}`">
     <span class="card-corner top-left">
       <span class="card-rank">{{ rank }}</span>
       <span class="card-suit-small">{{ suitSymbol }}</span>

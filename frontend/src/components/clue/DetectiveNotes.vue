@@ -5,7 +5,7 @@
     <div class="notes-section">
       <h4>Suspects</h4>
       <div v-for="card in SUSPECTS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
-        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb"
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" :title="card" class="note-thumb"
           :style="{ borderColor: CHARACTER_COLORS[card]?.bg || '#666' }" />
         <span class="note-card">{{ card }}</span>
         <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
@@ -19,7 +19,7 @@
     <div class="notes-section">
       <h4>Weapons</h4>
       <div v-for="card in WEAPONS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
-        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb note-thumb-weapon" />
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" :title="card" class="note-thumb note-thumb-weapon" />
         <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
@@ -33,7 +33,7 @@
     <div class="notes-section">
       <h4>Rooms</h4>
       <div v-for="card in ROOMS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
-        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" class="note-thumb note-thumb-room" />
+        <img v-if="CARD_IMAGES[card]" :src="CARD_IMAGES[card]" :alt="card" :title="card" class="note-thumb note-thumb-room" />
         <span v-else class="note-emoji">{{ CARD_ICONS[card] || '' }}</span>
         <span class="note-card">{{ card }}</span>
         <span class="note-mark" :class="{ 'has-tooltip': notes[card] === 'seen' && shownByMap[card] }">
