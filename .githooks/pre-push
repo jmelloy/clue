@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Keep generated thumbnail assets in sync before push.
+./scripts/resize_thumbnails.sh
+
+if [ -n "$(git status --porcelain frontend/public/images)" ]; then
+  echo ""
+  echo "Thumbnail files changed after resize."
+  echo "Commit the updated files, then push again:"
+  echo "  git add frontend/public/images"
+  echo "  git commit -m \"chore: regenerate image thumbnails\""
+  exit 1
+fi

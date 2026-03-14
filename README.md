@@ -113,6 +113,20 @@ python scripts/dump_game.py ABC123 --show-trace
 python scripts/dump_game.py ABC123 --show-trace --trace-limit 100
 ```
 
+## Git Pre-Push Thumbnail Hook
+
+Keep generated thumbnail assets in sync automatically before every push.
+
+```bash
+# one-time per clone
+./scripts/install_git_hooks.sh
+
+# optional manual run
+./scripts/resize_thumbnails.sh
+```
+
+The `pre-push` hook runs thumbnail generation and blocks the push if files changed, so you can commit the regenerated assets first.
+
 ## Taking Screenshots
 
 A Playwright-based script captures screenshots of all game states for documentation:

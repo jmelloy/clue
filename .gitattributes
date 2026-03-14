@@ -1,0 +1,5 @@
+# Auto-generated thumbnail assets should not create merge conflicts.
+# Keep the current branch version for thumbnail files.
+frontend/public/images/**/thumbnails/*.png -text -diff merge=ours
+frontend/public/images/**/thumbnails/*.jpg -text -diff merge=ours
+frontend/public/images/**/thumbnails/*.jpeg -text -diff merge=ours
