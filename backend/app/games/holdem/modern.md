@@ -1,4 +1,3 @@
----
 ## Playing Card Image Prompts — Aces + Face Cards
 
 Each section below contains prompts for one deck style. All decks need 16 images:
