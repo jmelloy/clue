@@ -2,6 +2,15 @@
   <div class="detective-notes">
     <h3 class="panel-header">Detective Notes</h3>
 
+    <!-- Player column legend -->
+    <div v-if="trackedPlayers.length" class="player-columns-legend">
+      <div class="legend-spacer"></div>
+      <div v-for="p in trackedPlayers" :key="p.id" class="player-col-header"
+        :title="p.name + (p.character !== p.name ? ' (' + p.character + ')' : '')">
+        {{ playerInitial(p) }}
+      </div>
+    </div>
+
     <div class="notes-section">
       <h4>Suspects</h4>
       <div v-for="card in SUSPECTS" :key="card" class="note-row" :class="noteClass(card)" @click="cycleNote(card)">
@@ -13,6 +22,12 @@
           <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
             }}</span>
         </span>
+        <template v-if="trackedPlayers.length">
+          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
+            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
+          </span>
+        </template>
       </div>
     </div>
 
@@ -27,6 +42,12 @@
           <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
             }}</span>
         </span>
+        <template v-if="trackedPlayers.length">
+          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
+            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
+          </span>
+        </template>
       </div>
     </div>
 
@@ -41,13 +62,19 @@
           <span v-if="notes[card] === 'seen' && shownByMap[card]" class="note-tooltip">Shown by {{ shownByMap[card]
             }}</span>
         </span>
+        <template v-if="trackedPlayers.length">
+          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
+            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
+          </span>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, computed, watch } from 'vue'
 import {
   SUSPECTS,
   WEAPONS,
@@ -62,7 +89,9 @@ const CYCLE = ['', 'no', 'maybe', '']
 
 const props = defineProps({
   yourCards: { type: Array, default: () => [] },
-  savedNotes: { type: Object, default: null }
+  savedNotes: { type: Object, default: null },
+  players: { type: Array, default: () => [] },
+  playerId: { type: String, default: '' }
 })
 
 const emit = defineEmits(['notes-changed'])
@@ -71,8 +100,19 @@ const emit = defineEmits(['notes-changed'])
 const notes = reactive({})
 // Track who showed each card
 const shownByMap = reactive({})
+// Track which cards each player definitely doesn't have: { playerId: { card: true } }
+const playerDoesntHave = reactive({})
 // Flag to prevent emitting during restoration
 let restoring = false
+
+// Non-wandering players other than ourselves
+const trackedPlayers = computed(() =>
+  props.players.filter(p => p.type !== 'wanderer' && p.id !== props.playerId)
+)
+
+function playerInitial(p) {
+  return (p.name || p.character || '?')[0].toUpperCase()
+}
 
 // Restore saved notes when they arrive (e.g. on rejoin)
 watch(
@@ -82,11 +122,15 @@ watch(
       restoring = true
       const noteStates = saved.notes || {}
       const shownBy = saved.shownBy || {}
+      const doesntHave = saved.playerDoesntHave || {}
       for (const [card, state] of Object.entries(noteStates)) {
         notes[card] = state
       }
       for (const [card, by] of Object.entries(shownBy)) {
         shownByMap[card] = by
+      }
+      for (const [pid, cards] of Object.entries(doesntHave)) {
+        playerDoesntHave[pid] = { ...cards }
       }
       restoring = false
     }
@@ -107,14 +151,21 @@ watch(
 
 function emitNotesChanged() {
   if (restoring) return
+  // Deep-copy playerDoesntHave
+  const doesntHaveCopy = {}
+  for (const [pid, cards] of Object.entries(playerDoesntHave)) {
+    doesntHaveCopy[pid] = { ...cards }
+  }
   emit('notes-changed', {
     notes: { ...notes },
-    shownBy: { ...shownByMap }
+    shownBy: { ...shownByMap },
+    playerDoesntHave: doesntHaveCopy
   })
 }
 
 // Watch for any notes changes and emit
 watch(notes, () => emitNotesChanged(), { deep: true })
+watch(playerDoesntHave, () => emitNotesChanged(), { deep: true })
 
 function noteMark(card) {
   const state = notes[card] ?? ''
@@ -167,7 +218,17 @@ function getCardsShownBy(playerName) {
   return cards
 }
 
-defineExpose({ markCard, getCardsShownBy })
+// Mark that a player doesn't have specific cards (from suggestion tracking)
+function markPlayerDoesntHaveCards(playerId, cards) {
+  if (!playerDoesntHave[playerId]) {
+    playerDoesntHave[playerId] = {}
+  }
+  for (const card of cards) {
+    playerDoesntHave[playerId][card] = true
+  }
+}
+
+defineExpose({ markCard, getCardsShownBy, markPlayerDoesntHaveCards })
 </script>
 
 <style scoped>
@@ -352,5 +413,45 @@ h4 {
 
 .note-mark.has-tooltip:hover .note-tooltip {
   display: block;
+}
+
+/* Player column tracking */
+.player-columns-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0 0.3rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--accent-border);
+  padding-bottom: 0.15rem;
+}
+
+.legend-spacer {
+  flex: 1;
+}
+
+.player-col-header {
+  width: 20px;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.player-col-cell {
+  width: 20px;
+  text-align: center;
+  font-size: 0.6rem;
+  font-weight: bold;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.player-col-cell.doesnt-have {
+  color: var(--error);
+  opacity: 0.7;
 }
 </style>

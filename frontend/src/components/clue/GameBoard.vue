@@ -328,6 +328,7 @@
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
           <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes"
+            :players="gameState?.players || []" :player-id="playerId"
             @notes-changed="onNotesChanged" />
         </section>
 
@@ -530,6 +531,7 @@ const props = defineProps({
   availableActions: { type: Array, default: () => [] },
   showCardRequest: Object,
   cardShown: Object,
+  suggestionTracking: { type: Object, default: null },
   chatMessages: { type: Array, default: () => [] },
   isObserver: { type: Boolean, default: false },
   autoEndTimer: { type: Object, default: null },
@@ -798,6 +800,18 @@ watch(
       cardShownDismissedOnce.value = false
       if (shown.card && notesRef.value) {
         notesRef.value.markCard(shown.card, 'seen', playerName(shown.by))
+      }
+    }
+  }
+)
+
+// Track negative knowledge from suggestions
+watch(
+  () => props.suggestionTracking,
+  (tracking) => {
+    if (tracking && notesRef.value) {
+      for (const pid of tracking.players_without_match) {
+        notesRef.value.markPlayerDoesntHaveCards(pid, tracking.cards)
       }
     }
   }
