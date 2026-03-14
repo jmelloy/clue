@@ -13,6 +13,8 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from .games.agent_loop import _LoopRegistry
+from .games.clue.agent_loop import ClueAgentRunner
 from .games.clue.agents import (
     BaseAgent,
     LLMAgent,
@@ -81,6 +83,7 @@ from .games.clue.models import (
     YourTurnMessage,
 )
 from .ws_manager import ConnectionManager
+from .games.holdem.agent_loop import HoldemAgentRunner
 from .games.holdem.agents import HoldemAgent, get_personality
 from .games.holdem.game import HoldemGame
 from .games.holdem.models import (
@@ -135,10 +138,7 @@ async def lifespan(app: FastAPI):
     redis_client = aioredis.from_url(redis_url, decode_responses=True)
     yield
     # Cancel any running agent loops
-    for task in _agent_tasks.values():
-        task.cancel()
-    _agent_tasks.clear()
-    _game_agents.clear()
+    _clue_registry.cancel_all()
     # Cancel any auto-end timers
     for task in _auto_end_timers.values():
         task.cancel()
@@ -148,10 +148,7 @@ async def lifespan(app: FastAPI):
         task.cancel()
     _auto_show_card_timers.clear()
     # Cancel any holdem agent loops
-    for task in _holdem_agent_tasks.values():
-        task.cancel()
-    _holdem_agent_tasks.clear()
-    _holdem_agents.clear()
+    _holdem_registry.cancel_all()
     await redis_client.aclose()
 
 
@@ -174,8 +171,10 @@ app.add_middleware(
 manager = ConnectionManager()
 
 # Track agent instances and background tasks per game
-_game_agents: dict[str, dict[str, BaseAgent]] = {}
-_agent_tasks: dict[str, asyncio.Task] = {}
+_clue_registry = _LoopRegistry("Clue")
+# Aliases for backward-compat within this module
+_game_agents = _clue_registry.agents
+_agent_tasks = _clue_registry.tasks
 
 # Auto-end-turn timers: game_id -> asyncio.Task
 _auto_end_timers: dict[str, asyncio.Task] = {}
@@ -195,8 +194,9 @@ _AGENT_MODE = os.getenv("AGENT_MODE", "inline")
 _wanderer_turn_info: dict[tuple[str, str], WandererTurnInfo] = {}
 
 # Track holdem agent instances and background tasks per game
-_holdem_agents: dict[str, dict[str, HoldemAgent]] = {}
-_holdem_agent_tasks: dict[str, asyncio.Task] = {}
+_holdem_registry = _LoopRegistry("Holdem")
+_holdem_agents = _holdem_registry.agents
+_holdem_agent_tasks = _holdem_registry.tasks
 
 _HOLDEM_AGENT_NAMES = [
     "Ace Ventura",
@@ -231,8 +231,12 @@ def _new_id(length: int = 6) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-def _new_player_id() -> str:
-    return _new_id(8)
+_AGENT_TYPE_PREFIX = {"agent": "R_", "llm_agent": "L_", "wanderer": "W_"}
+
+
+def _new_player_id(agent_type: str | None = None) -> str:
+    prefix = _AGENT_TYPE_PREFIX.get(agent_type, "") if agent_type else ""
+    return f"{prefix}{_new_id(8)}"
 
 
 # ---------------------------------------------------------------------------
@@ -985,6 +989,10 @@ def _on_agent_loop_done(game_id: str, task: asyncio.Task) -> None:
     task.get_loop().create_task(_agent_loop_watchdog(game_id))
 
 
+# Wire up the registry watchdog so AgentRunner.make_done_callback() works
+_clue_registry.watchdog = lambda game_id: _agent_loop_watchdog(game_id)
+
+
 async def _agent_loop_watchdog(game_id: str) -> None:
     """Restart the inline agent loop for *game_id* if the game is still active.
 
@@ -993,7 +1001,7 @@ async def _agent_loop_watchdog(game_id: str) -> None:
     task is already running.
     """
     # Bail out if a fresh task was already started (race guard).
-    if game_id in _agent_tasks and not _agent_tasks[game_id].done():
+    if _clue_registry.is_running(game_id):
         return
 
     try:
@@ -1063,237 +1071,28 @@ async def _agent_loop_watchdog(game_id: str) -> None:
             game_id,
             len(agents),
         )
-        _game_agents[game_id] = agents
-        task = asyncio.create_task(_run_agent_loop(game_id))
-        task.add_done_callback(lambda t, gid=game_id: _on_agent_loop_done(gid, t))
-        _agent_tasks[game_id] = task
+        runner = _make_clue_runner(game_id, agents)
+        task = asyncio.create_task(runner.run())
+        task.add_done_callback(runner.make_done_callback())
+        _clue_registry.register(game_id, agents, task)
     except Exception:
         logger.exception("Error in agent loop watchdog for game %s", game_id)
 
 
-async def _run_agent_loop(game_id: str):
-    """Background task that drives agent players in a game."""
-    agents = _game_agents.get(game_id)
-    if not agents:
-        return
-
-    logger.info("Agent loop started for game %s with %d agent(s)", game_id, len(agents))
-
-    try:
-        while True:
-            game = ClueGame(game_id, redis_client)
-            state = await game.get_state()
-            if state is None or state.status != "playing":
-                break
-
-            pending = state.pending_show_card
-            if pending and pending.player_id in agents:
-                # An agent needs to show a card
-                await asyncio.sleep(1)
-                # Re-check state (may have changed during sleep)
-                state = await game.get_state()
-                if not state or state.status != "playing":
-                    break
-                pending = state.pending_show_card
-                if not pending or pending.player_id not in agents:
-                    continue
-
-                pid = pending.player_id
-                agent = agents[pid]
-                matching = pending.matching_cards
-                suggesting_pid = pending.suggesting_player_id
-                await _broadcast_agent_debug(
-                    game_id,
-                    agent,
-                    "thinking",
-                    f"Deciding which card to show from {matching}",
-                    game_state=state,
-                )
-                card = await agent.decide_show_card(matching, suggesting_pid)
-                await _broadcast_agent_debug(
-                    game_id,
-                    agent,
-                    "decided",
-                    f"Showing card to disprove suggestion",
-                    decided_action={"type": "show_card", "card": card},
-                    game_state=state,
-                )
-
-                logger.info("Agent %s showing card in game %s", pid, game_id)
-                await _execute_action(game_id, pid, ShowCardAction(card=card))
-                await agent.save_knowledge()
-                # Broadcast personality chat for show_card
-                chat_msg = agent.generate_chat("show_card")
-                if chat_msg:
-                    s = await game.get_state()
-                    name = _player_name(s, pid) if s else pid
-                    await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
-
-            elif pending:
-                # A non-agent (human) player must show a card — wait for them
-                await asyncio.sleep(0.5)
-
-            elif state.whose_turn in agents:
-                # It's an agent's turn — pace actions for human observers
-                agent = agents[state.whose_turn]
-                if agent.agent_type != "llm":
-                    await asyncio.sleep(1.35)
-                # Re-check state
-                state = await game.get_state()
-                if not state or state.status != "playing":
-                    break
-                pid = state.whose_turn
-                if pid not in agents:
-                    continue
-
-                agent = agents[pid]
-                player_state = await game.get_player_state(pid)
-                await _broadcast_agent_debug(
-                    game_id,
-                    agent,
-                    "thinking",
-                    f"Deciding next action (available: {', '.join(player_state.available_actions)})",
-                    game_state=state,
-                )
-                action = await agent.decide_action(state, player_state)
-                action_d = action.model_dump()
-                action_desc = action.type
-                if action.type == "move":
-                    action_desc = f"Moving to {action_d.get('room', '?')}"
-                elif action.type == "suggest":
-                    action_desc = f"Suggesting {action_d.get('suspect', '?')} with {action_d.get('weapon', '?')}"
-                elif action.type == "accuse":
-                    action_desc = f"Accusing {action_d.get('suspect', '?')} with {action_d.get('weapon', '?')} in {action_d.get('room', '?')}"
-                elif action.type == "roll":
-                    action_desc = "Rolling dice"
-                elif action.type == "end_turn":
-                    action_desc = "Ending turn"
-                elif action.type == "secret_passage":
-                    action_desc = "Using secret passage"
-                await _broadcast_agent_debug(
-                    game_id,
-                    agent,
-                    "decided",
-                    action_desc,
-                    decided_action=action_d,
-                    game_state=state,
-                )
-
-                logger.info(
-                    "Agent %s taking action %s in game %s",
-                    pid,
-                    action.type,
-                    game_id,
-                )
-                # For suggestions, broadcast personality chat BEFORE the action
-                # so the chat appears before the suggestion result
-                action_d = action.model_dump()
-                if action.type == "suggest":
-                    chat_context = ChatContext(
-                        room=action_d.get("room", ""),
-                        suspect=action_d.get("suspect", ""),
-                        weapon=action_d.get("weapon", ""),
-                    )
-                    chat_msg = agent.generate_chat(
-                        action.type, chat_context.model_dump()
-                    )
-                    if chat_msg:
-                        name = _player_name(state, pid) if state else pid
-                        await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
-
-                try:
-                    result = await _execute_action(game_id, pid, action)
-                except ValueError as exc:
-                    detail = str(exc)
-                    agent.agent_trace(
-                        "action_rejected",
-                        status=400,
-                        detail=detail,
-                        action=action_d,
-                    )
-                    # Retry once with rejection detail for LLM agents
-                    if agent.agent_type == "llm":
-                        logger.info(
-                            "Retrying action for %s in game %s after rejection: %s",
-                            pid,
-                            game_id,
-                            detail,
-                        )
-                        try:
-                            action = await agent.decide_action(
-                                state, player_state, rejection_detail=detail
-                            )
-                            action_d = action.model_dump()
-                            result = await _execute_action(game_id, pid, action)
-                        except Exception as retry_exc:
-                            agent.agent_trace(
-                                "action_rejected_retry_failed",
-                                detail=str(retry_exc),
-                                action=action_d,
-                            )
-                            logger.warning(
-                                "Retry also failed for %s in game %s, using fallback",
-                                pid,
-                                game_id,
-                            )
-                            try:
-                                fallback_action = await agent._fallback.decide_action(
-                                    state, player_state
-                                )
-                                agent.agent_trace(
-                                    "fallback_after_rejection",
-                                    action=fallback_action.model_dump(),
-                                )
-                                action = fallback_action
-                                action_d = action.model_dump()
-                                result = await _execute_action(game_id, pid, action)
-                            except Exception:
-                                logger.exception(
-                                    "Fallback also failed for %s in game %s",
-                                    pid,
-                                    game_id,
-                                )
-                                continue
-                    else:
-                        logger.warning(
-                            "Action rejected for non-LLM agent %s in game %s: %s",
-                            pid,
-                            game_id,
-                            detail,
-                        )
-                        continue
-
-                await agent.save_knowledge()
-
-                # Broadcast personality chat after the action (non-suggest)
-                if action.type != "suggest":
-                    result_d = result.model_dump()
-                    chat_context = ChatContext(
-                        dice=result_d.get("dice", ""),
-                        room=result_d.get("room") or action_d.get("room") or "",
-                        suspect=action_d.get("suspect", ""),
-                        weapon=action_d.get("weapon", ""),
-                    )
-                    chat_msg = agent.generate_chat(
-                        action.type, chat_context.model_dump()
-                    )
-                    if chat_msg:
-                        s = await game.get_state()
-                        name = _player_name(s, pid) if s else pid
-                        await _broadcast_chat(game_id, f"{name}: {chat_msg}", pid)
-
-            else:
-                # Human player's turn — poll periodically
-                await asyncio.sleep(0.5)
-
-    except asyncio.CancelledError:
-        logger.info("Agent loop cancelled for game %s", game_id)
-    except Exception:
-        logger.exception("Agent loop error in game %s", game_id)
-    finally:
-        _game_agents.pop(game_id, None)
-        _agent_tasks.pop(game_id, None)
-        logger.info("Agent loop ended for game %s", game_id)
+def _make_clue_runner(game_id: str, agents: dict[str, BaseAgent]) -> ClueAgentRunner:
+    """Create a ClueAgentRunner wired to this module's helpers."""
+    game = ClueGame(game_id, redis_client)
+    return ClueAgentRunner(
+        game_id,
+        agents,
+        get_state=game.get_state,
+        get_player_state=game.get_player_state,
+        execute_action=_execute_action,
+        broadcast_agent_debug=_broadcast_agent_debug,
+        broadcast_chat=_broadcast_chat,
+        player_name=_player_name,
+        registry=_clue_registry,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1713,7 +1512,7 @@ async def add_agent(game_id: str, req: AddAgentRequest | None = None):
     if state is None:
         raise HTTPException(status_code=404, detail="Game not found")
 
-    player_id = _new_player_id()
+    player_id = _new_player_id(agent_type=agent_type)
 
     try:
         # Pass None as the name; add_player assigns the character name for non-human types
@@ -1860,10 +1659,10 @@ async def start_game(game_id: str):
             for a in agents.values():
                 a.player_names = player_names
 
-            _game_agents[game_id] = agents
-            task = asyncio.create_task(_run_agent_loop(game_id))
-            task.add_done_callback(lambda t, gid=game_id: _on_agent_loop_done(gid, t))
-            _agent_tasks[game_id] = task
+            runner = _make_clue_runner(game_id, agents)
+            task = asyncio.create_task(runner.run())
+            task.add_done_callback(runner.make_done_callback())
+            _clue_registry.register(game_id, agents, task)
         else:
             logger.info(
                 "Agent mode is '%s' — %d agent(s) in game %s will be managed externally",
@@ -2161,10 +1960,9 @@ async def holdem_start_game(game_id: str):
                 player.name,
                 game_id,
             )
-        _holdem_agents[game_id] = agents
-        _holdem_agent_tasks[game_id] = asyncio.create_task(
-            _run_holdem_agent_loop(game_id)
-        )
+        runner = _make_holdem_runner(game_id, agents)
+        task = asyncio.create_task(runner.run())
+        _holdem_registry.register(game_id, agents, task)
 
     return state.model_dump()
 
@@ -2468,162 +2266,43 @@ async def _holdem_notify_new_hand(
 # ---------------------------------------------------------------------------
 
 
-async def _holdem_agent_fallback(
-    game_id: str, player_id: str, player_state
-) -> None:
-    """Try to check or fold for an agent whose action failed."""
-    if player_state and player_state.available_actions:
-        if "check" in player_state.available_actions:
-            await _holdem_execute_action(game_id, player_id, CheckAction())
-        elif "fold" in player_state.available_actions:
-            await _holdem_execute_action(game_id, player_id, FoldAction())
+def _make_holdem_runner(game_id: str, agents: dict[str, HoldemAgent]) -> HoldemAgentRunner:
+    """Create a HoldemAgentRunner wired to this module's helpers."""
+    game = HoldemGame(game_id, redis_client)
 
+    async def _rebuy(player_id: str):
+        return await game.rebuy(player_id)
 
-async def _run_holdem_agent_loop(game_id: str):
-    """Background task that drives holdem agent players."""
-    agents = _holdem_agents.get(game_id)
-    if not agents:
-        return
+    async def _on_rebuy_success(gid: str, agent_id: str, new_state) -> None:
+        name = agents[agent_id].name
+        await manager.broadcast(
+            gid,
+            HoldemRebuyMessage(
+                player_id=agent_id,
+                chips=new_state.buy_in,
+            ),
+        )
+        await _holdem_broadcast_chat(
+            gid,
+            f"{name} rebuys for {_format_currency(new_state.buy_in)}!",
+        )
 
-    logger.info(
-        "Holdem agent loop started for game %s with %d agent(s)",
+    async def _notify_new_hand(gid: str, state) -> None:
+        await _holdem_notify_new_hand(gid, state, game)
+
+    return HoldemAgentRunner(
         game_id,
-        len(agents),
+        agents,
+        get_state=game.get_state,
+        get_player_state=game.get_player_state,
+        execute_action=_holdem_execute_action,
+        broadcast_chat=_holdem_broadcast_chat,
+        rebuy=_rebuy,
+        on_rebuy_success=_on_rebuy_success,
+        notify_new_hand=_notify_new_hand,
+        format_currency=_format_currency,
+        registry=_holdem_registry,
     )
-
-    try:
-        while True:
-            game = HoldemGame(game_id, redis_client)
-            state = await game.get_state()
-            if state is None or state.status != "playing":
-                break
-
-            # Auto-rebuy for agents that are rebuy_pending
-            if state.allow_rebuys:
-                for agent_id in list(agents.keys()):
-                    agent_player = next(
-                        (p for p in state.players if p.id == agent_id), None
-                    )
-                    if agent_player and agent_player.rebuy_pending:
-                        await asyncio.sleep(1.0)
-                        try:
-                            new_state = await game.rebuy(agent_id)
-                            name = agents[agent_id].name
-                            await manager.broadcast(
-                                game_id,
-                                HoldemRebuyMessage(
-                                    player_id=agent_id,
-                                    chips=new_state.buy_in,
-                                ),
-                            )
-                            await _holdem_broadcast_chat(
-                                game_id,
-                                f"{name} rebuys for {_format_currency(new_state.buy_in)}!",
-                            )
-                            # Refresh state after rebuy
-                            state = await game.get_state()
-                            if not state or state.status != "playing":
-                                break
-                            # If game advanced to new hand, notify
-                            if state.whose_turn:
-                                await _holdem_notify_new_hand(game_id, state, game)
-                        except Exception:
-                            logger.warning(
-                                "Holdem agent %s rebuy failed in game %s",
-                                agent_id,
-                                game_id,
-                                exc_info=True,
-                            )
-
-                # Re-check after potential rebuys
-                if not state or state.status != "playing":
-                    break
-
-            whose_turn = state.whose_turn
-            if whose_turn and whose_turn in agents:
-                agent = agents[whose_turn]
-                # Pace actions for human observers
-                await asyncio.sleep(1.5)
-
-                # Re-check state after sleep
-                state = await game.get_state()
-                if not state or state.status != "playing":
-                    break
-                if state.whose_turn != whose_turn:
-                    continue
-
-                player_state = await game.get_player_state(whose_turn)
-                if not player_state or not player_state.available_actions:
-                    await asyncio.sleep(0.5)
-                    continue
-
-                try:
-                    action = agent.decide_action(state, player_state)
-                    logger.info(
-                        "Holdem agent %s taking action %s in game %s",
-                        whose_turn,
-                        action.type,
-                        game_id,
-                    )
-
-                    try:
-                        await _holdem_execute_action(game_id, whose_turn, action)
-                    except ValueError as exc:
-                        logger.warning(
-                            "Holdem agent %s action failed: %s", whose_turn, exc
-                        )
-                        # Fallback: check or fold
-                        await _holdem_agent_fallback(
-                            game_id, whose_turn, player_state
-                        )
-
-                    # Chat (non-critical — don't let it kill the loop)
-                    try:
-                        chat_msg = await agent.generate_chat(
-                            action.type,
-                            community_cards=[str(c) for c in state.community_cards] if state.community_cards else None,
-                            pot=state.pot,
-                        )
-                        if chat_msg:
-                            await _holdem_broadcast_chat(
-                                game_id, f"{agent.name}: {chat_msg}", whose_turn
-                            )
-                    except Exception:
-                        logger.warning(
-                            "Holdem agent %s chat failed in game %s",
-                            whose_turn,
-                            game_id,
-                            exc_info=True,
-                        )
-
-                except Exception:
-                    logger.exception(
-                        "Holdem agent %s crashed in game %s, attempting fallback",
-                        whose_turn,
-                        game_id,
-                    )
-                    try:
-                        # Re-fetch state in case it changed
-                        ps = await game.get_player_state(whose_turn)
-                        await _holdem_agent_fallback(game_id, whose_turn, ps)
-                    except Exception:
-                        logger.exception(
-                            "Holdem agent %s fallback also failed in game %s",
-                            whose_turn,
-                            game_id,
-                        )
-            else:
-                # Human player's turn or no turn — poll
-                await asyncio.sleep(0.5)
-
-    except asyncio.CancelledError:
-        logger.info("Holdem agent loop cancelled for game %s", game_id)
-    except Exception:
-        logger.exception("Holdem agent loop error in game %s", game_id)
-    finally:
-        _holdem_agents.pop(game_id, None)
-        _holdem_agent_tasks.pop(game_id, None)
-        logger.info("Holdem agent loop ended for game %s", game_id)
 
 
 @app.get("/api/holdem/games/{game_id}/debug")

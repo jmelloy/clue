@@ -31,8 +31,9 @@
           'is-turn': token.id === gameState?.whose_turn,
           'has-image': !token.isWeapon && !!CARD_IMAGES[token.character]
         }" :style="tokenStyle(token)">
-          <span v-if="token.isWeapon" class="weapon-emoji">{{ CARD_ICONS[token.name] || token.name.charAt(0) }}</span>
+          <span v-if="token.isWeapon" class="weapon-emoji" :title="token.name">{{ CARD_ICONS[token.name] || token.name.charAt(0) }}</span>
           <img v-else-if="CARD_IMAGES[token.character]" :src="CARD_IMAGES[token.character]" :alt="token.character"
+            :title="token.name === token.character ? token.character : `${token.name} (${token.character})`"
             class="token-portrait" />
           <span v-else>{{ abbr(token.character) }}</span>
           <span class="token-tooltip">{{ token.isWeapon ? token.name : (token.name === token.character ? token.character : `${token.name} (${token.character})`) }}</span>

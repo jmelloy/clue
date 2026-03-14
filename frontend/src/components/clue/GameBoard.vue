@@ -47,7 +47,7 @@
             @select-position="onPositionSelected" />
           <!-- Winning cards tossed on the board -->
           <div v-if="gameState?.status === 'finished' && gameState?.solution" class="board-tossed-cards">
-            <div class="tossed-card tossed-card-1">
+            <div class="tossed-card tossed-card-1" :title="gameState.solution.suspect">
               <div class="tossed-card-inner card-suspect">
                 <div class="tossed-card-image-frame">
                   <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" />
@@ -56,7 +56,7 @@
                 <div class="tossed-card-name">{{ gameState.solution.suspect }}</div>
               </div>
             </div>
-            <div class="tossed-card tossed-card-2">
+            <div class="tossed-card tossed-card-2" :title="gameState.solution.weapon">
               <div class="tossed-card-inner card-weapon">
                 <div class="tossed-card-image-frame">
                   <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" />
@@ -65,7 +65,7 @@
                 <div class="tossed-card-name">{{ gameState.solution.weapon }}</div>
               </div>
             </div>
-            <div class="tossed-card tossed-card-3">
+            <div class="tossed-card tossed-card-3" :title="gameState.solution.room">
               <div class="tossed-card-inner card-room">
                 <div class="tossed-card-image-frame">
                   <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" />
@@ -100,7 +100,7 @@
             <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
               <div class="shown-cards-hand">
-                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)">
+                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)" :title="card">
                   <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                   <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                   <span class="card-label">{{ card }}</span>
@@ -128,21 +128,21 @@
             <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
             <div v-else class="card-hand">
               <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                @click="showCardPreview(card)">
+                :title="card" @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
                 :class="{ 'card-with-image': hasCardImage(card) }"
-                @click="hasCardImage(card) && showCardPreview(card)">
+                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-weapon" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
-                @click="showCardPreview(card)">
+                :title="card" @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-room" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
@@ -190,7 +190,7 @@
           <p class="show-card-prompt">Choose a card to reveal:</p>
           <div class="show-card-options">
             <button v-for="card in matchingCards" :key="card" class="show-card-btn" :class="cardCategory(card)"
-              @click="doShowCard(card)">
+              :title="card" @click="doShowCard(card)">
               <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="show-card-thumb"
                 :class="'show-card-thumb-' + cardCategory(card).replace('card-', '')" />
               <span v-else class="card-icon">{{ cardIcon(card) }}</span>
@@ -344,21 +344,21 @@
             <div v-if="!observerCards.length" class="no-cards">No cards</div>
             <div v-else class="card-hand">
               <div v-for="card in observerSuspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                @click="showCardPreview(card)">
+                :title="card" @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
                 :class="{ 'card-with-image': hasCardImage(card) }"
-                @click="hasCardImage(card) && showCardPreview(card)">
+                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-weapon" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in observerRoomCards" :key="card" class="hand-card card-room card-with-image"
-                @click="showCardPreview(card)">
+                :title="card" @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-room" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
