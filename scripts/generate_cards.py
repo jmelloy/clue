@@ -509,15 +509,72 @@ class ModernTheme(Theme):
 
     BG = (255, 255, 255)
     RED = (220, 38, 38)
-    BLUE = (37, 99, 235)
+    BLUE = (19, 43, 75)
     BORDER = (229, 231, 235)  # light grey border
     BACK_BG = (17, 24, 39)  # very dark navy
+    ART_DIR = Path(__file__).parent / "cards" / "modern"
+
+    _center_cache: dict[str, Image.Image | None] = {}
+    _missing_warned: set[str] = set()
 
     def suit_color(self, suit: str) -> tuple:
         return self.RED if suit in ("hearts", "diamonds") else self.BLUE
 
     def _accent_color(self, suit: str) -> tuple:
         return self.suit_color(suit)
+
+    def _get_center_art(self, rank: str, suit: str) -> Image.Image | None:
+        """Load modern A/J/Q/K artwork if present; otherwise return None."""
+        key = f"{rank}_{suit}"
+        if key in self._center_cache:
+            return self._center_cache[key]
+
+        suit_variants = [suit, suit.title(), suit.capitalize()]
+        exts = [".png", ".jpg", ".jpeg", ".webp"]
+
+        # Prefer canonical names like A_Spades.jpg.
+        art_path: Path | None = None
+        for suit_name in suit_variants:
+            for ext in exts:
+                candidate = self.ART_DIR / f"{rank}_{suit_name}{ext}"
+                if candidate.exists():
+                    art_path = candidate
+                    break
+            if art_path is not None:
+                break
+
+        # Also support verbose names like "King of Hearts_12345.jpg".
+        if art_path is None:
+            rank_names = {"A": "Ace", "J": "Jack", "Q": "Queen", "K": "King"}
+            long_rank = rank_names.get(rank)
+            if long_rank is not None:
+                matches: list[Path] = []
+                for suit_name in suit_variants:
+                    for ext in exts:
+                        matches.extend(
+                            self.ART_DIR.glob(f"{long_rank} of {suit_name}_*{ext}")
+                        )
+                        matches.extend(
+                            self.ART_DIR.glob(f"{long_rank} of {suit_name}{ext}")
+                        )
+                if matches:
+                    # Deterministic choice if multiple files exist.
+                    art_path = sorted(matches)[0]
+
+        if art_path is None:
+            if key not in self._missing_warned:
+                print(
+                    f"  ! modern art missing for {rank} of {suit} (using generated fallback)"
+                )
+                self._missing_warned.add(key)
+            self._center_cache[key] = None
+            return None
+
+        img = Image.open(art_path)
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        self._center_cache[key] = img
+        return img
 
     def draw_background(self, draw: ImageDraw.ImageDraw, img: Image.Image) -> None:
         draw_rounded_rect(draw, (0, 0, self.W - 1, self.H - 1), 16, fill=self.BG)
@@ -567,6 +624,27 @@ class ModernTheme(Theme):
         # accent bars drawn here because we need suit colour
         self._draw_accent_bar(draw, suit)
         color = self.suit_color(suit)
+
+        if rank in _AI_RANKS:
+            center_art = self._get_center_art(rank, suit)
+            if center_art is not None:
+                # Keep imported art clear of corner pips.
+                gutter_x = 52
+                gutter_y = 86
+                area_w = self.W - 2 * gutter_x
+                area_h = self.H - 2 * gutter_y
+
+                art_w, art_h = center_art.size
+                scale = min(area_w / art_w, area_h / art_h)
+                new_w = int(art_w * scale)
+                new_h = int(art_h * scale)
+                resized = center_art.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                paste_x = gutter_x + (area_w - new_w) // 2
+                paste_y = gutter_y + (area_h - new_h) // 2
+                self._pending_paste = (resized, paste_x, paste_y)
+                return
+
         if rank in ("J", "Q", "K"):
             self._draw_face_center(
                 draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
