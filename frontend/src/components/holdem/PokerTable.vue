@@ -15,7 +15,8 @@
         <span class="meta-divider"></span>
         <span class="meta-item">
           <span class="meta-label">Blinds</span>
-          <span class="meta-value">{{ formatChips(gameState?.small_blind ?? 10) }}/{{ formatChips(gameState?.big_blind ?? 20) }}</span>
+          <span class="meta-value">{{ formatChips(gameState?.small_blind ?? 10) }}/{{ formatChips(gameState?.big_blind
+            ?? 20) }}</span>
         </span>
         <button class="chat-toggle" @click="chatOpen = !chatOpen" :class="{ active: chatOpen }">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -96,8 +97,7 @@
           </div>
 
           <!-- Sweep animation: chips flying to center -->
-          <div v-for="chip in sweepingChips" :key="chip.id"
-            class="sweep-chip"
+          <div v-for="chip in sweepingChips" :key="chip.id" class="sweep-chip"
             :style="{ '--from-x': chip.fromX + '%', '--from-y': chip.fromY + '%' }">
             <div class="sweep-chip-stack">
               <div class="sweep-single-chip chip-red"></div>
@@ -153,18 +153,19 @@
           <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
         </div>
         <!-- Community cards + revealed hands row -->
-        <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length" class="winner-banner-hands">
+        <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length"
+          class="winner-banner-hands">
           <div v-if="winnerBanner.communityCards && winnerBanner.communityCards.length" class="banner-community-cards">
-            <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i"
-              :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" :deck="handDeck" />
+            <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i" :rank="c.rank" :suit="c.suit"
+              size="tiny" class="banner-mini-card" :deck="handDeck" />
           </div>
           <div class="banner-player-hands-row">
             <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
               :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
               <span class="banner-hand-name">{{ playerName(pid) }}</span>
               <div class="banner-hand-cards">
-                <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit"
-                  :rank="c.rank" :suit="c.suit" size="tiny" class="banner-mini-card" :deck="handDeck" />
+                <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" :rank="c.rank" :suit="c.suit"
+                  size="tiny" class="banner-mini-card" :deck="handDeck" />
               </div>
             </div>
           </div>
@@ -179,14 +180,15 @@
         <div class="hole-cards">
           <template v-if="yourCards.length">
             <div v-for="(c, i) in yourCards" :key="i" class="hole-card-clickable" @click="openCardPreview(c)">
-              <PlayingCard
-                :rank="c.rank" :suit="c.suit" size="medium" class="hole-card" :deck="handDeck"
+              <PlayingCard :rank="c.rank" :suit="c.suit" size="medium" class="hole-card" :deck="handDeck"
                 :style="{ '--tilt': i === 0 ? '-4deg' : '4deg', '--lift': i === 0 ? '0px' : '2px' }" />
             </div>
           </template>
           <template v-else>
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }" :rotation="deckRotation" :deck="handDeck" />
-            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }" :rotation="deckRotation" :deck="handDeck" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '-4deg' }"
+              :rotation="deckRotation" :deck="handDeck" />
+            <PlayingCard :faceDown="true" size="medium" class="hole-card" :style="{ '--tilt': '4deg' }"
+              :rotation="deckRotation" :deck="handDeck" />
           </template>
         </div>
       </div>
@@ -230,21 +232,26 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="betAmount = gameState?.big_blind ?? 20" class="pill">Min</button>
-                  <button @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 3))" class="pill">
+                  <button
+                    @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 3))"
+                    class="pill">
                     &frac13; Pot
                   </button>
-                  <button @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 2))" class="pill">
+                  <button
+                    @click="betAmount = Math.max(gameState?.big_blind ?? 20, roundToChip((gameState?.pot ?? 0) / 2))"
+                    class="pill">
                     &frac12; Pot
                   </button>
                   <button @click="betAmount = roundToChip(gameState?.pot ?? 0)" class="pill">Pot</button>
                 </div>
                 <div class="range-track">
-                  <input type="range" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0"
-                    :step="MIN_CHIP" v-model.number="betAmount" class="range-input" />
+                  <input type="range" :min="gameState?.big_blind ?? 20" :max="myPlayer?.chips ?? 0" :step="MIN_CHIP"
+                    v-model.number="betAmount" class="range-input" />
                 </div>
                 <div class="slider-confirm">
                   <input type="number" v-model="betAmountDollars" :min="((gameState?.big_blind ?? 20) / 100).toFixed(2)"
-                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)" class="num-input" />
+                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)"
+                    class="num-input" />
                   <button class="go-btn" @click="submitBet">
                     Bet {{ formatChips(betAmount) }}
                   </button>
@@ -259,13 +266,16 @@
               <div class="slider-row">
                 <div class="preset-pills">
                   <button @click="raiseAmount = minRaise" class="pill">Min</button>
-                  <button @click="raiseAmount = Math.max(minRaise, roundToChip((gameState?.pot ?? 0) / 2))" class="pill">
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip((gameState?.pot ?? 0) / 2))"
+                    class="pill">
                     &frac12; Pot
                   </button>
-                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(((gameState?.pot ?? 0) * 3) / 4))" class="pill">
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(((gameState?.pot ?? 0) * 3) / 4))"
+                    class="pill">
                     &frac34; Pot
                   </button>
-                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(gameState?.pot ?? 0))" class="pill">Pot</button>
+                  <button @click="raiseAmount = Math.max(minRaise, roundToChip(gameState?.pot ?? 0))"
+                    class="pill">Pot</button>
                 </div>
                 <div class="range-track">
                   <input type="range" :min="minRaise" :max="myPlayer?.chips ?? 0" :step="MIN_CHIP"
@@ -273,7 +283,8 @@
                 </div>
                 <div class="slider-confirm">
                   <input type="number" v-model="raiseAmountDollars" :min="(minRaise / 100).toFixed(2)"
-                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)" class="num-input" />
+                    :max="((myPlayer?.chips ?? 0) / 100).toFixed(2)" :step="(MIN_CHIP / 100).toFixed(2)"
+                    class="num-input" />
                   <button class="go-btn" @click="submitRaise">
                     Raise {{ formatChips(raiseAmount) }}
                   </button>
@@ -337,17 +348,18 @@
               </svg>
               {{ formatChips(showdownData.pot) }}
             </div>
-            <div v-if="showdownData.community_cards && showdownData.community_cards.length" class="showdown-community-cards">
-              <PlayingCard v-for="(c, i) in showdownData.community_cards" :key="'sc-' + i"
-                :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" :deck="handDeck" />
+            <div v-if="showdownData.community_cards && showdownData.community_cards.length"
+              class="showdown-community-cards">
+              <PlayingCard v-for="(c, i) in showdownData.community_cards" :key="'sc-' + i" :rank="c.rank" :suit="c.suit"
+                size="mini" class="mini-card" :deck="handDeck" />
             </div>
             <div class="showdown-divider"></div>
             <div class="showdown-hands">
               <div v-for="(cards, pid) in showdownData.player_hands" :key="pid" class="showdown-player-hand">
                 <span class="sh-name">{{ playerName(pid) }}</span>
                 <div class="sh-cards">
-                  <PlayingCard v-for="(c, i) in cards" :key="i"
-                    :rank="c.rank" :suit="c.suit" size="mini" class="mini-card" :deck="handDeck" />
+                  <PlayingCard v-for="(c, i) in cards" :key="i" :rank="c.rank" :suit="c.suit" size="mini"
+                    class="mini-card" :deck="handDeck" />
                 </div>
               </div>
             </div>
@@ -384,7 +396,8 @@
     <Teleport to="body">
       <div v-if="previewCard" class="card-preview-overlay" @click="previewCard = null">
         <div class="card-preview-frame" @click.stop>
-          <PlayingCard :rank="previewCard.rank" :suit="previewCard.suit" size="large" :deck="handDeck" class="preview-card" />
+          <PlayingCard :rank="previewCard.rank" :suit="previewCard.suit" size="large" :deck="handDeck"
+            class="preview-card" />
           <div class="card-preview-label">{{ previewCard.rank }} of {{ previewCard.suit }}</div>
           <button class="card-preview-close" @click="previewCard = null">&times;</button>
         </div>
@@ -519,7 +532,7 @@ const deckRotation = computed(() => {
 
 // Rotate through deck art styles each hand so players see variety without
 // needing a theme picker on the main page.
-const DECK_STYLES = ['css', 'classic', 'modern', 'vintage']
+const DECK_STYLES = ['css', 'classic', 'modern', 'vintage', 'fantasy']
 const handDeck = computed(() => {
   const h = props.gameState?.hand_number ?? 0
   return DECK_STYLES[h % DECK_STYLES.length]
@@ -1229,9 +1242,17 @@ watch(
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.sweep-single-chip:nth-child(1) { bottom: 0; }
-.sweep-single-chip:nth-child(2) { bottom: 4px; }
-.sweep-single-chip:nth-child(3) { bottom: 8px; }
+.sweep-single-chip:nth-child(1) {
+  bottom: 0;
+}
+
+.sweep-single-chip:nth-child(2) {
+  bottom: 4px;
+}
+
+.sweep-single-chip:nth-child(3) {
+  bottom: 8px;
+}
 
 @keyframes sweep-to-center {
   0% {
@@ -1240,10 +1261,12 @@ watch(
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
+
   80% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(0.8);
   }
+
   100% {
     left: 50%;
     top: 50%;
@@ -2010,9 +2033,9 @@ watch(
   position: relative;
   flex-shrink: 0;
   background: linear-gradient(90deg,
-    color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)),
-    color-mix(in srgb, var(--poker-gold-dim) 35%, var(--poker-chrome)),
-    color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)));
+      color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)),
+      color-mix(in srgb, var(--poker-gold-dim) 35%, var(--poker-chrome)),
+      color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)));
   border-top: 1px solid var(--gold-dim);
   border-bottom: 1px solid var(--gold-dim);
   padding: 0.6rem 1.5rem;
@@ -2357,8 +2380,13 @@ watch(
 }
 
 @keyframes cpFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .card-preview-frame {
@@ -2371,8 +2399,15 @@ watch(
 }
 
 @keyframes cpReveal {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .preview-card {

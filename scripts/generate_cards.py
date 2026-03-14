@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Generate images of a standard 52-card deck in 3 different visual styles.
+Generate images of a standard 52-card deck in 4 different visual styles.
 
 Output structure (default):
   frontend/public/images/cards/
     classic/   - Traditional serif style, cream background, ornamental border
     modern/    - Minimalist geometric style, white background, colour accent bar
     vintage/   - Aged-paper retro style, Liberation Serif, double-line border
+    fantasy/   - Painterly face-card art with ornate purple-and-gold details
 
 Usage:
     python scripts/generate_cards.py
@@ -355,6 +356,15 @@ class ClassicTheme(Theme):
     # ------------------------------------------------------------------
     def draw_background(self, draw: ImageDraw.ImageDraw, img: Image.Image) -> None:
         draw_rounded_rect(draw, (0, 0, self.W - 1, self.H - 1), 20, fill=self.BG)
+        # Add a faint neutral grain so the surface has texture without shifting white.
+        rng = random.Random(1337)
+        speck_count = max(600, (self.W * self.H) // 320)
+        for _ in range(speck_count):
+            x = rng.randint(0, self.W - 1)
+            y = rng.randint(0, self.H - 1)
+            shade = rng.randint(232, 242)
+            alpha = rng.randint(8, 22)
+            draw.point((x, y), fill=(shade, shade, shade, alpha))
 
     def draw_border(self, draw: ImageDraw.ImageDraw) -> None:
         m = 10
@@ -740,6 +750,174 @@ class VintageTheme(Theme):
 
 
 # ---------------------------------------------------------------------------
+# Theme 4 — Fantasy
+# ---------------------------------------------------------------------------
+
+
+class FantasyTheme(Theme):
+    """Fantasy style with AI face-card art from scripts/cards/fantasy."""
+
+    name = "fantasy"
+
+    BG = (245, 245, 245)
+    RED = (156, 36, 56)
+    BLACK = (52, 41, 84)
+    BORDER = (86, 56, 132)
+    INNER_BORDER = (202, 166, 103)
+    BACK_BG = (45, 30, 76)
+    BACK_ACCENT = (212, 180, 112)
+    ART_DIR = Path(__file__).parent / "cards" / "fantasy"
+    CORNER_GUTTER = 48
+    CORNER_V_GUTTER = 88
+
+    _center_cache: dict[str, Image.Image] = {}
+
+    def suit_color(self, suit: str) -> tuple:
+        return self.RED if suit in ("hearts", "diamonds") else self.BLACK
+
+    def draw_background(self, draw: ImageDraw.ImageDraw, img: Image.Image) -> None:
+        draw_rounded_rect(draw, (0, 0, self.W - 1, self.H - 1), 20, fill=self.BG)
+
+    def draw_border(self, draw: ImageDraw.ImageDraw) -> None:
+        m = 9
+        draw_rounded_rect(
+            draw,
+            (m, m, self.W - m - 1, self.H - m - 1),
+            15,
+            fill=None,
+            outline=self.BORDER,
+            width=3,
+        )
+        m2 = 16
+        draw_rounded_rect(
+            draw,
+            (m2, m2, self.W - m2 - 1, self.H - m2 - 1),
+            11,
+            fill=None,
+            outline=self.INNER_BORDER,
+            width=1,
+        )
+
+    def draw_corner(self, draw, rank, suit, top_left, rank_font, suit_font):
+        color = self.suit_color(suit)
+        symbol = SUIT_SYMBOLS[suit]
+        cx_offset = self.CORNER_GUTTER
+        top_y = 34
+        if top_left:
+            bbox_r = draw.textbbox((0, 0), rank, font=rank_font)
+            rh = bbox_r[3] - bbox_r[1]
+            centered_text(draw, cx_offset, top_y + rh // 2, rank, rank_font, color)
+            centered_text(draw, cx_offset, top_y + rh + 20, symbol, suit_font, color)
+        else:
+            _draw_rotated_corner(
+                draw,
+                rank,
+                suit,
+                rank_font,
+                suit_font,
+                color,
+                self.W,
+                self.H,
+                cx_offset,
+                top_y,
+            )
+
+    def _get_center_art(self, rank: str, suit: str) -> Image.Image | None:
+        """Load and cache face-card/ace fantasy art with suit-name normalization."""
+        key = f"{rank}_{suit}"
+        if key in self._center_cache:
+            return self._center_cache[key]
+
+        suit_variants = [suit, suit.title(), suit.capitalize()]
+        exts = [".png", ".jpg", ".jpeg", ".webp"]
+        art_path: Path | None = None
+        for suit_name in suit_variants:
+            for ext in exts:
+                candidate = self.ART_DIR / f"{rank}_{suit_name}{ext}"
+                if candidate.exists():
+                    art_path = candidate
+                    break
+            if art_path is not None:
+                break
+
+        if art_path is None:
+            return None
+
+        img = Image.open(art_path)
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        self._center_cache[key] = img
+        return img
+
+    def draw_center(self, draw, rank, suit, fonts):
+        color = self.suit_color(suit)
+
+        if rank in _AI_RANKS:
+            center_art = self._get_center_art(rank, suit)
+            if center_art is not None:
+                gutter_x = self.CORNER_GUTTER
+                gutter_y = self.CORNER_V_GUTTER
+                area_w = self.W - 2 * gutter_x
+                area_h = self.H - 2 * gutter_y
+
+                art_w, art_h = center_art.size
+                scale = min(area_w / art_w, area_h / art_h)
+                new_w = int(art_w * scale)
+                new_h = int(art_h * scale)
+                resized = center_art.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+                paste_x = gutter_x + (area_w - new_w) // 2
+                paste_y = gutter_y + (area_h - new_h) // 2
+                self._pending_paste = (resized, paste_x, paste_y)
+                return
+
+        if rank in ("J", "Q", "K"):
+            self._draw_face_center(
+                draw, rank, suit, fonts["face_rank"], fonts["face_suit"], color
+            )
+        else:
+            count = pip_count(rank)
+            if count:
+                self._draw_pips(draw, suit, count, fonts["pip"], color)
+
+    def draw_card_back(self, img: Image.Image) -> None:
+        draw = ImageDraw.Draw(img, "RGBA")
+        draw_rounded_rect(draw, (0, 0, self.W - 1, self.H - 1), 20, fill=self.BACK_BG)
+
+        m = 12
+        draw_rounded_rect(
+            draw,
+            (m, m, self.W - m - 1, self.H - m - 1),
+            14,
+            fill=None,
+            outline=self.BACK_ACCENT,
+            width=2,
+        )
+
+        spacing = 18
+        for offset in range(-self.H, self.W + self.H, spacing):
+            draw.line(
+                [(offset, 0), (offset + self.H, self.H)],
+                fill=(*self.BACK_ACCENT[:3], 35),
+                width=1,
+            )
+            draw.line(
+                [(offset + self.H, 0), (offset, self.H)],
+                fill=(*self.BACK_ACCENT[:3], 35),
+                width=1,
+            )
+
+        cx, cy = self.W // 2, self.H // 2
+        medallion = 54
+        draw.ellipse(
+            [(cx - medallion, cy - medallion), (cx + medallion, cy + medallion)],
+            fill=None,
+            outline=(*self.BACK_ACCENT[:3], 190),
+            width=3,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Font sets per theme
 # ---------------------------------------------------------------------------
 
@@ -759,6 +937,12 @@ THEME_FONTS = {
     "vintage": {
         "rank_name": "DejaVuSerif-Bold.ttf",
         "suit_name": "DejaVuSerif.ttf",
+        "pip_name": "DejaVuSerif.ttf",
+        "face_name": "DejaVuSerif-Bold.ttf",
+    },
+    "fantasy": {
+        "rank_name": "DejaVuSerif-Bold.ttf",
+        "suit_name": "DejaVuSerif-Bold.ttf",
         "pip_name": "DejaVuSerif.ttf",
         "face_name": "DejaVuSerif-Bold.ttf",
     },
@@ -835,6 +1019,7 @@ THEMES: dict[str, Theme] = {
     "classic": ClassicTheme(),
     "modern": ModernTheme(),
     "vintage": VintageTheme(),
+    "fantasy": FantasyTheme(),
 }
 
 
@@ -889,7 +1074,7 @@ def generate_all(output_dir: Path, styles: list[str], W: int, H: int) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate playing card images in 3 visual styles.",
+        description="Generate playing card images in 4 visual styles.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -905,7 +1090,7 @@ def parse_args() -> argparse.Namespace:
         choices=list(THEMES.keys()),
         action="append",
         dest="styles",
-        help="Which style(s) to generate (default: all three)",
+        help="Which style(s) to generate (default: all styles)",
     )
     parser.add_argument(
         "--width",
