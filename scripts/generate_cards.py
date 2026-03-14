@@ -767,8 +767,8 @@ class FantasyTheme(Theme):
     BACK_BG = (45, 30, 76)
     BACK_ACCENT = (212, 180, 112)
     ART_DIR = Path(__file__).parent / "cards" / "fantasy"
-    CORNER_GUTTER = 48
-    CORNER_V_GUTTER = 88
+    CORNER_GUTTER = 72
+    CORNER_V_GUTTER = 120
 
     _center_cache: dict[str, Image.Image] = {}
 
@@ -869,6 +869,7 @@ class FantasyTheme(Theme):
                 paste_x = gutter_x + (area_w - new_w) // 2
                 paste_y = gutter_y + (area_h - new_h) // 2
                 self._pending_paste = (resized, paste_x, paste_y)
+                self._pending_frame = (paste_x, paste_y, new_w, new_h)
                 return
 
         if rank in ("J", "Q", "K"):
@@ -879,6 +880,50 @@ class FantasyTheme(Theme):
             count = pip_count(rank)
             if count:
                 self._draw_pips(draw, suit, count, fonts["pip"], color)
+
+    def draw_image_frame(
+        self, draw: ImageDraw.ImageDraw, x: int, y: int, w: int, h: int
+    ) -> None:
+        """Draw an ornate frame around the fantasy center artwork."""
+        pad = max(6, int(self.W * 0.012))
+        x0 = x - pad
+        y0 = y - pad
+        x1 = x + w + pad
+        y1 = y + h + pad
+
+        outer_radius = max(8, int(self.W * 0.02))
+        inner_inset = max(2, int(self.W * 0.004))
+
+        draw_rounded_rect(
+            draw,
+            (x0, y0, x1, y1),
+            outer_radius,
+            fill=None,
+            outline=(*self.BACK_ACCENT[:3], 220),
+            width=2,
+        )
+        draw_rounded_rect(
+            draw,
+            (x0 + inner_inset, y0 + inner_inset, x1 - inner_inset, y1 - inner_inset),
+            max(6, outer_radius - 2),
+            fill=None,
+            outline=(*self.BORDER[:3], 185),
+            width=1,
+        )
+
+        # Corner filigree accents to keep a fantasy look without filling the center.
+        d = max(5, int(self.W * 0.01))
+        corners = [
+            (x0 + d, y0 + d),
+            (x1 - d, y0 + d),
+            (x0 + d, y1 - d),
+            (x1 - d, y1 - d),
+        ]
+        for cx, cy in corners:
+            draw.polygon(
+                [(cx, cy - d), (cx + d, cy), (cx, cy + d), (cx - d, cy)],
+                fill=(*self.BACK_ACCENT[:3], 180),
+            )
 
     def draw_card_back(self, img: Image.Image) -> None:
         draw = ImageDraw.Draw(img, "RGBA")
@@ -994,7 +1039,14 @@ def render_card(
         if art_img.mode != "RGBA":
             art_img = art_img.convert("RGBA")
         img.paste(art_img, (px, py), art_img)
+
+        frame = getattr(theme, "_pending_frame", None)
+        if frame is not None and hasattr(theme, "draw_image_frame"):
+            fx, fy, fw, fh = frame
+            theme.draw_image_frame(draw, fx, fy, fw, fh)  # type: ignore[attr-defined]
+
         theme._pending_paste = None  # type: ignore[attr-defined]
+        theme._pending_frame = None  # type: ignore[attr-defined]
 
     return img
 
