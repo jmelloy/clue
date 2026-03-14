@@ -2315,51 +2315,58 @@ watch(
     font-size: 0.8rem;
   }
 
-  /* Phone: switch hand cards to horizontal chip layout for readability */
+  /* Phone: horizontal scrollable card strip */
   .card-hand {
-    flex-direction: column;
-    gap: 0.25rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
   }
 
   .hand-card {
-    width: 100%;
-    flex-direction: row;
-    gap: 0.4rem;
-    padding: 5px 8px;
-    border-radius: 8px;
-    font-size: 0.8rem;
+    width: 72px;
+    min-width: 72px;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 4px;
+    border-radius: 6px;
+    font-size: 0.7rem;
     align-items: center;
   }
 
   .hand-card .card-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 56px;
+    height: 44px;
+    border-radius: 4px;
     object-position: center 15%;
     flex-shrink: 0;
   }
 
   .hand-card .card-thumb.card-thumb-room {
-    border-radius: 6px;
+    border-radius: 4px;
     object-position: center center;
   }
 
   .hand-card .card-thumb.card-thumb-weapon {
-    border-radius: 6px;
+    border-radius: 4px;
     object-position: center center;
   }
 
   .hand-card .card-icon {
-    font-size: 1.3rem;
+    font-size: 1.2rem;
     margin: 0;
     flex-shrink: 0;
   }
 
   .hand-card .card-label {
-    font-size: 0.82rem;
+    font-size: 0.6rem;
     white-space: nowrap;
-    text-align: left;
-    line-height: 1.2;
+    text-align: center;
+    line-height: 1.15;
   }
 
   .physical-card-image-frame {
