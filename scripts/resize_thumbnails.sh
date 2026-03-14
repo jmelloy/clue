@@ -5,8 +5,8 @@ IMAGE_ROOT="frontend/public/images"
 THUMB_SIZE="320x320"
 THUMB_QUALITY="90"
 
-if ! command -v convert >/dev/null 2>&1; then
-  echo "ImageMagick 'convert' not found. Install ImageMagick to generate thumbnails." >&2
+if ! command -v magick >/dev/null 2>&1; then
+  echo "ImageMagick 'magick' not found. Install ImageMagick to generate thumbnails." >&2
   exit 1
 fi
 
@@ -25,18 +25,22 @@ while IFS= read -r -d '' img; do
 
   mkdir -p "$thumb_dir"
 
-  before_hash=""
-  if [ -f "$thumb_path" ]; then
-    before_hash=$(shasum -a 256 "$thumb_path" | awk '{print $1}')
+  # Skip regeneration when the thumbnail is already current for this source image.
+  if [ -f "$thumb_path" ] && [ ! "$img" -nt "$thumb_path" ]; then
+    continue
   fi
 
-  convert "$img" -resize "$THUMB_SIZE" -quality "$THUMB_QUALITY" "$thumb_path"
+  tmp_thumb=$(mktemp "$thumb_dir/.thumb-${filename}.XXXXXX")
+  magick "$img" -resize "$THUMB_SIZE" -quality "$THUMB_QUALITY" "$tmp_thumb"
 
-  after_hash=$(shasum -a 256 "$thumb_path" | awk '{print $1}')
-  if [ "$before_hash" != "$after_hash" ]; then
-    updated=1
-    echo "Updated thumbnail: $thumb_path"
+  if [ -f "$thumb_path" ] && cmp -s "$tmp_thumb" "$thumb_path"; then
+    rm -f "$tmp_thumb"
+    continue
   fi
+
+  mv "$tmp_thumb" "$thumb_path"
+  updated=1
+  echo "Updated thumbnail: $thumb_path"
 done < <(find "$IMAGE_ROOT" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) ! -path "*/thumbnails/*" -print0)
 
 if [ "$updated" -eq 0 ]; then
