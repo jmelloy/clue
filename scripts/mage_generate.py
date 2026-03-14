@@ -67,38 +67,75 @@ MODEL_MAP = {
 
 
 def parse_batch_markdown(filepath: str) -> list[dict]:
-    """Parse a markdown file with ### Name, **Ratio:** X:Y, and > prompt entries.
+    """Parse a markdown file with # Section, ### Name, **Ratio:** X:Y, and > prompt entries.
 
-    Returns a list of dicts with keys: name, ratio, prompt.
+    Returns a list of dicts with keys: section, name, ratio, prompt.
+    The section comes from the most recent ``# Heading`` (h1) above each card entry.
+    If no ratio is specified per card, a default of ``2:3`` is used.
     """
     with open(filepath) as f:
         content = f.read()
 
     entries = []
-    # Split on ### headers (level 3)
-    sections = re.split(r"^### ", content, flags=re.MULTILINE)
+    current_section = None
 
-    for section in sections[1:]:  # skip preamble before first ###
-        lines = section.strip().split("\n")
-        name = lines[0].strip()
+    # Process line-by-line to track h1 sections and h3 card entries
+    # in document order, so each card gets the section that precedes it.
+    lines = content.split("\n")
+    i = 0
+    section_prompt = []
+    while i < len(lines):
+        line = lines[i]
 
-        # Extract ratio
-        ratio = None
-        for line in lines:
-            m = re.match(r"\*\*Ratio:\*\*\s*(\S+)", line)
-            if m:
-                ratio = m.group(1)
-                break
+        # Track h1 section headers (e.g. "# Classic Deck")
+        h1 = re.match(r"^#\s+(.+)", line)
+        if h1:
+            current_section = h1.group(1).strip()
+            section_prompt = []
+            i += 1
+            while i < len(lines):
+                sub = lines[i]
+                if re.match(r"^#{1,3}\s+", sub):
+                    break
+                section_prompt.append(sub.strip())
+                i += 1
+            continue
 
-        # Extract prompt (blockquote lines starting with >)
-        prompt_lines = []
-        for line in lines:
-            if line.startswith(">"):
-                prompt_lines.append(line.lstrip("> ").strip())
+        # Detect h3 card entry (e.g. "### Ace of Hearts")
+        h3 = re.match(r"^###\s+(.+)", line)
+        if h3:
+            name = h3.group(1).strip()
+            ratio = "2:3"
+            prompt_lines = []
 
-        if prompt_lines and ratio:
-            prompt = " ".join(prompt_lines)
-            entries.append({"name": name, "ratio": ratio, "prompt": prompt})
+            # Scan forward for ratio and prompt blockquote
+            i += 1
+            while i < len(lines):
+                sub = lines[i]
+                # Stop at next heading
+                if re.match(r"^#{1,3}\s+", sub):
+                    break
+                rm = re.match(r"\*\*Ratio:\*\*\s*(\S+)", sub)
+                if rm:
+                    ratio = rm.group(1)
+                if sub.startswith(">"):
+                    prompt_lines.append(sub.lstrip("> ").strip())
+                i += 1
+
+            if prompt_lines:
+                prompt = " ".join(prompt_lines)
+                entries.append(
+                    {
+                        "section": current_section,
+                        "section_prompt": " ".join(section_prompt).strip(),
+                        "name": name,
+                        "ratio": ratio,
+                        "prompt": prompt,
+                    }
+                )
+            continue
+
+        i += 1
 
     return entries
 
@@ -220,7 +257,7 @@ async def generate_image(
 
     # Type the prompt character by character (contenteditable needs this)
     await page.keyboard.type(prompt, delay=10)
-    await page.wait_for_timeout(300)
+    await page.wait_for_timeout(len(prompt) * 10 + 500)
 
     # Click send
     send_btn = page.locator("img[alt='Send']")
@@ -235,11 +272,25 @@ async def generate_image(
     except Exception:
         print("  Warning: Generation may not have started, checking sidebar...")
 
-    # Now wait for it to disappear (generation complete) — up to 5 minutes
+    # Wait for queue count to reach zero (e.g. "Generating: 0") — up to 5 minutes
     try:
-        await generating_text.first.wait_for(state="hidden", timeout=300000)
+        await page.wait_for_function(
+            """
+            () => {
+              const el = Array.from(document.querySelectorAll('*')).find((n) =>
+                n.textContent && /^Generating:\\s*\\d+/.test(n.textContent.trim())
+              );
+              if (!el || !el.textContent) return false;
+              const m = el.textContent.trim().match(/^Generating:\\s*(\\d+)/);
+              return !!m && Number(m[1]) === 0;
+            }
+            """,
+            timeout=300000,
+        )
     except Exception:
-        print("  Warning: Generation may have timed out after 5 min")
+        print(
+            "  Warning: Generation may have timed out before reaching 'Generating: 0'"
+        )
         return None
 
     # Wait for the sidebar image to confirm
@@ -337,6 +388,12 @@ async def main():
         default=60.0,
         help="Delay between batch generations (seconds)",
     )
+    parser.add_argument(
+        "--skip",
+        type=int,
+        default=0,
+        help="Number of generations to skip (for resuming batches)",
+    )
     args = parser.parse_args()
 
     if not args.prompt and not args.batch:
@@ -347,8 +404,12 @@ async def main():
     if args.batch:
         prompts = parse_batch_markdown(args.batch)
         print(f"Loaded {len(prompts)} prompts from {args.batch}")
+        current_sec = None
         for entry in prompts:
-            print(f"  - {entry['name']} (ratio: {entry['ratio']})")
+            if entry.get("section") != current_sec:
+                current_sec = entry.get("section")
+                print(f"\n  [{current_sec}]")
+            print(f"    - {entry['name']} (ratio: {entry['ratio']})")
     else:
         prompts = [{"name": "prompt", "ratio": args.ratio, "prompt": args.prompt}]
 
@@ -357,6 +418,7 @@ async def main():
     # Build generation plan: each prompt N times per model
     # Model names must match keys in MODEL_MAP
     MODELS = [
+        ("Mango", 1),
         ("Z-Image Turbo", 3),
         ("FLUX.2 Dev", 2),
     ]
@@ -411,20 +473,46 @@ async def main():
             for entry in prompts:
                 for run in range(1, count + 1):
                     gen_num += 1
+                    if gen_num <= args.skip:
+                        print(
+                            f"\nSkipping generation {gen_num}/{total_generations} for {entry['name']} ({model_name} run {run}/{count})"
+                        )
+                        continue
+                    if model_name.startswith("Z-Image") and run > 1:
+                        print(
+                            f"\nNote: Skipping run {run} for {model_name} since Z-Image models are deterministic"
+                        )
+                        continue
+                    section = entry.get("section") or ""
+                    section_label = f" [{section}]" if section else ""
                     print(
-                        f"\n[{gen_num}/{total_generations}] {entry['name']} — {model_name} (run {run}/{count})"
+                        f"\n[{gen_num}/{total_generations}]{section_label} {entry['name']} — {model_name} (run {run}/{count})"
                     )
 
                     if gen_num > 1:
                         await asyncio.sleep(args.delay)
 
+                    # Include section in output path for organization
+                    section_dir = section.replace(" ", "_") if section else ""
+                    model_dir = f"{batch} - {model_name}"
+                    sub_dir = (
+                        output_dir / section_dir / model_dir
+                        if section_dir
+                        else output_dir / model_dir
+                    )
+
                     try:
                         result = await generate_image(
                             page,
-                            entry["prompt"],
+                            (
+                                entry.get("section_prompt", "") + ". "
+                                if entry.get("section_prompt")
+                                else "" if entry.get("section_prompt") else ""
+                            )
+                            + entry["prompt"],
                             model=None,  # already selected above
                             ratio=entry["ratio"],
-                            output_dir=output_dir / f"{batch} - {model_name}",
+                            output_dir=sub_dir,
                             name=entry.get("name"),
                         )
                     except Exception as e:
@@ -454,6 +542,7 @@ async def main():
 
                     results.append(
                         {
+                            "section": entry.get("section"),
                             "name": entry["name"],
                             "model": model_name,
                             "run": run,
@@ -465,9 +554,14 @@ async def main():
         print(f"\n{'='*60}")
         print(f"Done! Generated {len(results)} image(s)")
         print(f"{'='*60}")
+        current_sec = None
         for r in results:
+            if r.get("section") != current_sec:
+                current_sec = r.get("section")
+                if current_sec:
+                    print(f"\n  [{current_sec}]")
             status = f"-> {r['file']}" if r["file"] else "(not saved)"
-            print(f"  {r['name']} [{r['model']} #{r['run']}]: {status}")
+            print(f"    {r['name']} [{r['model']} #{r['run']}]: {status}")
 
         await browser.close()
 
