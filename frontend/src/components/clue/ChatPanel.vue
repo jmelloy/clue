@@ -1,26 +1,29 @@
 <template>
   <div class="chat-panel">
-    <div class="log-filters">
-      <label class="filter-label">
-        <input type="checkbox" v-model="showSuggestions" />
-        Suggestions
-      </label>
-      <label class="filter-label">
-        <input type="checkbox" v-model="showCardShows" />
-        Card Shows
-      </label>
-      <label class="filter-label">
-        <input type="checkbox" v-model="showAccusations" />
-        Accusations
-      </label>
-      <label class="filter-label">
-        <input type="checkbox" v-model="showMoves" />
-        Moves &amp; Rolls
-      </label>
-      <label class="filter-label">
-        <input type="checkbox" v-model="showChat" />
-        Chat
-      </label>
+    <div class="chat-header-row">
+      <h2 class="panel-header chat-title">Chat &amp; Game Log</h2>
+      <div class="log-filters">
+        <label class="filter-label">
+          <input type="checkbox" v-model="showSuggestions" />
+          Suggestions
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showCardShows" />
+          Card Shows
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showAccusations" />
+          Accusations
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showMoves" />
+          Moves &amp; Rolls
+        </label>
+        <label class="filter-label">
+          <input type="checkbox" v-model="showChat" />
+          Chat
+        </label>
+      </div>
     </div>
 
     <ul class="chat-messages" ref="chatContainer">
@@ -207,12 +210,24 @@ watch(
   font-family: 'Crimson Text', Georgia, serif;
 }
 
+.chat-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.chat-title {
+  margin: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .log-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 0.8rem;
-  margin-bottom: 0.4rem;
-  padding: 0.3rem 0;
+  gap: 0.2rem 0.6rem;
+  padding: 0;
 }
 
 .filter-label {
@@ -238,7 +253,7 @@ watch(
   flex: 1;
   overflow-y: auto;
   max-height: 200px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
   padding-right: 0.2rem;
 }
 
