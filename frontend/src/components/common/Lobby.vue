@@ -1261,4 +1261,32 @@ async function observeGame() {
     padding: 1.25rem 1rem 1rem;
   }
 }
+
+/* Compact layout for shorter screens (laptops) */
+@media (max-height: 800px) {
+  .lobby-content {
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .brand {
+    margin-bottom: 1.25rem;
+  }
+
+  .brand-title {
+    font-size: 2.2rem;
+  }
+
+  .brand-mark {
+    margin-bottom: 0.35rem;
+  }
+
+  .game-grid {
+    margin-bottom: 1rem;
+  }
+
+  .lobby-footer {
+    margin-top: 1.25rem;
+  }
+}
 </style>
