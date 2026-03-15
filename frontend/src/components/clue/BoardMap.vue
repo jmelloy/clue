@@ -646,7 +646,7 @@ function tokenStyle(token) {
   position: relative;
   box-sizing: border-box;
   width: 100%;
-  max-width: 690px;
+  max-width: min(690px, calc(100vh - 180px));
   margin: 0 auto;
   aspect-ratio: 24 / 25;
   background: transparent;

@@ -8,6 +8,8 @@
     "type-check": "vue-tsc --noEmit",
     "format": "prettier --write \"src/**/*.{js,ts,jsx,tsx,mjs,cjs,vue}\"",
     "format:check": "prettier --check \"src/**/*.{js,ts,jsx,tsx,mjs,cjs,vue}\"",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest watch --config vitest.config.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

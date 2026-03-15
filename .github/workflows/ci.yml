@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: "20"
       - run: npm install
+      - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm test
 
   backend:
     name: Backend Tests
