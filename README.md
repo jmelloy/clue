@@ -113,9 +113,9 @@ python scripts/dump_game.py ABC123 --show-trace
 python scripts/dump_game.py ABC123 --show-trace --trace-limit 100
 ```
 
-## Git Pre-Push Thumbnail Hook
+## Git Pre-Commit Thumbnail Hook
 
-Keep generated thumbnail assets in sync automatically before every push.
+Keep generated thumbnail assets in sync automatically before every commit.
 
 ```bash
 # one-time per clone
@@ -125,7 +125,7 @@ Keep generated thumbnail assets in sync automatically before every push.
 ./scripts/resize_thumbnails.sh
 ```
 
-The `pre-push` hook runs thumbnail generation and blocks the push if files changed, so you can commit the regenerated assets first.
+The `pre-commit` hook runs thumbnail generation and blocks the commit if files changed, so you can stage the regenerated assets and commit again.
 
 ## Taking Screenshots
 
