@@ -23,6 +23,8 @@ Flat geometric vector art. Bold shapes, clean edges, no gradients. Minimalist co
 - Aces feature a single bold geometric suit symbol
 - Flat color fills only, no shading, no texture
 - Do NOT draw corner pips — they are added programmatically
+- Flat, Swiss Bauhaus-inspired composition
+- Sharp clean edges, angular polygons
 
 ### Ace of Hearts
 
