@@ -16,7 +16,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.games.clue.game import ClueGame, SUSPECTS, WEAPONS, ROOM_CENTERS
-from app.games.clue.agents import RandomAgent, WandererAgent
+from app.games.clue.agents import RandomAgent, WandererAgent, INFERENCE_ADVANCED
 from app.main import app, manager, _agent_tasks, _game_agents, _agent_loop_watchdog
 from app.games.clue.models import GameState, PongMessage, WSMessage
 
@@ -1182,8 +1182,15 @@ class TestAgentFullGameE2E:
                 if m["type"] == "game_started" and m.get("your_cards")
             ]
             assert len(cards_msg) >= 1
+            # Use INFERENCE_ADVANCED so agents can leverage unrefuted-suggestion
+            # deduction and cascade inference.  With 6 players each holding only
+            # 3 cards, INFERENCE_STANDARD accumulates knowledge too slowly and
+            # can fail to converge within MAX_TURNS on rare card distributions.
             agents[pid] = RandomAgent(
-                player_id=pid, character=chars[pid], cards=cards_msg[0]["your_cards"]
+                player_id=pid,
+                character=chars[pid],
+                cards=cards_msg[0]["your_cards"],
+                inference_level=INFERENCE_ADVANCED,
             )
             ws.drain()
 
@@ -1232,7 +1239,10 @@ class TestAgentFullGameE2E:
             state = await _get_state(http, game_id)
             actions_taken += 1
 
-        assert state["status"] == "finished"
+        assert state["status"] == "finished", (
+            f"Game did not finish within {MAX_TURNS} actions "
+            f"(still '{state['status']}' after {actions_taken} actions)"
+        )
         assert state["winner"] in agents
 
         active_at_end = [p for p in state["players"] if p.get("active", True)]
