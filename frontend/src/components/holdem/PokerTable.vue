@@ -121,14 +121,11 @@
             </div>
 
             <div class="community-cards">
-              <TransitionGroup name="card-deal">
-                <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
-                  :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }"
-                  @click="card.dealt && openCardPreview(card)">
-                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
-                  <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
-                </div>
-              </TransitionGroup>
+              <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
+                @click="card.dealt && openCardPreview(card)">
+                <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
+                <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
+              </div>
             </div>
           </div>
         </div>
@@ -1373,36 +1370,6 @@ watch(
   gap: 0.5rem;
 }
 
-.card-slot {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.card-slot.is-dealt {
-  animation: card-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  animation-delay: var(--deal-delay, 0s);
-}
-
-@keyframes card-pop {
-  from {
-    transform: scale(0.8) translateY(-8px);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Transition group */
-.card-deal-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.card-deal-enter-from {
-  opacity: 0;
-  transform: scale(0.5) translateY(-20px);
-}
 
 /* ─── Bottom Dock ─── */
 .bottom-dock {
