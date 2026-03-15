@@ -374,16 +374,16 @@
             }" :players="gameState?.players" :game-state="gameState" />
           </section>
         </template>
-      </div>
 
-      <!-- Chat (at bottom of responsive stack) -->
-      <section class="sidebar-panel chat-panel-wrapper">
-        <ChatPanel
-          :messages="chatMessages"
-          :players="gameState?.players"
-          @send-message="$emit('send-chat', $event)"
-        />
-      </section>
+        <!-- Chat (in sidebar) -->
+        <section class="sidebar-panel chat-panel-wrapper">
+          <ChatPanel
+            :messages="chatMessages"
+            :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)"
+          />
+        </section>
+      </div>
     </div>
     <Teleport to="body">
       <div v-if="cardShown && !cardShownDismissedOnce" class="card-shown-overlay" @click="dismissCardShownOverlay">
@@ -966,6 +966,7 @@ watch(
   gap: 0.75rem;
   min-height: 400px;
   align-items: start;
+  max-height: calc(100vh - 70px);
 }
 
 /* Board column */
@@ -973,6 +974,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
 }
 
 /* Player legend */
@@ -1114,6 +1117,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
 }
 
 .sidebar-panel {
@@ -1616,8 +1621,7 @@ watch(
 
 /* Chat */
 .chat-panel-wrapper {
-  min-height: 160px;
-  grid-column: 1 / -1;
+  min-height: 200px;
 }
 
 /* Card thumbnails in hand */
@@ -2269,6 +2273,7 @@ watch(
 @media (max-width: 900px) {
   .main-layout {
     grid-template-columns: 1fr;
+    max-height: none;
   }
 
   .game-header {
@@ -2282,6 +2287,13 @@ watch(
 
   .sidebar-column {
     max-width: 100%;
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .board-column {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
