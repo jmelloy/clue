@@ -1,12 +1,14 @@
 <template>
   <div class="detective-notes">
-    <h3 class="panel-header">
-      Detective Notes
+    <div class="panel-header-row">
+      <h3 class="panel-header">
+        Detective Notes
+      </h3>
       <label v-if="trackedPlayers.length" class="autofill-label" @click.stop>
         <input type="checkbox" v-model="autoFillEnabled" class="autofill-checkbox" />
         Auto-fill
       </label>
-    </h3>
+    </div>
     <div v-if="trackedPlayers.length" class="player-columns-legend">
       <div class="legend-spacer"></div>
       <div v-for="p in trackedPlayers" :key="p.id" class="player-col-header"
@@ -543,7 +545,7 @@ h4 {
 }
 
 /* Make header a flex row so the checkbox sits on the right */
-.panel-header {
+.panel-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
