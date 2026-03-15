@@ -1,12 +1,12 @@
 <template>
   <div class="detective-notes">
-    <h3 class="panel-header">Detective Notes</h3>
-
-    <!-- Auto-fill toggle + Player column legend -->
-    <div v-if="trackedPlayers.length" class="autofill-row">
-      <label class="autofill-label">
+    <div class="panel-header-row">
+      <h3 class="panel-header">
+        Detective Notes
+      </h3>
+      <label v-if="trackedPlayers.length" class="autofill-label" @click.stop>
         <input type="checkbox" v-model="autoFillEnabled" class="autofill-checkbox" />
-        Auto-fill from suggestions
+        Auto-fill
       </label>
     </div>
     <div v-if="trackedPlayers.length" class="player-columns-legend">
@@ -269,7 +269,19 @@ function cyclePlayerMark(playerId, card) {
 function markCard(card, state, shownBy) {
   if (notes[card] !== 'have') {
     notes[card] = state
-    if (shownBy) shownByMap[card] = shownBy
+    if (shownBy) {
+      shownByMap[card] = shownBy
+      // Auto-fill green check in player column for the showing player
+      if (autoFillEnabled.value) {
+        const showingPlayer = trackedPlayers.value.find(p => p.name === shownBy || p.character === shownBy)
+        if (showingPlayer) {
+          if (!playerMarks[showingPlayer.id]) {
+            playerMarks[showingPlayer.id] = {}
+          }
+          playerMarks[showingPlayer.id][card] = '\u2713'
+        }
+      }
+    }
   }
 }
 
@@ -544,20 +556,25 @@ h4 {
   opacity: 0.8;
 }
 
-/* Auto-fill toggle */
-.autofill-row {
-  padding: 0.2rem 0.3rem;
-  margin-bottom: 0.2rem;
+/* Make header a flex row so the checkbox sits on the right */
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
+/* Auto-fill toggle in header */
 .autofill-label {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.65rem;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  font-weight: 400;
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .autofill-checkbox {

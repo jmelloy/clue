@@ -50,7 +50,8 @@
             <div class="tossed-card tossed-card-1" :title="gameState.solution.suspect">
               <div class="tossed-card-inner card-suspect">
                 <div class="tossed-card-image-frame">
-                  <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" />
+                  <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)"
+                    :alt="gameState.solution.suspect" />
                   <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.suspect) }}</div>
                 </div>
                 <div class="tossed-card-name">{{ gameState.solution.suspect }}</div>
@@ -59,7 +60,8 @@
             <div class="tossed-card tossed-card-2" :title="gameState.solution.weapon">
               <div class="tossed-card-inner card-weapon">
                 <div class="tossed-card-image-frame">
-                  <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" />
+                  <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)"
+                    :alt="gameState.solution.weapon" />
                   <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.weapon) }}</div>
                 </div>
                 <div class="tossed-card-name">{{ gameState.solution.weapon }}</div>
@@ -68,7 +70,8 @@
             <div class="tossed-card tossed-card-3" :title="gameState.solution.room">
               <div class="tossed-card-inner card-room">
                 <div class="tossed-card-image-frame">
-                  <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" />
+                  <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)"
+                    :alt="gameState.solution.room" />
                   <div v-else class="tossed-card-icon">{{ cardIcon(gameState.solution.room) }}</div>
                 </div>
                 <div class="tossed-card-name">{{ gameState.solution.room }}</div>
@@ -89,7 +92,8 @@
           }" @click.stop="onLegendClick(p)">
             <PlayerPawn :character="p.character" :wanderer="p.type === 'wanderer'" />
             <span class="legend-name">{{ p.name }}</span>
-            <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
+            <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character
+            }}</span>
             <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
               gameState.current_room[p.id]
               }}</span>
@@ -97,18 +101,22 @@
             <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
             <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
             <!-- Shown cards popup -->
-            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
+            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length"
+              ref="shownCardsPopupRef"
+              class="shown-cards-popup" :class="{ 'popup-above': popupGoesUp }" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
               <div class="shown-cards-hand">
-                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)" :title="card">
+                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)"
+                  :title="card">
                   <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                   <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                   <span class="card-label">{{ card }}</span>
                 </div>
               </div>
             </div>
-            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
-              @click.stop>
+            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length"
+              ref="shownCardsPopupRef"
+              class="shown-cards-popup" :class="{ 'popup-above': popupGoesUp }" @click.stop>
               <div class="shown-cards-title">No cards shown to you</div>
             </div>
           </div>
@@ -116,33 +124,29 @@
 
       </div>
 
-      <!-- Right: Sidebar -->
-      <div class="sidebar-column">
-        <!-- Your Cards -->
-        <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2 class="panel-header collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
-            <span>Your Cards</span>
-            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
-          </h2>
-          <div v-if="!cardsCollapsed">
+      <!-- Middle: Your Cards -->
+      <div v-if="!isObserver" class="cards-column">
+        <section class="sidebar-panel cards-panel">
+          <h2 class="panel-header">Your Cards</h2>
+          <div>
             <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-            <div v-else class="card-hand">
-              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                :title="card" @click="showCardPreview(card)">
+            <div v-else class="card-hand cards-vertical">
+              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image" :title="card"
+                @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
-                :class="{ 'card-with-image': hasCardImage(card) }"
-                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
+                :class="{ 'card-with-image': hasCardImage(card) }" :title="card"
+                @click="hasCardImage(card) && showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-weapon" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
               </div>
-              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
-                :title="card" @click="showCardPreview(card)">
+              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image" :title="card"
+                @click="showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-room" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
@@ -151,6 +155,10 @@
             </div>
           </div>
         </section>
+      </div>
+
+      <!-- Right: Sidebar -->
+      <div class="sidebar-column">
 
         <!-- Card Shown notification (sidebar hint) -->
         <section v-if="cardShown" class="sidebar-panel shown-card-panel">
@@ -328,8 +336,7 @@
         <!-- Detective Notes -->
         <section v-if="!isObserver" class="sidebar-panel notes-panel">
           <DetectiveNotes ref="notesRef" :your-cards="yourCards" :saved-notes="savedNotes"
-            :players="gameState?.players || []" :player-id="playerId"
-            @notes-changed="onNotesChanged" />
+            :players="gameState?.players || []" :player-id="playerId" @notes-changed="onNotesChanged" />
         </section>
 
         <!-- Observer: Selected Player Info -->
@@ -351,8 +358,8 @@
                 <span class="card-label">{{ card }}</span>
               </div>
               <div v-for="card in observerWeaponCards" :key="card" class="hand-card card-weapon"
-                :class="{ 'card-with-image': hasCardImage(card) }"
-                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
+                :class="{ 'card-with-image': hasCardImage(card) }" :title="card"
+                @click="hasCardImage(card) && showCardPreview(card)">
                 <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
                   class="card-thumb card-thumb-weapon" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
@@ -377,11 +384,8 @@
 
         <!-- Chat (in sidebar) -->
         <section class="sidebar-panel chat-panel-wrapper">
-          <ChatPanel
-            :messages="chatMessages"
-            :players="gameState?.players"
-            @send-message="$emit('send-chat', $event)"
-          />
+          <ChatPanel :messages="chatMessages" :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)" />
         </section>
       </div>
     </div>
@@ -404,7 +408,8 @@
               <span class="physical-card-title">{{ cardShown.card }}</span>
             </div>
             <div class="physical-card-image-frame">
-              <img v-if="hasCardImage(cardShown.card)" :src="cardImageUrl(cardShown.card)" :alt="cardShown.card" class="physical-card-image" />
+              <img v-if="hasCardImage(cardShown.card)" :src="cardImageUrl(cardShown.card)" :alt="cardShown.card"
+                class="physical-card-image" />
               <div v-else class="physical-card-icon-fallback">{{ cardIcon(cardShown.card) }}</div>
             </div>
             <div class="physical-card-footer">
@@ -432,7 +437,8 @@
                 <span class="physical-card-title">{{ gameState.solution.suspect }}</span>
               </div>
               <div class="physical-card-image-frame">
-                <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)" :alt="gameState.solution.suspect" class="physical-card-image" />
+                <img v-if="hasCardImage(gameState.solution.suspect)" :src="cardImageUrl(gameState.solution.suspect)"
+                  :alt="gameState.solution.suspect" class="physical-card-image" />
                 <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.suspect) }}</div>
               </div>
               <div class="physical-card-footer">
@@ -446,7 +452,8 @@
                 <span class="physical-card-title">{{ gameState.solution.weapon }}</span>
               </div>
               <div class="physical-card-image-frame">
-                <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)" :alt="gameState.solution.weapon" class="physical-card-image" />
+                <img v-if="hasCardImage(gameState.solution.weapon)" :src="cardImageUrl(gameState.solution.weapon)"
+                  :alt="gameState.solution.weapon" class="physical-card-image" />
                 <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.weapon) }}</div>
               </div>
               <div class="physical-card-footer">
@@ -460,7 +467,8 @@
                 <span class="physical-card-title">{{ gameState.solution.room }}</span>
               </div>
               <div class="physical-card-image-frame">
-                <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)" :alt="gameState.solution.room" class="physical-card-image" />
+                <img v-if="hasCardImage(gameState.solution.room)" :src="cardImageUrl(gameState.solution.room)"
+                  :alt="gameState.solution.room" class="physical-card-image" />
                 <div v-else class="physical-card-icon-fallback">{{ cardIcon(gameState.solution.room) }}</div>
               </div>
               <div class="physical-card-footer">
@@ -499,7 +507,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
@@ -553,7 +561,7 @@ const accuseSuspect = ref('')
 const accuseWeapon = ref('')
 const accuseRoom = ref('')
 const showAccuseForm = ref(false)
-const cardsCollapsed = ref(false)
+
 
 // Auto-end timer countdown
 const countdown = ref(null)
@@ -670,6 +678,8 @@ function cardCategory(card) {
 
 // Shown cards popup state
 const shownCardsPlayerId = ref(null)
+const shownCardsPopupRef = ref(null)
+const popupGoesUp = ref(false)
 const shownCardsForPlayer = computed(() => {
   if (!shownCardsPlayerId.value || !notesRef.value) return []
   const pName = playerName(shownCardsPlayerId.value)
@@ -685,7 +695,17 @@ function onLegendClick(player) {
   if (shownCardsPlayerId.value === player.id) {
     shownCardsPlayerId.value = null
   } else {
+    popupGoesUp.value = false
     shownCardsPlayerId.value = player.id
+    nextTick(() => {
+      const el = shownCardsPopupRef.value
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        if (rect.bottom > window.innerHeight) {
+          popupGoesUp.value = true
+        }
+      }
+    })
   }
 }
 
@@ -962,11 +982,10 @@ watch(
 /* Main layout */
 .main-layout {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr auto 340px;
   gap: 0.75rem;
   min-height: 400px;
-  align-items: start;
-  max-height: calc(100vh - 70px);
+  align-items: stretch;
 }
 
 /* Board column */
@@ -974,8 +993,23 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  /* max-height: calc(100vh - 70px); */
+  overflow-y: auto;
+}
+
+/* Cards column (between board and sidebar) */
+.cards-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
   max-height: calc(100vh - 70px);
   overflow-y: auto;
+}
+
+.cards-vertical {
+  flex-direction: column;
 }
 
 /* Player legend */
@@ -987,6 +1021,9 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  overflow: visible;
+  position: relative;
+  z-index: 5;
 }
 
 .legend-item {
@@ -1100,7 +1137,13 @@ watch(
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   min-width: 140px;
+  max-width: calc(100vw - 2rem);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.shown-cards-popup.popup-above {
+  top: auto;
+  bottom: 100%;
 }
 
 .shown-cards-title {
@@ -1123,7 +1166,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-height: calc(100vh - 70px);
+  min-width: 0;
   overflow-y: auto;
 }
 
@@ -1779,13 +1822,29 @@ watch(
 }
 
 /* Category accent colors on physical cards */
-.physical-card.card-suspect { border-color: #b8848a; }
-.physical-card.card-weapon { border-color: #8a9cb8; }
-.physical-card.card-room { border-color: #8ab89a; }
+.physical-card.card-suspect {
+  border-color: #b8848a;
+}
 
-.physical-card.card-suspect .physical-card-title { color: #6b1a2a; }
-.physical-card.card-weapon .physical-card-title { color: #1a3a5b; }
-.physical-card.card-room .physical-card-title { color: #1a5b3a; }
+.physical-card.card-weapon {
+  border-color: #8a9cb8;
+}
+
+.physical-card.card-room {
+  border-color: #8ab89a;
+}
+
+.physical-card.card-suspect .physical-card-title {
+  color: #6b1a2a;
+}
+
+.physical-card.card-weapon .physical-card-title {
+  color: #1a3a5b;
+}
+
+.physical-card.card-room .physical-card-title {
+  color: #1a5b3a;
+}
 
 /* ================================ */
 /* Card Preview Overlay             */
@@ -1803,8 +1862,13 @@ watch(
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .card-preview-frame {
@@ -1825,13 +1889,28 @@ watch(
   box-sizing: border-box;
 }
 
-.card-preview-frame.card-suspect { border-color: #b8848a; }
-.card-preview-frame.card-weapon { border-color: #8a9cb8; }
-.card-preview-frame.card-room { border-color: #8ab89a; }
+.card-preview-frame.card-suspect {
+  border-color: #b8848a;
+}
+
+.card-preview-frame.card-weapon {
+  border-color: #8a9cb8;
+}
+
+.card-preview-frame.card-room {
+  border-color: #8ab89a;
+}
 
 @keyframes cardReveal {
-  from { opacity: 0; transform: scale(0.85) rotateY(15deg); }
-  to { opacity: 1; transform: scale(1) rotateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotateY(15deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotateY(0);
+  }
 }
 
 .card-preview-header,
@@ -1875,9 +1954,17 @@ watch(
   text-align: center;
 }
 
-.card-preview-frame.card-suspect .card-preview-name { color: #6b1a2a; }
-.card-preview-frame.card-weapon .card-preview-name { color: #1a3a5b; }
-.card-preview-frame.card-room .card-preview-name { color: #1a5b3a; }
+.card-preview-frame.card-suspect .card-preview-name {
+  color: #6b1a2a;
+}
+
+.card-preview-frame.card-weapon .card-preview-name {
+  color: #1a3a5b;
+}
+
+.card-preview-frame.card-room .card-preview-name {
+  color: #1a5b3a;
+}
 
 .card-preview-image-frame {
   width: 100%;
@@ -1966,8 +2053,15 @@ watch(
 }
 
 @keyframes bannerSlideIn {
-  from { opacity: 0; transform: translateY(30px) scale(0.9); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .card-shown-banner-label {
@@ -2085,9 +2179,20 @@ watch(
 }
 
 @keyframes trophyBounce {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .game-over-title {
@@ -2133,13 +2238,28 @@ watch(
   width: 65%;
 }
 
-.game-over-card:nth-child(1) { animation: cardFlipIn 0.5s ease 0.3s both; }
-.game-over-card:nth-child(2) { animation: cardFlipIn 0.5s ease 0.5s both; }
-.game-over-card:nth-child(3) { animation: cardFlipIn 0.5s ease 0.7s both; }
+.game-over-card:nth-child(1) {
+  animation: cardFlipIn 0.5s ease 0.3s both;
+}
+
+.game-over-card:nth-child(2) {
+  animation: cardFlipIn 0.5s ease 0.5s both;
+}
+
+.game-over-card:nth-child(3) {
+  animation: cardFlipIn 0.5s ease 0.7s both;
+}
 
 @keyframes cardFlipIn {
-  0% { opacity: 0; transform: perspective(400px) rotateY(90deg) scale(0.8); }
-  100% { opacity: 1; transform: perspective(400px) rotateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: perspective(400px) rotateY(90deg) scale(0.8);
+  }
+
+  100% {
+    opacity: 1;
+    transform: perspective(400px) rotateY(0) scale(1);
+  }
 }
 
 .game-over-dismiss {
@@ -2197,9 +2317,17 @@ watch(
   gap: 0;
 }
 
-.tossed-card-inner.card-suspect { border-color: #b8848a; }
-.tossed-card-inner.card-weapon { border-color: #8a9cb8; }
-.tossed-card-inner.card-room { border-color: #8ab89a; }
+.tossed-card-inner.card-suspect {
+  border-color: #b8848a;
+}
+
+.tossed-card-inner.card-weapon {
+  border-color: #8a9cb8;
+}
+
+.tossed-card-inner.card-room {
+  border-color: #8ab89a;
+}
 
 .tossed-card-image-frame {
   width: 100%;
@@ -2243,9 +2371,17 @@ watch(
   line-height: 1.1;
 }
 
-.tossed-card-inner.card-suspect .tossed-card-name { color: #6b1a2a; }
-.tossed-card-inner.card-weapon .tossed-card-name { color: #1a3a5b; }
-.tossed-card-inner.card-room .tossed-card-name { color: #1a5b3a; }
+.tossed-card-inner.card-suspect .tossed-card-name {
+  color: #6b1a2a;
+}
+
+.tossed-card-inner.card-weapon .tossed-card-name {
+  color: #1a3a5b;
+}
+
+.tossed-card-inner.card-room .tossed-card-name {
+  color: #1a5b3a;
+}
 
 /* Tossed card positions - scattered look */
 .tossed-card-1 {
@@ -2261,18 +2397,39 @@ watch(
 }
 
 @keyframes tossCard1 {
-  0% { opacity: 0; transform: translateY(-80px) rotate(-30deg) scale(0.5); }
-  100% { opacity: 1; transform: translateY(0) rotate(-8deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) rotate(-30deg) scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(-8deg) scale(1);
+  }
 }
 
 @keyframes tossCard2 {
-  0% { opacity: 0; transform: translateY(-80px) rotate(20deg) scale(0.5); }
-  100% { opacity: 1; transform: translateY(0) rotate(3deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) rotate(20deg) scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(3deg) scale(1);
+  }
 }
 
 @keyframes tossCard3 {
-  0% { opacity: 0; transform: translateY(-80px) rotate(40deg) scale(0.5); }
-  100% { opacity: 1; transform: translateY(0) rotate(11deg) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(-80px) rotate(40deg) scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(11deg) scale(1);
+  }
 }
 
 /* Responsive */
@@ -2280,6 +2437,15 @@ watch(
   .main-layout {
     grid-template-columns: 1fr;
     max-height: none;
+  }
+
+  .cards-column {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .cards-vertical {
+    flex-direction: row;
   }
 
   .game-header {
@@ -2397,16 +2563,20 @@ watch(
   .game-over-cards {
     gap: 0.6rem;
   }
+
   .game-over-card.physical-card {
     width: 110px;
   }
+
   .game-over-card .physical-card-title {
     font-size: 0.72rem;
   }
+
   .game-over-card-frame {
     width: 90px;
     height: 68px;
   }
+
   .game-over-banner {
     padding: 1.5rem 1rem;
   }
@@ -2415,15 +2585,19 @@ watch(
   .card-shown-banner {
     padding: 1.5rem 1.25rem;
   }
+
   .card-shown-banner-card.physical-card {
     width: min(160px, 55vw);
   }
+
   .card-shown-banner-card.physical-card .physical-card-image-frame {
     height: 100px;
   }
+
   .card-shown-banner-card.physical-card.card-suspect .physical-card-image-frame {
     height: 100px;
   }
+
   .card-shown-banner-suggestion {
     font-size: 0.82rem;
   }

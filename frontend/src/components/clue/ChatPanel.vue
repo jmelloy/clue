@@ -8,16 +8,8 @@
           Suggestions
         </label>
         <label class="filter-label">
-          <input type="checkbox" v-model="showCardShows" />
-          Card Shows
-        </label>
-        <label class="filter-label">
-          <input type="checkbox" v-model="showAccusations" />
-          Accusations
-        </label>
-        <label class="filter-label">
           <input type="checkbox" v-model="showMoves" />
-          Moves &amp; Rolls
+          Moves
         </label>
         <label class="filter-label">
           <input type="checkbox" v-model="showChat" />
@@ -64,8 +56,6 @@ const chatContainer = ref(null)
 
 // Log filters — all on by default
 const showSuggestions = ref(true)
-const showCardShows = ref(true)
-const showAccusations = ref(true)
 const showMoves = ref(true)
 const showChat = ref(true)
 
@@ -111,9 +101,7 @@ const combinedMessages = computed(() => {
   return props.messages.filter((msg) => {
     if (isPlayerChat(msg)) return showChat.value
     const cat = logCategory(msg)
-    if (cat === 'suggestion' && !showSuggestions.value) return false
-    if (cat === 'cardshow' && !showCardShows.value) return false
-    if (cat === 'accusation' && !showAccusations.value) return false
+    if ((cat === 'suggestion' || cat === 'cardshow' || cat === 'accusation') && !showSuggestions.value) return false
     if (cat === 'move' && !showMoves.value) return false
     return true
   })

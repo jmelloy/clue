@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { expect, userEvent, within } from 'storybook/test'
 import ChatPanel from './ChatPanel.vue'
 
 const now = new Date()
@@ -127,6 +128,10 @@ export const Empty: Story = {
   args: {
     messages: [],
     players: basePlayers
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('No messages yet.')).toBeInTheDocument()
   }
 }
 
@@ -135,6 +140,14 @@ export const ActiveGame: Story = {
   args: {
     messages: sampleMessages,
     players: basePlayers
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Input field and Send button are present
+    await expect(canvas.getByPlaceholderText('Type a message...')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+    // Chat & Game Log header is present
+    await expect(canvas.getByText('Chat & Game Log')).toBeInTheDocument()
   }
 }
 
@@ -148,6 +161,22 @@ export const ChatOnly: Story = {
       { type: 'chat_message', player_id: 'p3', text: 'Charlie: Making my move.', timestamp: ts(60) }
     ],
     players: basePlayers
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByPlaceholderText('Type a message...')
+    const sendBtn = canvas.getByRole('button', { name: 'Send' })
+
+    // Send button is disabled when input is empty
+    await expect(sendBtn).toBeDisabled()
+
+    // Typing enables the Send button
+    await userEvent.type(input, 'Hello!')
+    await expect(sendBtn).not.toBeDisabled()
+
+    // Clearing the input disables the button again
+    await userEvent.clear(input)
+    await expect(sendBtn).toBeDisabled()
   }
 }
 
