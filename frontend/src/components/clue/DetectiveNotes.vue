@@ -29,11 +29,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
             :class="playerCellClass(p.id, card)"
-            @click.stop="cyclePlayerMark(p.id, card)">
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
             {{ playerMarkDisplay(p.id, card) }}
-          </span>
+          </button>
         </template>
       </div>
     </div>
@@ -50,11 +55,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
             :class="playerCellClass(p.id, card)"
-            @click.stop="cyclePlayerMark(p.id, card)">
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
             {{ playerMarkDisplay(p.id, card) }}
-          </span>
+          </button>
         </template>
       </div>
     </div>
@@ -71,11 +81,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
             :class="playerCellClass(p.id, card)"
-            @click.stop="cyclePlayerMark(p.id, card)">
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
             {{ playerMarkDisplay(p.id, card) }}
-          </span>
+          </button>
         </template>
       </div>
     </div>
