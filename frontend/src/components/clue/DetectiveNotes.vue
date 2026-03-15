@@ -126,6 +126,8 @@ const notes = reactive({})
 const shownByMap = reactive({})
 // Track player marks per card: { playerId: { card: '✗'|'✓'|'?' } }
 const playerDoesntHave = reactive({})
+// Prefer using `playerMarks` as the clearer name; kept `playerDoesntHave` for backward compatibility.
+const playerMarks = playerDoesntHave
 // Whether auto-fill from suggestions is enabled
 const autoFillEnabled = ref(true)
 // Symbols for player column cycling
@@ -150,7 +152,8 @@ watch(
       restoring = true
       const noteStates = saved.notes || {}
       const shownBy = saved.shownBy || {}
-      const doesntHave = saved.playerDoesntHave || {}
+      // Prefer `playerMarks` if present, fall back to legacy `playerDoesntHave`
+      const doesntHave = saved.playerMarks || saved.playerDoesntHave || {}
       for (const [card, state] of Object.entries(noteStates)) {
         notes[card] = state
       }
@@ -163,7 +166,7 @@ watch(
         for (const [card, val] of Object.entries(cards)) {
           converted[card] = val === true ? '\u2717' : val
         }
-        playerDoesntHave[pid] = converted
+        playerMarks[pid] = converted
       }
       if (saved.autoFillEnabled !== undefined) {
         autoFillEnabled.value = saved.autoFillEnabled
