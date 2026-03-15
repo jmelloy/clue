@@ -141,7 +141,9 @@ const trackedPlayers = computed(() =>
 )
 
 function playerInitial(p) {
-  return (p.name || p.character || '?')[0].toUpperCase()
+  const name = p.name || p.character || '?'
+  const parts = name.trim().split(/\s+/)
+  return parts[parts.length - 1][0].toUpperCase()
 }
 
 // Restore saved notes when they arrive (e.g. on rejoin)
