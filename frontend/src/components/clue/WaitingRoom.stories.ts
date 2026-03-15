@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { expect, within } from 'storybook/test'
 import WaitingRoom from './WaitingRoom.vue'
 
 const meta: Meta<typeof WaitingRoom> = {
@@ -27,6 +28,15 @@ export const SoloHost: Story = {
     players: [
       { id: 'p1', name: 'Alice', character: 'Miss Scarlett', type: 'human', active: true }
     ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Player name is shown
+    await expect(canvas.getByText('Alice')).toBeInTheDocument()
+    // "you" badge appears for the current player
+    await expect(canvas.getByText('you')).toBeInTheDocument()
+    // Player count shows 1 out of 6
+    await expect(canvas.getByText('1 / 6')).toBeInTheDocument()
   }
 }
 
@@ -37,6 +47,12 @@ export const TwoPlayers: Story = {
       { id: 'p1', name: 'Alice', character: 'Miss Scarlett', type: 'human', active: true },
       { id: 'p2', name: 'Bob', character: 'Colonel Mustard', type: 'human', active: true }
     ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Alice')).toBeInTheDocument()
+    await expect(canvas.getByText('Bob')).toBeInTheDocument()
+    await expect(canvas.getByText('2 / 6')).toBeInTheDocument()
   }
 }
 
@@ -63,6 +79,14 @@ export const FullRoom: Story = {
       { id: 'p5', name: 'GPT-4', character: 'Mrs. Peacock', type: 'llm_agent', active: true },
       { id: 'p6', name: 'Agent-3', character: 'Professor Plum', type: 'agent', active: true }
     ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('6 / 6')).toBeInTheDocument()
+    // Each player's name is visible
+    for (const name of ['Alice', 'Bob', 'Agent-1', 'Agent-2', 'GPT-4', 'Agent-3']) {
+      await expect(canvas.getByText(name)).toBeInTheDocument()
+    }
   }
 }
 
@@ -75,5 +99,11 @@ export const ObserverView: Story = {
       { id: 'p2', name: 'Bob', character: 'Colonel Mustard', type: 'human', active: true },
       { id: 'p3', name: 'Charlie', character: 'Reverend Green', type: 'human', active: true }
     ]
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // No "you" badge since the spectator's ID doesn't match any player
+    await expect(canvas.queryByText('you')).not.toBeInTheDocument()
+    await expect(canvas.getByText('3 / 6')).toBeInTheDocument()
   }
 }
