@@ -76,6 +76,44 @@
             </div>
           </div>
         </div>
+
+        <!-- Player Legend -->
+        <div class="player-legend">
+          <div v-for="p in gameState?.players" :key="p.id" class="legend-item" :class="{
+            active: gameState?.whose_turn === p.id,
+            eliminated: !p.active,
+            'is-me': p.id === playerId,
+            'wanderer-legend': p.type === 'wanderer',
+            'observer-clickable': isObserver,
+            'observer-selected': isObserver && observerPlayerState?.playerId === p.id
+          }" @click.stop="onLegendClick(p)">
+            <PlayerPawn :character="p.character" :wanderer="p.type === 'wanderer'" />
+            <span class="legend-name">{{ p.name }}</span>
+            <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
+            <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{
+              gameState.current_room[p.id]
+              }}</span>
+            <span v-if="!p.active" class="legend-status">eliminated</span>
+            <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
+            <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
+            <!-- Shown cards popup -->
+            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
+              <div class="shown-cards-title">Cards shown to you:</div>
+              <div class="shown-cards-hand">
+                <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)" :title="card">
+                  <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                  <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                  <span class="card-label">{{ card }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
+              @click.stop>
+              <div class="shown-cards-title">No cards shown to you</div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Right: Sidebar -->
@@ -109,46 +147,6 @@
                   class="card-thumb card-thumb-room" />
                 <span v-else class="card-icon">{{ cardIcon(card) }}</span>
                 <span class="card-label">{{ card }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Player Legend (Turn Order) -->
-        <section class="sidebar-panel player-legend-panel">
-          <h2 class="panel-header collapsible-header" @click="legendCollapsed = !legendCollapsed">
-            <span>Players</span>
-            <span class="collapse-indicator" :class="{ collapsed: legendCollapsed }">&#9660;</span>
-          </h2>
-          <div v-if="!legendCollapsed" class="player-legend">
-            <div v-for="p in gameState?.players" :key="p.id" class="legend-item" :class="{
-              active: gameState?.whose_turn === p.id,
-              eliminated: !p.active,
-              'is-me': p.id === playerId,
-              'wanderer-legend': p.type === 'wanderer',
-              'observer-clickable': isObserver,
-              'observer-selected': isObserver && observerPlayerState?.playerId === p.id
-            }" @click.stop="onLegendClick(p)">
-              <PlayerPawn :character="p.character" :wanderer="p.type === 'wanderer'" />
-              <span class="legend-name">{{ p.name }}</span>
-              <span v-if="p.type !== 'wanderer' && p.character !== p.name" class="legend-character">{{ p.character }}</span>
-              <span v-if="gameState?.current_room?.[p.id]" class="legend-room">{{ gameState.current_room[p.id] }}</span>
-              <span v-if="!p.active" class="legend-status">eliminated</span>
-              <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
-              <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
-              <!-- Shown cards popup -->
-              <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
-                <div class="shown-cards-title">Cards shown to you:</div>
-                <div class="shown-cards-hand">
-                  <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)" :title="card">
-                    <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                    <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                    <span class="card-label">{{ card }}</span>
-                  </div>
-                </div>
-              </div>
-              <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
-                <div class="shown-cards-title">No cards shown to you</div>
               </div>
             </div>
           </div>
@@ -556,7 +554,6 @@ const accuseWeapon = ref('')
 const accuseRoom = ref('')
 const showAccuseForm = ref(false)
 const cardsCollapsed = ref(false)
-const legendCollapsed = ref(false)
 
 // Auto-end timer countdown
 const countdown = ref(null)
@@ -978,22 +975,22 @@ watch(
   gap: 0.5rem;
 }
 
-/* Player legend (sidebar vertical list) */
-.player-legend-panel {
-  padding: 0.4rem 0.6rem;
-}
-
+/* Player legend */
 .player-legend {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.15rem 0.4rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   font-size: 0.75rem;
   background: rgba(255, 255, 255, 0.02);
