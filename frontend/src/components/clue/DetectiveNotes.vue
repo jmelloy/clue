@@ -2,7 +2,13 @@
   <div class="detective-notes">
     <h3 class="panel-header">Detective Notes</h3>
 
-    <!-- Player column legend -->
+    <!-- Auto-fill toggle + Player column legend -->
+    <div v-if="trackedPlayers.length" class="autofill-row">
+      <label class="autofill-label">
+        <input type="checkbox" v-model="autoFillEnabled" class="autofill-checkbox" />
+        Auto-fill from suggestions
+      </label>
+    </div>
     <div v-if="trackedPlayers.length" class="player-columns-legend">
       <div class="legend-spacer"></div>
       <div v-for="p in trackedPlayers" :key="p.id" class="player-col-header"
@@ -23,10 +29,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
-            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
-            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
-          </span>
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
+            :class="playerCellClass(p.id, card)"
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
+            {{ playerMarkDisplay(p.id, card) }}
+          </button>
         </template>
       </div>
     </div>
@@ -43,10 +55,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
-            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
-            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
-          </span>
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
+            :class="playerCellClass(p.id, card)"
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
+            {{ playerMarkDisplay(p.id, card) }}
+          </button>
         </template>
       </div>
     </div>
@@ -63,10 +81,16 @@
             }}</span>
         </span>
         <template v-if="trackedPlayers.length">
-          <span v-for="p in trackedPlayers" :key="p.id" class="player-col-cell"
-            :class="{ 'doesnt-have': playerDoesntHave[p.id]?.[card] }">
-            {{ playerDoesntHave[p.id]?.[card] ? '\u2717' : '' }}
-          </span>
+          <button
+            v-for="p in trackedPlayers"
+            :key="p.id"
+            type="button"
+            class="player-col-cell"
+            :class="playerCellClass(p.id, card)"
+            @click.stop="cyclePlayerMark(p.id, card)"
+          >
+            {{ playerMarkDisplay(p.id, card) }}
+          </button>
         </template>
       </div>
     </div>
@@ -74,7 +98,7 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import {
   SUSPECTS,
   WEAPONS,
@@ -100,8 +124,14 @@ const emit = defineEmits(['notes-changed'])
 const notes = reactive({})
 // Track who showed each card
 const shownByMap = reactive({})
-// Track which cards each player definitely doesn't have: { playerId: { card: true } }
+// Track player marks per card: { playerId: { card: '✗'|'✓'|'?' } }
 const playerDoesntHave = reactive({})
+// Prefer using `playerMarks` as the clearer name; kept `playerDoesntHave` for backward compatibility.
+const playerMarks = playerDoesntHave
+// Whether auto-fill from suggestions is enabled
+const autoFillEnabled = ref(true)
+// Symbols for player column cycling
+const PLAYER_MARK_CYCLE = ['', '\u2717', '\u2713', '?']
 // Flag to prevent emitting during restoration
 let restoring = false
 
@@ -122,7 +152,8 @@ watch(
       restoring = true
       const noteStates = saved.notes || {}
       const shownBy = saved.shownBy || {}
-      const doesntHave = saved.playerDoesntHave || {}
+      // Prefer `playerMarks` if present, fall back to legacy `playerDoesntHave`
+      const doesntHave = saved.playerMarks || saved.playerDoesntHave || {}
       for (const [card, state] of Object.entries(noteStates)) {
         notes[card] = state
       }
@@ -130,7 +161,15 @@ watch(
         shownByMap[card] = by
       }
       for (const [pid, cards] of Object.entries(doesntHave)) {
-        playerDoesntHave[pid] = { ...cards }
+        // Backward compat: convert boolean `true` to '✗'
+        const converted = {}
+        for (const [card, val] of Object.entries(cards)) {
+          converted[card] = val === true ? '\u2717' : val
+        }
+        playerMarks[pid] = converted
+      }
+      if (saved.autoFillEnabled !== undefined) {
+        autoFillEnabled.value = saved.autoFillEnabled
       }
       restoring = false
     }
@@ -159,13 +198,15 @@ function emitNotesChanged() {
   emit('notes-changed', {
     notes: { ...notes },
     shownBy: { ...shownByMap },
-    playerDoesntHave: doesntHaveCopy
+    playerDoesntHave: doesntHaveCopy,
+    autoFillEnabled: autoFillEnabled.value
   })
 }
 
 // Watch for any notes changes and emit
-watch(notes, () => emitNotesChanged(), { deep: true })
-watch(playerDoesntHave, () => emitNotesChanged(), { deep: true })
+watch(notes, () => emitNotesChanged(), { deep: true, flush: 'sync' })
+watch(playerDoesntHave, () => emitNotesChanged(), { deep: true, flush: 'sync' })
+watch(autoFillEnabled, () => emitNotesChanged(), { flush: 'sync' })
 
 function noteMark(card) {
   const state = notes[card] ?? ''
@@ -195,6 +236,33 @@ function cycleNote(card) {
   notes[card] = next
 }
 
+function playerMarkDisplay(playerId, card) {
+  return playerDoesntHave[playerId]?.[card] || ''
+}
+
+function playerCellClass(playerId, card) {
+  const mark = playerDoesntHave[playerId]?.[card] || ''
+  return {
+    'mark-no': mark === '\u2717',
+    'mark-yes': mark === '\u2713',
+    'mark-maybe': mark === '?'
+  }
+}
+
+function cyclePlayerMark(playerId, card) {
+  if (!playerDoesntHave[playerId]) {
+    playerDoesntHave[playerId] = {}
+  }
+  const current = playerDoesntHave[playerId][card] || ''
+  const idx = PLAYER_MARK_CYCLE.indexOf(current)
+  const next = PLAYER_MARK_CYCLE[(idx + 1) % PLAYER_MARK_CYCLE.length]
+  if (next) {
+    playerDoesntHave[playerId][card] = next
+  } else {
+    delete playerDoesntHave[playerId][card]
+  }
+}
+
 // Expose for parent to programmatically mark cards
 function markCard(card, state, shownBy) {
   if (notes[card] !== 'have') {
@@ -220,11 +288,15 @@ function getCardsShownBy(playerName) {
 
 // Mark that a player doesn't have specific cards (from suggestion tracking)
 function markPlayerDoesntHaveCards(playerId, cards) {
+  if (!autoFillEnabled.value) return
   if (!playerDoesntHave[playerId]) {
     playerDoesntHave[playerId] = {}
   }
   for (const card of cards) {
-    playerDoesntHave[playerId][card] = true
+    // Only auto-fill if not already manually marked
+    if (!playerDoesntHave[playerId][card]) {
+      playerDoesntHave[playerId][card] = '\u2717'
+    }
   }
 }
 
@@ -450,8 +522,46 @@ h4 {
   color: var(--text-faint);
 }
 
-.player-col-cell.doesnt-have {
+.player-col-cell:hover {
+  background: var(--bg-hover);
+  border-radius: 2px;
+}
+
+.player-col-cell.mark-no {
   color: var(--error);
   opacity: 0.7;
+}
+
+.player-col-cell.mark-yes {
+  color: var(--success);
+  opacity: 0.8;
+}
+
+.player-col-cell.mark-maybe {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+/* Auto-fill toggle */
+.autofill-row {
+  padding: 0.2rem 0.3rem;
+  margin-bottom: 0.2rem;
+}
+
+.autofill-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.autofill-checkbox {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 </style>
