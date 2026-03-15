@@ -624,21 +624,23 @@ async def _execute_action(
                 break
 
         # "suspected" reaction — the named character claps back
-        suspected_msg = generate_character_chat(
-            suspect_character,
-            "suspected",
-            {
-                "accuser": accuser_name,
-                "weapon": result.weapon,
-                "room": result.room,
-            },
-        )
-        if suspected_msg:
-            await _broadcast_chat(
-                game_id,
-                f"{suspect_character}: {suspected_msg}",
-                suspect_pid,
+        # Skip if the player suggested themselves (no need to trash-talk yourself)
+        if suspect_pid != player_id:
+            suspected_msg = generate_character_chat(
+                suspect_character,
+                "suspected",
+                {
+                    "accuser": accuser_name,
+                    "weapon": result.weapon,
+                    "room": result.room,
+                },
             )
+            if suspected_msg:
+                await _broadcast_chat(
+                    game_id,
+                    f"{suspect_character}: {suspected_msg}",
+                    suspect_pid,
+                )
 
     elif isinstance(result, ShowCardResult):
         shown_by_name = _player_name(state, player_id)
