@@ -1,4 +1,7 @@
 /// <reference types="vitest/config" />
+// NOTE: This file is kept for reference only. The active test configuration is
+// vitest.config.ts, which uses test.projects (Vitest 4 API) for both the
+// storybook browser project and the unit-test project.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
