@@ -1083,6 +1083,12 @@ watch(
   font-style: italic;
 }
 
+@media (max-width: 600px) {
+  .legend-wanderer-label {
+    display: none;
+  }
+}
+
 /* Shown cards popup */
 .shown-cards-popup {
   position: absolute;
