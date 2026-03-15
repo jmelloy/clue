@@ -76,48 +76,24 @@
             </div>
           </div>
         </div>
+
+        <!-- Chat & Game Log (snug under board) -->
+        <section class="sidebar-panel chat-panel-wrapper">
+          <ChatPanel
+            :messages="chatMessages"
+            :players="gameState?.players"
+            @send-message="$emit('send-chat', $event)"
+          />
+        </section>
       </div>
 
       <!-- Right: Sidebar -->
       <div class="sidebar-column">
-        <!-- Your Cards -->
-        <section v-if="!isObserver" class="sidebar-panel cards-panel">
-          <h2 class="panel-header collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
-            <span>Your Cards</span>
-            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
-          </h2>
-          <div v-if="!cardsCollapsed">
-            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
-            <div v-else class="card-hand">
-              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
-                :title="card" @click="showCardPreview(card)">
-                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
-                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                <span class="card-label">{{ card }}</span>
-              </div>
-              <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
-                :class="{ 'card-with-image': hasCardImage(card) }"
-                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
-                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                  class="card-thumb card-thumb-weapon" />
-                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                <span class="card-label">{{ card }}</span>
-              </div>
-              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
-                :title="card" @click="showCardPreview(card)">
-                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
-                  class="card-thumb card-thumb-room" />
-                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
-                <span class="card-label">{{ card }}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <!-- Player Legend (Turn Order) -->
         <section class="sidebar-panel player-legend-panel">
           <h2 class="panel-header collapsible-header" @click="legendCollapsed = !legendCollapsed">
             <span>Players</span>
+            <span v-if="legendCollapsed && currentPlayerName" class="collapsed-turn-hint">{{ currentPlayerName }}'s turn</span>
             <span class="collapse-indicator" :class="{ collapsed: legendCollapsed }">&#9660;</span>
           </h2>
           <div v-if="!legendCollapsed" class="player-legend">
@@ -149,6 +125,40 @@
               </div>
               <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
                 <div class="shown-cards-title">No cards shown to you</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Your Cards -->
+        <section v-if="!isObserver" class="sidebar-panel cards-panel">
+          <h2 class="panel-header collapsible-header" @click="cardsCollapsed = !cardsCollapsed">
+            <span>Your Cards</span>
+            <span class="collapse-indicator" :class="{ collapsed: cardsCollapsed }">&#9660;</span>
+          </h2>
+          <div v-if="!cardsCollapsed">
+            <div v-if="!yourCards.length" class="no-cards">No cards dealt yet</div>
+            <div v-else class="card-hand">
+              <div v-for="card in suspectCards" :key="card" class="hand-card card-suspect card-with-image"
+                :title="card" @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card" class="card-thumb" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
+              </div>
+              <div v-for="card in weaponCards" :key="card" class="hand-card card-weapon"
+                :class="{ 'card-with-image': hasCardImage(card) }"
+                :title="card" @click="hasCardImage(card) && showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-weapon" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
+              </div>
+              <div v-for="card in roomCards" :key="card" class="hand-card card-room card-with-image"
+                :title="card" @click="showCardPreview(card)">
+                <img v-if="hasCardImage(card)" :src="cardImageUrl(card)" :alt="card"
+                  class="card-thumb card-thumb-room" />
+                <span v-else class="card-icon">{{ cardIcon(card) }}</span>
+                <span class="card-label">{{ card }}</span>
               </div>
             </div>
           </div>
@@ -377,15 +387,6 @@
           </section>
         </template>
       </div>
-
-      <!-- Chat (at bottom of responsive stack) -->
-      <section class="sidebar-panel chat-panel-wrapper">
-        <ChatPanel
-          :messages="chatMessages"
-          :players="gameState?.players"
-          @send-message="$emit('send-chat', $event)"
-        />
-      </section>
     </div>
     <Teleport to="body">
       <div v-if="cardShown && !cardShownDismissedOnce" class="card-shown-overlay" @click="dismissCardShownOverlay">
@@ -846,6 +847,8 @@ watch(
   flex-direction: column;
   gap: 0.75rem;
   font-family: 'Crimson Text', Georgia, serif;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Header */
@@ -967,8 +970,9 @@ watch(
   display: grid;
   grid-template-columns: 1fr 340px;
   gap: 0.75rem;
-  min-height: 400px;
-  align-items: start;
+  flex: 1 1 0;
+  min-height: 0;
+  align-items: stretch;
 }
 
 /* Board column */
@@ -976,6 +980,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Player legend (sidebar vertical list) */
@@ -987,6 +993,14 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+}
+
+.collapsed-turn-hint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--accent);
+  margin-left: auto;
+  margin-right: 0.3rem;
 }
 
 .legend-item {
@@ -1117,6 +1131,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar-panel {
@@ -1613,14 +1629,16 @@ watch(
 
 /* Notes panel */
 .notes-panel {
-  max-height: 300px;
-  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 /* Chat */
 .chat-panel-wrapper {
-  min-height: 160px;
-  grid-column: 1 / -1;
+  flex: 1 1 0;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* Card thumbnails in hand */

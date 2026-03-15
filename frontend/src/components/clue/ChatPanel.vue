@@ -250,9 +250,9 @@ watch(
 
 .chat-messages {
   list-style: none;
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
-  max-height: 200px;
+  min-height: 0;
   margin-bottom: 0.3rem;
   padding-right: 0.2rem;
 }
