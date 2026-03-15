@@ -121,57 +121,54 @@
             </div>
 
             <div class="community-cards">
-              <TransitionGroup name="card-deal">
-                <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
-                  :class="{ 'is-dealt': card.dealt }" :style="{ '--deal-delay': `${i * 0.08}s` }"
-                  @click="card.dealt && openCardPreview(card)">
-                  <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
-                  <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
-                </div>
-              </TransitionGroup>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Winner Banner (persistent, shows after showdown until next hand) -->
-    <Transition name="banner-slide">
-      <div v-if="winnerBanner" class="winner-banner">
-        <div class="winner-banner-glow"></div>
-        <div class="winner-banner-content">
-          <span class="winner-crown">&#9813;</span>
-          <span class="winner-text">
-            <strong>{{ winnerBanner.names }}</strong> takes the pot
-          </span>
-          <span class="winner-pot">
-            <svg class="chip-svg" width="14" height="14" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2" />
-            </svg>
-            {{ formatChips(winnerBanner.pot) }}
-          </span>
-          <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
-        </div>
-        <!-- Community cards + revealed hands row -->
-        <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length"
-          class="winner-banner-hands">
-          <div v-if="winnerBanner.communityCards && winnerBanner.communityCards.length" class="banner-community-cards">
-            <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i" :rank="c.rank" :suit="c.suit"
-              size="tiny" class="banner-mini-card" :deck="handDeck" />
-          </div>
-          <div class="banner-player-hands-row">
-            <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
-              :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
-              <span class="banner-hand-name">{{ playerName(pid) }}</span>
-              <div class="banner-hand-cards">
-                <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" :rank="c.rank" :suit="c.suit"
-                  size="tiny" class="banner-mini-card" :deck="handDeck" />
+              <div v-for="(card, i) in communityCardSlots" :key="card.key" class="card-slot"
+                @click="card.dealt && openCardPreview(card)">
+                <PlayingCard v-if="card.dealt" :rank="card.rank" :suit="card.suit" size="large" :deck="handDeck" />
+                <PlayingCard v-else :faceDown="true" size="large" :rotation="deckRotation" :deck="handDeck" />
               </div>
             </div>
           </div>
         </div>
       </div>
-    </Transition>
+
+      <!-- Winner Banner (persistent, shows after showdown until next hand) -->
+      <Transition name="banner-slide">
+        <div v-if="winnerBanner" class="winner-banner">
+          <div class="winner-banner-glow"></div>
+          <div class="winner-banner-content">
+            <span class="winner-crown">&#9813;</span>
+            <span class="winner-text">
+              <strong>{{ winnerBanner.names }}</strong> takes the pot
+            </span>
+            <span class="winner-pot">
+              <svg class="chip-svg" width="14" height="14" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" fill="var(--gold)" stroke="var(--gold-dim)" stroke-width="2" />
+              </svg>
+              {{ formatChips(winnerBanner.pot) }}
+            </span>
+            <span v-if="winnerBanner.hand" class="winner-hand-type">{{ winnerBanner.hand }}</span>
+          </div>
+          <!-- Community cards + revealed hands row -->
+          <div v-if="winnerBanner.playerHands && Object.keys(winnerBanner.playerHands).length"
+            class="winner-banner-hands">
+            <div v-if="winnerBanner.communityCards && winnerBanner.communityCards.length" class="banner-community-cards">
+              <PlayingCard v-for="(c, i) in winnerBanner.communityCards" :key="'cc-' + i" :rank="c.rank" :suit="c.suit"
+                size="tiny" class="banner-mini-card" :deck="winnerBanner.deck" />
+            </div>
+            <div class="banner-player-hands-row">
+              <div v-for="(cards, pid) in winnerBanner.playerHands" :key="pid" class="banner-player-hand"
+                :class="{ 'banner-hand-winner': winnerBanner.winnerIds.includes(pid) }">
+                <span class="banner-hand-name">{{ playerName(pid) }}</span>
+                <div class="banner-hand-cards">
+                  <PlayingCard v-for="(c, i) in cards" :key="c.rank + '-' + c.suit" :rank="c.rank" :suit="c.suit"
+                    size="tiny" class="banner-mini-card" :deck="winnerBanner.deck" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </div>
 
     <!-- Bottom Dock: Hole Cards + Actions -->
     <div class="bottom-dock" v-if="!isObserver">
@@ -734,7 +731,8 @@ defineExpose({
       hand: data.winning_hand,
       playerHands: data.player_hands || {},
       winnerIds: data.winners || [],
-      communityCards: data.community_cards || []
+      communityCards: data.community_cards || [],
+      deck: handDeck.value
     }
   },
   onRebuyPrompt() {
@@ -975,6 +973,7 @@ watch(
 
 /* ─── Table Container ─── */
 .table-container {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1371,36 +1370,6 @@ watch(
   gap: 0.5rem;
 }
 
-.card-slot {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.card-slot.is-dealt {
-  animation: card-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  animation-delay: var(--deal-delay, 0s);
-}
-
-@keyframes card-pop {
-  from {
-    transform: scale(0.8) translateY(-8px);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-
-/* Transition group */
-.card-deal-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.card-deal-enter-from {
-  opacity: 0;
-  transform: scale(0.5) translateY(-20px);
-}
 
 /* ─── Bottom Dock ─── */
 .bottom-dock {
@@ -2030,8 +1999,10 @@ watch(
 
 /* ─── Winner Banner ─── */
 .winner-banner {
-  position: relative;
-  flex-shrink: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: linear-gradient(90deg,
       color-mix(in srgb, var(--poker-gold-dim) 20%, var(--poker-chrome)),
       color-mix(in srgb, var(--poker-gold-dim) 35%, var(--poker-chrome)),
@@ -2184,16 +2155,12 @@ watch(
 
 .banner-slide-enter-from {
   opacity: 0;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  transform: translateY(100%);
 }
 
 .banner-slide-leave-to {
   opacity: 0;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  transform: translateY(100%);
 }
 
 /* ─── Responsive ─── */
