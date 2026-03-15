@@ -418,9 +418,9 @@ async def main():
     # Build generation plan: each prompt N times per model
     # Model names must match keys in MODEL_MAP
     MODELS = [
-        ("Mango", 1),
-        ("Z-Image Turbo", 3),
-        ("FLUX.2 Dev", 2),
+        ("Mango", 2),
+        # ("Z-Image Turbo", 3),
+        ("FLUX.2 Dev", 1),
     ]
 
     total_generations = len(prompts) * sum(count for _, count in MODELS)
