@@ -99,7 +99,10 @@ export const FullSuit: Story = {
     `,
     setup() {
       const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-      return { ranks }
+      const suit = 'clubs'
+      const size = 'medium'
+      const faceDown = true
+      return { ranks, suit, size, faceDown }
     }
   })
 }
