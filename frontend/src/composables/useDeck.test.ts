@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const STORAGE_KEY = 'clue-deck'
 
@@ -14,6 +14,10 @@ describe('useDeck', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.resetModules()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('defaults to css when localStorage is empty', async () => {
