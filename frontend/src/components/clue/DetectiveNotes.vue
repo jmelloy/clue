@@ -201,9 +201,9 @@ function emitNotesChanged() {
 }
 
 // Watch for any notes changes and emit
-watch(notes, () => emitNotesChanged(), { deep: true })
-watch(playerDoesntHave, () => emitNotesChanged(), { deep: true })
-watch(autoFillEnabled, () => emitNotesChanged())
+watch(notes, () => emitNotesChanged(), { deep: true, flush: 'sync' })
+watch(playerDoesntHave, () => emitNotesChanged(), { deep: true, flush: 'sync' })
+watch(autoFillEnabled, () => emitNotesChanged(), { flush: 'sync' })
 
 function noteMark(card) {
   const state = notes[card] ?? ''
