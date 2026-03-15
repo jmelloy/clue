@@ -1715,6 +1715,27 @@ async def ack_card_shown(game_id: str, req: dict):
 # ---------------------------------------------------------------------------
 
 
+@app.post("/api/clue/games/{game_id}/cancel_auto_end_timer")
+async def cancel_auto_end_timer(game_id: str, req: dict):
+    """Cancel the auto-end-turn timer (e.g. when a player opens the accusation form)."""
+    player_id = req.get("player_id")
+    if not player_id:
+        raise HTTPException(status_code=400, detail="player_id required")
+    game = ClueGame(game_id, redis_client)
+    state = await game.get_state()
+    if not state or state.status != "playing":
+        return OkResponse()
+    # Only the current player can cancel their own timer
+    if state.whose_turn == player_id:
+        _cancel_auto_end_timer(game_id)
+        # Notify clients to clear the timer UI
+        await manager.broadcast(
+            game_id,
+            AutoEndTimerMessage(player_id=player_id, seconds=0),
+        )
+    return OkResponse()
+
+
 @app.put("/api/clue/games/{game_id}/notes")
 async def save_notes(game_id: str, req: SaveNotesRequest):
     game = ClueGame(game_id, redis_client)

@@ -272,7 +272,7 @@
 
           <!-- Accuse -->
           <div v-if="canAccuse" class="action-group accuse-group">
-            <button v-if="!showAccuseForm" class="action-btn toggle-accuse-btn" @click="showAccuseForm = true">
+            <button v-if="!showAccuseForm" class="action-btn toggle-accuse-btn" @click="showAccuseForm = true; clearCountdown(); emit('cancel-auto-end-timer')">
               Make Final Accusation...
             </button>
             <div v-if="showAccuseForm" class="accuse-form">
@@ -549,7 +549,7 @@ const props = defineProps({
   observerPlayerState: { type: Object, default: null }
 })
 
-const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown', 'select-player'])
+const emit = defineEmits(['action', 'send-chat', 'dismiss-card-shown', 'select-player', 'cancel-auto-end-timer'])
 
 const notesRef = ref(null)
 
