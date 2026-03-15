@@ -269,7 +269,19 @@ function cyclePlayerMark(playerId, card) {
 function markCard(card, state, shownBy) {
   if (notes[card] !== 'have') {
     notes[card] = state
-    if (shownBy) shownByMap[card] = shownBy
+    if (shownBy) {
+      shownByMap[card] = shownBy
+      // Auto-fill green check in player column for the showing player
+      if (autoFillEnabled.value) {
+        const showingPlayer = trackedPlayers.value.find(p => p.name === shownBy || p.character === shownBy)
+        if (showingPlayer) {
+          if (!playerMarks[showingPlayer.id]) {
+            playerMarks[showingPlayer.id] = {}
+          }
+          playerMarks[showingPlayer.id][card] = '\u2713'
+        }
+      }
+    }
   }
 }
 
