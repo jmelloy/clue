@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { expect, within } from 'storybook/test'
 import DetectiveNotes from './DetectiveNotes.vue'
 
 const meta: Meta<typeof DetectiveNotes> = {
@@ -34,6 +35,14 @@ export const Empty: Story = {
   args: {
     yourCards: [],
     savedNotes: null
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Detective Notes')).toBeInTheDocument()
+    // Section headers are rendered
+    await expect(canvas.getByText('Suspects')).toBeInTheDocument()
+    await expect(canvas.getByText('Weapons')).toBeInTheDocument()
+    await expect(canvas.getByText('Rooms')).toBeInTheDocument()
   }
 }
 
@@ -42,6 +51,16 @@ export const WithCardsInHand: Story = {
   args: {
     yourCards: ['Miss Scarlett', 'Knife', 'Library'],
     savedNotes: null
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // The three held cards should be listed
+    await expect(canvas.getByText('Miss Scarlett')).toBeInTheDocument()
+    await expect(canvas.getByText('Knife')).toBeInTheDocument()
+    await expect(canvas.getByText('Library')).toBeInTheDocument()
+    // Cards in hand display a ✓ mark
+    const checkmarks = canvas.getAllByText('✓')
+    await expect(checkmarks.length).toBeGreaterThanOrEqual(3)
   }
 }
 
