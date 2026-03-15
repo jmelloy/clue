@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import WaitingRoom from './WaitingRoom.vue'
 
 const meta: Meta<typeof WaitingRoom> = {
