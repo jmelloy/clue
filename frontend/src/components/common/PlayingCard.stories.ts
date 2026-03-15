@@ -90,7 +90,7 @@ export const FullSuit: Story = {
     faceDown: true
   },
 
-  render: () => ({
+  render: (args) => ({
     components: { PlayingCard },
     template: `
       <div style="display: flex; gap: 8px; flex-wrap: wrap; padding: 20px;">
@@ -99,7 +99,7 @@ export const FullSuit: Story = {
     `,
     setup() {
       const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-      return { ranks }
+      return { ranks, ...args }
     }
   })
 }
