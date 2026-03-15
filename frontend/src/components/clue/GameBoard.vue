@@ -101,7 +101,9 @@
             <span v-if="p.type === 'wanderer'" class="legend-wanderer-label">wandering</span>
             <span v-else-if="gameState?.whose_turn === p.id" class="legend-turn">turn</span>
             <!-- Shown cards popup -->
-            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length" class="shown-cards-popup" @click.stop>
+            <div v-if="shownCardsPlayerId === p.id && shownCardsForPlayer.length"
+              ref="shownCardsPopupRef"
+              class="shown-cards-popup" :class="{ 'popup-above': popupGoesUp }" @click.stop>
               <div class="shown-cards-title">Cards shown to you:</div>
               <div class="shown-cards-hand">
                 <div v-for="card in shownCardsForPlayer" :key="card" class="hand-card" :class="cardCategory(card)"
@@ -112,8 +114,9 @@
                 </div>
               </div>
             </div>
-            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length" class="shown-cards-popup"
-              @click.stop>
+            <div v-if="shownCardsPlayerId === p.id && !shownCardsForPlayer.length"
+              ref="shownCardsPopupRef"
+              class="shown-cards-popup" :class="{ 'popup-above': popupGoesUp }" @click.stop>
               <div class="shown-cards-title">No cards shown to you</div>
             </div>
           </div>
@@ -504,7 +507,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import BoardMap from './BoardMap.vue'
 import ChatPanel from './ChatPanel.vue'
 import DetectiveNotes from './DetectiveNotes.vue'
@@ -675,6 +678,8 @@ function cardCategory(card) {
 
 // Shown cards popup state
 const shownCardsPlayerId = ref(null)
+const shownCardsPopupRef = ref(null)
+const popupGoesUp = ref(false)
 const shownCardsForPlayer = computed(() => {
   if (!shownCardsPlayerId.value || !notesRef.value) return []
   const pName = playerName(shownCardsPlayerId.value)
@@ -690,7 +695,17 @@ function onLegendClick(player) {
   if (shownCardsPlayerId.value === player.id) {
     shownCardsPlayerId.value = null
   } else {
+    popupGoesUp.value = false
     shownCardsPlayerId.value = player.id
+    nextTick(() => {
+      const el = shownCardsPopupRef.value
+      if (el) {
+        const rect = el.getBoundingClientRect()
+        if (rect.bottom > window.innerHeight) {
+          popupGoesUp.value = true
+        }
+      }
+    })
   }
 }
 
@@ -1006,6 +1021,9 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  overflow: visible;
+  position: relative;
+  z-index: 5;
 }
 
 .legend-item {
@@ -1119,7 +1137,13 @@ watch(
   border-radius: 4px;
   padding: 0.4rem 0.6rem;
   min-width: 140px;
+  max-width: calc(100vw - 2rem);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.shown-cards-popup.popup-above {
+  top: auto;
+  bottom: 100%;
 }
 
 .shown-cards-title {
