@@ -2195,7 +2195,8 @@ class LLMAgent(BaseAgent):
     # ------------------------------------------------------------------
 
     def _build_action_prompt(
-        self, game_state: GameState, player_state: PlayerState
+        self, game_state: GameState, player_state: PlayerState,
+        recent_chat: list | None = None,
     ) -> str:
         """Build a user prompt describing the current situation."""
         player_id = player_state.your_player_id
@@ -2267,6 +2268,14 @@ class LLMAgent(BaseAgent):
                 recent = planning_notes[-2:]
                 for entry in recent:
                     lines.append(f"  - {entry}")
+
+        # Include recent chat messages for social context
+        if recent_chat:
+            lines.append("")
+            lines.append("RECENT CHAT MESSAGES:")
+            for msg in recent_chat:
+                sender = msg.player_id or "system"
+                lines.append(f"  {sender}: {msg.text}")
 
         lines.append("")
         lines.append("Choose your action. Valid action formats:")
@@ -2447,13 +2456,23 @@ class LLMAgent(BaseAgent):
             self.agent_trace("fallback_action", action=fallback_action.model_dump())
             return fallback_action
 
+        # Fetch recent chat messages for context
+        recent_chat = None
+        if self._redis and self._game_id:
+            from .game import ClueGame
+
+            game = ClueGame(self._game_id, self._redis)
+            all_chat = await game.get_chat_messages()
+            if all_chat:
+                recent_chat = all_chat[-5:]
+
         # Build prompt and call LLM
         personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
         system_prompt = _ACTION_SYSTEM_PROMPT.format(
             character=self.character or "a detective",
             personality=personality,
         )
-        user_prompt = self._build_action_prompt(game_state, player_state)
+        user_prompt = self._build_action_prompt(game_state, player_state, recent_chat=recent_chat)
         if rejection_detail:
             user_prompt += (
                 f"\n\nIMPORTANT: Your previous action was REJECTED by the server: "
