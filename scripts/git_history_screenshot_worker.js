@@ -8,6 +8,8 @@
  */
 
 const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
@@ -15,6 +17,13 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 const [, , label, outputDir, gamesArg, themesArg] = process.argv;
 const games = (gamesArg || "clue,holdem").split(",");
 const themes = themesArg ? themesArg.split(",") : [];
+
+/** Return path for a screenshot, creating the page subdirectory if needed. */
+function screenshotPath(page) {
+  const dir = path.join(outputDir, page);
+  fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, `${label}.png`);
+}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,7 +46,7 @@ async function screenshotLobby(browser, label, outputDir) {
   try {
     await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 15000 });
     await sleep(2000);
-    await page.screenshot({ path: `${outputDir}/${label}_lobby.png` });
+    await page.screenshot({ path: screenshotPath("lobby") });
     console.log("  Saved lobby");
   } catch (err) {
     console.log("  Lobby screenshot failed:", err.message);
@@ -135,7 +144,7 @@ async function screenshotClueViaUI(browser, label, outputDir) {
       await sleep(2000);
     }
 
-    await page.screenshot({ path: `${outputDir}/${label}_clue.png` });
+    await page.screenshot({ path: screenshotPath("clue") });
     console.log("  Saved Clue screenshot");
 
     // If themes are requested, cycle through them using the footer theme buttons
@@ -148,7 +157,7 @@ async function screenshotClueViaUI(browser, label, outputDir) {
             await themeBtn.click();
             await sleep(1500);
           }
-          await page.screenshot({ path: `${outputDir}/${label}_clue_${theme}.png` });
+          await page.screenshot({ path: screenshotPath(`clue_${theme}`) });
           console.log(`  Saved Clue screenshot (${theme} theme)`);
         } catch (err) {
           console.log(`  Theme ${theme} screenshot failed:`, err.message);
@@ -159,7 +168,7 @@ async function screenshotClueViaUI(browser, label, outputDir) {
     console.log("  Clue UI screenshot failed:", err.message);
     // Take a screenshot anyway to see what we got
     try {
-      await page.screenshot({ path: `${outputDir}/${label}_clue.png` });
+      await page.screenshot({ path: screenshotPath("clue") });
       console.log("  Saved Clue screenshot (error state)");
     } catch {}
   }
@@ -262,12 +271,12 @@ async function screenshotHoldemViaUI(browser, label, outputDir) {
       await sleep(2000);
     }
 
-    await page.screenshot({ path: `${outputDir}/${label}_holdem.png` });
+    await page.screenshot({ path: screenshotPath("holdem") });
     console.log("  Saved Hold'em screenshot");
   } catch (err) {
     console.log("  Hold'em UI screenshot failed:", err.message);
     try {
-      await page.screenshot({ path: `${outputDir}/${label}_holdem.png` });
+      await page.screenshot({ path: screenshotPath("holdem") });
       console.log("  Saved Hold'em screenshot (error state)");
     } catch {}
   }

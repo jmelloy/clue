@@ -206,5 +206,10 @@ for ((idx = 0; idx < ${#SELECTED[@]}; idx++)); do
 done
 
 echo ""
-echo "All screenshots saved to $SCREENSHOT_DIR"
-echo "Total: $(ls -1 "$SCREENSHOT_DIR"/*.png 2>/dev/null | wc -l) images"
+echo "All screenshots saved to $SCREENSHOT_DIR (organized by page)"
+for subdir in "$SCREENSHOT_DIR"/*/; do
+    [ -d "$subdir" ] || continue
+    count=$(ls -1 "$subdir"*.png 2>/dev/null | wc -l)
+    echo "  $(basename "$subdir"): $count images"
+done
+echo "Total: $(find "$SCREENSHOT_DIR" -name '*.png' | wc -l) images"
