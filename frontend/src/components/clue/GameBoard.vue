@@ -2052,6 +2052,13 @@ watch(
   animation: bannerSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+[data-theme="light"] .card-shown-banner,
+[data-theme="vintage"] .card-shown-banner {
+  background: linear-gradient(145deg, var(--bg-panel-solid) 0%, var(--bg-page) 100%);
+  border-color: var(--accent-border-hover);
+  box-shadow: 0 0 40px var(--accent-glow), 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
 @keyframes bannerSlideIn {
   from {
     opacity: 0;
@@ -2077,6 +2084,13 @@ watch(
   border: 1px solid rgba(212, 168, 73, 0.2);
 }
 
+[data-theme="light"] .card-shown-banner-label,
+[data-theme="vintage"] .card-shown-banner-label {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
 .card-shown-banner-suggestion {
   font-size: 0.9rem;
   color: #c8bca8;
@@ -2093,6 +2107,18 @@ watch(
 .card-shown-banner-from {
   font-size: 1rem;
   color: #c8bca8;
+}
+
+[data-theme="light"] .card-shown-banner-suggestion,
+[data-theme="vintage"] .card-shown-banner-suggestion,
+[data-theme="light"] .card-shown-banner-from,
+[data-theme="vintage"] .card-shown-banner-from {
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .card-shown-banner-noshow,
+[data-theme="vintage"] .card-shown-banner-noshow {
+  color: var(--accent);
 }
 
 .shown-card-suggestion {
@@ -2132,9 +2158,20 @@ watch(
   letter-spacing: 0.03em;
 }
 
+[data-theme="light"] .card-shown-banner-dismiss,
+[data-theme="vintage"] .card-shown-banner-dismiss {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
+}
+
 .card-shown-banner-dismiss:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(212, 168, 73, 0.3);
+}
+
+[data-theme="light"] .card-shown-overlay,
+[data-theme="vintage"] .card-shown-overlay {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 /* ================================ */
@@ -2202,6 +2239,12 @@ watch(
   color: #d4a849;
   letter-spacing: 0.08em;
   text-shadow: 0 0 30px rgba(212, 168, 73, 0.2);
+}
+
+[data-theme="light"] .game-over-title,
+[data-theme="vintage"] .game-over-title {
+  color: var(--accent);
+  text-shadow: none;
 }
 
 .game-over-winner {
@@ -2275,6 +2318,17 @@ watch(
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.04em;
+}
+
+[data-theme="light"] .game-over-dismiss,
+[data-theme="vintage"] .game-over-dismiss {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--accent-text);
+}
+
+[data-theme="light"] .game-over-overlay,
+[data-theme="vintage"] .game-over-overlay {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .game-over-dismiss:hover {
