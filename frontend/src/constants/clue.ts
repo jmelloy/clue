@@ -104,7 +104,43 @@ export const CARD_IMAGES: Record<string, string> = {
 
 // Per-theme card image overrides — keyed by theme name, each a partial map of card name -> image URL.
 // Falls back to CARD_IMAGES for any card not listed under the active theme.
+//
+// Room images support two approaches for light/dark modes:
+//   Approach A (separate images): populate both `light` and `dark` entries with
+//     dedicated daytime and nighttime room images respectively.
+//   Approach B (CSS night filter): populate only `light` with daytime images and
+//     rely on the `--board-room-night-filter` CSS variable to darken them in dark mode.
+//     In this case, `dark` can be left empty or pointed at the same daytime images.
+//
+// Daytime room images go in: /images/clue/rooms/day/ and /images/clue/rooms/day/thumbnails/
+// Nighttime room images go in: /images/clue/rooms/night/ and /images/clue/rooms/night/thumbnails/
 export const THEME_CARD_IMAGES: Record<string, Record<string, string>> = {
+  // Light theme — daytime room images (Approach A), or same default images (Approach B)
+  // Uncomment when daytime images are generated:
+  // light: {
+  //   Kitchen: '/images/clue/rooms/day/thumbnails/Kitchen.jpg',
+  //   Ballroom: '/images/clue/rooms/day/thumbnails/BallRoom.jpg',
+  //   Conservatory: '/images/clue/rooms/day/thumbnails/Conservatory.jpg',
+  //   'Billiard Room': '/images/clue/rooms/day/thumbnails/BilliardRoom.jpg',
+  //   Library: '/images/clue/rooms/day/thumbnails/Library.jpg',
+  //   Study: '/images/clue/rooms/day/thumbnails/Study.jpg',
+  //   Hall: '/images/clue/rooms/day/thumbnails/Hall.jpg',
+  //   Lounge: '/images/clue/rooms/day/thumbnails/Lounge.jpg',
+  //   'Dining Room': '/images/clue/rooms/day/thumbnails/DiningRoom.jpg',
+  // },
+  // Dark theme — nighttime room images (Approach A only; skip if using Approach B)
+  // Uncomment when separate nighttime images are generated:
+  // dark: {
+  //   Kitchen: '/images/clue/rooms/night/thumbnails/Kitchen.jpg',
+  //   Ballroom: '/images/clue/rooms/night/thumbnails/BallRoom.jpg',
+  //   Conservatory: '/images/clue/rooms/night/thumbnails/Conservatory.jpg',
+  //   'Billiard Room': '/images/clue/rooms/night/thumbnails/BilliardRoom.jpg',
+  //   Library: '/images/clue/rooms/night/thumbnails/Library.jpg',
+  //   Study: '/images/clue/rooms/night/thumbnails/Study.jpg',
+  //   Hall: '/images/clue/rooms/night/thumbnails/Hall.jpg',
+  //   Lounge: '/images/clue/rooms/night/thumbnails/Lounge.jpg',
+  //   'Dining Room': '/images/clue/rooms/night/thumbnails/DiningRoom.jpg',
+  // },
   vintage: {
     Kitchen: '/images/clue/alternates/vintage/kitchen.png',
     Ballroom: '/images/clue/alternates/vintage/ballroom.png',

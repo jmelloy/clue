@@ -53,6 +53,9 @@
   --board-wall: #2a2a1e;
   --board-center: #4a3d2a;
   --board-room-filter: saturate(0.45) brightness(0.95);
+  /* Night filter — applied to daytime room images to simulate moonlit nighttime.
+     Use with Approach B: generate only daytime base images, apply this in dark mode. */
+  --board-room-night-filter: brightness(0.55) saturate(0.7) sepia(0.15) hue-rotate(-10deg);
   --mansion-edge: rgba(180, 150, 80, 0.65);
   --mansion-glow: rgba(180, 150, 80, 0.18);
 
@@ -179,6 +182,8 @@
   --board-wall: #c8c0b0;
   --board-center: #ddd5c2;
   --board-room-filter: saturate(0.5) brightness(1.1);
+  /* Light mode: no night filter — show daytime images as-is */
+  --board-room-night-filter: none;
   --mansion-edge: rgba(100, 70, 30, 0.45);
   --mansion-glow: rgba(100, 70, 30, 0.08);
 
@@ -305,6 +310,8 @@
   --board-wall: transparent;
   --board-center: transparent;
   --board-room-filter: none;
+  /* Vintage: no night filter */
+  --board-room-night-filter: none;
   --mansion-edge: transparent;
   --mansion-glow: transparent;
 

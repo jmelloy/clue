@@ -60,7 +60,17 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 ---
 
-## Rooms
+## Rooms — Night (Dark Mode)
+
+The original nighttime room illustrations. Used for the **dark** theme.
+
+> **Approach A — Separate images:** Generate these night prompts for dark mode and the daytime prompts below for light mode. Store night images in `rooms/night/` and day images in `rooms/day/`.
+>
+> **Approach B — Night CSS filter over daytime base:** Generate *only* the daytime prompts below, then apply a CSS night filter in dark mode:
+> ```css
+> filter: brightness(0.55) saturate(0.7) sepia(0.15) hue-rotate(-10deg);
+> ```
+> This avoids maintaining two image sets. The base daytime images are used as-is in light mode and filtered for dark mode.
 
 ---
 
@@ -136,11 +146,99 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 ---
 
-### Grand Staircase
+### Grand Staircase — Night
 
 **Ratio:** 4:5
 
-> Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, warm gaslight from wall sconces illuminating a wide, straight staircase in grand ballroom style. Rich mahogany and deep burgundy tones. A long central flight with symmetrical carved banisters and a plush crimson runner rises directly to an opulent landing. Crystal chandeliers glint above while oil portraits of stern ancestors line the walls. A suit of armor stands guard at the landing. Polished brass handrails reflect the gaslight against dark wood paneling and a heavy newel post topped with a carved finial.
+> Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, nighttime, warm gaslight from wall sconces illuminating a wide, straight staircase in grand ballroom style. Rich mahogany and deep burgundy tones. A long central flight with symmetrical carved banisters and a plush crimson runner rises directly to an opulent landing. Crystal chandeliers glint above while oil portraits of stern ancestors line the walls. A suit of armor stands guard at the landing. Polished brass handrails reflect the gaslight against dark wood paneling and a heavy newel post topped with a carved finial.
+
+---
+
+## Rooms — Day (Light Mode)
+
+Daytime versions of the same rooms. Same furniture, same composition, but bright natural daylight instead of moonlit noir. These serve as the **light** theme images and as the base for the CSS night-filter approach.
+
+Images go in `frontend/public/images/clue/rooms/day/` (full) and `frontend/public/images/clue/rooms/day/thumbnails/` (thumbs).
+
+---
+
+### Study — Day
+
+**Ratio:** 16:9
+
+> Colored pencil art. Bright victorian Cluedo mansion — the Study. Top view from the bottom, daytime, warm afternoon sunlight streaming through tall windows on the top wall and left wall, casting golden rectangles across the floor. Rich mahogany and warm honey tones. A heavy oak desk strewn with papers and an inkwell, floor-to-ceiling bookshelves, a globe in the corner, a green banker's lamp (unlit). Persian rug over sun-warmed hardwood. Secret passage trapdoor barely visible beneath the rug. Dust motes floating in the sunbeams.
+
+---
+
+### Hall — Day
+
+**Ratio:** 4:5
+
+> Colored pencil art. Grand victorian Cluedo mansion — the Hall. Top view from the bottom, daytime, bright warm light from the chandelier and open doors at the far wall letting daylight flood in. Warm ivory and cream tones. Black-and-white checkerboard marble floor gleaming with polish, ornate crystal chandelier sparkling above, grand double entry doors standing open revealing a sun-drenched garden beyond, a tall grandfather clock, coat rack with a top hat and cane. Sconces unlit against sunlit wallpapered walls.
+
+---
+
+### Lounge — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Warm victorian Cluedo mansion — the Lounge. Top view from the bottom, daytime, golden afternoon sunlight pouring through parted drapes on the top wall and right wall, painting warm stripes across the carpet. Rich crimson and warm gold tones. Tufted velvet chaise longue bathed in light, a fireplace with marble mantel (fire out, neatly set), crystal decanter and glasses catching the sun on a side table, thick burgundy drapes pulled back with tasselled ties, an animal-skin rug with soft shadow patterns.
+
+---
+
+### Library — Day
+
+**Ratio:** 3:2
+
+> Colored pencil art. Sunlit victorian Cluedo mansion — the Library. Top view from the bottom, daytime, warm golden light streaming through bay windows on the left wall, illuminating dust motes and leather spines. Door on the right wall. Forest green and warm amber-leather tones. Towering shelves packed with leather-bound volumes glowing in the light, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the bright window, scattered notes and a magnifying glass on a sun-dappled side table.
+
+---
+
+### Billiard Room — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Bright victorian Cluedo mansion — the Billiard Room. Top view from the bottom/south, daytime, warm afternoon light streaming through tall windows on the left wall, illuminating the green baize. Door on the back wall on the left side. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game catching the light, cue rack on the wall, tiffany lamp (unlit) over the table, leather wingback chairs in dappled sun, a whiskey cart, mounted trophy heads clearly visible on sun-washed wood-paneled walls.
+
+---
+
+### Dining Room — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Bright victorian Cluedo mansion — the Dining Room. Top view from the bottom, daytime, warm sunlight flooding across the table through tall windows on the right wall, white tablecloth glowing. Warm plum and bright silver tones. A long mahogany dining table set for six with fine china and candelabras (unlit), high-backed chairs casting crisp shadows, a sideboard with a silver tureen, wine bottles, and a carving knife. Damask curtains pulled wide. Spilled red wine vivid on the white tablecloth.
+
+---
+
+### Conservatory — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Sun-drenched victorian Cluedo mansion — the Conservatory. Top view from the bottom/south, daytime, brilliant sunlight flooding through tall windows on the left wall and glass panes behind the camera, filling the room with warm green-gold light. Door on the back wall on the right side. Vibrant sage green and warm terracotta tones. Potted palms and exotic ferns lush in the sunlight, a wrought-iron garden bench with dappled shadows, stone tile floor with moss glowing green in the cracks, a watering can, scattered gardening tools, and a vine creeping along the bright window frame.
+
+---
+
+### Ballroom — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Radiant victorian Cluedo mansion — the Ballroom. Top view from the bottom, daytime, bright chandelier light and ambient daylight washing across the dance floor. Warm lavender and champagne gold tones. Vast polished parquet dance floor with geometric inlay pattern gleaming, a grand piano in the corner, enormous crystal chandelier sparkling brilliantly, floor-length mirrors reflecting bright light, velvet rope barriers, a single dropped silk glove. No windows — lit by brilliant chandelier and open doors.
+
+---
+
+### Kitchen — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Bright victorian Cluedo mansion — the Kitchen. Top view from the bottom, daytime, warm morning sunlight streaming through windows on the right wall, catching the copper pots. Warm copper and bright cream tones. A heavy butcher-block island, cast-iron pots hanging from a ceiling rack gleaming in the light, a coal-burning range with a kettle, flour dusted across the sun-warmed counter, a knife block, bundles of dried herbs, a pantry door slightly ajar letting in more light, an open toolbox on the floor with a wrench-shaped gap in the tray. Bright daylight on stone floor tiles.
+
+---
+
+### Grand Staircase — Day
+
+**Ratio:** 4:5
+
+> Colored pencil art. Bright victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, brilliant daylight from skylights above and open doors below illuminating a wide, straight staircase in grand ballroom style. Warm mahogany and rich burgundy tones glowing in the sun. A long central flight with symmetrical carved banisters and a plush crimson runner rises directly to a sun-drenched landing. Crystal chandeliers sparkling brilliantly above while oil portraits of stern ancestors are clearly visible on the sunlit walls. A suit of armor gleaming at the landing. Polished brass handrails catching the daylight against warm wood paneling and a heavy newel post topped with a carved finial.
 
 ---
 
