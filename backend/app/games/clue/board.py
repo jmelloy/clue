@@ -421,6 +421,85 @@ def reachable(
     return visited
 
 
+def can_reenter_via_different_door(
+    start_room: Room,
+    dice: int,
+    squares: dict,
+    room_nodes: dict[Room, Square],
+    occupied: set[tuple[int, int]] | None = None,
+) -> bool:
+    """Check if a player in start_room can exit one door and re-enter through a different door.
+
+    For each exit door, runs a BFS from the hallway outside that door (at cost 1)
+    through hallway squares only (blocking all doors of the starting room) and
+    checks whether the hallway outside any *other* door of the same room is
+    reachable within the dice budget.
+
+    Re-entry path cost: 1 (room->exit_door->exit_hall) + hallway_path + 1 (enter_hall->enter_door->room)
+    So the hallway BFS budget is dice - 2.
+    """
+    if occupied is None:
+        occupied = set()
+
+    # Gather doors and their hallway neighbors for this room
+    door_info: list[tuple[Square, Square]] = []  # (door_sq, hallway_sq)
+    for (r, c), (room, direction) in DOORS.items():
+        if room != start_room:
+            continue
+        door_sq = squares.get((r, c))
+        dr, dc = DOOR_DIRECTIONS[direction]
+        hall_sq = squares.get((r + dr, c + dc))
+        if door_sq and hall_sq:
+            door_info.append((door_sq, hall_sq))
+
+    if len(door_info) < 2:
+        return False
+
+    hallway_budget = dice - 2
+    if hallway_budget < 0:
+        return False
+
+    # Block all doors of this room so BFS can't shortcut through it
+    blocked_doors = {(d.row, d.col) for d, _ in door_info}
+
+    entry_halls = {id(hall_sq): (door_sq, hall_sq) for door_sq, hall_sq in door_info}
+
+    for exit_idx, (exit_door, exit_hall) in enumerate(door_info):
+        if (exit_hall.row, exit_hall.col) in occupied:
+            continue
+
+        visited: dict[Square, int] = {exit_hall: 0}
+        queue: deque[tuple[Square, int]] = deque([(exit_hall, 0)])
+
+        while queue:
+            sq, dist = queue.popleft()
+            if dist > visited.get(sq, float("inf")):
+                continue
+            for nb in sq.neighbors:
+                if nb.type == SquareType.ROOM:
+                    continue
+                if (nb.row, nb.col) in blocked_doors:
+                    continue
+                if (nb.row, nb.col) in occupied:
+                    continue
+                new_dist = dist + 1
+                if new_dist > hallway_budget:
+                    continue
+                if nb in visited and visited[nb] <= new_dist:
+                    continue
+                visited[nb] = new_dist
+                queue.append((nb, new_dist))
+
+        # Check if any other door's hallway was reached
+        for enter_idx, (enter_door, enter_hall) in enumerate(door_info):
+            if enter_idx == exit_idx:
+                continue
+            if enter_hall in visited:
+                return True
+
+    return False
+
+
 def show_reachable_on_grid(
     grid: list[list[str]],
     start: Square,

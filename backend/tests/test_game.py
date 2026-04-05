@@ -1179,19 +1179,18 @@ async def test_door_blocking_prevents_exit(game: ClueGame):
 
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
-    # No hallway positions reachable
+    # No hallway positions reachable (door is blocked)
     assert len(targets.reachable_positions) == 0
-    # Secret passage rooms should NOT appear in dice-based reachability
-    # (secret passages are used instead of rolling, not after rolling)
-    assert "Lounge" not in targets.reachable_rooms
+    # Secret passage destination should still appear as reachable
+    assert "Lounge" in targets.reachable_rooms
 
 
 @pytest.mark.asyncio
-async def test_secret_passage_rooms_excluded_from_dice_reachability(game: ClueGame):
-    """Secret passage destinations should not appear in get_reachable_targets.
+async def test_secret_passage_rooms_included_in_dice_reachability(game: ClueGame):
+    """Secret passage destinations should appear in get_reachable_targets.
 
-    Secret passages are an alternative to rolling the dice, so after rolling
-    they must not show up as reachable rooms.
+    After rolling the dice, the secret passage destination is included so
+    the player can choose it as a move target.
     """
     await _add_two_players(game)
     state = await game.start()
@@ -1207,9 +1206,9 @@ async def test_secret_passage_rooms_excluded_from_dice_reachability(game: ClueGa
 
     state = await game._load_state()
     targets = game.get_reachable_targets(whose_turn, state, 6)
-    # Kitchen (secret passage from Study) must NOT be in reachable rooms
-    assert "Kitchen" not in targets.reachable_rooms
-    # Study (current room) also excluded
+    # Kitchen (secret passage from Study) should be in reachable rooms
+    assert "Kitchen" in targets.reachable_rooms
+    # Study (current room) excluded — only 1 door, can't re-enter
     assert "Study" not in targets.reachable_rooms
 
 
@@ -1235,6 +1234,95 @@ async def test_room_players_do_not_block(game: ClueGame):
     targets = game.get_reachable_targets(whose_turn, state, 6)
     # Should still be able to reach hallway/rooms (door is not blocked)
     assert len(targets.reachable_positions) > 0 or len(targets.reachable_rooms) > 0
+
+
+@pytest.mark.asyncio
+async def test_reenter_room_via_different_door(game: ClueGame):
+    """A player in a multi-door room can leave one door and re-enter another."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Ballroom (4 doors — re-entry should be possible with a decent roll)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Ballroom"
+    center = ROOM_CENTERS.get("Ballroom")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    # With a high roll, should be able to re-enter via a different door
+    targets = game.get_reachable_targets(whose_turn, state, 12)
+    assert "Ballroom" in targets.reachable_rooms
+
+
+@pytest.mark.asyncio
+async def test_cannot_reenter_single_door_room(game: ClueGame):
+    """A player in a single-door room cannot re-enter it."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Kitchen has only 1 door — re-entry impossible
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Kitchen"
+    center = ROOM_CENTERS.get("Kitchen")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    state = await game._load_state()
+    targets = game.get_reachable_targets(whose_turn, state, 12)
+    assert "Kitchen" not in targets.reachable_rooms
+
+
+@pytest.mark.asyncio
+async def test_move_to_secret_passage_room_after_roll(game: ClueGame):
+    """After rolling, the player can choose the secret passage destination as a move."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place player in Study (passage to Kitchen)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Study"
+    center = ROOM_CENTERS.get("Study")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    # Roll dice
+    await game.process_action(whose_turn, {"type": "roll"})
+
+    # Move to Kitchen via secret passage
+    result = await game.process_action(whose_turn, {"type": "move", "room": "Kitchen"})
+    assert result.room == "Kitchen"
+
+
+@pytest.mark.asyncio
+async def test_reenter_same_room_move_action(game: ClueGame):
+    """A player can actually move back into a multi-door room after rolling."""
+    await _add_two_players(game)
+    state = await game.start()
+    whose_turn = state.whose_turn
+
+    # Place in Ballroom (4 doors)
+    st = await game._load_state()
+    st.current_room[whose_turn] = "Ballroom"
+    center = ROOM_CENTERS.get("Ballroom")
+    if center:
+        st.player_positions[whose_turn] = list(center)
+    await game._save_state(st)
+
+    # Roll dice — mock a high roll to ensure re-entry is possible
+    st = await game._load_state()
+    st.dice_rolled = True
+    st.last_roll = [6, 6]
+    await game._save_state(st)
+
+    result = await game.process_action(whose_turn, {"type": "move", "room": "Ballroom"})
+    assert result.room == "Ballroom"
 
 
 @pytest.mark.asyncio
