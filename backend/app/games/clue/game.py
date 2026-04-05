@@ -17,6 +17,7 @@ from .board import (
     SQUARES,
     Room,
     SquareType,
+    can_reenter_via_different_door,
     reachable,
     move_towards,
     find_path,
@@ -493,6 +494,22 @@ class ClueGame:
             ):
                 positions.append([sq.row, sq.col])
 
+        # Add secret passage destination room if player is in a passage room
+        current_room_name = state.current_room.get(player_id)
+        if current_room_name and current_room_name in SECRET_PASSAGE_MAP:
+            dest_room = SECRET_PASSAGE_MAP[current_room_name]
+            if dest_room not in rooms:
+                rooms.append(dest_room)
+
+        # Allow re-entering the same room via a different door
+        if current_room_name and current_room_name in ROOM_NAME_TO_ENUM:
+            current_room_enum = ROOM_NAME_TO_ENUM[current_room_name]
+            if can_reenter_via_different_door(
+                current_room_enum, dice, SQUARES, ROOM_NODES, occupied
+            ):
+                if current_room_name not in rooms:
+                    rooms.append(current_room_name)
+
         return ReachableTargets(reachable_rooms=rooms, reachable_positions=positions)
 
     async def process_action(
@@ -630,13 +647,18 @@ class ClueGame:
         if room_name and room_name not in ROOMS:
             raise ValueError(f"Invalid room: {room_name}")
 
-        # Cannot re-enter the room you are already in
         current_room_name = state.current_room.get(player_id)
-        if room_name and room_name == current_room_name:
-            raise ValueError("Cannot re-enter the room you are already in")
-
         occupied = self._get_occupied_positions(state, player_id)
         start_sq = self._get_start_square(player_id, state)
+
+        # Check re-entry: allowed only if the player can exit one door and
+        # enter through a different door within the dice roll.
+        if room_name and room_name == current_room_name:
+            current_room_enum = ROOM_NAME_TO_ENUM.get(current_room_name)
+            if not current_room_enum or not can_reenter_via_different_door(
+                current_room_enum, total, SQUARES, ROOM_NODES, occupied
+            ):
+                raise ValueError("Cannot re-enter the room you are already in")
 
         final_room: str | None = None
         final_position: list[int] | None = None
@@ -670,9 +692,33 @@ class ClueGame:
                 raise ValueError("Cannot determine current position")
 
         elif room_name:
-            target_room_enum = ROOM_NAME_TO_ENUM.get(room_name)
+            # Secret passage destination chosen after rolling: treat as passage use
+            is_secret_passage = (
+                current_room_name
+                and current_room_name in SECRET_PASSAGE_MAP
+                and room_name == SECRET_PASSAGE_MAP[current_room_name]
+            )
+            if is_secret_passage:
+                state.current_room[player_id] = room_name
+                final_room = room_name
+                center = ROOM_CENTERS.get(room_name)
+                if center:
+                    state.player_positions[player_id] = list(center)
+                    final_position = list(center)
+                dest_sq = ROOM_NODES.get(ROOM_NAME_TO_ENUM[room_name])
 
-            if start_sq and target_room_enum:
+            elif room_name == current_room_name:
+                # Re-entering same room via different door: place back in room
+                state.current_room[player_id] = room_name
+                final_room = room_name
+                center = ROOM_CENTERS.get(room_name)
+                if center:
+                    state.player_positions[player_id] = list(center)
+                    final_position = list(center)
+                dest_sq = ROOM_NODES.get(ROOM_NAME_TO_ENUM[room_name])
+
+            elif start_sq and ROOM_NAME_TO_ENUM.get(room_name):
+                target_room_enum = ROOM_NAME_TO_ENUM[room_name]
                 dest, reached = move_towards(
                     start_sq,
                     target_room_enum,
