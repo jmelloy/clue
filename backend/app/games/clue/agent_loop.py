@@ -125,7 +125,7 @@ class ClueAgentRunner(AgentRunner):
         await agent.save_knowledge()
 
         # Broadcast personality chat for show_card
-        chat_msg = agent.generate_chat("show_card")
+        chat_msg = await agent.generate_chat("show_card")
         if chat_msg:
             s = await self._get_state()
             name = self._player_name(s, pid) if s else pid
@@ -189,7 +189,7 @@ class ClueAgentRunner(AgentRunner):
                 suspect=action_d.get("suspect", ""),
                 weapon=action_d.get("weapon", ""),
             )
-            chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+            chat_msg = await agent.generate_chat(action.type, chat_context.model_dump())
             if chat_msg:
                 name = self._player_name(state, pid) if state else pid
                 await self._broadcast_chat(self.game_id, f"{name}: {chat_msg}", pid)
@@ -216,7 +216,7 @@ class ClueAgentRunner(AgentRunner):
                 suspect=action_d.get("suspect", ""),
                 weapon=action_d.get("weapon", ""),
             )
-            chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+            chat_msg = await agent.generate_chat(action.type, chat_context.model_dump())
             if chat_msg:
                 s = await self._get_state()
                 name = self._player_name(s, pid) if s else pid
