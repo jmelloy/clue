@@ -733,12 +733,12 @@ function tokenStyle(token) {
 }
 
 /* Approach B night filter — when using daytime base images, dark mode applies a
-   moonlit filter via --board-room-night-filter (set to none in light/vintage).
-   To activate: change the filter line above to:
-     filter: var(--board-room-filter) var(--board-room-night-filter);
-   or uncomment the rule below and remove the filter from .cell-room above. */
+   moonlit filter via --board-room-night-filter. Because that variable is set to
+   none in light/vintage, do not concatenate it into the base filter for all
+   themes. To activate this approach, keep the .cell-room rule above as-is and
+   add a dark-theme-only override like the one below. */
 /*
-.cell-room {
+[data-theme="dark"] .cell-room {
   filter: var(--board-room-filter) var(--board-room-night-filter);
 }
 */
