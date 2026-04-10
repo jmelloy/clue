@@ -64,13 +64,13 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 The original nighttime room illustrations. Used for the **dark** theme.
 
-> **Approach A — Separate images:** Generate these night prompts for dark mode and the daytime prompts below for light mode. Store night images in `rooms/night/` and day images in `rooms/day/`.
+> **Approach A — Separate images:** Generate these night prompts for dark mode and the daytime prompts below for light mode. Store night images in `frontend/public/images/clue/rooms/night/` and day images in `frontend/public/images/clue/rooms/day/` (served at `/images/clue/rooms/night/...` and `/images/clue/rooms/day/...`).
 >
 > **Approach B — Night CSS filter over daytime base:** Generate *only* the daytime prompts below, then apply a CSS night filter in dark mode:
 > ```css
 > filter: brightness(0.55) saturate(0.7) sepia(0.15) hue-rotate(-10deg);
 > ```
-> This avoids maintaining two image sets. The base daytime images are used as-is in light mode and filtered for dark mode.
+> This avoids maintaining two image sets. The base daytime images in `frontend/public/images/clue/rooms/day/` are used as-is in light mode (via `/images/clue/rooms/day/...`) and filtered for dark mode.
 
 ---
 
