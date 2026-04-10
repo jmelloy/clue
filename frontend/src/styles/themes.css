@@ -309,9 +309,9 @@
   --board-hallway: transparent;
   --board-wall: transparent;
   --board-center: transparent;
-  --board-room-filter: none;
+  --board-room-filter: brightness(1);
   /* Vintage: no night filter */
-  --board-room-night-filter: none;
+  --board-room-night-filter: brightness(1);
   --mansion-edge: transparent;
   --mansion-glow: transparent;
 
