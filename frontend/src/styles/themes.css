@@ -182,8 +182,8 @@
   --board-wall: #c8c0b0;
   --board-center: #ddd5c2;
   --board-room-filter: saturate(0.5) brightness(1.1);
-  /* Light mode: no night filter — show daytime images as-is */
-  --board-room-night-filter: none;
+  /* Light mode: no night filter — use identity functions so combined filter stays valid */
+  --board-room-night-filter: brightness(1) saturate(1) sepia(0) hue-rotate(0deg);
   --mansion-edge: rgba(100, 70, 30, 0.45);
   --mansion-glow: rgba(100, 70, 30, 0.08);
 
