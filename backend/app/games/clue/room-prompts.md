@@ -152,9 +152,9 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 
 ### Candlestick
 
-**Ratio:** 2:3
+**Ratio:** 4:5
 
-> Colored pencil art. Dark victorian noir Cluedo weapon — the Candlestick. A heavy brass candlestick with melted wax dripping down its stem, lying on its side on rumpled velvet. Warm golden and tarnished bronze tones.  Wax spatters on dark wood beneath. Dramatic side-lighting casting a long shadow.
+> Colored pencil art. Dark victorian noir Cluedo weapon — the Candlestick. A heavy brass candlestick with melted wax dripping down its stem, on a mantle. Warm golden and tarnished bronze tones.  Wax spatters on dark wood beneath. Dramatic side-lighting casting a long shadow.
 
 ---
 
@@ -178,7 +178,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 
 **Ratio:** 3:2
 
-> Colored pencil art. Dark victorian noir Cluedo weapon — the Revolver. A snub-nosed six-shot revolver with a pearl grip, resting on a green felt card table. Gunmetal black and mother-of-pearl tones. The cylinder slightly open, one chamber empty. Wisps of smoke. Scattered poker chips and a spent brass casing nearby. Warm lamplight from above.
+> Colored pencil art. Dark victorian noir Cluedo weapon — the Revolver. A snub-nosed six-shot revolver with a pearl grip, resting on a green felt card table. Gunmetal black and mother-of-pearl tones. The cylinder slightly open, one chamber empty. Scattered poker chips and a spent brass casing nearby. Warm lamplight from above.
 
 ---
 
@@ -208,7 +208,7 @@ Alternate character portraits with a romantic, flirtatious tone. Think golden-ho
 
 **Ratio:** 2:3
 
-> Colored pencil art. Romantic victorian Cluedo portrait — Miss Scarlett. A stunning young woman leaning against a marble fireplace mantel, scarlet silk robe slipping off one shoulder, revealing a delicate lace chemise beneath. Half-lidded eyes and a teasing smile. Warm candlelight painting her skin in amber and rose tones. One finger tracing the rim of a champagne coupe. Tousled red curls. A love letter lying open on the table behind her. Deep crimson and blush pink tones. Inviting, playful, magnetic.
+> Colored pencil art. Romantic victorian Cluedo portrait — Miss Scarlett. A stunning young woman leaning against a marble fireplace mantel, scarlet silk robe slipping off one shoulder, revealing a delicate lace chemise beneath. Half-lidded eyes and a teasing smile. Warm candlelight painting her skin in amber and rose tones. One finger tracing the rim of a champagne coupe. Tousled dark curls. Deep crimson and blush pink tones. Inviting, playful, magnetic.
 
 ---
 
