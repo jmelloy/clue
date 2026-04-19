@@ -154,7 +154,7 @@ Weapon card illustrations. Each depicts the weapon as a central object on a dark
 
 **Ratio:** 4:5
 
-> Colored pencil art. Dark victorian noir Cluedo weapon — the Candlestick. A heavy brass candlestick with melted wax dripping down its stem, on a mantle. Warm golden and tarnished bronze tones.  Wax spatters on dark wood beneath. Dramatic side-lighting casting a long shadow.
+> Colored pencil art. Dark victorian noir Cluedo weapon — the Candlestick. A heavy brass candlestick on a mantle. Warm golden and tarnished bronze tones. Wax spatters on dark wood beneath. Dramatic side-lighting casting a long shadow.
 
 ---
 
