@@ -1216,13 +1216,15 @@ class BaseAgent(ABC):
     # Chat generation
     # ------------------------------------------------------------------
 
-    def generate_chat(
+    async def generate_chat(
         self, action_type: str, context: dict | None = None
     ) -> str | None:
         """Return an in-character chat message after an action, or None.
 
         Checks a per-action probability, then picks a random template from
         the character's personality set and formats it with the given context.
+        If ``LLM_API_KEY`` is set, uses the mini LLM to generate chat instead
+        of templates.
         """
         # If the subclass stashed a message (e.g. from an LLM), use it
         if self._pending_chat:
@@ -1238,6 +1240,11 @@ class BaseAgent(ABC):
         if random.random() > prob:
             return None
 
+        # Try mini LLM for chat generation
+        llm_msg = await self._generate_llm_chat(action_type, context)
+        if llm_msg:
+            return llm_msg
+
         char_msgs = CHARACTER_CHAT.get(self.character, {})
         templates = char_msgs.get(action_type) or _GENERIC_CHAT.get(action_type)
         if not templates:
@@ -1246,6 +1253,71 @@ class BaseAgent(ABC):
         template = random.choice(templates)
 
         return _format_chat(template, context or {})
+
+    async def _generate_llm_chat(
+        self, action_type: str, context: dict | None = None
+    ) -> str | None:
+        """Call the mini LLM to generate an in-character chat message.
+
+        Returns None if no API key is configured or the call fails,
+        allowing the caller to fall back to templates.
+        """
+        api_key = os.getenv("LLM_API_KEY", "")
+        if not api_key:
+            return None
+
+        api_url = os.getenv(
+            "LLM_API_URL", "https://api.openai.com/v1/chat/completions"
+        )
+        model = os.getenv("LLM_NANO_MODEL") or os.getenv("LLM_MODEL", "gpt-5-nano")
+        personality = _CHARACTER_PERSONALITY_BLURBS.get(self.character, "")
+        system_prompt = _CHAT_SYSTEM_PROMPT.format(
+            character=self.character or "a detective",
+            personality=personality,
+        )
+
+        ctx = context or {}
+        parts = [f"Action: {action_type}"]
+        if ctx.get("room"):
+            parts.append(f"Room: {ctx['room']}")
+        if ctx.get("suspect"):
+            parts.append(f"Suspect: {ctx['suspect']}")
+        if ctx.get("weapon"):
+            parts.append(f"Weapon: {ctx['weapon']}")
+        if ctx.get("dice"):
+            parts.append(f"Dice roll: {ctx['dice']}")
+        user_prompt = "\n".join(parts)
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": 100,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(api_url, json=payload, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                # Strip quotes if the LLM wrapped the message
+                if content.startswith('"') and content.endswith('"'):
+                    content = content[1:-1]
+                # Strip character name prefix
+                if self.character and content.startswith(self.character + ": "):
+                    content = content[len(self.character) + 2:]
+                self.agent_trace("llm_chat", content=content, model=model)
+                return content
+        except Exception as exc:
+            self.agent_trace("llm_chat_error", error=str(exc))
+            return None
 
     # ------------------------------------------------------------------
     # Debug info export
@@ -1546,7 +1618,7 @@ class RandomAgent(BaseAgent):
     # Chat (scaled by style)
     # ------------------------------------------------------------------
 
-    def generate_chat(
+    async def generate_chat(
         self, action_type: str, context: dict | None = None
     ) -> str | None:
         """Generate chat with probability scaled by ``chat_frequency`` style."""
@@ -1562,6 +1634,11 @@ class RandomAgent(BaseAgent):
         scaled_prob = min(1.0, base_prob * (self.chat_frequency / 0.5))
         if random.random() > scaled_prob:
             return None
+
+        # Try mini LLM for chat generation
+        llm_msg = await self._generate_llm_chat(action_type, context)
+        if llm_msg:
+            return llm_msg
 
         char_msgs = CHARACTER_CHAT.get(self.character, {})
         templates = char_msgs.get(action_type) or _GENERIC_CHAT.get(action_type)
@@ -1797,7 +1874,7 @@ class WandererAgent(BaseAgent):
             inference_level=inference_level,
         )
 
-    def generate_chat(
+    async def generate_chat(
         self, action_type: str, context: dict | None = None
     ) -> str | None:
         """Wanderers don't chat — unless they're about to accuse."""
@@ -1932,6 +2009,17 @@ _CHARACTER_PERSONALITY_BLURBS: dict[str, str] = {
     ),
 }
 
+
+_CHAT_SYSTEM_PROMPT = """\
+You are playing Clue (Cluedo) as {character}.
+
+{personality}
+
+Generate a short, in-character chat message (one sentence) for the action you just took. \
+Be coy and playful; this is flavor text, not factual reporting. Stay in character. \
+Do NOT include your character name as a prefix. Respond with ONLY the chat message, \
+no JSON, no quotes.\
+"""
 
 _SHOW_CARD_SYSTEM_PROMPT = """\
 You are playing Clue. Another player made a suggestion and you hold matching cards.

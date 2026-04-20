@@ -557,7 +557,7 @@ class AgentRunner:
             suspect=action_dict.get("suspect", ""),
             weapon=action_dict.get("weapon", ""),
         )
-        chat_msg = agent.generate_chat(action.type, chat_context.model_dump())
+        chat_msg = await agent.generate_chat(action.type, chat_context.model_dump())
         if chat_msg:
             await self._send_chat(game_id, player_id, chat_msg)
 
@@ -604,7 +604,7 @@ class AgentRunner:
         )
         await agent.save_knowledge()
 
-        chat_msg = agent.generate_chat("show_card")
+        chat_msg = await agent.generate_chat("show_card")
         if chat_msg:
             await self._send_chat(game_id, player_id, chat_msg)
 

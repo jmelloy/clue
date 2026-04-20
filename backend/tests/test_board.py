@@ -8,6 +8,7 @@ from app.games.clue.board import (
     SquareType,
     build_grid,
     build_graph,
+    can_reenter_via_different_door,
     reachable,
     move_towards,
     START_POSITIONS,
@@ -280,3 +281,24 @@ def test_room_has_infinite_capacity(board):
         occupied={(ballroom.row, ballroom.col)},
     )
     assert ballroom in reached, "Room should be reachable regardless of occupants"
+
+
+def test_can_reenter_ballroom_via_different_door(board):
+    """Ballroom has 4 doors; re-entry via a different door should be possible."""
+    squares, room_nodes = board
+    assert can_reenter_via_different_door(Room.BALLROOM, 12, squares, room_nodes)
+
+
+def test_cannot_reenter_single_door_room(board):
+    """Rooms with only 1 door cannot be re-entered."""
+    squares, room_nodes = board
+    # Study, Lounge, Conservatory, Kitchen each have 1 door
+    for room in [Room.STUDY, Room.LOUNGE, Room.CONSERVATORY, Room.KITCHEN]:
+        assert not can_reenter_via_different_door(room, 12, squares, room_nodes)
+
+
+def test_cannot_reenter_with_low_roll(board):
+    """Even a multi-door room can't be re-entered if the roll is too low."""
+    squares, room_nodes = board
+    # Dice of 1 means budget of -1 hallway steps — impossible
+    assert not can_reenter_via_different_door(Room.BALLROOM, 1, squares, room_nodes)
