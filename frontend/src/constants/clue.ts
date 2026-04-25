@@ -77,54 +77,166 @@ export const CARD_ICONS: Record<string, string> = {
 
 export const CARD_IMAGES: Record<string, string> = {
   // Suspects
-  'Miss Scarlett': '/images/clue/suspects/thumbnails/MissScarlett.jpg',
-  'Colonel Mustard': '/images/clue/suspects/thumbnails/ColonelMustard.jpg',
-  'Mrs. White': '/images/clue/suspects/thumbnails/MrsWhite.jpg',
-  'Reverend Green': '/images/clue/suspects/thumbnails/MrGreen.jpg',
-  'Mrs. Peacock': '/images/clue/suspects/thumbnails/MrsPeacock.jpg',
-  'Professor Plum': '/images/clue/suspects/thumbnails/ProfessorPlum.jpg',
+  'Miss Scarlett': '/images/clue/default/suspects/thumbnails/MissScarlett.jpg',
+  'Colonel Mustard': '/images/clue/default/suspects/thumbnails/ColonelMustard.jpg',
+  'Mrs. White': '/images/clue/default/suspects/thumbnails/MrsWhite.jpg',
+  'Reverend Green': '/images/clue/default/suspects/thumbnails/MrGreen.jpg',
+  'Mrs. Peacock': '/images/clue/default/suspects/thumbnails/MrsPeacock.jpg',
+  'Professor Plum': '/images/clue/default/suspects/thumbnails/ProfessorPlum.jpg',
   // Weapons
-  Candlestick: '/images/clue/weapons/thumbnails/Candlestick.jpg',
-  Knife: '/images/clue/weapons/thumbnails/Knife.jpg',
-  'Lead Pipe': '/images/clue/weapons/thumbnails/LeadPipe.jpg',
-  Revolver: '/images/clue/weapons/thumbnails/Revolver.jpg',
-  Rope: '/images/clue/weapons/thumbnails/Rope.jpg',
-  Wrench: '/images/clue/weapons/thumbnails/Wrench.jpg',
+  Candlestick: '/images/clue/default/weapons/thumbnails/Candlestick.jpg',
+  Knife: '/images/clue/default/weapons/thumbnails/Knife.jpg',
+  'Lead Pipe': '/images/clue/default/weapons/thumbnails/LeadPipe.jpg',
+  Revolver: '/images/clue/default/weapons/thumbnails/Revolver.jpg',
+  Rope: '/images/clue/default/weapons/thumbnails/Rope.jpg',
+  Wrench: '/images/clue/default/weapons/thumbnails/Wrench.jpg',
   // Rooms
-  Kitchen: '/images/clue/rooms/thumbnails/Kitchen.jpg',
-  Ballroom: '/images/clue/rooms/thumbnails/BallRoom.jpg',
-  Conservatory: '/images/clue/rooms/thumbnails/Conservatory.jpg',
-  'Billiard Room': '/images/clue/rooms/thumbnails/BilliardRoom.jpg',
-  Library: '/images/clue/rooms/thumbnails/Library.jpg',
-  Study: '/images/clue/rooms/thumbnails/Study.jpg',
-  Hall: '/images/clue/rooms/thumbnails/Hall.jpg',
-  Lounge: '/images/clue/rooms/thumbnails/Lounge.jpg',
-  'Dining Room': '/images/clue/rooms/thumbnails/DiningRoom.jpg'
+  Kitchen: '/images/clue/default/rooms/thumbnails/Kitchen.jpg',
+  Ballroom: '/images/clue/default/rooms/thumbnails/BallRoom.jpg',
+  Conservatory: '/images/clue/default/rooms/thumbnails/Conservatory.jpg',
+  'Billiard Room': '/images/clue/default/rooms/thumbnails/BilliardRoom.jpg',
+  Library: '/images/clue/default/rooms/thumbnails/Library.jpg',
+  Study: '/images/clue/default/rooms/thumbnails/Study.jpg',
+  Hall: '/images/clue/default/rooms/thumbnails/Hall.jpg',
+  Lounge: '/images/clue/default/rooms/thumbnails/Lounge.jpg',
+  'Dining Room': '/images/clue/default/rooms/thumbnails/DiningRoom.jpg'
 }
 
 // Per-theme card image overrides — keyed by theme name, each a partial map of card name -> image URL.
 // Falls back to CARD_IMAGES for any card not listed under the active theme.
 export const THEME_CARD_IMAGES: Record<string, Record<string, string>> = {
   vintage: {
-    Kitchen: '/images/clue/alternates/vintage/kitchen.png',
-    Ballroom: '/images/clue/alternates/vintage/ballroom.png',
-    Conservatory: '/images/clue/alternates/vintage/conservatory.png',
-    'Billiard Room': '/images/clue/alternates/vintage/billiard_room.png',
-    Library: '/images/clue/alternates/vintage/library.png',
-    Study: '/images/clue/alternates/vintage/study.png',
-    Hall: '/images/clue/alternates/vintage/hall.png',
-    Lounge: '/images/clue/alternates/vintage/lounge.png',
-    'Dining Room': '/images/clue/alternates/vintage/dining_room.png'
+    Kitchen: '/images/clue/vintage/kitchen.png',
+    Ballroom: '/images/clue/vintage/ballroom.png',
+    Conservatory: '/images/clue/vintage/conservatory.png',
+    'Billiard Room': '/images/clue/vintage/billiard_room.png',
+    Library: '/images/clue/vintage/library.png',
+    Study: '/images/clue/vintage/study.png',
+    Hall: '/images/clue/vintage/hall.png',
+    Lounge: '/images/clue/vintage/lounge.png',
+    'Dining Room': '/images/clue/vintage/dining_room.png'
   },
   flirtatious: {
-    'Miss Scarlett': '/images/clue/alternates/flirtatious/thumbnails/MissScarlett.jpg',
-    'Colonel Mustard': '/images/clue/alternates/flirtatious/thumbnails/ColonelMustard.jpg',
-    'Mrs. White': '/images/clue/alternates/flirtatious/thumbnails/MrsWhite.jpg',
-    'Reverend Green': '/images/clue/alternates/flirtatious/thumbnails/ReverendGreen.jpg',
-    'Mrs. Peacock': '/images/clue/alternates/flirtatious/thumbnails/MrsPeacock.jpg',
-    'Professor Plum': '/images/clue/alternates/flirtatious/thumbnails/ProfessorPlum.jpg'
+    'Miss Scarlett': '/images/clue/flirtatious/thumbnails/MissScarlett.jpg',
+    'Colonel Mustard': '/images/clue/flirtatious/thumbnails/ColonelMustard.jpg',
+    'Mrs. White': '/images/clue/flirtatious/thumbnails/MrsWhite.jpg',
+    'Reverend Green': '/images/clue/flirtatious/thumbnails/ReverendGreen.jpg',
+    'Mrs. Peacock': '/images/clue/flirtatious/thumbnails/MrsPeacock.jpg',
+    'Professor Plum': '/images/clue/flirtatious/thumbnails/ProfessorPlum.jpg'
   }
 }
+
+export interface ImageVariant {
+  id: string
+  label: string
+  description: string
+  suspects: Record<string, string>
+  weapons: Record<string, string>
+  rooms: Record<string, string>
+  board: string
+}
+
+export const IMAGE_VARIANTS: ImageVariant[] = [
+  {
+    id: 'default',
+    label: 'Default',
+    description: 'Classic Clue artwork',
+    suspects: {
+      'Miss Scarlett': '/images/clue/default/suspects/MissScarlett.jpg',
+      'Colonel Mustard': '/images/clue/default/suspects/ColonelMustard.jpg',
+      'Mrs. White': '/images/clue/default/suspects/MrsWhite.jpg',
+      'Reverend Green': '/images/clue/default/suspects/MrGreen.jpg',
+      'Mrs. Peacock': '/images/clue/default/suspects/MrsPeacock.jpg',
+      'Professor Plum': '/images/clue/default/suspects/ProfessorPlum.jpg'
+    },
+    weapons: {
+      Candlestick: '/images/clue/default/weapons/Candlestick.jpg',
+      Knife: '/images/clue/default/weapons/Knife.jpg',
+      'Lead Pipe': '/images/clue/default/weapons/LeadPipe.jpg',
+      Revolver: '/images/clue/default/weapons/Revolver.jpg',
+      Rope: '/images/clue/default/weapons/Rope.jpg',
+      Wrench: '/images/clue/default/weapons/Wrench.jpg'
+    },
+    rooms: {
+      Kitchen: '/images/clue/default/rooms/Kitchen.jpg',
+      Ballroom: '/images/clue/default/rooms/BallRoom.jpg',
+      Conservatory: '/images/clue/default/rooms/Conservatory.jpg',
+      'Billiard Room': '/images/clue/default/rooms/BilliardRoom.jpg',
+      Library: '/images/clue/default/rooms/Library.jpg',
+      Study: '/images/clue/default/rooms/Study.jpg',
+      Hall: '/images/clue/default/rooms/Hall.jpg',
+      Lounge: '/images/clue/default/rooms/Lounge.jpg',
+      'Dining Room': '/images/clue/default/rooms/DiningRoom.jpg'
+    },
+    board: '/images/clue/default/board.png'
+  },
+  {
+    id: 'vintage',
+    label: 'Vintage',
+    description: 'Vintage room illustrations — suspects & weapons use Default',
+    suspects: {
+      'Miss Scarlett': '/images/clue/default/suspects/MissScarlett.jpg',
+      'Colonel Mustard': '/images/clue/default/suspects/ColonelMustard.jpg',
+      'Mrs. White': '/images/clue/default/suspects/MrsWhite.jpg',
+      'Reverend Green': '/images/clue/default/suspects/MrGreen.jpg',
+      'Mrs. Peacock': '/images/clue/default/suspects/MrsPeacock.jpg',
+      'Professor Plum': '/images/clue/default/suspects/ProfessorPlum.jpg'
+    },
+    weapons: {
+      Candlestick: '/images/clue/default/weapons/Candlestick.jpg',
+      Knife: '/images/clue/default/weapons/Knife.jpg',
+      'Lead Pipe': '/images/clue/default/weapons/LeadPipe.jpg',
+      Revolver: '/images/clue/default/weapons/Revolver.jpg',
+      Rope: '/images/clue/default/weapons/Rope.jpg',
+      Wrench: '/images/clue/default/weapons/Wrench.jpg'
+    },
+    rooms: {
+      Kitchen: '/images/clue/vintage/kitchen.png',
+      Ballroom: '/images/clue/vintage/ballroom.png',
+      Conservatory: '/images/clue/vintage/conservatory.png',
+      'Billiard Room': '/images/clue/vintage/billiard_room.png',
+      Library: '/images/clue/vintage/library.png',
+      Study: '/images/clue/vintage/study.png',
+      Hall: '/images/clue/vintage/hall.png',
+      Lounge: '/images/clue/vintage/lounge.png',
+      'Dining Room': '/images/clue/vintage/dining_room.png'
+    },
+    board: '/images/clue/default/board.png'
+  },
+  {
+    id: 'flirtatious',
+    label: 'Flirtatious',
+    description: 'Alternate suspect portraits — rooms & weapons use Default',
+    suspects: {
+      'Miss Scarlett': '/images/clue/flirtatious/MissScarlett.jpg',
+      'Colonel Mustard': '/images/clue/flirtatious/ColonelMustard.jpg',
+      'Mrs. White': '/images/clue/flirtatious/MrsWhite.jpg',
+      'Reverend Green': '/images/clue/flirtatious/ReverendGreen.jpg',
+      'Mrs. Peacock': '/images/clue/flirtatious/MrsPeacock.jpg',
+      'Professor Plum': '/images/clue/flirtatious/ProfessorPlum.jpg'
+    },
+    weapons: {
+      Candlestick: '/images/clue/default/weapons/Candlestick.jpg',
+      Knife: '/images/clue/default/weapons/Knife.jpg',
+      'Lead Pipe': '/images/clue/default/weapons/LeadPipe.jpg',
+      Revolver: '/images/clue/default/weapons/Revolver.jpg',
+      Rope: '/images/clue/default/weapons/Rope.jpg',
+      Wrench: '/images/clue/default/weapons/Wrench.jpg'
+    },
+    rooms: {
+      Kitchen: '/images/clue/default/rooms/Kitchen.jpg',
+      Ballroom: '/images/clue/default/rooms/BallRoom.jpg',
+      Conservatory: '/images/clue/default/rooms/Conservatory.jpg',
+      'Billiard Room': '/images/clue/default/rooms/BilliardRoom.jpg',
+      Library: '/images/clue/default/rooms/Library.jpg',
+      Study: '/images/clue/default/rooms/Study.jpg',
+      Hall: '/images/clue/default/rooms/Hall.jpg',
+      Lounge: '/images/clue/default/rooms/Lounge.jpg',
+      'Dining Room': '/images/clue/default/rooms/DiningRoom.jpg'
+    },
+    board: '/images/clue/default/board.png'
+  }
+]
 
 export function cardIcon(card: string): string {
   return CARD_ICONS[card] || '\u{1F0CF}'

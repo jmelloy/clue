@@ -15,7 +15,7 @@
         </div>
         <!-- Center magnifying glass + CLUE label -->
         <div class="center-emblem" :style="overlayPos(11, 11)">
-          <img src="/images/clue/magnifying-glass.jpg" alt="Clue" class="center-magnifying-glass" />
+          <img src="/images/clue/default/magnifying-glass.jpg" alt="Clue" class="center-magnifying-glass" />
           <div class="center-label">CLUE</div>
         </div>
         <!-- Secret passage indicators -->
@@ -661,7 +661,7 @@ function tokenStyle(token) {
    the decorative red border. We show the full image and position the CSS grid
    over just the playable area using inset values on .board-grid. */
 .board-container.vintage-board {
-  background-image: url('/images/clue/board.png');
+  background-image: url('/images/clue/default/board.png');
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
