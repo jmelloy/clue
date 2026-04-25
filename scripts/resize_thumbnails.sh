@@ -31,11 +31,6 @@ while IFS= read -r -d '' img; do
 
   mkdir -p "$thumb_dir"
 
-  # Skip regeneration when the thumbnail is already current for this source image.
-  if [ -f "$thumb_path" ] && [ ! "$img" -nt "$thumb_path" ]; then
-    continue
-  fi
-
   tmp_thumb=$(mktemp "$thumb_dir/.thumb-${filename%.*}.XXXXXX.${ext}")
   "${IMAGEMAGICK_CMD[@]}" "$img" \
     -strip \
