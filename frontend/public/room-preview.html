@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clue Mansion — Room Light/Dark Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Georgia', serif;
+    transition: background 0.5s, color 0.5s;
+  }
+
+  /* ── Day mode ── */
+  body.day {
+    background: #f5f0e8;
+    color: #2c2418;
+  }
+
+  /* ── Night mode ── */
+  body.night {
+    background: #1a1408;
+    color: #ede2cc;
+  }
+
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+  }
+
+  header h1 {
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+
+  header p {
+    opacity: 0.6;
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── Toggle switch ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .toggle-label {
+    font-size: 1.1rem;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+  .toggle-label.active { opacity: 1; }
+
+  .toggle-track {
+    width: 56px;
+    height: 28px;
+    border-radius: 14px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.4s;
+  }
+  body.day .toggle-track   { background: #d4c8a0; }
+  body.night .toggle-track { background: #3a3020; }
+
+  .toggle-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    position: absolute;
+    top: 3px;
+    transition: left 0.3s, background 0.3s, box-shadow 0.3s;
+  }
+  body.day .toggle-thumb {
+    left: 3px;
+    background: #f8e870;
+    box-shadow: 0 0 8px rgba(248, 232, 112, 0.6);
+  }
+  body.night .toggle-thumb {
+    left: 31px;
+    background: #c8d8f0;
+    box-shadow: 0 0 8px rgba(200, 216, 240, 0.4);
+  }
+
+  /* ── Filter controls ── */
+  .controls {
+    max-width: 700px;
+    margin: 0 auto 2rem;
+    padding: 0 1rem;
+  }
+
+  .slider-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .slider-group label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+  }
+
+  .slider-group input[type="range"] {
+    width: 100%;
+    margin-top: 0.25rem;
+    accent-color: #d4a849;
+  }
+
+  .filter-readout {
+    margin-top: 1rem;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.82rem;
+    word-break: break-all;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  body.day .filter-readout   { background: #fff; border: 1px solid #d8d0c0; color: #4a3d2a; }
+  body.night .filter-readout { background: #252018; border: 1px solid #3a3020; color: #c8b888; }
+
+  .filter-readout:hover { border-color: #d4a849; }
+
+  .copy-hint {
+    font-size: 0.72rem;
+    opacity: 0.45;
+    margin-top: 0.25rem;
+    text-align: right;
+  }
+
+  /* ── Room grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    padding: 0 1.5rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .room-card {
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.3s, transform 0.15s;
+  }
+  .room-card:hover {
+    transform: translateY(-2px);
+  }
+  body.day .room-card   { box-shadow: 0 2px 12px rgba(0,0,0,0.1); background: #fff; }
+  body.night .room-card { box-shadow: 0 2px 16px rgba(0,0,0,0.5); background: #252018; }
+
+  .room-card img {
+    width: 100%;
+    display: block;
+    transition: filter 0.6s ease;
+  }
+
+  .room-card .room-name {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.95rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+  }
+
+  .room-card .room-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .room-card .room-pair .half {
+    position: relative;
+  }
+
+  .room-card .room-pair .half img {
+    width: 100%;
+    display: block;
+  }
+
+  .room-card .room-pair .half-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.25rem;
+    background: rgba(0,0,0,0.55);
+    color: #e8e0c8;
+  }
+
+  /* ── Side-by-side comparison ── */
+  .comparison-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+  }
+
+  .comparison-section h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+    opacity: 0.8;
+  }
+
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 560px) {
+    .comparison-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* ── Preset buttons ── */
+  .preset-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .preset-btn {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  body.day .preset-btn {
+    background: #fff;
+    border-color: #d8d0c0;
+    color: #4a3d2a;
+  }
+  body.night .preset-btn {
+    background: #2a2318;
+    border-color: #3a3020;
+    color: #c8b888;
+  }
+  .preset-btn:hover { border-color: #d4a849; }
+  .preset-btn.active { border-color: #d4a849; background: rgba(212,168,73,0.15); }
+</style>
+</head>
+<body class="day">
+
+<header>
+  <h1>Clue Mansion Rooms</h1>
+  <p>Light &amp; Dark Mode Preview</p>
+
+  <div class="toggle-row">
+    <span class="toggle-label day-label active" onclick="setMode('day')">Day</span>
+    <div class="toggle-track" onclick="toggleMode()">
+      <div class="toggle-thumb"></div>
+    </div>
+    <span class="toggle-label night-label" onclick="setMode('night')">Night</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="preset-row">
+    <button class="preset-btn" onclick="applyPreset('none')" title="No filter">None</button>
+    <button class="preset-btn" onclick="applyPreset('subtle')" title="Subtle moonlit tint">Subtle</button>
+    <button class="preset-btn active" onclick="applyPreset('default')" title="Default night filter from themes.css">Default</button>
+    <button class="preset-btn" onclick="applyPreset('deep')" title="Deep midnight">Deep Night</button>
+    <button class="preset-btn" onclick="applyPreset('blue')" title="Cool blue moonlight">Blue Moon</button>
+    <button class="preset-btn" onclick="applyPreset('warm')" title="Warm candlelit">Candlelight</button>
+  </div>
+
+  <div class="slider-group">
+    <label>Brightness <input type="range" id="sl-brightness" min="0.2" max="1.5" step="0.05" value="1"></label>
+    <label>Saturate <input type="range" id="sl-saturate" min="0" max="2" step="0.05" value="1"></label>
+    <label>Sepia <input type="range" id="sl-sepia" min="0" max="1" step="0.05" value="0"></label>
+    <label>Hue Rotate <input type="range" id="sl-hue" min="-180" max="180" step="5" value="0"></label>
+    <label>Contrast <input type="range" id="sl-contrast" min="0.5" max="2" step="0.05" value="1"></label>
+  </div>
+
+  <div class="filter-readout" id="readout" onclick="copyFilter()" title="Click to copy">filter: none;</div>
+  <div class="copy-hint">click to copy CSS</div>
+</div>
+
+<!-- Single-image grid with live filter -->
+<div class="grid" id="room-grid"></div>
+
+<!-- Side-by-side: original vs filtered -->
+<div class="comparison-section">
+  <h2>Side-by-Side: Original vs Filtered</h2>
+  <div class="comparison-grid" id="comparison-grid"></div>
+</div>
+
+<script>
+const ROOMS = [
+  { name: 'Study',         file: 'Study.jpg' },
+  { name: 'Hall',          file: 'Hall.jpg' },
+  { name: 'Lounge',        file: 'Lounge.jpg' },
+  { name: 'Library',       file: 'Library.jpg' },
+  { name: 'Billiard Room', file: 'BilliardRoom.jpg' },
+  { name: 'Dining Room',   file: 'DiningRoom.jpg' },
+  { name: 'Conservatory',  file: 'Conservatory.jpg' },
+  { name: 'Ballroom',      file: 'BallRoom.jpg' },
+  { name: 'Kitchen',       file: 'Kitchen.jpg' },
+];
+
+const PRESETS = {
+  none:    { brightness: 1,    saturate: 1,   sepia: 0,    hue: 0,   contrast: 1    },
+  subtle:  { brightness: 0.75, saturate: 0.85, sepia: 0.1,  hue: -5,  contrast: 1.05 },
+  default: { brightness: 0.55, saturate: 0.7,  sepia: 0.15, hue: -10, contrast: 1    },
+  deep:    { brightness: 0.4,  saturate: 0.5,  sepia: 0.2,  hue: -15, contrast: 1.1  },
+  blue:    { brightness: 0.5,  saturate: 0.6,  sepia: 0.05, hue: -30, contrast: 1.05 },
+  warm:    { brightness: 0.6,  saturate: 0.8,  sepia: 0.3,  hue: 10,  contrast: 1.05 },
+};
+
+const sliders = {
+  brightness: document.getElementById('sl-brightness'),
+  saturate:   document.getElementById('sl-saturate'),
+  sepia:      document.getElementById('sl-sepia'),
+  hue:        document.getElementById('sl-hue'),
+  contrast:   document.getElementById('sl-contrast'),
+};
+
+let currentPreset = 'default';
+let isNight = false;
+
+// Build room cards
+const grid = document.getElementById('room-grid');
+const compGrid = document.getElementById('comparison-grid');
+
+ROOMS.forEach(r => {
+  const src = `/images/clue/rooms/${r.file}`;
+
+  // Main grid card
+  const card = document.createElement('div');
+  card.className = 'room-card';
+  card.innerHTML = `
+    <img src="${src}" alt="${r.name}" class="room-img" />
+    <div class="room-name">${r.name}</div>
+  `;
+  grid.appendChild(card);
+
+  // Comparison card
+  const comp = document.createElement('div');
+  comp.className = 'room-card';
+  comp.innerHTML = `
+    <div class="room-pair">
+      <div class="half">
+        <img src="${src}" alt="${r.name} original" />
+        <div class="half-label">Original</div>
+      </div>
+      <div class="half">
+        <img src="${src}" alt="${r.name} filtered" class="room-img" />
+        <div class="half-label">Filtered</div>
+      </div>
+    </div>
+    <div class="room-name">${r.name}</div>
+  `;
+  compGrid.appendChild(comp);
+});
+
+// Slider change handler
+Object.values(sliders).forEach(s => s.addEventListener('input', () => {
+  currentPreset = '';
+  updatePresetButtons();
+  applyFilter();
+}));
+
+function getFilterValues() {
+  return {
+    brightness: parseFloat(sliders.brightness.value),
+    saturate:   parseFloat(sliders.saturate.value),
+    sepia:      parseFloat(sliders.sepia.value),
+    hue:        parseInt(sliders.hue.value),
+    contrast:   parseFloat(sliders.contrast.value),
+  };
+}
+
+function buildFilterString(v) {
+  const parts = [];
+  if (v.brightness !== 1) parts.push(`brightness(${v.brightness})`);
+  if (v.saturate !== 1)   parts.push(`saturate(${v.saturate})`);
+  if (v.sepia !== 0)      parts.push(`sepia(${v.sepia})`);
+  if (v.hue !== 0)        parts.push(`hue-rotate(${v.hue}deg)`);
+  if (v.contrast !== 1)   parts.push(`contrast(${v.contrast})`);
+  return parts.length ? parts.join(' ') : 'none';
+}
+
+function applyFilter() {
+  const v = getFilterValues();
+  const filterStr = buildFilterString(v);
+  const imgs = document.querySelectorAll('.room-img');
+
+  if (isNight) {
+    imgs.forEach(img => img.style.filter = filterStr);
+  } else {
+    imgs.forEach(img => img.style.filter = 'none');
+  }
+
+  document.getElementById('readout').textContent = `filter: ${filterStr};`;
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  currentPreset = name;
+  sliders.brightness.value = p.brightness;
+  sliders.saturate.value = p.saturate;
+  sliders.sepia.value = p.sepia;
+  sliders.hue.value = p.hue;
+  sliders.contrast.value = p.contrast;
+  updatePresetButtons();
+  applyFilter();
+}
+
+function updatePresetButtons() {
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    const name = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+    btn.classList.toggle('active', name === currentPreset);
+  });
+}
+
+function setMode(mode) {
+  isNight = mode === 'night';
+  document.body.className = mode;
+  document.querySelector('.day-label').classList.toggle('active', !isNight);
+  document.querySelector('.night-label').classList.toggle('active', isNight);
+  applyFilter();
+}
+
+function toggleMode() {
+  setMode(isNight ? 'day' : 'night');
+}
+
+function copyFilter() {
+  const text = document.getElementById('readout').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById('readout');
+    const orig = el.textContent;
+    el.textContent = 'Copied!';
+    setTimeout(() => el.textContent = orig, 1000);
+  });
+}
+
+// Initialize
+applyPreset('default');
+</script>
+</body>
+</html>
