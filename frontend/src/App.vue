@@ -104,7 +104,7 @@ function parseGameIdFromUrl() {
   // Check admin route
   if (window.location.pathname === '/admin') return { admin: true }
   // Check images route
-  if (window.location.pathname === '/images') return { images: true }
+  if (window.location.pathname === '/image-browser') return { images: true }
   // Check debug route
   const debugMatch = window.location.pathname.match(/^\/clue\/([A-Za-z0-9]+)\/debug/)
   if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
