@@ -1,6 +1,7 @@
 <template>
   <div id="clue-app">
     <AdminGames v-if="isAdminRoute" @go-home="onAdminGoHome" @observe-game="onAdminObserveGame" />
+    <ImageVariantBrowser v-else-if="isImagesRoute" @go-home="onImagesGoHome" />
     <GameDebug v-else-if="isDebugRoute && debugGameId" :game-id="debugGameId" @go-home="onDebugGoHome" />
     <HoldemDebug v-else-if="isHoldemDebugRoute && holdemDebugGameId" :game-id="holdemDebugGameId" @go-home="onHoldemDebugGoHome" />
     <Lobby v-else-if="!gameId" :url-game-id="urlGameId" :url-game-type="currentGameType" @game-joined="onGameJoined"
@@ -40,6 +41,7 @@ import AdminGames from './components/common/AdminGames.vue'
 import WaitingRoom from './components/clue/WaitingRoom.vue'
 import GameBoard from './components/clue/GameBoard.vue'
 import GameDebug from './components/clue/GameDebug.vue'
+import ImageVariantBrowser from './components/clue/ImageVariantBrowser.vue'
 import PokerWaitingRoom from './components/holdem/PokerWaitingRoom.vue'
 import PokerTable from './components/holdem/PokerTable.vue'
 import HoldemDebug from './components/holdem/HoldemDebug.vue'
@@ -65,6 +67,7 @@ const agentDebugData = ref({})
 const observerPlayerState = ref(null)
 const currentGameType = ref('clue') // 'clue' or 'holdem'
 const isAdminRoute = ref(false)
+const isImagesRoute = ref(false)
 const isDebugRoute = ref(false)
 const debugGameId = ref(null)
 const isHoldemDebugRoute = ref(false)
@@ -100,6 +103,8 @@ function cancelAllWalkAnimations() {
 function parseGameIdFromUrl() {
   // Check admin route
   if (window.location.pathname === '/admin') return { admin: true }
+  // Check images route
+  if (window.location.pathname === '/images') return { images: true }
   // Check debug route
   const debugMatch = window.location.pathname.match(/^\/clue\/([A-Za-z0-9]+)\/debug/)
   if (debugMatch) return { debug: true, debugGameId: debugMatch[1].toUpperCase() }
@@ -133,13 +138,22 @@ function onPopState() {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+    isImagesRoute.value = false
     isDebugRoute.value = false
+    return
+  }
+  if (parsed && parsed.images) {
+    isImagesRoute.value = true
+    isAdminRoute.value = false
+    isDebugRoute.value = false
+    isHoldemDebugRoute.value = false
     return
   }
   if (parsed && parsed.debug) {
     isDebugRoute.value = true
     debugGameId.value = parsed.debugGameId
     isAdminRoute.value = false
+    isImagesRoute.value = false
     isHoldemDebugRoute.value = false
     return
   }
@@ -147,10 +161,12 @@ function onPopState() {
     isHoldemDebugRoute.value = true
     holdemDebugGameId.value = parsed.holdemDebugGameId
     isAdminRoute.value = false
+    isImagesRoute.value = false
     isDebugRoute.value = false
     return
   }
   isAdminRoute.value = false
+  isImagesRoute.value = false
   isDebugRoute.value = false
   debugGameId.value = null
   isHoldemDebugRoute.value = false
@@ -172,6 +188,8 @@ onMounted(async () => {
   const parsed = parseGameIdFromUrl()
   if (parsed && parsed.admin) {
     isAdminRoute.value = true
+  } else if (parsed && parsed.images) {
+    isImagesRoute.value = true
   } else if (parsed && parsed.debug) {
     isDebugRoute.value = true
     debugGameId.value = parsed.debugGameId
@@ -554,6 +572,11 @@ function onHoldemDebugGoHome() {
 
 function onAdminGoHome() {
   isAdminRoute.value = false
+  pushLobbyUrl()
+}
+
+function onImagesGoHome() {
+  isImagesRoute.value = false
   pushLobbyUrl()
 }
 
