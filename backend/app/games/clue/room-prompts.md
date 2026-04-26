@@ -62,13 +62,31 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 ## Rooms
 
+Room illustrations rendered top-down from the south wall. Each room has three lighting variants: **default** (timeless ambient gaslight), **night** (moonlight + candles), and **day** (sunlight). Windows appear only on exterior walls as indicated per room.
+
 ---
 
 ### Study
 
 **Ratio:** 16:9
 
-> Colored pencil art. Dark victorian noir of a Cluedo mansion — the Study. Top view from the bottom, nighttime, moonlight streaming through tall windows on the top wall and left wall. Deep midnight blue and mahogany tones. A heavy oak desk strewn with papers and an inkwell, floor-to-ceiling bookshelves, a globe in the corner, a green banker's lamp casting a small circle of light. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep mahogany and forest green tones. Soft ambient gaslight from the banker's lamp pools over the desk; bookshelves recede into warm shadow.
+
+---
+
+### Study — Night
+
+**Ratio:** 16:9
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep midnight blue and mahogany tones. Cold moonlight rakes through the north and west windows casting long blue shadows between the shelves; the banker's lamp glows as a lone warm ember against the dark.
+
+---
+
+### Study — Day
+
+**Ratio:** 16:9
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Warm mahogany and golden amber tones. Morning sunlight pours through the north and west windows, catching dust motes above the desk; long shadows stretch south-east across the Persian rug.
 
 ---
 
@@ -76,7 +94,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 4:5
 
-> Colored pencil art. Grand victorian Cluedo mansion — the Hall. Top view from the bottom, nighttime, warm gaslight glow throughout. Warm amber and ivory tones. Black-and-white checkerboard marble floor, ornate chandelier shadow cast from above, grand double entry doors at the far wall, a tall grandfather clock, coat rack with a top hat and cane. Sconces light the wallpapered walls. No windows.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Hall. Interior room with no exterior windows. Two side-by-side panelled doors in the bottom (south) wall; one panelled door on the left (west) wall mid-height. Black-and-white checkerboard marble floor, ornate crystal chandelier directly overhead, a tall grandfather clock against the right (east) wall, coat rack with a top hat and cane, oil portraits on the wallpapered walls, brass wall sconces flanking the south doors. Warm amber and ivory tones. Brass sconces and chandelier fill the hall with steady warm gaslight; every tile of the marble floor crisp and even.
+
+---
+
+### Hall — Night
+
+**Ratio:** 4:5
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Hall. Interior room with no exterior windows. Two side-by-side panelled doors in the bottom (south) wall; one panelled door on the left (west) wall mid-height. Black-and-white checkerboard marble floor, ornate crystal chandelier directly overhead, a tall grandfather clock against the right (east) wall, coat rack with a top hat and cane, oil portraits on the wallpapered walls, brass wall sconces flanking the south doors. Deep amber and shadowed ivory tones. Gaslight sconces glow in the windowless dark; chandelier crystals scatter warm points of light across the checkered floor, pooling brightness at the south doors and fading to shadow at the edges.
+
+---
+
+### Hall — Day
+
+**Ratio:** 4:5
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Hall. Interior room with no exterior windows. Two side-by-side panelled doors in the bottom (south) wall; one panelled door on the left (west) wall mid-height. Black-and-white checkerboard marble floor, ornate crystal chandelier directly overhead, a tall grandfather clock against the right (east) wall, coat rack with a top hat and cane, oil portraits on the wallpapered walls, brass wall sconces flanking the south doors. Bright amber and ivory tones. The chandelier blazes overhead with full gaslight; with no windows, every corner is evenly and brightly lit, the marble floor's black-and-white pattern sharp and shadowless.
 
 ---
 
@@ -84,7 +118,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Moody victorian Cluedo mansion — the Lounge. Top view from the bottom, nighttime, pale moonlight filtering through heavy drapes on the top wall and right wall. Rich crimson and gold tones. Tufted velvet chaise longue, a crackling fireplace with marble mantel, crystal decanter and glasses on a side table, thick burgundy drapes, an animal-skin rug.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Lounge. North-east corner room: tall windows with heavy drapes along the top (north) wall and right (east) wall. Single panelled door in the bottom-left (south-west) corner. Tufted velvet chaise longue at center, crackling fireplace with marble mantel on the left (west) wall, crystal decanter and glasses on a side table, thick burgundy drapes drawn across the north and east windows, animal-skin rug on the floor. Rich crimson and gold tones. Firelight from the west-wall hearth fills the room with amber warmth; drapes drawn, the room glows with contained gaslit luxury.
+
+---
+
+### Lounge — Night
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Lounge. North-east corner room: tall windows with heavy drapes along the top (north) wall and right (east) wall. Single panelled door in the bottom-left (south-west) corner. Tufted velvet chaise longue at center, crackling fireplace with marble mantel on the left (west) wall, crystal decanter and glasses on a side table, thick burgundy drapes parted to reveal pale moonlight, animal-skin rug on the floor. Deep crimson and midnight blue tones. Pale moonlight filters through the north and east drapes; firelight casts deep crimson shadows across the animal-skin rug, the crystal decanter glinting cold blue and warm amber.
+
+---
+
+### Lounge — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Lounge. North-east corner room: tall windows with heavy drapes along the top (north) wall and right (east) wall. Single panelled door in the bottom-left (south-west) corner. Tufted velvet chaise longue at center, fireplace with marble mantel on the left (west) wall (unlit), crystal decanter and glasses on a side table, drapes drawn fully back from the north and east windows, animal-skin rug on the floor. Rich crimson and warm gold tones. Brilliant sunlight floods through the north and east windows; the crystal decanter throws rainbow prisms across the gold wallpaper, long shadows stretching south-west across the rug.
 
 ---
 
@@ -92,7 +142,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 3:2
 
-> Colored pencil art. Atmospheric victorian Cluedo mansion — the Library. Top view from the bottom, nighttime, cold moonlight casting long shadows through bay windows on the left wall. Door on the right wall. Forest green and aged leather tones. Towering shelves packed with leather-bound volumes, a rolling ladder against one wall, a reading chair with an open book face-down on the armrest, a brass telescope near the window, scattered notes and a magnifying glass on a side table.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes covering the right and north walls, a rolling ladder resting against the east shelves, a wing-back reading chair with an open book face-down on the armrest, a brass telescope near the west bay window, scattered notes and a magnifying glass on a side table. Forest green and aged leather tones. A brass reading lamp warms the chair; gaslight wall sconces cast even light across the shelves.
+
+---
+
+### Library — Night
+
+**Ratio:** 3:2
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes, a rolling ladder against the east shelves, a wing-back reading chair with an open book face-down, a brass telescope aimed at the west bay window, scattered notes and a magnifying glass on a side table. Deep forest green and cold midnight blue tones. Cold moonlight floods through the west-wall bay windows casting long silver shadows between the shelves; the reading lamp glows as a warm amber counterpoint in the dark.
+
+---
+
+### Library — Day
+
+**Ratio:** 3:2
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes, a rolling ladder against the east shelves, a wing-back reading chair with an open book face-down, a brass telescope aimed at the west bay window, scattered notes and a magnifying glass on a side table. Warm forest green and golden amber tones. Morning light pours through the west-wall bay windows; dust motes drift above the reading chair, long shadows stretching east across the reading nook.
 
 ---
 
@@ -100,7 +166,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Smoky victorian Cluedo mansion — the Billiard Room. Top view from the bottom/south, nighttime, a sliver of moonlight through tall windows on the left wall. Door on the back wall on the left side. Emerald green and polished walnut tones. A full-size billiard table with balls mid-game, cue rack on the wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, mounted trophy heads faintly visible on wood-paneled walls.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Billiard Room. West-side room: tall windows along the left (west) wall. One panelled door on the back (north) wall left side; one panelled door on the right (east) wall lower half. Full-size billiard table with balls mid-game at center, cue rack mounted on the south wall, low-hanging tiffany lamp directly over the table, two leather wingback chairs in a corner, a whiskey cart near the north door, wood-paneled walls with mounted trophy heads. Emerald green and polished walnut tones. The tiffany lamp pools vivid green light over the billiard table; the rest of the room settles into warm amber shadow.
+
+---
+
+### Billiard Room — Night
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Billiard Room. West-side room: tall windows along the left (west) wall. One panelled door on the back (north) wall left side; one panelled door on the right (east) wall lower half. Full-size billiard table with balls mid-game at center, cue rack on the south wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, wood-paneled walls with mounted trophy heads. Deep emerald and midnight walnut tones. A sliver of moonlight cuts through the west windows; the tiffany lamp blazes green over the table while the trophy heads lurk in deep shadow at the edges.
+
+---
+
+### Billiard Room — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Billiard Room. West-side room: tall windows along the left (west) wall. One panelled door on the back (north) wall left side; one panelled door on the right (east) wall lower half. Full-size billiard table with balls mid-game at center, cue rack on the south wall, tiffany lamp over the table (unlit), leather wingback chairs, a whiskey cart, wood-paneled walls with mounted trophy heads. Bright emerald and warm walnut tones. Afternoon sunlight streams through the west windows, bleaching the green baize bright and throwing long shadows east across the wood floor.
 
 ---
 
@@ -108,7 +190,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 1:1
 
-> Colored pencil art. Opulent victorian Cluedo mansion — the Dining Room. Top view from the bottom, nighttime, soft moonlight spilling across the table through tall windows on the right wall. Deep plum and silver tones. A long mahogany dining table set for six with fine china and candelabras, high-backed chairs, a sideboard with a silver tureen, wine bottles, and a carving knife. Heavy damask curtains. Spilled red wine on the white tablecloth.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Dining Room. East-side room: tall windows with heavy damask curtains along the right (east) wall. One panelled door on the left (west) wall mid-height; one panelled door on the back (north) wall left side. Long mahogany dining table set for eight with fine china and silver candelabras at center, high-backed chairs lining both sides, a sideboard with a silver tureen and wine bottles against the south wall, a carving knife on the board, spilled red wine staining the white tablecloth. Deep plum and silver tones. Silver candelabras cast warm pools of candlelight across the table; wall sconces provide even fill throughout the room.
+
+---
+
+### Dining Room — Night
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Dining Room. East-side room: tall windows with heavy damask curtains along the right (east) wall. One panelled door on the left (west) wall mid-height; one panelled door on the back (north) wall left side. Long mahogany dining table set for eight with fine china and silver candelabras, high-backed chairs, a sideboard with a silver tureen and wine bottles, a carving knife on the board, spilled red wine on the white tablecloth. Deep plum and cold silver-blue tones. Moonlight spills through the east-wall windows across the set table; candelabras flicker, throwing deep plum shadows beneath the high-backed chairs, silver cutlery gleaming cold.
+
+---
+
+### Dining Room — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Dining Room. East-side room: tall windows with heavy damask curtains drawn back along the right (east) wall. One panelled door on the left (west) wall mid-height; one panelled door on the back (north) wall left side. Long mahogany dining table set for eight with fine china and silver candelabras (unlit), high-backed chairs, a sideboard with a silver tureen and wine bottles, a carving knife on the board, spilled red wine on the white tablecloth. Warm plum and bright silver tones. Morning sunlight floods through the east-wall windows; the silver china and crystal gleam brilliantly, long shadows stretching west across the mahogany table.
 
 ---
 
@@ -116,7 +214,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 5:4
 
-> Colored pencil art. Lush victorian Cluedo mansion — the Conservatory. Top view from the bottom/south, nighttime, moonlight flooding through tall windows on the left wall and glass panes behind the camera. Door on the back wall on the right side. Warm sage green and terracotta tones. Potted palms and exotic ferns, a wrought-iron garden bench, stone tile floor with moss in the cracks, a watering can, scattered gardening tools, and a vine creeping along the window frame.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Conservatory. South-west corner room: tall arched windows and glass panels along the left (west) wall and rear glass wall behind the viewpoint; glass-paned ceiling sections above. Single wrought-iron door on the right (east) wall upper area. Potted palms and exotic ferns filling the corners, a wrought-iron garden bench at center, stone tile floor with moss in the cracks, a watering can and scattered gardening tools, a vine creeping along the west window frame, terracotta pots stacked near the east door. Warm sage green and terracotta tones. Gas lanterns among the plants cast warm ambient light; the glass walls glow softly with no time-of-day cue.
+
+---
+
+### Conservatory — Night
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Conservatory. South-west corner room: tall arched windows and glass panels along the left (west) wall and rear glass wall; glass-paned ceiling sections. Single wrought-iron door on the right (east) wall upper area. Potted palms and exotic ferns, wrought-iron garden bench, stone tile floor with moss, watering can and scattered gardening tools, vine along the window frame. Deep sage green and cool midnight blue tones. Moonlight bathes the glass-walled room in silver-blue; potted palms cast long leaf-shadows across the stone tiles, a single amber gas lantern glowing warm amid the ferns.
+
+---
+
+### Conservatory — Day
+
+**Ratio:** 5:4
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Conservatory. South-west corner room: tall arched windows and glass panels along the left (west) wall and rear glass wall; glass-paned ceiling sections. Single wrought-iron door on the right (east) wall upper area. Potted palms and exotic ferns, wrought-iron garden bench, stone tile floor with moss, watering can and scattered gardening tools, vine along the window frame. Vivid sage green and bright terracotta tones. Full sunlight streams through the west and south glass panels; the conservatory blazes with green warmth, every leaf and tile sharply lit, long east-stretching shadows from the plant pots.
 
 ---
 
@@ -124,7 +238,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 1:1
 
-> Colored pencil art. Elegant victorian Cluedo mansion — the Ballroom. Top view from the bottom, nighttime, warm gaslight washing across the dance floor. Lavender and champagne gold tones. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the corner, enormous crystal chandelier reflection on the floor, floor-length mirrors on the walls, velvet rope barriers, a single dropped silk glove. No windows.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier directly overhead with its reflection shimmering in the floor, floor-length mirrors lining the north and south walls, velvet rope barriers at the north doors, a single dropped silk glove on the parquet. Lavender and champagne gold tones. The crystal chandelier blazes overhead and gaslight sconces ring the mirrored walls; the dance floor glows with steady warm light and layered reflections.
+
+---
+
+### Ballroom — Night
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Deep lavender and warm amber tones. Chandeliers and sconces blaze in the windowless dark; gaslight washes the dance floor gold, mirror faces multiplying the warm light endlessly into shadow.
+
+---
+
+### Ballroom — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Bright lavender and champagne gold tones. The chandelier blazes at full brightness with no windows to compete; every mirror face reflects crisp detail of the parquet inlay, the room evenly and brilliantly lit.
 
 ---
 
@@ -132,7 +262,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 1:1
 
-> Colored pencil art. Rustic victorian Cluedo mansion — the Kitchen. Top view from the bottom, nighttime, soft moonlight through windows on the right wall. Warm copper and cream tones. A heavy butcher-block island, cast-iron pots hanging from a ceiling rack, a coal-burning range with a kettle, flour dusted across the counter, a knife block, bundles of dried herbs, a pantry door slightly ajar, an open toolbox on the floor with a wrench-shaped gap in the tray. Warm gaslight glow on stone floor tiles.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar on the south wall. Warm copper and cream tones. Warm gaslight from a ceiling fixture pools over the butcher block and copper pots; the range glows with banked coals in steady ambient light.
+
+---
+
+### Kitchen — Night
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Deep copper and cold midnight blue tones. Cold moonlight through the east windows glints off the hanging copper pots and the knife block; the range glows ember-red in the dark, its heat the only warmth in the room.
+
+---
+
+### Kitchen — Day
+
+**Ratio:** 1:1
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Warm copper and bright cream tones. Morning sunlight streams through the east windows, gilding the copper pots and casting long shadows west across the stone floor; steam rises from the kettle on the range.
 
 ---
 
@@ -140,7 +286,23 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 **Ratio:** 4:5
 
-> Colored pencil art. Dramatic victorian Cluedo mansion — the Grand Staircase. Top view from the bottom, warm gaslight from wall sconces illuminating a wide, straight staircase in grand ballroom style. Rich mahogany and deep burgundy tones. A long central flight with symmetrical carved banisters and a plush crimson runner rises directly to an opulent landing. Crystal chandeliers glint above while oil portraits of stern ancestors line the walls. A suit of armor stands guard at the landing. Polished brass handrails reflect the gaslight against dark wood paneling and a heavy newel post topped with a carved finial.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Grand Staircase. Interior room with no exterior windows. Wide straight central staircase with symmetrical carved banisters and a plush crimson runner rising to an opulent upper landing, polished brass handrails, a heavy newel post with carved finial, crystal chandeliers above, oil portraits of stern ancestors lining the dark wood-paneled walls, a suit of armor standing guard at the landing. Rich mahogany and deep burgundy tones. Wall sconces and crystal chandeliers cast warm steady gaslight up the full height of the staircase; the crimson runner glows under even illumination.
+
+---
+
+### Grand Staircase — Night
+
+**Ratio:** 4:5
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Grand Staircase. Interior room with no exterior windows. Wide straight central staircase with symmetrical carved banisters and a plush crimson runner rising to an upper landing, polished brass handrails, a heavy newel post with carved finial, crystal chandeliers above, oil portraits lining the walls, a suit of armor at the landing. Deep mahogany and shadowed burgundy tones. Gaslight sconces cast warm amber pools up the dark-paneled staircase in the windowless dark; crystal chandeliers glitter, long shadows cast by the suit of armor and portrait frames stretching across the steps.
+
+---
+
+### Grand Staircase — Day
+
+**Ratio:** 4:5
+
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Grand Staircase. Interior room with no exterior windows. Wide straight central staircase with symmetrical carved banisters and a plush crimson runner rising to an upper landing, polished brass handrails, a heavy newel post with carved finial, crystal chandeliers above, oil portraits lining the walls, a suit of armor at the landing. Bright mahogany and vivid burgundy tones. The chandeliers blaze at full daytime brightness with no windows; brass handrails gleam mirror-bright, the crimson runner vivid, every carved finial and portrait frame sharply defined.
 
 ---
 
