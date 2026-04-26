@@ -2512,6 +2512,15 @@ async def spa_admin_route():
     return {"detail": "Not found"}
 
 
+@app.get("/image-browser")
+async def spa_image_browser_route():
+    """Serve index.html for /image-browser so the Vue SPA can handle routing."""
+    index = _static_dir / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"detail": "Not found"}
+
+
 # ---------------------------------------------------------------------------
 # Static files (Vue build output)
 # ---------------------------------------------------------------------------
