@@ -62,7 +62,7 @@ Character portrait illustrations. Each depicts the suspect in a dramatic three-q
 
 ## Rooms
 
-Room illustrations rendered top-down from the south wall. Each room has three lighting variants: **default** (timeless ambient gaslight), **night** (moonlight + candles), and **day** (sunlight). Windows appear only on exterior walls as indicated per room.
+Room illustrations rendered top-down from the south wall. Each room has four lighting variants: **default** (timeless ambient gaslight), **night** (moonlight + candles), **day** (sunlight), and **oil painting** (sumptuous Dutch Golden Age chiaroscuro). Windows appear only on exterior walls as indicated per room.
 
 ---
 
@@ -90,6 +90,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 
 ---
 
+### Study — Oil Painting
+
+**Ratio:** 16:9
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep amber and burnt sienna tones with velvety black shadows. Sumptuous Rembrandt chiaroscuro: the banker's lamp blazes like a coal at center, gilding the desk papers and globe with rich impasto gold while the bookshelves dissolve into warm tenebrism; light rakes the Persian rug's crimson pile in jewel-like detail.
+
+---
+
 ### Hall
 
 **Ratio:** 4:5
@@ -111,6 +119,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 **Ratio:** 4:5
 
 > Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Hall. Interior room with no exterior windows. Two side-by-side panelled doors in the bottom (south) wall; one panelled door on the left (west) wall mid-height. Black-and-white checkerboard marble floor, ornate crystal chandelier directly overhead, a tall grandfather clock against the right (east) wall, coat rack with a top hat and cane, oil portraits on the wallpapered walls, brass wall sconces flanking the south doors. Bright amber and ivory tones. The chandelier blazes overhead with full gaslight; with no windows, every corner is evenly and brightly lit, the marble floor's black-and-white pattern sharp and shadowless.
+
+---
+
+### Hall — Oil Painting
+
+**Ratio:** 4:5
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Hall. Interior room with no exterior windows. Two side-by-side panelled doors in the bottom (south) wall; one panelled door on the left (west) wall mid-height. Black-and-white checkerboard marble floor, ornate crystal chandelier directly overhead, a tall grandfather clock against the right (east) wall, coat rack with a top hat and cane, oil portraits on the wallpapered walls, brass wall sconces flanking the south doors. Rich amber and deep ivory tones with velvety penumbra. Sumptuous candlelit chiaroscuro: the crystal chandelier pours molten gold across the checkerboard marble below, reflections multiplying in each polished tile; the portrait frames glint copper while the edges of the hall dissolve into warm umber shadow; the grandfather clock face catches a gleam of brass in the darkness.
 
 ---
 
@@ -138,6 +154,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 
 ---
 
+### Lounge — Oil Painting
+
+**Ratio:** 5:4
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Lounge. North-east corner room: tall windows with heavy drapes along the top (north) wall and right (east) wall. Single panelled door in the bottom-left (south-west) corner. Tufted velvet chaise longue at center, crackling fireplace with marble mantel on the left (west) wall, crystal decanter and glasses on a side table, thick burgundy drapes, animal-skin rug on the floor. Deep crimson, gold, and warm umber tones with dramatic shadow. Sumptuous firelit chiaroscuro: the hearth blazes with rich vermillion and amber impasto, gilding the velvet chaise longue and glinting off the crystal decanter; the burgundy drapes absorb the darkness in deep glazed shadow while the animal-skin rug's texture is rendered in loving, tactile detail.
+
+---
+
 ### Library
 
 **Ratio:** 3:2
@@ -159,6 +183,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 **Ratio:** 3:2
 
 > Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes, a rolling ladder against the east shelves, a wing-back reading chair with an open book face-down, a brass telescope aimed at the west bay window, scattered notes and a magnifying glass on a side table. Warm forest green and golden amber tones. Morning light pours through the west-wall bay windows; dust motes drift above the reading chair, long shadows stretching east across the reading nook.
+
+---
+
+### Library — Oil Painting
+
+**Ratio:** 3:2
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes, a rolling ladder against the east shelves, a wing-back reading chair with an open book face-down, a brass telescope aimed at the west bay window, scattered notes and a magnifying glass on a side table. Deep forest green and aged cognac leather tones with sumptuous dark glazing. Vermeer-style diffused candlelight from a single lamp beside the reading chair: it bathes the book spines in warm amber and casts velvety tenebrism across the upper shelves; the brass telescope barrel catches a painterly gleam, the scattered notes rendered with obsessive still-life precision.
 
 ---
 
@@ -186,6 +218,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 
 ---
 
+### Billiard Room — Oil Painting
+
+**Ratio:** 5:4
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Billiard Room. West-side room: tall windows along the left (west) wall. One panelled door on the back (north) wall left side; one panelled door on the right (east) wall lower half. Full-size billiard table with balls mid-game at center, cue rack on the south wall, low-hanging tiffany lamp over the table, leather wingback chairs, a whiskey cart, wood-paneled walls with mounted trophy heads. Deep emerald, polished walnut, and rich tobacco tones with dramatic tenebrism. The tiffany lamp blazes over the billiard table like a Caravaggio torch: the emerald baize painted with thick jewel-bright impasto, ivory balls gleaming with almost tactile roundness; the mounted trophy heads loom from deep varnished shadow; the whiskey decanter catches a warm highlight of pure liquid amber.
+
+---
+
 ### Dining Room
 
 **Ratio:** 1:1
@@ -207,6 +247,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 **Ratio:** 1:1
 
 > Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Dining Room. East-side room: tall windows with heavy damask curtains drawn back along the right (east) wall. One panelled door on the left (west) wall mid-height; one panelled door on the back (north) wall left side. Long mahogany dining table set for eight with fine china and silver candelabras (unlit), high-backed chairs, a sideboard with a silver tureen and wine bottles, a carving knife on the board, spilled red wine on the white tablecloth. Warm plum and bright silver tones. Morning sunlight floods through the east-wall windows; the silver china and crystal gleam brilliantly, long shadows stretching west across the mahogany table.
+
+---
+
+### Dining Room — Oil Painting
+
+**Ratio:** 1:1
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Dining Room. East-side room: tall windows with heavy damask curtains along the right (east) wall. One panelled door on the left (west) wall mid-height; one panelled door on the back (north) wall left side. Long mahogany dining table set for eight with fine china and silver candelabras, high-backed chairs, a sideboard with a silver tureen and wine bottles, a carving knife on the board, spilled red wine on the white tablecloth. Deep plum, dark mahogany, and lustrous silver tones with opulent shadow. Sumptuous banquet-hall chiaroscuro: the silver candelabras pour molten light down the length of the table, catching the white tablecloth in brilliant contrast against the dark chairs; the spilled red wine gleams like garnets on the linen; the silver tureen and crystal glasses rendered with painstaking Dutch still-life precision; deep glazed umber pools in the corners.
 
 ---
 
@@ -234,6 +282,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 
 ---
 
+### Conservatory — Oil Painting
+
+**Ratio:** 5:4
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Conservatory. South-west corner room: tall arched windows and glass panels along the left (west) wall and rear glass wall; glass-paned ceiling sections. Single wrought-iron door on the right (east) wall upper area. Potted palms and exotic ferns, wrought-iron garden bench, stone tile floor with moss, watering can and scattered gardening tools, vine along the window frame. Lush viridian, deep terracotta, and warm bronze tones with botanical opulence. Sumptuous hothouse light filtered through the glass panels: every palm frond and fern rendered with the obsessive botanical precision of a Jan van Huysum painting; the stone tiles' mossy cracks painted in thick impasto; the wrought-iron bench glows oxidised green; a single gas lantern adds a jewel-warm accent amid the foliage.
+
+---
+
 ### Ballroom
 
 **Ratio:** 1:1
@@ -255,6 +311,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 **Ratio:** 1:1
 
 > Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Bright lavender and champagne gold tones. The chandelier blazes at full brightness with no windows to compete; every mirror face reflects crisp detail of the parquet inlay, the room evenly and brilliantly lit.
+
+---
+
+### Ballroom — Oil Painting
+
+**Ratio:** 1:1
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Rich lavender, champagne gold, and warm ivory tones with shimmering mirror-lit grandeur. Sumptuous ballroom chiaroscuro: the crystal chandelier blazes overhead in thick impasto gold, its reflection smearing across the polished parquet like liquid fire; the floor-length mirrors multiply the candlelight into infinite amber corridors; the dropped silk glove painted with the delicate tactility of a Vermeer textile; velvet rope barriers dissolve into warm shadow at the edges.
 
 ---
 
@@ -282,6 +346,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 
 ---
 
+### Kitchen — Oil Painting
+
+**Ratio:** 1:1
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Rich copper, cream, and warm umber tones with sumptuous kitchen-still-life depth. Chardin-style hearth light: the coal range glows in the darkness with intense amber impasto, illuminating the hanging copper pots in burnished fire-gold; the flour-dusted butcher block is painted with the sensuous texture of a Dutch kitchen piece; dried herbs hang in warm ochre shadow; the knife block gleams with cold precision against the warm firelight.
+
+---
+
 ### Grand Staircase
 
 **Ratio:** 4:5
@@ -303,6 +375,14 @@ Room illustrations rendered top-down from the south wall. Each room has three li
 **Ratio:** 4:5
 
 > Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Grand Staircase. Interior room with no exterior windows. Wide straight central staircase with symmetrical carved banisters and a plush crimson runner rising to an upper landing, polished brass handrails, a heavy newel post with carved finial, crystal chandeliers above, oil portraits lining the walls, a suit of armor at the landing. Bright mahogany and vivid burgundy tones. The chandeliers blaze at full daytime brightness with no windows; brass handrails gleam mirror-bright, the crimson runner vivid, every carved finial and portrait frame sharply defined.
+
+---
+
+### Grand Staircase — Oil Painting
+
+**Ratio:** 4:5
+
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Grand Staircase. Interior room with no exterior windows. Wide straight central staircase with symmetrical carved banisters and a plush crimson runner rising to an upper landing, polished brass handrails, a heavy newel post with carved finial, crystal chandeliers above, oil portraits lining the walls, a suit of armor at the landing. Deep mahogany, cardinal crimson, and burnished brass tones with monumental grandeur. Rembrandt-style staircase drama: gaslight sconces pour amber impasto down the carved banisters and crimson runner; the suit of armor glints with painstaking metallic highlights while the ancestral portraits loom from glazed umber darkness; the crystal chandeliers are halos of pure light above the ascending geometry of the staircase.
 
 ---
 
