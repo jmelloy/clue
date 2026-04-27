@@ -70,7 +70,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 16:9
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep mahogany and forest green tones. Soft ambient gaslight from the banker's lamp pools over the desk; bookshelves recede into warm shadow.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves lining the right (east) wall and the bottom (south) wall up to the corner door, a globe near the desk, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep mahogany and forest green tones. Soft ambient gaslight from the banker's lamp pools over the desk; bookshelves recede into warm shadow.
 
 ---
 
@@ -78,7 +78,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 16:9
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep midnight blue and mahogany tones. Cold moonlight rakes through the north and west windows casting long blue shadows between the shelves; the banker's lamp glows as a lone warm ember against the dark.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves lining the right (east) wall and the bottom (south) wall up to the corner door, a globe near the desk, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep midnight blue and mahogany tones. Cold moonlight rakes through the north and west windows casting long blue shadows between the shelves; the banker's lamp glows as a lone warm ember against the dark.
 
 ---
 
@@ -86,7 +86,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 16:9
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Warm mahogany and golden amber tones. Morning sunlight pours through the north and west windows, catching dust motes above the desk; long shadows stretch south-east across the Persian rug.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves lining the right (east) wall and the bottom (south) wall up to the corner door, a globe near the desk, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Warm mahogany and golden amber tones. Morning sunlight pours through the north and west windows, catching dust motes above the desk; long shadows stretch south-east across the Persian rug.
 
 ---
 
@@ -94,7 +94,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 16:9
 
-> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves on the right and bottom walls, a globe in the corner, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep amber and burnt sienna tones with velvety black shadows. Sumptuous Rembrandt chiaroscuro: the banker's lamp blazes like a coal at center, gilding the desk papers and globe with rich impasto gold while the bookshelves dissolve into warm tenebrism; light rakes the Persian rug's crimson pile in jewel-like detail.
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Study. North-west corner room: tall multi-pane windows along the top (north) wall and left (west) wall. Single panelled door in the bottom-right (south-east) corner. Heavy oak desk strewn with papers and an inkwell at center, floor-to-ceiling bookshelves lining the right (east) wall and the bottom (south) wall up to the corner door, a globe near the desk, a green banker's lamp on the desk. Persian rug over dark hardwood. Secret passage trapdoor barely visible beneath the rug. Deep amber and burnt sienna tones with velvety black shadows. Sumptuous Rembrandt chiaroscuro: the banker's lamp blazes like a coal at center, gilding the desk papers and globe with rich impasto gold while the bookshelves dissolve into warm tenebrism; light rakes the Persian rug's crimson pile in jewel-like detail.
 
 ---
 
@@ -166,7 +166,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 3:2
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes covering the right and north walls, a rolling ladder resting against the east shelves, a wing-back reading chair with an open book face-down on the armrest, a brass telescope near the west bay window, scattered notes and a magnifying glass on a side table. Forest green and aged leather tones. A brass reading lamp warms the chair; gaslight wall sconces cast even light across the shelves.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Library. West-side room: tall bay windows along the left (west) wall. One panelled door on the right (east) wall upper half; one panelled door on the bottom (south) wall center. Floor-to-ceiling shelves packed with leather-bound volumes covering the back (north) wall and the lower half of the right (east) wall below the door, a rolling ladder resting against the east shelves, a wing-back reading chair with an open book face-down on the armrest, a brass telescope near the west bay window, scattered notes and a magnifying glass on a side table. Forest green and aged leather tones. A brass reading lamp warms the chair; gaslight wall sconces cast even light across the shelves.
 
 ---
 
@@ -294,7 +294,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier directly overhead with its reflection shimmering in the floor, floor-length mirrors lining the north and south walls, velvet rope barriers at the north doors, a single dropped silk glove on the parquet. Lavender and champagne gold tones. The crystal chandelier blazes overhead and gaslight sconces ring the mirrored walls; the dance floor glows with steady warm light and layered reflections.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier directly overhead with its reflection shimmering in the floor, floor-length mirrors lining the south wall and flanking the north doors, velvet rope barriers at the north doors, a single dropped silk glove on the parquet. Lavender and champagne gold tones. The crystal chandelier blazes overhead and gaslight sconces ring the mirrored walls; the dance floor glows with steady warm light and layered reflections.
 
 ---
 
@@ -302,7 +302,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Deep lavender and warm amber tones. Chandeliers and sconces blaze in the windowless dark; gaslight washes the dance floor gold, mirror faces multiplying the warm light endlessly into shadow.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors lining the south wall and flanking the north doors, velvet rope barriers, a dropped silk glove on the parquet. Deep lavender and warm amber tones. Chandeliers and sconces blaze in the windowless dark; gaslight washes the dance floor gold, mirror faces multiplying the warm light endlessly into shadow.
 
 ---
 
@@ -310,7 +310,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Bright lavender and champagne gold tones. The chandelier blazes at full brightness with no windows to compete; every mirror face reflects crisp detail of the parquet inlay, the room evenly and brilliantly lit.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors lining the south wall and flanking the north doors, velvet rope barriers, a dropped silk glove on the parquet. Bright lavender and champagne gold tones. The chandelier blazes at full brightness with no windows to compete; every mirror face reflects crisp detail of the parquet inlay, the room evenly and brilliantly lit.
 
 ---
 
@@ -318,7 +318,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors on the walls, velvet rope barriers, a dropped silk glove on the parquet. Rich lavender, champagne gold, and warm ivory tones with shimmering mirror-lit grandeur. Sumptuous ballroom chiaroscuro: the crystal chandelier blazes overhead in thick impasto gold, its reflection smearing across the polished parquet like liquid fire; the floor-length mirrors multiply the candlelight into infinite amber corridors; the dropped silk glove painted with the delicate tactility of a Vermeer textile; velvet rope barriers dissolve into warm shadow at the edges.
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Ballroom. Interior room with no exterior windows. Two side-by-side panelled doors on the back (north) wall; one panelled door on the left (west) wall upper area; one panelled door on the right (east) wall upper area. Vast polished parquet dance floor with geometric inlay pattern, a grand piano in the south-west corner, enormous crystal chandelier overhead, floor-length mirrors lining the south wall and flanking the north doors, velvet rope barriers, a dropped silk glove on the parquet. Rich lavender, champagne gold, and warm ivory tones with shimmering mirror-lit grandeur. Sumptuous ballroom chiaroscuro: the crystal chandelier blazes overhead in thick impasto gold, its reflection smearing across the polished parquet like liquid fire; the floor-length mirrors multiply the candlelight into infinite amber corridors; the dropped silk glove painted with the delicate tactility of a Vermeer textile; velvet rope barriers dissolve into warm shadow at the edges.
 
 ---
 
@@ -326,7 +326,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar on the south wall. Warm copper and cream tones. Warm gaslight from a ceiling fixture pools over the butcher block and copper pots; the range glows with banked coals in steady ambient light.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle against the left (west) wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar on the south wall. Warm copper and cream tones. Warm gaslight from a ceiling fixture pools over the butcher block and copper pots; the range glows with banked coals in steady ambient light.
 
 ---
 
@@ -334,7 +334,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Deep copper and cold midnight blue tones. Cold moonlight through the east windows glints off the hanging copper pots and the knife block; the range glows ember-red in the dark, its heat the only warmth in the room.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle against the left (west) wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Deep copper and cold midnight blue tones. Cold moonlight through the east windows glints off the hanging copper pots and the knife block; the range glows ember-red in the dark, its heat the only warmth in the room.
 
 ---
 
@@ -342,7 +342,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Warm copper and bright cream tones. Morning sunlight streams through the east windows, gilding the copper pots and casting long shadows west across the stone floor; steam rises from the kettle on the range.
+> Colored pencil art. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle against the left (west) wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Warm copper and bright cream tones. Morning sunlight streams through the east windows, gilding the copper pots and casting long shadows west across the stone floor; steam rises from the kettle on the range.
 
 ---
 
@@ -350,7 +350,7 @@ Room illustrations rendered top-down from the south wall. Each room has four lig
 
 **Ratio:** 1:1
 
-> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle on the east wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Rich copper, cream, and warm umber tones with sumptuous kitchen-still-life depth. Chardin-style hearth light: the coal range glows in the darkness with intense amber impasto, illuminating the hanging copper pots in burnished fire-gold; the flour-dusted butcher block is painted with the sensuous texture of a Dutch kitchen piece; dried herbs hang in warm ochre shadow; the knife block gleams with cold precision against the warm firelight.
+> Oil painting in the manner of the Dutch Golden Age masters. Top view from the bottom of a Victorian Cluedo mansion — the Kitchen. South-east corner room: tall windows along the right (east) wall. Single panelled door on the back (north) wall left side. Heavy butcher-block island at center, cast-iron pots hanging from a ceiling rack, coal-burning range with a kettle against the left (west) wall, flour dusted across the counter, a knife block beside the range, bundles of dried herbs hanging above, stone floor tiles, pantry door slightly ajar. Rich copper, cream, and warm umber tones with sumptuous kitchen-still-life depth. Chardin-style hearth light: the coal range glows in the darkness with intense amber impasto, illuminating the hanging copper pots in burnished fire-gold; the flour-dusted butcher block is painted with the sensuous texture of a Dutch kitchen piece; dried herbs hang in warm ochre shadow; the knife block gleams with cold precision against the warm firelight.
 
 ---
 
