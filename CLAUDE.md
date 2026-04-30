@@ -9,7 +9,7 @@ Real-time multiplayer board game server — currently **Clue** (Cluedo) and **Te
 - **Backend**: Python 3.12, FastAPI, Redis (async), WebSockets
 - **Frontend**: Vue 3 (Composition API, `<script setup>`), Vite 7
 - **Agents**: Pluggable — Clue (RandomAgent, WandererAgent, LLMAgent), Hold'em (HoldemAgent)
-- **Infra**: Docker Compose (dev), Kubernetes (prod), nginx (prod)
+- **Infra**: Docker Compose, nginx (prod)
 - **Testing**: pytest + fakeredis (backend), Playwright (E2E)
 - **Tooling**: uv (Python), Mise (tool versions)
 
@@ -35,7 +35,6 @@ frontend/
     composables/         # useWebSocket.js
 scripts/                 # dump_game.py, live_ws_test.py
 tests/playwright/        # E2E browser tests
-k8s/                     # Kubernetes manifests
 ```
 
 ## Common Commands
@@ -154,4 +153,3 @@ Separate process for Clue agents (when `AGENT_MODE=external`). Polls Redis, crea
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): frontend build + backend pytest on pushes to main and PRs
-- **CD** (`.github/workflows/deploy.yml`): Docker build -> GHCR -> K8s rollout on main
