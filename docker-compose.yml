@@ -1,8 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
 
   backend:
     build:
@@ -20,6 +19,7 @@ services:
       - AGENT_MODE=external
     ports:
       - "8000:8000"
+    restart: unless-stopped
     volumes:
       - ./backend:/app
     depends_on:
@@ -61,3 +61,4 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+    restart: unless-stopped
