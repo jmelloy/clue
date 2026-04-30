@@ -10,11 +10,15 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
+    allowedHosts: ['localhost', 'clue.melloy.life'],
     proxy: {
       '/api': {
         target: backendUrl,
         ws: true
       }
     }
+  },
+  preview: {
+    allowedHosts: ['localhost', 'clue.melloy.life'],
   }
 });
