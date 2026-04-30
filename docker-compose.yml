@@ -18,7 +18,7 @@ services:
       - AGENT_TRACE=true
       - AGENT_MODE=external
     ports:
-      - "8000:8000"
+      - "8001:8000"
     restart: unless-stopped
     volumes:
       - ./backend:/app
@@ -55,7 +55,7 @@ services:
     environment:
       - BACKEND_URL=http://backend:8000
     ports:
-      - "5173:5173"
+      - "5174:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
