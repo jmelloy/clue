@@ -10,7 +10,7 @@ COPY frontend/ .
 RUN npm run build -- --outDir /assets
 
 # ---- Stage 2: Python backend + static assets ----
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
