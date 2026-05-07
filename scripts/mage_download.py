@@ -37,7 +37,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -90,6 +90,25 @@ def parse_date(date_str: str) -> tuple[str, str, str]:
         return "unknown", "unknown", "unknown"
 
 
+def synthesize_timestamp(date_str: str, day_index: int) -> str | None:
+    """Synthesize a full ISO timestamp from a date and per-day index.
+
+    Mage only exposes the date (e.g. 'Mar 15, 2026'), not the time. The listing
+    is newest-first within each day, so we synthesize a time by starting at
+    midnight (end of day) and subtracting 5 seconds per index — the newest
+    picture of a date gets 23:59:55, the next 23:59:50, etc. This keeps the
+    timestamps monotonically decreasing in download order and unique enough
+    to use for file mtimes / sorting.
+    """
+    try:
+        dt = datetime.strptime(date_str.strip(), "%b %d, %Y")
+    except ValueError:
+        return None
+    next_day_midnight = dt + timedelta(days=1)
+    synthesized = next_day_midnight - timedelta(seconds=5 * (day_index + 1))
+    return synthesized.isoformat()
+
+
 def load_manifest(output_dir: Path) -> dict:
     """Load the download manifest (tracks completed UUIDs)."""
     manifest_path = output_dir / "manifest.json"
@@ -117,6 +136,7 @@ def write_sidecar(json_path: Path, metadata: dict):
         "dimensions": metadata.get("dimensions", ""),
         "aspect_ratio": metadata.get("aspect_ratio", ""),
         "date_created": metadata.get("date_created", ""),
+        "timestamp": metadata.get("timestamp", ""),
         "uuid": metadata.get("uuid", ""),
         "full_url": metadata.get("full_url", ""),
         "thumb_url": metadata.get("thumb_url", ""),
@@ -382,7 +402,12 @@ async def _reload_and_setup(page, args):
 
 
 async def download_creation(
-    page, index: int, total: int, output_dir: Path, manifest: dict
+    page,
+    index: int,
+    total: int,
+    output_dir: Path,
+    manifest: dict,
+    date_indices: dict,
 ) -> dict | None:
     """Click the i-th image, extract info, download, and return metadata.
 
@@ -520,6 +545,14 @@ async def download_creation(
     date_created = metadata.get("date_created", "")
     year, month_name, day = parse_date(date_created)
 
+    # Synthesize a full timestamp using a per-day counter (pictures are listed
+    # newest-first, so subtract 5 seconds per index from midnight).
+    day_index = date_indices.get(date_created, 0)
+    date_indices[date_created] = day_index + 1
+    synthesized_ts = synthesize_timestamp(date_created, day_index)
+    if synthesized_ts:
+        metadata["timestamp"] = synthesized_ts
+
     # Determine image filename from CDN URL or UUID
     if full_url:
         img_filename = full_url.split("/")[-1]
@@ -553,12 +586,24 @@ async def download_creation(
     write_sidecar(json_path, metadata)
     print(f"  Sidecar: {json_path}")
 
+    # Stamp file mtimes with the synthesized timestamp so file managers can
+    # sort by it.
+    if synthesized_ts:
+        try:
+            ts = datetime.fromisoformat(synthesized_ts).timestamp()
+            if img_path.exists():
+                os.utime(img_path, (ts, ts))
+            os.utime(json_path, (ts, ts))
+        except Exception as e:
+            print(f"  Warning: could not set mtime: {e}")
+
     # Record in manifest
     record = {
         "uuid": uuid,
         "prompt": metadata.get("prompt", "")[:200],
         "model": metadata.get("model", ""),
         "date_created": metadata.get("date_created", ""),
+        "timestamp": metadata.get("timestamp", ""),
         "image_path": str(img_path),
         "sidecar_path": str(json_path),
         "downloaded_at": datetime.now().isoformat(),
@@ -639,6 +684,15 @@ async def main():
     if args.resume:
         print(f"Resuming: {len(manifest.get('downloaded', {}))} already downloaded")
         manifest["errors"] = []
+
+    # Per-date counter for synthesizing per-image timestamps. On resume, seed
+    # it from the manifest so new images continue numbering from where we left
+    # off for each date.
+    date_indices: dict[str, int] = {}
+    for record in manifest.get("downloaded", {}).values():
+        date_str = record.get("date_created", "")
+        if date_str:
+            date_indices[date_str] = date_indices.get(date_str, 0) + 1
 
     async with async_playwright() as p:
         browser = await p.webkit.launch_persistent_context(
@@ -722,7 +776,9 @@ async def main():
                     continue
 
             try:
-                result = await download_creation(page, i, total, output_dir, manifest)
+                result = await download_creation(
+                    page, i, total, output_dir, manifest, date_indices
+                )
                 if result == "skipped":
                     # Already in manifest — don't count as new download
                     consecutive_errors = 0
