@@ -135,8 +135,7 @@ def write_sidecar(json_path: Path, metadata: dict):
         "model": metadata.get("model", ""),
         "dimensions": metadata.get("dimensions", ""),
         "aspect_ratio": metadata.get("aspect_ratio", ""),
-        "date_created": metadata.get("date_created", ""),
-        "timestamp": metadata.get("timestamp", ""),
+        "date_created": metadata.get("timestamp", metadata.get("date_created", "")),
         "uuid": metadata.get("uuid", ""),
         "full_url": metadata.get("full_url", ""),
         "thumb_url": metadata.get("thumb_url", ""),
@@ -839,12 +838,12 @@ async def main():
         # Final save
         save_manifest(output_dir, manifest)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Done! Downloaded {downloaded} new images")
         print(f"Total in manifest: {len(manifest.get('downloaded', {}))}")
         print(f"Errors: {len(manifest.get('errors', []))}")
         print(f"Output: {output_dir}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         await browser.close()
 
