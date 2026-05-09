@@ -32,11 +32,11 @@ WITH parsed AS (
     SELECT
         id AS image_id,
 
-        -- Variant: which themed deck the prompt came from.
+        -- Variant: which themed deck the prompt came from. Classic runs
+        -- LAST as a catch-all — beyond its preamble keywords it also
+        -- matches bare per-card line-art prompts that omit the section
+        -- preamble (~258 of them in production).
         CASE
-            WHEN prompt ILIKE '%Traditional engraved playing card style%'
-              OR prompt ILIKE '%baroque scrollwork and filigree%'
-                THEN 'Classic'
             WHEN prompt ILIKE '%Sepia-toned watercolor%'
               OR prompt ILIKE '%aged parchment%'
                 THEN 'Vintage'
@@ -56,6 +56,11 @@ WITH parsed AS (
               OR prompt ILIKE '%Gil Elvgren%'
               OR prompt ILIKE '%pin-up illustration%'
                 THEN 'Pinup'
+            WHEN prompt ILIKE '%Traditional engraved playing card style%'
+              OR prompt ILIKE '%baroque scrollwork and filigree%'
+              OR prompt ILIKE '%line art on a white background. Playing card design%'
+              OR prompt ILIKE '%line art on a white background. Playing card center artwork%'
+                THEN 'Classic'
         END AS variant,
 
         -- Rank: tier 1 = Standard decks ("<Rank> of <Suit>" appears verbatim);
