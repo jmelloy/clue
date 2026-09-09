@@ -14,7 +14,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "vue": "^3.5.33"
+    "vue": "^3.5.40"
   },
   "overrides": {
     "@vitest/browser": "^4.1.0"
